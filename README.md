@@ -1,4 +1,4 @@
-# Solid Soukai
+# Solid Soukai [![Build Status](https://semaphoreci.com/api/v1/noeldemartin/soukai-solid/branches/master/badge.svg)](https://semaphoreci.com/noeldemartin/soukai-solid)
 
 Solid engine for [Soukai ODM](http://noeldemartin.github.io/soukai/).
 
