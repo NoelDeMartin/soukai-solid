@@ -1,0 +1,40 @@
+{
+  "name": "soukai-solid",
+  "version": "0.0.1",
+  "description": "Solid engine for Soukai ODM",
+  "main": "dist/soukai-solid.common.js",
+  "module": "dist/soukai-solid.esm.js",
+  "unpkg": "dist/soukai-solid.js",
+  "jsdelivr": "dist/soukai-solid.js",
+  "types": "types/index.d.ts",
+  "scripts": {
+    "test": "jest"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/NoelDeMartin/soukai-solid.git"
+  },
+  "author": "Noel De Martin",
+  "license": "GPL",
+  "bugs": {
+    "url": "https://github.com/NoelDeMartin/soukai-solid/issues"
+  },
+  "peerDependencies": {
+    "soukai": "^0.0.1"
+  },
+  "devDependencies": {
+    "@types/faker": "^4.1.5",
+    "@types/jest": "^23.3.13",
+    "@types/rdflib": "^0.17.1",
+    "events": "^3.0.0",
+    "faker": "^4.1.0",
+    "jest": "^24.0.0",
+    "soukai": "0.0.1",
+    "ts-jest": "^23.10.5",
+    "typescript": "^3.3.1"
+  },
+  "dependencies": {
+    "rdflib": "^0.19.1",
+    "solid-auth-client": "^2.2.14"
+  }
+}
