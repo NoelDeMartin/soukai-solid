@@ -24,7 +24,7 @@ export default class SolidEngine implements Engine {
                 : model.collection + '/' + id;
 
         return Solid
-            .getResource(url, model.rdfsClasses)
+            .getResource(url)
             .then(resource => this.parseResourceAttributes(model, resource));
     }
 
