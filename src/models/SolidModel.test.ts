@@ -1,15 +1,60 @@
 import Soukai, { FieldType } from 'soukai';
 
-import Person from '@tests/stubs/Person';
+import SolidModel from './SolidModel';
 
 it('resolves contexts when booting', () => {
-    Soukai.loadModel('Stub', Person);
+    class StubModel extends SolidModel {
 
-    expect(Person.rdfsClasses).toEqual([
+        public static timestamps = false;
+
+        public static rdfContexts = {
+            'foaf': 'http://cmlns.com/foaf/0.1/',
+        };
+
+        public static rdfsClasses = ['foaf:Person'];
+
+        public static fields = {
+            name: {
+                type: FieldType.String,
+                rdfProperty: 'foaf:givenname',
+            },
+        };
+
+    }
+
+    Soukai.loadModel('StubModel', StubModel);
+
+    expect(StubModel.rdfsClasses).toEqual([
         'http://cmlns.com/foaf/0.1/Person',
     ]);
 
-    expect(Person.fields).toEqual({
+    expect(StubModel.fields).toEqual({
+        name: {
+            type: FieldType.String,
+            required: false,
+            rdfProperty: 'http://cmlns.com/foaf/0.1/givenname',
+        },
+    });
+});
+
+it('defaults to first context if rdfProperty is missing', () => {
+    class StubModel extends SolidModel {
+
+        public static timestamps = false;
+
+        public static rdfContexts = {
+            'foaf': 'http://cmlns.com/foaf/0.1/',
+        };
+
+        public static fields = {
+            name: FieldType.String,
+        };
+
+    }
+
+    Soukai.loadModel('StubModel', StubModel);
+
+    expect(StubModel.fields).toEqual({
         name: {
             type: FieldType.String,
             required: false,

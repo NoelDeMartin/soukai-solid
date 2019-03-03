@@ -3,7 +3,6 @@ import Faker from 'faker';
 import Arr from '@/utils/Arr';
 import Solid from '@/utils/Solid';
 import Str from '@/utils/Str';
-import UUIDGenerator from '@/utils/UUIDGenerator';
 
 import $rdf from '@mocks/rdflib';
 import SolidAuthClient from '@mocks/solid-auth-client';
@@ -21,7 +20,7 @@ describe('Solid', () => {
 
         $rdf.__addWebOperationResult({ Location: location });
 
-        const id = UUIDGenerator.generate();
+        const id = Faker.random.uuid();
         const container = await Solid.createContainer(containerUrl, id, name, types);
 
         expect(container.url).toBe(baseUrl + location);

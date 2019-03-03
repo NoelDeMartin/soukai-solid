@@ -14,19 +14,22 @@ export default class SolidEngine implements Engine {
         return null as any;
     }
 
-    public async readOne(
-        model: typeof Model,
-        id: Database.Key
-    ): Promise<Database.Document> {
-        // TODO
-        return null as any;
+    public async readOne(model: typeof SolidModel, id: Database.Key): Promise<Database.Document> {
+        this.assertModelType(model);
+
+        const url = id.startsWith('http')
+            ? id
+            : model.collection.endsWith('/')
+                ? model.collection + id
+                : model.collection + '/' + id;
+
+        return Solid
+            .getResource(url, model.rdfsClasses)
+            .then(resource => this.parseResourceAttributes(model, resource));
     }
 
     public async readMany(model: typeof SolidModel): Promise<Database.Document[]> {
-        if (!(model.prototype instanceof SolidModel)) {
-            // TODO use SoukaiError
-            throw new Error('SolidEngine only supports querying SolidModel models');
-        }
+        this.assertModelType(model);
 
         return Solid
             .getResources(model.collection, model.rdfsClasses)
@@ -46,6 +49,13 @@ export default class SolidEngine implements Engine {
 
     public async delete(model: typeof Model, id: Database.Key): Promise<void> {
         // TODO
+    }
+
+    private assertModelType(model: typeof SolidModel): void {
+        if (!(model.prototype instanceof SolidModel)) {
+            // TODO use SoukaiError
+            throw new Error('SolidEngine only supports querying SolidModel models');
+        }
     }
 
     private parseResourceAttributes(

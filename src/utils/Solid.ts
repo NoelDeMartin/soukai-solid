@@ -137,6 +137,12 @@ class Solid {
         ) || defaultValue;
     }
 
+    public async getResource(url: string): Promise<Resource> {
+        const data = await SolidAuthClient.fetch(url).then(res => res.text());
+
+        return this.parseResource(url, data);
+    }
+
     public async getResources(containerUrl: string, types: string[]): Promise<Resource[]> {
         if (!containerUrl.endsWith('/')) {
             containerUrl += '/';

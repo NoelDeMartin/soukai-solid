@@ -1,12 +1,22 @@
-import { Model } from 'soukai';
+import { Model, FieldsDefinition, FieldDefinition } from 'soukai';
+
+export interface SolidFieldsDefinition extends FieldsDefinition {
+    [field: string]: SolidFieldDefinition;
+}
+
+export interface SolidFieldDefinition extends FieldDefinition {
+    rdfProperty: string;
+}
 
 export default class SolidModel extends Model {
+
+    public static fields: SolidFieldsDefinition | any;
 
     public static rdfContexts: { [alias: string]: string } = {};
 
     public static rdfsClasses: string[] = [];
 
-    public static from(containerUrl: string) {
+    public static from(containerUrl: string): typeof SolidModel {
         this.collection = containerUrl;
 
         return this;
@@ -15,13 +25,15 @@ export default class SolidModel extends Model {
     public static boot(name: string): void {
         super.boot(name);
 
+        const defaultRdfContext = Object.keys(this.rdfContexts).shift();
+
         this.rdfsClasses = this.rdfsClasses.map(
             expression => resolveFullTypeUrl(expression, this.rdfContexts)
         );
 
         for (const field in this.fields) {
             this.fields[field].rdfProperty = resolveFullTypeUrl(
-                this.fields[field].rdfProperty,
+                this.fields[field].rdfProperty || `${defaultRdfContext}:${field}`,
                 this.rdfContexts
             );
         }

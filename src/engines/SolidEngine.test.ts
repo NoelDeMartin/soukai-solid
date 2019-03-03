@@ -1,13 +1,18 @@
 import Soukai, { Model } from 'soukai';
 
 import Faker from 'faker';
-import SolidEngine from '@/engines/SolidEngine';
 
 import Person from '@tests/stubs/Person';
 import SolidAuthClient from '@mocks/solid-auth-client';
 
+import SolidEngine from './SolidEngine';
+
+let engine;
+
 beforeAll(() => {
     Soukai.loadModel('Person', Person);
+
+    engine = new SolidEngine();
 });
 
 it ('fails when using non-solid models', () => {
@@ -15,15 +20,18 @@ it ('fails when using non-solid models', () => {
 
     Soukai.loadModel('MyModel', MyModel);
 
-    const engine = new SolidEngine();
+    const operations = [
+        engine.readMany(MyModel as any),
+        engine.readOne(MyModel as any, Faker.random.uuid()),
+    ];
 
-    const operation = engine.readMany(MyModel as any);
-
-    expect(operation).rejects.toThrow(Error);
-    expect(operation).rejects.toThrow('SolidEngine only supports querying SolidModel models');
+    for (const operation of operations) {
+        expect(operation).rejects.toThrow(Error);
+        expect(operation).rejects.toThrow('SolidEngine only supports querying SolidModel models');
+    }
 });
 
-it('parses attributes', () => {
+it('gets many resources', async () => {
     const containerUrl = Faker.internet.url();
     const firstName = Faker.name.firstName();
     const secondName = Faker.name.firstName();
@@ -42,11 +50,46 @@ it('parses attributes', () => {
 
     Person.from(containerUrl);
 
-    const engine = new SolidEngine();
+    const documents = await engine.readMany(Person);
 
-    engine.readMany(Person).then(documents => {
-        expect(documents).toHaveLength(2);
-        expect(documents[0]).toEqual({ id: containerUrl + '/first', name: firstName });
-        expect(documents[1]).toEqual({ id: containerUrl + '/second', name: secondName });
-    });
+    expect(documents).toHaveLength(2);
+    expect(documents[0]).toEqual({ id: containerUrl + '/first', name: firstName });
+    expect(documents[1]).toEqual({ id: containerUrl + '/second', name: secondName });
+});
+
+it('gets one resource by relative id', async () => {
+    const containerUrl = Faker.internet.url();
+    const id = Faker.random.uuid();
+    const name = Faker.name.firstName();
+
+    SolidAuthClient.addFetchResponse(`
+        @prefix foaf: <http://cmlns.com/foaf/0.1/> .
+
+        <>
+            a foaf:Person ;
+            foaf:name "${name}" .
+    `);
+
+    Person.from(containerUrl);
+
+    const document = await engine.readOne(Person, id);
+
+    expect(document).toEqual({ id: containerUrl + '/' + id, name });
+});
+
+it('gets one resource by absolute id ignoring container', async () => {
+    const id = Faker.internet.url() + '/' + Faker.random.uuid();
+    const name = Faker.name.firstName();
+
+    SolidAuthClient.addFetchResponse(`
+        @prefix foaf: <http://cmlns.com/foaf/0.1/> .
+
+        <>
+            a foaf:Person ;
+            foaf:name "${name}" .
+    `);
+
+    const document = await engine.readOne(Person, id);
+
+    expect(document).toEqual({ id, name });
 });
