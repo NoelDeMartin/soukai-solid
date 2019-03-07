@@ -2,29 +2,63 @@ import { Engine, Model, Database } from 'soukai';
 
 import SolidModel from '@/models/SolidModel';
 
-import Solid, { Resource } from '@/utils/Solid';
+import Solid, { Resource, ResourceProperty } from '@/utils/Solid';
 
 export default class SolidEngine implements Engine {
 
     public async create(
-        model: typeof Model,
+        model: typeof SolidModel,
         attributes: Database.Attributes
     ): Promise<Database.Key> {
-        // TODO
-        return null as any;
+        this.assertModelType(model);
+
+        const properties: ResourceProperty[] = [];
+
+        for (const field in attributes) {
+            const fieldDefinition = model.fields[field];
+            const value = attributes[field];
+
+            if (!fieldDefinition) {
+                // TODO throw SoukaiError
+                throw new Error(`Trying to create model with an undefined field "${field}"`);
+            }
+
+            if (Array.isArray(value)) {
+                // TODO implement
+                throw new Error(
+                    `Field "${field}" is an array and support for array fields hasn't been implemented in SolidModel`
+                );
+            }
+
+            if (typeof value === 'object') {
+                // TODO implement
+                throw new Error(
+                    `Field "${field}" is an object and support for nested fields hasn't been implemented in SolidModel`
+                );
+            }
+
+            properties.push(ResourceProperty.literal(fieldDefinition.rdfProperty, value));
+        }
+
+        for (const type of model.rdfsClasses) {
+            properties.push(ResourceProperty.type(type));
+        }
+
+        const resource = await Solid.createResource(
+            model.collection,
+            properties,
+
+            // TODO use slug and type for containers
+        );
+
+        return resource.url;
     }
 
     public async readOne(model: typeof SolidModel, id: Database.Key): Promise<Database.Document> {
         this.assertModelType(model);
 
-        const url = id.startsWith('http')
-            ? id
-            : model.collection.endsWith('/')
-                ? model.collection + id
-                : model.collection + '/' + id;
-
         return Solid
-            .getResource(url)
+            .getResource(id)
             .then(resource => this.parseResourceAttributes(model, resource));
     }
 
@@ -39,11 +73,13 @@ export default class SolidEngine implements Engine {
     }
 
     public async update(
-        model: typeof Model,
+        model: typeof SolidModel,
         id: Database.Key,
         dirtyAttributes: Database.Attributes,
         removedAttributes: string[],
     ): Promise<void> {
+        this.assertModelType(model);
+
         // TODO
     }
 

@@ -9,44 +9,45 @@ const LDP = $rdf.Namespace('http://www.w3.org/ns/ldp#');
 const FOAF = $rdf.Namespace('http://cmlns.com/foaf/0.1/');
 const RDFS = $rdf.Namespace('http://www.w3.org/1999/02/22-rdf-syntax-ns#');
 
+type Literal = string | number | boolean;
+
+type Reference = { url: string };
+
 class Solid {
 
     public async createResource(
         containerUrl: string,
-        id: string,
-        name: string,
-        types: string[],
-        basicType: string | null = null
+        properties: ResourceProperty[],
+        slug: string | null = null,
+        type: string | null = null,
     ): Promise<Resource> {
         // TODO why doesn't this function need Solid? Is the header already set within fetcher?
 
-        const store = $rdf.graph();
-        const fetcher = new $rdf.Fetcher(store, {});
+        const fetcher = new $rdf.Fetcher($rdf.graph(), {});
+
+        const headers = {
+            'content-type': 'text/turtle',
+        };
+
+        if (slug !== null) {
+            headers['slug'] = slug;
+        }
+
+        if (type !== null) {
+            headers['link'] = type + '; rel="type"';
+        }
+
+        const body = properties.map(property => property.toString()).join("\n");
 
         const result: Response = await (fetcher as any).webOperation('POST', containerUrl, {
             contentType: 'text/turtle',
-            headers: {
-                'slug': id,
-                'content-type': 'text/turtle',
-                ...(basicType
-                    ? { 'link': basicType + '; rel="type"' }
-                    : {}),
-            },
-            body:
-                [
-                    ...types.map(type => `<> a <${type}> .`),
-                    `<> ${FOAF('name')} ${JSON.stringify(name)} .`,
-                ].join("\n"),
+            headers,
+            body,
         });
 
-        // TODO this doesn't work, graph incomplete :(
+        const resourceUrl = result.headers.get('location') as string;
 
-        return {
-            url: new URL(result.headers.get('Location') as string, containerUrl).href,
-            types,
-            name,
-            graph: store,
-        };
+        return this.parseResource(resourceUrl, body.replace(/<>/g, `<${resourceUrl}>`));
     }
 
     public async updateResourceProperties(
@@ -107,21 +108,6 @@ class Solid {
                     solid:where   { ${where} };
                     solid:deletes { ${deletes} }.`,
         });
-    }
-
-    public async createContainer(
-        parentUrl: string,
-        id: string,
-        name: string,
-        types: string[]
-    ): Promise<Resource> {
-        return await this.createResource(
-            parentUrl,
-            id,
-            name,
-            types,
-            LDP('BasicContainer').toString()
-        );
     }
 
     public getResourceAttribute(
@@ -277,7 +263,7 @@ class Solid {
         const resource = {
             url: url,
             name: 'Unknown',
-            types: typeTerms.map(term => term.value),
+            types: typeTerms.map(term => decodeURI(term.value)),
             graph: store,
         };
 
@@ -292,6 +278,41 @@ class Solid {
         resource.url = Str.fixUrl(url);
 
         return resource;
+    }
+
+}
+
+export class ResourceProperty {
+
+    public static literal(property: string, value: Literal): ResourceProperty {
+        return new ResourceProperty({ url: property }, value);
+    }
+
+    public static type(type: string): ResourceProperty {
+        return new ResourceProperty('a', { url: type });
+    }
+
+    private predicate: Reference | 'a';
+    private object: Literal | Reference;
+
+    private constructor(
+        predicate: Reference | 'a',
+        object: Literal | Reference,
+    ) {
+        this.predicate = predicate;
+        this.object = object;
+    }
+
+    public toString(): string {
+        return [
+            '<>',
+            this.predicate === 'a'
+                ? this.predicate
+                : `<${encodeURI(this.predicate.url)}>`,
+            typeof this.object !== 'object'
+                ? JSON.stringify(this.object)
+                : `<${encodeURI(this.object.url)}>`,
+        ].join(' ') + ' .';
     }
 
 }

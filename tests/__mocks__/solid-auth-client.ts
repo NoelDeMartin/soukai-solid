@@ -2,12 +2,12 @@ import { EventEmitter } from 'events';
 
 import StubResponse from '@tests/stubs/StubResponse';
 
-class MockSolidAuthClient extends EventEmitter {
+class SolidAuthClientMock extends EventEmitter {
 
     private fetchResponses: Response[] = [];
 
-    public addFetchResponse(content: string): void {
-        this.fetchResponses.push(StubResponse.make(content));
+    public addFetchResponse(content: string, headers: object = {}): void {
+        this.fetchResponses.push(StubResponse.make(content, headers));
     }
 
     public async fetch(): Promise<Response | undefined> {
@@ -16,7 +16,7 @@ class MockSolidAuthClient extends EventEmitter {
 
 }
 
-const instance = new MockSolidAuthClient();
+const instance = new SolidAuthClientMock();
 jest.spyOn(instance, 'fetch');
 
 export default instance;

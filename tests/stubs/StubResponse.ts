@@ -1,14 +1,16 @@
+import StubHeaders from '@tests/stubs/StubHeaders';
+
 export default class StubResponse implements Response {
 
-    public static make(content: string): StubResponse {
-        return new StubResponse(content);
+    public static make(content: string, headers: object = {}): StubResponse {
+        return new StubResponse(content, headers);
     }
 
     private content: string;
 
     readonly body: ReadableStream<Uint8Array> | null;
     readonly bodyUsed: boolean;
-    readonly headers: Headers;
+    readonly headers: StubHeaders;
     readonly ok: boolean;
     readonly redirected: boolean;
     readonly status: number;
@@ -17,8 +19,9 @@ export default class StubResponse implements Response {
     readonly type: ResponseType;
     readonly url: string;
 
-    private constructor(content: string) {
+    private constructor(content: string, headers: object = {}) {
         this.content = content;
+        this.headers = StubHeaders.make(headers);
     }
 
     public async arrayBuffer(): Promise<ArrayBuffer> {

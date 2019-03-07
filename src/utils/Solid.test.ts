@@ -1,36 +1,45 @@
 import Faker from 'faker';
 
 import Arr from '@/utils/Arr';
-import Solid from '@/utils/Solid';
+import Solid, { ResourceProperty } from '@/utils/Solid';
 import Str from '@/utils/Str';
 
-import $rdf from '@mocks/rdflib';
+import { mock as $rdf } from '@mocks/rdflib';
 import SolidAuthClient from '@mocks/solid-auth-client';
 
 describe('Solid', () => {
 
-    it('creates containers', async () => {
+    it('creates resources', async () => {
         const baseUrl = Faker.internet.url();
         const containerUrl = baseUrl + '/' + Str.slug(Faker.random.word());
         const name = Faker.random.word();
-        const location = '/' + Str.slug(Faker.random.word());
+        const location = baseUrl + '/' + Str.slug(Faker.random.word()) + '.ttl';
         const types = Arr
             .make(Faker.random.number({min: 2, max: 4}))
-            .map(() => Faker.random.word());
+            .map(() => Faker.internet.url() + '/' + Faker.random.word());
 
-        $rdf.__addWebOperationResult({ Location: location });
+        $rdf.addWebOperationResponse('Created', { 'Location': location });
 
         const id = Faker.random.uuid();
-        const container = await Solid.createContainer(containerUrl, id, name, types);
+        const container = await Solid.createResource(
+            containerUrl,
+            [
+                ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
+                ...types.map(type => ResourceProperty.type(type)),
+            ],
+            id,
+            'http://www.w3.org/ns/ldp#BasicContainer',
+        );
 
-        expect(container.url).toBe(baseUrl + location);
+        expect(container.url).toBe(location);
         expect(container.name).toBe(name);
-        expect(container.types).toBe(types);
+        expect(container.types).toEqual(types);
         // TODO validate graph
 
-        expect($rdf.Fetcher).toHaveBeenCalledTimes(1);
+        const $rdfMock = $rdf.getMock();
+        expect($rdfMock.Fetcher).toHaveBeenCalledTimes(1);
 
-        const FetcherMock = $rdf.Fetcher.mock.instances[0];
+        const FetcherMock = $rdfMock.Fetcher.mock.instances[0];
 
         expect(FetcherMock.webOperation).toHaveBeenCalledWith(
             'POST',
@@ -54,7 +63,7 @@ describe('Solid', () => {
         expect(resources[0].name).toEqual('Foo Bar');
         expect(resources[0].types).toEqual([]);
 
-        expect($rdf.parse).toHaveBeenCalledWith(
+        expect($rdf.getMock().parse).toHaveBeenCalledWith(
             data,
             expect.anything(),
             containerUrl + '/',
@@ -82,14 +91,14 @@ describe('Solid', () => {
         expect(containers[0].name).toEqual('Foo Bar');
         expect(containers[0].types).toEqual(['http://www.w3.org/ns/ldp#BasicContainer']);
 
-        expect($rdf.parse).toHaveBeenCalledWith(
+        expect($rdf.getMock().parse).toHaveBeenCalledWith(
             containerData,
             expect.anything(),
             containerUrl + '/',
             'text/turtle',
             null
         );
-        expect($rdf.parse).toHaveBeenCalledWith(
+        expect($rdf.getMock().parse).toHaveBeenCalledWith(
             resourceData,
             expect.anything(),
             containerUrl + '/foobar',
