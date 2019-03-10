@@ -2,8 +2,12 @@ import StubHeaders from '@tests/stubs/StubHeaders';
 
 export default class StubResponse implements Response {
 
-    public static make(content: string, headers: object = {}): StubResponse {
-        return new StubResponse(content, headers);
+    public static success(content: string = '', headers: object = {}): StubResponse {
+        return new StubResponse(200, content, headers);
+    }
+
+    public static notFound(): StubResponse {
+        return new StubResponse(404);
     }
 
     private content: string;
@@ -19,7 +23,8 @@ export default class StubResponse implements Response {
     readonly type: ResponseType;
     readonly url: string;
 
-    private constructor(content: string, headers: object = {}) {
+    private constructor(status: number, content: string = '', headers: object = {}) {
+        this.status = status;
         this.content = content;
         this.headers = StubHeaders.make(headers);
     }

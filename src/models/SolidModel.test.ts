@@ -2,63 +2,67 @@ import Soukai, { FieldType } from 'soukai';
 
 import SolidModel from './SolidModel';
 
-it('resolves contexts when booting', () => {
-    class StubModel extends SolidModel {
+describe('SolidModel', () => {
 
-        public static timestamps = false;
+    it('resolves contexts when booting', () => {
+        class StubModel extends SolidModel {
 
-        public static rdfContexts = {
-            'foaf': 'http://cmlns.com/foaf/0.1/',
-        };
+            public static timestamps = false;
 
-        public static rdfsClasses = ['foaf:Person'];
+            public static rdfContexts = {
+                'foaf': 'http://cmlns.com/foaf/0.1/',
+            };
 
-        public static fields = {
+            public static rdfsClasses = ['foaf:Person'];
+
+            public static fields = {
+                name: {
+                    type: FieldType.String,
+                    rdfProperty: 'foaf:givenname',
+                },
+            };
+
+        }
+
+        Soukai.loadModel('StubModel', StubModel);
+
+        expect(StubModel.rdfsClasses).toEqual([
+            'http://cmlns.com/foaf/0.1/Person',
+        ]);
+
+        expect(StubModel.fields).toEqual({
             name: {
                 type: FieldType.String,
-                rdfProperty: 'foaf:givenname',
+                required: false,
+                rdfProperty: 'http://cmlns.com/foaf/0.1/givenname',
             },
-        };
-
-    }
-
-    Soukai.loadModel('StubModel', StubModel);
-
-    expect(StubModel.rdfsClasses).toEqual([
-        'http://cmlns.com/foaf/0.1/Person',
-    ]);
-
-    expect(StubModel.fields).toEqual({
-        name: {
-            type: FieldType.String,
-            required: false,
-            rdfProperty: 'http://cmlns.com/foaf/0.1/givenname',
-        },
+        });
     });
-});
 
-it('defaults to first context if rdfProperty is missing', () => {
-    class StubModel extends SolidModel {
+    it('defaults to first context if rdfProperty is missing', () => {
+        class StubModel extends SolidModel {
 
-        public static timestamps = false;
+            public static timestamps = false;
 
-        public static rdfContexts = {
-            'foaf': 'http://cmlns.com/foaf/0.1/',
-        };
+            public static rdfContexts = {
+                'foaf': 'http://cmlns.com/foaf/0.1/',
+            };
 
-        public static fields = {
-            name: FieldType.String,
-        };
+            public static fields = {
+                name: FieldType.String,
+            };
 
-    }
+        }
 
-    Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModel('StubModel', StubModel);
 
-    expect(StubModel.fields).toEqual({
-        name: {
-            type: FieldType.String,
-            required: false,
-            rdfProperty: 'http://cmlns.com/foaf/0.1/name',
-        },
+        expect(StubModel.fields).toEqual({
+            name: {
+                type: FieldType.String,
+                required: false,
+                rdfProperty: 'http://cmlns.com/foaf/0.1/name',
+            },
+        });
     });
+
 });

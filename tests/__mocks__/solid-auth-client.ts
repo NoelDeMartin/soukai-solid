@@ -6,8 +6,12 @@ class SolidAuthClientMock extends EventEmitter {
 
     private fetchResponses: Response[] = [];
 
-    public addFetchResponse(content: string, headers: object = {}): void {
-        this.fetchResponses.push(StubResponse.make(content, headers));
+    public addFetchNotFoundResponse(): void {
+        this.fetchResponses.push(StubResponse.notFound());
+    }
+
+    public addFetchResponse(content: string = '', headers: object = {}): void {
+        this.fetchResponses.push(StubResponse.success(content, headers));
     }
 
     public async fetch(): Promise<Response | undefined> {
@@ -17,6 +21,7 @@ class SolidAuthClientMock extends EventEmitter {
 }
 
 const instance = new SolidAuthClientMock();
+
 jest.spyOn(instance, 'fetch');
 
 export default instance;

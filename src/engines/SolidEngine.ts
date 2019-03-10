@@ -2,7 +2,10 @@ import { Engine, Model, Database } from 'soukai';
 
 import SolidModel from '@/models/SolidModel';
 
-import Solid, { Resource, ResourceProperty } from '@/utils/Solid';
+import Solid, { Resource, ResourceProperty } from '@/solid';
+
+import Url from '@/utils/Url';
+import UUID from '@/utils/UUID';
 
 export default class SolidEngine implements Engine {
 
@@ -11,6 +14,15 @@ export default class SolidEngine implements Engine {
         attributes: Database.Attributes
     ): Promise<Database.Key> {
         this.assertModelType(model);
+
+        let url;
+        if ('id' in attributes) {
+            url = attributes.id;
+            attributes = { ...attributes };
+            delete attributes.id;
+        } else {
+            url = Url.resolve(model.collection, UUID.generate());
+        }
 
         const properties: ResourceProperty[] = [];
 
@@ -44,22 +56,20 @@ export default class SolidEngine implements Engine {
             properties.push(ResourceProperty.type(type));
         }
 
-        const resource = await Solid.createResource(
-            model.collection,
-            properties,
+        // TODO handle containers differently
+        await Solid.createResource(url, properties);
 
-            // TODO use slug and type for containers
-        );
-
-        return resource.url;
+        return url;
     }
 
     public async readOne(model: typeof SolidModel, id: Database.Key): Promise<Database.Document> {
         this.assertModelType(model);
 
+        // TODO handle resource not found
+
         return Solid
             .getResource(id)
-            .then(resource => this.parseResourceAttributes(model, resource));
+            .then(resource => this.parseResourceAttributes(model, resource as Resource));
     }
 
     public async readMany(model: typeof SolidModel): Promise<Database.Document[]> {
@@ -107,11 +117,11 @@ export default class SolidEngine implements Engine {
         for (const field in model.fields) {
             const definition = model.fields[field];
 
-            document[field] = Solid.getResourceAttribute(
-                resource,
-                definition.rdfProperty,
-                undefined
-            );
+            const property = resource.getProperty(definition.rdfProperty);
+
+            if (property !== null) {
+                document[field] = property;
+            }
         }
 
         return document;

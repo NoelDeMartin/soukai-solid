@@ -21,7 +21,7 @@ class RDFLibMock {
     }
 
     public addWebOperationResponse(content: string, headers: object = {}): void {
-        this.webOperationResponses.push(StubResponse.make(content, headers));
+        this.webOperationResponses.push(StubResponse.success(content, headers));
     }
 
     public getOriginal(): any {
