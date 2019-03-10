@@ -1,8 +1,12 @@
 import Resource, { ResourceProperty } from '@/solid/Resource';
 
-class SolidMock {
+export class SolidMock {
 
     private resources: { [url: string]: Resource } = {};
+
+    public reset(): void {
+        this.resources = {};
+    }
 
     public async createResource(
         url: string,

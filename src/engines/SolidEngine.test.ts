@@ -1,6 +1,6 @@
 jest.mock('@/solid');
 
-import Soukai, { Model } from 'soukai';
+import Soukai, { Model, DocumentNotFound, SoukaiError } from 'soukai';
 
 import Faker from 'faker';
 
@@ -8,21 +8,27 @@ import Person from '@tests/stubs/Person';
 
 import SolidEngine from '@/engines/SolidEngine';
 
-import Solid, { ResourceProperty } from '@/solid';
+import { ResourceProperty } from '@/solid';
+
+import { SolidMock } from '@/solid/__mocks__';
 
 import Url from '@/utils/Url';
 
 let engine: SolidEngine;
+
+let Solid: SolidMock = require('@/solid').default;
 
 describe('SolidEngine', () => {
 
     beforeAll(() => {
         Soukai.loadModel('Person', Person);
 
+        Solid.reset();
+
         engine = new SolidEngine();
     });
 
-    it ('fails when using non-solid models', () => {
+    it ('fails when using non-solid models', async () => {
         class MyModel extends Model {}
 
         Soukai.loadModel('MyModel', MyModel);
@@ -34,8 +40,10 @@ describe('SolidEngine', () => {
         ];
 
         for (const operation of operations) {
-            expect(operation).rejects.toThrow(Error);
-            expect(operation).rejects.toThrow('SolidEngine only supports querying SolidModel models');
+            await expect(operation).rejects.toBeInstanceOf(SoukaiError);
+
+            const error = await operation.catch(error => error);
+            expect(error.message).toEqual('SolidEngine only supports querying SolidModel models');
         }
     });
 
@@ -58,6 +66,17 @@ describe('SolidEngine', () => {
         );
     });
 
+    it('fails when creating resources with undefined fields', async () => {
+        const operation = engine.create(Person, {
+            lastname: Faker.name.firstName(),
+        });
+
+        await expect(operation).rejects.toBeInstanceOf(SoukaiError);
+
+        const error = await operation.catch(error => error);
+        expect(error.message).toEqual('Trying to create model with an undefined field "lastname"');
+    });
+
     it('gets one resource', async () => {
         const resourceUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
         const name = Faker.name.firstName();
@@ -71,6 +90,12 @@ describe('SolidEngine', () => {
         expect(document).toEqual({ id: resourceUrl, name });
 
         expect(Solid.getResource).toHaveBeenCalledWith(resourceUrl);
+    });
+
+    it("fails when resource doesn't exist", async () => {
+        const operation = engine.readOne(Person, Faker.internet.url());
+
+        await expect(operation).rejects.toBeInstanceOf(DocumentNotFound);
     });
 
     it('gets many resources', async () => {
