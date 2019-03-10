@@ -1,4 +1,7 @@
-import { Model, FieldsDefinition, FieldDefinition } from 'soukai';
+import { Model, FieldsDefinition, FieldDefinition, SoukaiError } from 'soukai';
+
+import Url from '@/utils/Url';
+import UUID from '@/utils/UUID';
 
 export interface SolidFieldsDefinition extends FieldsDefinition {
     [field: string]: SolidFieldDefinition;
@@ -37,6 +40,14 @@ export default class SolidModel extends Model {
                 this.rdfContexts
             );
         }
+    }
+
+    public mintURI(containerUrl: string): void {
+        if (this.existsInDatabase()) {
+            throw new SoukaiError('Cannot mint existing model');
+        }
+
+        this.setAttribute('id', Url.resolve(containerUrl, UUID.generate()));
     }
 
 }
