@@ -4,6 +4,7 @@ import Soukai, { Model, DocumentNotFound, SoukaiError } from 'soukai';
 
 import Faker from 'faker';
 
+import Group from '@tests/stubs/Group';
 import Person from '@tests/stubs/Person';
 
 import SolidEngine from '@/engines/SolidEngine';
@@ -12,6 +13,7 @@ import { ResourceProperty } from '@/solid';
 
 import { SolidMock } from '@/solid/__mocks__';
 
+import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 
 let engine: SolidEngine;
@@ -21,6 +23,7 @@ let Solid: SolidMock = require('@/solid').default;
 describe('SolidEngine', () => {
 
     beforeAll(() => {
+        Soukai.loadModel('Group', Group);
         Soukai.loadModel('Person', Person);
 
         Solid.reset();
@@ -59,6 +62,25 @@ describe('SolidEngine', () => {
         expect(newModelId).toEqual(resourceUrl);
 
         expect(Solid.createResource).toHaveBeenCalledWith(
+            resourceUrl,
+
+            // TODO test body using argument matcher
+            expect.anything(),
+        );
+    });
+
+    it('creates one container', async () => {
+        const name = Faker.name.firstName();
+        const resourceUrl = Url.resolve(Faker.internet.url(), Str.slug(name));
+
+        const newModelId = await engine.create(Group, {
+            id: resourceUrl,
+            name,
+        });
+
+        expect(newModelId).toEqual(resourceUrl);
+
+        expect(Solid.createContainer).toHaveBeenCalledWith(
             resourceUrl,
 
             // TODO test body using argument matcher
@@ -125,7 +147,10 @@ describe('SolidEngine', () => {
 
         expect(Solid.getResources).toHaveBeenCalledWith(
             containerUrl,
-            Person.rdfsClasses,
+            [
+                'http://cmlns.com/foaf/0.1/Person',
+                'http://www.w3.org/ns/ldp#Resource',
+            ],
         );
     });
 

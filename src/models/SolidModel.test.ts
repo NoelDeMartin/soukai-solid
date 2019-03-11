@@ -56,7 +56,7 @@ describe('SolidModel', () => {
     it('adds ldp:Container to container models', () => {
         class StubModel extends SolidModel {
 
-            public static container: boolean = true;
+            public static ldpContainer = true;
 
         }
 

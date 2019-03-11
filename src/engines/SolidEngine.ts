@@ -30,8 +30,11 @@ export default class SolidEngine implements Engine {
             properties.push(ResourceProperty.type(type));
         }
 
-        // TODO handle containers differently
-        await Solid.createResource(url, properties);
+        if (model.ldpContainer) {
+            await Solid.createContainer(url, properties);
+        } else {
+            await Solid.createResource(url, properties);
+        }
 
         return url;
     }
@@ -52,7 +55,7 @@ export default class SolidEngine implements Engine {
         this.assertModelType(model);
 
         return Solid
-            .getResources(model.collection, model.rdfsClasses)
+            .getResources(model.collection, [...model.rdfsClasses])
             .then(resources => resources.map(
                 resource => this.parseResourceAttributes(model, resource),
             ));

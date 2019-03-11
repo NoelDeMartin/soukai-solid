@@ -58,6 +58,44 @@ describe('Solid', () => {
             .toThrowError(`Cannot create a resource at ${url}, url already in use`);
     });
 
+    it('creates containers', async () => {
+        const name = Faker.random.word();
+        const url = Url.resolve(Faker.internet.url(), Str.slug(name));
+
+        SolidAuthClient.addFetchNotFoundResponse();
+        SolidAuthClient.addFetchResponse();
+
+        const resource = await Solid.createContainer(
+            url,
+            [
+                ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
+                ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
+                ResourceProperty.type('http://www.w3.org/ns/ldp#BasicContainer'),
+            ],
+        );
+
+        expect(resource.url).toEqual(url);
+        expect(resource.name).toEqual(name);
+        expect(resource.types).toEqual([
+            'http://www.w3.org/ns/ldp#Resource',
+            'http://www.w3.org/ns/ldp#BasicContainer',
+        ]);
+
+        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(
+            url,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/turtle',
+                    'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
+                },
+
+                // TODO test body using argument matcher
+                body: expect.anything(),
+            },
+        );
+    });
+
     it('gets one resource', async () => {
         const url = Faker.internet.url();
         const data = `

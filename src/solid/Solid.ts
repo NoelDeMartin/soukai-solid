@@ -16,7 +16,6 @@ class Solid {
             throw new Error(`Cannot create a resource at ${url}, url already in use`);
         }
 
-
         const turtleData = properties
             .map(property => property.toTurtle(url) + ' .')
             .join("\n");
@@ -28,6 +27,32 @@ class Solid {
                 'Content-Type': 'text/turtle',
             },
         });
+
+        return new Resource(url, turtleData);
+    }
+
+    public async createContainer(
+        url: string,
+        properties: ResourceProperty[] = [],
+    ): Promise<Resource> {
+        if (await this.resourceExists(url)) {
+            throw new Error(`Cannot create a resource at ${url}, url already in use`);
+        }
+
+        const turtleData = properties
+            .map(property => property.toTurtle(url) + ' .')
+            .join("\n");
+
+        await SolidAuthClient.fetch(
+            url, {
+                method: 'POST',
+                body: turtleData,
+                headers: {
+                    'Content-Type': 'text/turtle',
+                    'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
+                },
+            },
+        );
 
         return new Resource(url, turtleData);
     }

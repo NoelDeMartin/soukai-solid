@@ -13,9 +13,9 @@ export interface SolidFieldDefinition extends FieldDefinition {
 
 export default class SolidModel extends Model {
 
-    public static container: boolean;
-
     public static fields: SolidFieldsDefinition | any;
+
+    public static ldpContainer: boolean;
 
     public static rdfContexts: { [alias: string]: string } = {};
 
@@ -49,9 +49,9 @@ export default class SolidModel extends Model {
             this.rdfsClasses.add(ldpResource);
         }
 
-        const ldpContainer = this.resolveType('ldp:BasicContainer');
-        if (this.container && !this.rdfsClasses.has(ldpContainer)) {
-            this.rdfsClasses.add(ldpContainer);
+        const ldpContainerType = this.resolveType('ldp:BasicContainer');
+        if (this.ldpContainer && !this.rdfsClasses.has(ldpContainerType)) {
+            this.rdfsClasses.add(ldpContainerType);
         }
 
         for (const field in this.fields) {
