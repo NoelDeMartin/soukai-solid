@@ -24,32 +24,7 @@ export default class SolidEngine implements Engine {
             url = Url.resolve(model.collection, UUID.generate());
         }
 
-        const properties: ResourceProperty[] = [];
-
-        for (const field in attributes) {
-            const fieldDefinition = model.fields[field];
-            const value = attributes[field];
-
-            if (!fieldDefinition) {
-                throw new SoukaiError(`Trying to create model with an undefined field "${field}"`);
-            }
-
-            if (Array.isArray(value)) {
-                // TODO implement
-                throw new Error(
-                    `Field "${field}" is an array and support for array fields hasn't been implemented in SolidModel`
-                );
-            }
-
-            if (typeof value === 'object') {
-                // TODO implement
-                throw new Error(
-                    `Field "${field}" is an object and support for nested fields hasn't been implemented in SolidModel`
-                );
-            }
-
-            properties.push(ResourceProperty.literal(fieldDefinition.rdfProperty, value));
-        }
+        const properties = this.convertModelAttributesToResourceProperties(model, attributes);
 
         for (const type of model.rdfsClasses) {
             properties.push(ResourceProperty.type(type));
@@ -91,7 +66,21 @@ export default class SolidEngine implements Engine {
     ): Promise<void> {
         this.assertModelType(model);
 
-        // TODO
+        const updatedProperties = this.convertModelAttributesToResourceProperties(
+            model,
+            dirtyAttributes,
+        );
+
+        const removedProperties = removedAttributes.map(
+            attribute => model.fields[attribute].rdfProperty,
+        );
+
+        try {
+            await Solid.updateResource(id, updatedProperties, removedProperties);
+        } catch (error) {
+            // TODO this may fail for reasons other than resource not found
+            throw new DocumentNotFound(id);
+        }
     }
 
     public async delete(model: typeof Model, id: Database.Key): Promise<void> {
@@ -125,6 +114,40 @@ export default class SolidEngine implements Engine {
         }
 
         return document;
+    }
+
+    private convertModelAttributesToResourceProperties(
+        model: typeof SolidModel,
+        attributes: Database.Attributes,
+    ): ResourceProperty[] {
+        const properties: ResourceProperty[] = [];
+
+        for (const field in attributes) {
+            const fieldDefinition = model.fields[field];
+            const value = attributes[field];
+
+            if (!fieldDefinition) {
+                throw new SoukaiError(`Trying to create model with an undefined field "${field}"`);
+            }
+
+            if (Array.isArray(value)) {
+                // TODO implement
+                throw new Error(
+                    `Field "${field}" is an array and support for array fields hasn't been implemented in SolidModel`
+                );
+            }
+
+            if (typeof value === 'object') {
+                // TODO implement
+                throw new Error(
+                    `Field "${field}" is an object and support for nested fields hasn't been implemented in SolidModel`
+                );
+            }
+
+            properties.push(ResourceProperty.literal(fieldDefinition.rdfProperty, value));
+        }
+
+        return properties;
     }
 
 }

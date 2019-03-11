@@ -22,7 +22,9 @@ class Solid {
 
         properties.add(ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'));
 
-        const turtleData = [...properties].map(property => property.toTurtle(url)).join("\n");
+        const turtleData = [...properties]
+            .map(property => property.toTurtle(url) + ' .')
+            .join("\n");
 
         await SolidAuthClient.fetch(url, {
             method: 'PUT',
@@ -33,20 +35,6 @@ class Solid {
         });
 
         return new Resource(url, turtleData);
-    }
-
-    public async resourceExists(url: string): Promise<boolean> {
-        const response = await SolidAuthClient.fetch(url);
-
-        if (response.status === 200) {
-            return true;
-        } else if (response.status === 404) {
-            return false;
-        } else {
-            throw new Error(
-                `Couldn't determine if resource at ${url} exists, got ${response.status} response`
-            );
-        }
     }
 
     public async getResource(url: string): Promise<Resource | null> {
@@ -94,6 +82,57 @@ class Solid {
             console.error(e);
 
             return [];
+        }
+    }
+
+    public async updateResource(
+        url: string,
+        updatedProperties: ResourceProperty[],
+        removedProperties: string[],
+    ): Promise<void> {
+        const inserts = updatedProperties
+            .map(property => property.toTurtle(url) + ' .')
+            .join('\n');
+
+        const deletes = removedProperties
+            .map(property => `<${url}> <${property}> ?any .`)
+            .join('\n');
+
+        const response = await SolidAuthClient.fetch(
+            url,
+            {
+                method: 'PATCH',
+                body: `
+                    @prefix solid: <http://www.w3.org/ns/solid/terms#> .
+                    <>
+                        solid:patches <${url}> ;
+                        solid:inserts { ${inserts} } ;
+                        solid:deletes { ${deletes} } .
+                `,
+                headers: {
+                    'Content-Type': 'text/n3',
+                },
+            },
+        );
+
+        if (response.status !== 200) {
+            throw new Error(
+                `Error updating resource at ${url}, returned status code ${response.status}`,
+            );
+        }
+    }
+
+    public async resourceExists(url: string): Promise<boolean> {
+        const response = await SolidAuthClient.fetch(url);
+
+        if (response.status === 200) {
+            return true;
+        } else if (response.status === 404) {
+            return false;
+        } else {
+            throw new Error(
+                `Couldn't determine if resource at ${url} exists, got ${response.status} response`
+            );
         }
     }
 

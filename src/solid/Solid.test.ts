@@ -40,9 +40,7 @@ describe('Solid', () => {
             url,
             {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'text/turtle',
-                },
+                headers: { 'Content-Type': 'text/turtle' },
 
                 // TODO test body using argument matcher
                 body: expect.anything(),
@@ -185,6 +183,43 @@ describe('Solid', () => {
 
         expect(resources).toHaveLength(1);
         expect(resources[0].name).toEqual('Foo');
+    });
+
+    it('updates resources', async () => {
+        const url = Faker.internet.url();
+        const updatedProperties = [
+            ResourceProperty.type('Type'),
+            ResourceProperty.literal('literalName', 'literalValue'),
+        ];
+        const deletedProperties = [
+            'deletedOne',
+            'deletedTwo',
+        ];
+
+        SolidAuthClient.addFetchResponse();
+
+        await Solid.updateResource(url, updatedProperties, deletedProperties);
+
+        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(
+            url,
+            {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'text/n3' },
+
+                // TODO test body using argument matcher
+                body: expect.anything(),
+            }
+        );
+    });
+
+    it('fails updating non-existent resources', async () => {
+        const url = Faker.internet.url();
+
+        SolidAuthClient.addFetchNotFoundResponse();
+
+        await expect(Solid.updateResource(url, [], []))
+            .rejects
+            .toThrowError(`Error updating resource at ${url}, returned status code 404`);
     });
 
 });

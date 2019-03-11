@@ -22,16 +22,15 @@ export class SolidMock {
 
         properties.add(ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'));
 
-        const turtleData = [...properties].map(property => property.toTurtle(url)).join("\n");
+        const turtleData = [...properties]
+            .map(property => property.toTurtle(url) + ' .')
+            .join("\n");
+
         const resource = new Resource(url, turtleData);
 
         this.resources[url] = resource;
 
         return resource;
-    }
-
-    public async resourceExists(url: string): Promise<boolean> {
-        return url in this.resources;
     }
 
     public async getResource(url: string): Promise<Resource | null> {
@@ -49,14 +48,33 @@ export class SolidMock {
 
         return resources;
     }
+
+    public async updateResource(
+        url: string,
+        updatedProperties: ResourceProperty[],
+        removedProperties: string[],
+    ): Promise<void> {
+        if (url in this.resources) {
+            // TODO
+        } else {
+            throw new Error(
+                `Error updating resource at ${url}, returned status code 404`,
+            );
+        }
+    }
+
+    public async resourceExists(url: string): Promise<boolean> {
+        return url in this.resources;
+    }
 }
 
 const instance = new SolidMock();
 
 jest.spyOn(instance, 'createResource');
-jest.spyOn(instance, 'resourceExists');
 jest.spyOn(instance, 'getResource');
 jest.spyOn(instance, 'getResources');
+jest.spyOn(instance, 'updateResource');
+jest.spyOn(instance, 'resourceExists');
 
 export { Resource, ResourceProperty };
 

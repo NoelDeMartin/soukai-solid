@@ -92,10 +92,10 @@ describe('SolidEngine', () => {
         expect(Solid.getResource).toHaveBeenCalledWith(resourceUrl);
     });
 
-    it("fails when resource doesn't exist", async () => {
-        const operation = engine.readOne(Person, Faker.internet.url());
-
-        await expect(operation).rejects.toBeInstanceOf(DocumentNotFound);
+    it("fails reading when resource doesn't exist", async () => {
+        await expect(engine.readOne(Person, Faker.internet.url()))
+            .rejects
+            .toBeInstanceOf(DocumentNotFound);
     });
 
     it('gets many resources', async () => {
@@ -127,6 +127,43 @@ describe('SolidEngine', () => {
             containerUrl,
             ['http://cmlns.com/foaf/0.1/Person'],
         );
+    });
+
+    it('updates dirty attributes', async () => {
+        const id = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const name = Faker.random.word();
+
+        await Solid.createResource(id);
+
+        await engine.update(Person, id, { name }, []);
+
+        expect(Solid.updateResource).toHaveBeenCalledWith(
+            id,
+            [
+                ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
+            ],
+            [],
+        );
+    });
+
+    it('deletes attributes', async () => {
+        const id = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+
+        await Solid.createResource(id);
+
+        await engine.update(Person, id, {}, ['name']);
+
+        expect(Solid.updateResource).toHaveBeenCalledWith(
+            id,
+            [],
+            ['http://cmlns.com/foaf/0.1/name'],
+        );
+    });
+
+    it("fails updating when resource doesn't exist", async () => {
+        await expect(engine.readOne(Person, Faker.internet.url()))
+            .rejects
+            .toBeInstanceOf(DocumentNotFound);
     });
 
 });

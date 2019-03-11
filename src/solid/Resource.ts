@@ -53,7 +53,7 @@ export class ResourceProperty {
             typeof this.object !== 'object'
                 ? JSON.stringify(this.object)
                 : `<${encodeURI(this.object.url)}>`,
-        ].join(' ') + ' .';
+        ].join(' ');
     }
 
 }
