@@ -48,17 +48,6 @@ describe('Solid', () => {
         );
     });
 
-    it('adds ldp:Resource type to new resources', async () => {
-        SolidAuthClient.addFetchNotFoundResponse();
-        SolidAuthClient.addFetchResponse();
-
-        const resource = await Solid.createResource(
-            Url.resolve(Faker.internet.url(), Faker.random.uuid())
-        );
-
-        expect(resource.types).toEqual(['http://www.w3.org/ns/ldp#Resource']);
-    });
-
     it('fails creating resources if the provided url is already in use', async () => {
         const url = Faker.internet.url();
 

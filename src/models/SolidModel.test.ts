@@ -28,9 +28,10 @@ describe('SolidModel', () => {
 
         Soukai.loadModel('StubModel', StubModel);
 
-        expect(StubModel.rdfsClasses).toEqual([
+        expect(StubModel.rdfsClasses).toEqual(new Set([
             'http://cmlns.com/foaf/0.1/Person',
-        ]);
+            'http://www.w3.org/ns/ldp#Resource',
+        ]));
 
         expect(StubModel.fields).toEqual({
             name: {
@@ -39,6 +40,32 @@ describe('SolidModel', () => {
                 rdfProperty: 'http://cmlns.com/foaf/0.1/givenname',
             },
         });
+    });
+
+    it('adds ldp:Resource to models', () => {
+        class StubModel extends SolidModel {
+        }
+
+        Soukai.loadModel('StubModel', StubModel);
+
+        expect(StubModel.rdfsClasses).toEqual(new Set([
+            'http://www.w3.org/ns/ldp#Resource',
+        ]));
+    });
+
+    it('adds ldp:Container to container models', () => {
+        class StubModel extends SolidModel {
+
+            public static container: boolean = true;
+
+        }
+
+        Soukai.loadModel('StubModel', StubModel);
+
+        expect(StubModel.rdfsClasses).toEqual(new Set([
+            'http://www.w3.org/ns/ldp#Resource',
+            'http://www.w3.org/ns/ldp#BasicContainer',
+        ]));
     });
 
     it('defaults to first context if rdfProperty is missing', () => {

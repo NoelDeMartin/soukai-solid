@@ -125,7 +125,7 @@ describe('SolidEngine', () => {
 
         expect(Solid.getResources).toHaveBeenCalledWith(
             containerUrl,
-            ['http://cmlns.com/foaf/0.1/Person'],
+            Person.rdfsClasses,
         );
     });
 

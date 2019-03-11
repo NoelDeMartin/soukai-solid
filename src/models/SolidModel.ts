@@ -13,11 +13,13 @@ export interface SolidFieldDefinition extends FieldDefinition {
 
 export default class SolidModel extends Model {
 
+    public static container: boolean;
+
     public static fields: SolidFieldsDefinition | any;
 
     public static rdfContexts: { [alias: string]: string } = {};
 
-    public static rdfsClasses: string[] = [];
+    public static rdfsClasses: string[] | Set<string> = [];
 
     public static from(containerUrl: string): typeof SolidModel {
         this.collection = containerUrl;
@@ -28,16 +30,33 @@ export default class SolidModel extends Model {
     public static boot(name: string): void {
         super.boot(name);
 
+        this.rdfContexts = {
+            ...this.rdfContexts,
+            solid: 'http://www.w3.org/ns/solid/terms#',
+            rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+            rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+            ldp: 'http://www.w3.org/ns/ldp#',
+        };
+
         const defaultRdfContext = Object.keys(this.rdfContexts).shift();
 
-        this.rdfsClasses = this.rdfsClasses.map(
-            expression => resolveFullTypeUrl(expression, this.rdfContexts)
-        );
+        this.rdfsClasses = new Set([...this.rdfsClasses].map(
+            expression => this.resolveType(expression)
+        ));
+
+        const ldpResource = this.resolveType('ldp:Resource');
+        if (!this.rdfsClasses.has(ldpResource)) {
+            this.rdfsClasses.add(ldpResource);
+        }
+
+        const ldpContainer = this.resolveType('ldp:BasicContainer');
+        if (this.container && !this.rdfsClasses.has(ldpContainer)) {
+            this.rdfsClasses.add(ldpContainer);
+        }
 
         for (const field in this.fields) {
-            this.fields[field].rdfProperty = resolveFullTypeUrl(
+            this.fields[field].rdfProperty = this.resolveType(
                 this.fields[field].rdfProperty || `${defaultRdfContext}:${field}`,
-                this.rdfContexts
             );
         }
     }
@@ -50,20 +69,20 @@ export default class SolidModel extends Model {
         this.setAttribute('id', Url.resolve(containerUrl, UUID.generate()));
     }
 
-}
+    private static resolveType(type: string): string {
+        const index = type.indexOf(':');
 
-function resolveFullTypeUrl(type: string, rdfContexts: { [alias: string ]: string}): string {
-    const index = type.indexOf(':');
+        if (index !== -1) {
+            const prefix = type.substr(0, index);
 
-    if (index !== -1) {
-        const prefix = type.substr(0, index);
-
-        for (const alias in rdfContexts) {
-            if (prefix === alias) {
-                return rdfContexts[alias] + type.substr(index + 1);
+            for (const alias in this.rdfContexts) {
+                if (prefix === alias) {
+                    return this.rdfContexts[alias] + type.substr(index + 1);
+                }
             }
         }
+
+        return type;
     }
 
-    return type;
 }

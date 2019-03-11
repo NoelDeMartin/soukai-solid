@@ -10,19 +10,14 @@ class Solid {
 
     public async createResource(
         url: string,
-        properties: ResourceProperty[] | Set<ResourceProperty> = [],
+        properties: ResourceProperty[] = [],
     ): Promise<Resource> {
         if (await this.resourceExists(url)) {
             throw new Error(`Cannot create a resource at ${url}, url already in use`);
         }
 
-        if (!(properties instanceof Set)) {
-            properties = new Set(properties);
-        }
 
-        properties.add(ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'));
-
-        const turtleData = [...properties]
+        const turtleData = properties
             .map(property => property.toTurtle(url) + ' .')
             .join("\n");
 
