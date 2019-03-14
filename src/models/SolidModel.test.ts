@@ -1,6 +1,11 @@
 import Faker from 'faker';
 
-import Soukai, { FieldType, SoukaiError } from 'soukai';
+import Soukai, { FieldType } from 'soukai';
+
+import Str from '@/utils/Str';
+import Url from '@/utils/Url';
+
+import StubEngine from '@tests/stubs/StubEngine';
 
 import SolidModel from './SolidModel';
 
@@ -94,34 +99,68 @@ describe('SolidModel', () => {
         });
     });
 
-    it('mints URI', () => {
+    it('mints URI for new models', async () => {
         class StubModel extends SolidModel {
         }
 
-        Soukai.loadModel('StubModel', StubModel);
-
         const containerUrl = Faker.internet.url();
-        const model = new StubModel();
+        const engine = new StubEngine();
 
-        model.mintURI(containerUrl);
+        jest.spyOn(engine, 'create');
 
-        expect(model.id).not.toBeNull();
-        expect(model.id.indexOf(containerUrl)).toBe(0);
+        Soukai.loadModel('StubModel', StubModel);
+        Soukai.useEngine(engine);
+
+        await StubModel.from(containerUrl).create();
+
+        expect(engine.create).toHaveBeenCalledWith(
+            StubModel,
+
+            // TODO test argument using argument matcher
+            expect.anything(),
+        );
+
+        const attributes = (engine.create as any).mock.calls[0][1];
+
+        expect(attributes).toHaveProperty('id');
+        expect((attributes.id as string).startsWith(containerUrl)).toBe(true);
     });
 
-    it('cannot mint URIs for existing models', () => {
+    it('uses name for minting URI for new containers', async () => {
         class StubModel extends SolidModel {
+            public static ldpContainer = true;
+
+            public static rdfContexts = {
+                'foaf': 'http://cmlns.com/foaf/0.1/',
+            };
+
+            public static fields = {
+                name: FieldType.String,
+            };
         }
 
-        Soukai.loadModel('StubModel', StubModel);
-
         const containerUrl = Faker.internet.url();
-        const model = new StubModel({}, true);
+        const name = Faker.random.word();
+        const engine = new StubEngine();
 
-        const operation = () => model.mintURI(containerUrl);
+        jest.spyOn(engine, 'create');
 
-        expect(operation).toThrow(SoukaiError);
-        expect(operation).toThrow('Cannot mint existing model');
+        Soukai.loadModel('StubModel', StubModel);
+        Soukai.useEngine(engine);
+
+        await StubModel.from(containerUrl).create({ name });
+
+        expect(engine.create).toHaveBeenCalledWith(
+            StubModel,
+
+            // TODO test argument using argument matcher
+            expect.anything(),
+        );
+
+        const attributes = (engine.create as any).mock.calls[0][1];
+
+        expect(attributes).toHaveProperty('id');
+        expect(attributes.id).toEqual(Url.resolve(containerUrl, Str.slug(name)));
     });
 
 });

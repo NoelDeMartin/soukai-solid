@@ -4,26 +4,15 @@ import SolidModel from '@/models/SolidModel';
 
 import Solid, { Resource, ResourceProperty } from '@/solid';
 
-import Url from '@/utils/Url';
-import UUID from '@/utils/UUID';
-
 export default class SolidEngine implements Engine {
 
     public async create(
         model: typeof SolidModel,
-        attributes: Database.Attributes
+        allAttributes: Database.Attributes
     ): Promise<Database.Key> {
         this.assertModelType(model);
 
-        let url;
-        if ('id' in attributes) {
-            url = attributes.id;
-            attributes = { ...attributes };
-            delete attributes.id;
-        } else {
-            url = Url.resolve(model.collection, UUID.generate());
-        }
-
+        const { id: url, ...attributes } = allAttributes;
         const properties = this.convertModelAttributesToResourceProperties(model, attributes);
 
         for (const type of model.rdfsClasses) {
@@ -31,12 +20,12 @@ export default class SolidEngine implements Engine {
         }
 
         if (model.ldpContainer) {
-            await Solid.createContainer(url, properties);
+            await Solid.createContainer(url as string, properties);
         } else {
-            await Solid.createResource(url, properties);
+            await Solid.createResource(url as string, properties);
         }
 
-        return url;
+        return url as string;
     }
 
     public async readOne(model: typeof SolidModel, id: Database.Key): Promise<Database.Document> {
@@ -103,8 +92,6 @@ export default class SolidEngine implements Engine {
         const document: Database.Document = {
             id: resource.url,
         };
-
-        // TODO fail if required attributes are missing
 
         for (const field in model.fields) {
             const definition = model.fields[field];

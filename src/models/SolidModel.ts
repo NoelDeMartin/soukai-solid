@@ -1,5 +1,6 @@
 import { Model, FieldsDefinition, FieldDefinition, SoukaiError } from 'soukai';
 
+import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 import UUID from '@/utils/UUID';
 
@@ -61,14 +62,6 @@ export default class SolidModel extends Model {
         }
     }
 
-    public mintURI(containerUrl: string): void {
-        if (this.existsInDatabase()) {
-            throw new SoukaiError('Cannot mint existing model');
-        }
-
-        this.setAttribute('id', Url.resolve(containerUrl, UUID.generate()));
-    }
-
     private static resolveType(type: string): string {
         const index = type.indexOf(':');
 
@@ -83,6 +76,24 @@ export default class SolidModel extends Model {
         }
 
         return type;
+    }
+
+    public save<T extends SolidModel>(): Promise<T> {
+        if (!this.hasAttribute('id')) {
+            const classDef = this.constructor as typeof SolidModel;
+
+            this.setAttribute(
+                'id',
+                Url.resolve(
+                    classDef.collection,
+                    (classDef.ldpContainer && this.hasAttribute('name'))
+                        ? Str.slug(this.getAttribute('name'))
+                        : UUID.generate(),
+                ),
+            );
+        }
+
+        return super.save();
     }
 
 }
