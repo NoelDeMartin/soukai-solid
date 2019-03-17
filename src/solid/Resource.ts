@@ -1,6 +1,6 @@
 import $rdf, { IndexedFormula, NamedNode } from 'rdflib';
 
-export type LiteralValue = string | number | boolean;
+export type LiteralValue = string | number | boolean | Date;
 
 export class IRI {
 
@@ -16,6 +16,10 @@ export class ResourceProperty {
 
     public static literal(property: string, value: LiteralValue): ResourceProperty {
         return new ResourceProperty({ url: property }, value);
+    }
+
+    public static link(property: string, url: string) {
+        return new ResourceProperty({ url: property }, { url });
     }
 
     public static type(type: string): ResourceProperty {
@@ -52,7 +56,9 @@ export class ResourceProperty {
                 : `<${encodeURI(this.predicate.url)}>`,
             typeof this.object !== 'object'
                 ? JSON.stringify(this.object)
-                : `<${encodeURI(this.object.url)}>`,
+                : this.object instanceof Date
+                    ? $rdf.Literal.fromDate(this.object).toNT()
+                    : `<${encodeURI(this.object.url)}>`,
         ].join(' ');
     }
 

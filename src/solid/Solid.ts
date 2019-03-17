@@ -110,13 +110,26 @@ class Solid {
         updatedProperties: ResourceProperty[],
         removedProperties: string[],
     ): Promise<void> {
+        const where = removedProperties
+            .map((property, i) => `<${url}> <${property}> ?d${i} .`)
+            .join('\n');
+
         const inserts = updatedProperties
             .map(property => property.toTurtle(url) + ' .')
             .join('\n');
 
         const deletes = removedProperties
-            .map(property => `<${url}> <${property}> ?any .`)
+            .map((property, i) => `<${url}> <${property}> ?d${i} .`)
             .join('\n');
+
+        const operations = [
+            `solid:patches <${url}>`,
+            updatedProperties.length > 0 ? `solid:inserts { ${inserts} }` : null,
+            removedProperties.length > 0 ? `solid:where { ${where} }` : null,
+            removedProperties.length > 0 ? `solid:deletes { ${deletes} }` : null,
+        ]
+            .filter(part => part !== null)
+            .join(';');
 
         const response = await SolidAuthClient.fetch(
             url,
@@ -124,10 +137,7 @@ class Solid {
                 method: 'PATCH',
                 body: `
                     @prefix solid: <http://www.w3.org/ns/solid/terms#> .
-                    <>
-                        solid:patches <${url}> ;
-                        solid:inserts { ${inserts} } ;
-                        solid:deletes { ${deletes} } .
+                    <> ${operations} .
                 `,
                 headers: {
                     'Content-Type': 'text/n3',
