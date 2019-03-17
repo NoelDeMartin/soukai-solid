@@ -69,6 +69,8 @@ describe('SolidEngine', () => {
         );
     });
 
+    // TODO test properties serialization (int, date, bool, etc.)
+
     it('creates one container', async () => {
         const name = Faker.name.firstName();
         const resourceUrl = Url.resolve(Faker.internet.url(), Str.slug(name));

@@ -1,6 +1,6 @@
-import { Engine, Model, Database, DocumentNotFound, SoukaiError } from 'soukai';
+import { Engine, Model, Database, DocumentNotFound, SoukaiError, FieldType } from 'soukai';
 
-import SolidModel from '@/models/SolidModel';
+import SolidModel, { SolidFieldDefinition } from '@/models/SolidModel';
 
 import Solid, { Resource, ResourceProperty } from '@/solid';
 
@@ -99,7 +99,8 @@ export default class SolidEngine implements Engine {
             const property = resource.getProperty(definition.rdfProperty);
 
             if (property !== null) {
-                document[field] = property;
+                // TODO handle types
+                document[field] = property as any;
             }
         }
 
@@ -113,28 +114,39 @@ export default class SolidEngine implements Engine {
         const properties: ResourceProperty[] = [];
 
         for (const field in attributes) {
-            const fieldDefinition = model.fields[field];
+            const fieldDefinition: SolidFieldDefinition = model.fields[field];
             const value = attributes[field];
 
             if (!fieldDefinition) {
                 throw new SoukaiError(`Trying to create model with an undefined field "${field}"`);
             }
 
-            if (Array.isArray(value)) {
-                // TODO implement
-                throw new Error(
-                    `Field "${field}" is an array and support for array fields hasn't been implemented in SolidModel`
-                );
+            switch (fieldDefinition.type) {
+                case FieldType.Boolean:
+                    properties.push(ResourceProperty.literal(fieldDefinition.rdfProperty, !!value));
+                    break;
+                case FieldType.Key:
+                    properties.push(ResourceProperty.link(fieldDefinition.rdfProperty, value.toString()));
+                    break;
+                case FieldType.Number:
+                    properties.push(
+                        ResourceProperty.literal(
+                            fieldDefinition.rdfProperty,
+                            typeof value !== 'number' ? parseFloat(value.toString()) : value,
+                        )
+                    );
+                    break;
+                case FieldType.String:
+                    properties.push(ResourceProperty.literal(fieldDefinition.rdfProperty, value.toString()));
+                    break;
+                case FieldType.Date:
+                    properties.push(ResourceProperty.literal(fieldDefinition.rdfProperty, new Date(value as number * 1000)));
+                    break;
+                default:
+                    throw new Error(
+                        `Field "${field}" is of type ${fieldDefinition.type} and hasn't been implemented in SolidEngine`
+                    );
             }
-
-            if (typeof value === 'object') {
-                // TODO implement
-                throw new Error(
-                    `Field "${field}" is an object and support for nested fields hasn't been implemented in SolidModel`
-                );
-            }
-
-            properties.push(ResourceProperty.literal(fieldDefinition.rdfProperty, value));
         }
 
         return properties;
