@@ -55,7 +55,7 @@ describe('SolidEngine', () => {
         const name = Faker.name.firstName();
 
         const newModelId = await engine.create(Person, {
-            id: resourceUrl,
+            url: resourceUrl,
             name,
         });
 
@@ -69,14 +69,12 @@ describe('SolidEngine', () => {
         );
     });
 
-    // TODO test properties serialization (int, date, bool, etc.)
-
     it('creates one container', async () => {
         const name = Faker.name.firstName();
         const resourceUrl = Url.resolve(Faker.internet.url(), Str.slug(name));
 
         const newModelId = await engine.create(Group, {
-            id: resourceUrl,
+            url: resourceUrl,
             name,
         });
 
@@ -111,7 +109,7 @@ describe('SolidEngine', () => {
 
         const document = await engine.readOne(Person, resourceUrl);
 
-        expect(document).toEqual({ id: resourceUrl, name });
+        expect(document).toEqual({ url: resourceUrl, name });
 
         expect(Solid.getResource).toHaveBeenCalledWith(resourceUrl);
     });
@@ -144,8 +142,8 @@ describe('SolidEngine', () => {
         const documents = await engine.readMany(Person);
 
         expect(documents).toHaveLength(2);
-        expect(documents[0]).toEqual({ id: firstUrl, name: firstName });
-        expect(documents[1]).toEqual({ id: secondUrl, name: secondName });
+        expect(documents[0]).toEqual({ url: firstUrl, name: firstName });
+        expect(documents[1]).toEqual({ url: secondUrl, name: secondName });
 
         expect(Solid.getResources).toHaveBeenCalledWith(
             containerUrl,

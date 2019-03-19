@@ -1,4 +1,4 @@
-import { Engine, Database, Model, DocumentNotFound } from 'soukai';
+import { Engine, Key, Attributes, Document, Model, DocumentNotFound } from 'soukai';
 
 import UUID from '@/utils/UUID';
 
@@ -6,33 +6,33 @@ export default class StubEngine implements Engine {
 
     public async create(
         model: typeof Model,
-        attributes: Database.Attributes,
-    ): Promise<Database.Key> {
+        attributes: Attributes,
+    ): Promise<Key> {
         return UUID.generate();
     }
 
     public async readOne(
         modelDatabase: typeof Model,
-        id: Database.Key,
-    ): Promise<Database.Document>
+        id: Key,
+    ): Promise<Document>
     {
-        throw new DocumentNotFound();
+        throw new DocumentNotFound(id);
     }
 
-    public async readMany(model: typeof Model): Promise<Database.Document[]> {
+    public async readMany(model: typeof Model): Promise<Document[]> {
         return [];
     }
 
     public async update(
         model: typeof Model,
-        id: Database.Key,
-        dirtyAttributes: Database.Attributes,
+        id: Key,
+        dirtyAttributes: Attributes,
         removedAttributes: string[],
     ): Promise<void> {
         //
     }
 
-    public async delete(model: typeof Model, id: Database.Key): Promise<void> {
+    public async delete(model: typeof Model, id: Key): Promise<void> {
 
     }
 

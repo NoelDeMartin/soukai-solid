@@ -39,6 +39,11 @@ describe('SolidModel', () => {
         ]));
 
         expect(StubModel.fields).toEqual({
+            url: {
+                type: FieldType.Key,
+                required: false,
+                rdfProperty: null,
+            },
             name: {
                 type: FieldType.String,
                 required: false,
@@ -91,6 +96,11 @@ describe('SolidModel', () => {
         Soukai.loadModel('StubModel', StubModel);
 
         expect(StubModel.fields).toEqual({
+            url: {
+                type: FieldType.Key,
+                required: false,
+                rdfProperty: null,
+            },
             name: {
                 type: FieldType.String,
                 required: false,
@@ -122,8 +132,8 @@ describe('SolidModel', () => {
 
         const attributes = (engine.create as any).mock.calls[0][1];
 
-        expect(attributes).toHaveProperty('id');
-        expect((attributes.id as string).startsWith(containerUrl)).toBe(true);
+        expect(attributes).toHaveProperty('url');
+        expect((attributes.url as string).startsWith(containerUrl)).toBe(true);
     });
 
     it('uses name for minting URI for new containers', async () => {
@@ -159,8 +169,8 @@ describe('SolidModel', () => {
 
         const attributes = (engine.create as any).mock.calls[0][1];
 
-        expect(attributes).toHaveProperty('id');
-        expect(attributes.id).toEqual(Url.resolve(containerUrl, Str.slug(name)));
+        expect(attributes).toHaveProperty('url');
+        expect(attributes.url).toEqual(Url.resolve(containerUrl, Str.slug(name)));
     });
 
 });

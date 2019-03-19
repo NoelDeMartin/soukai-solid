@@ -1,4 +1,13 @@
-import { Engine, Model, Database, DocumentNotFound, SoukaiError, FieldType } from 'soukai';
+import {
+    Attributes,
+    Document,
+    DocumentNotFound,
+    Engine,
+    FieldType,
+    Key,
+    Model,
+    SoukaiError,
+} from 'soukai';
 
 import SolidModel, { SolidFieldDefinition } from '@/models/SolidModel';
 
@@ -8,11 +17,11 @@ export default class SolidEngine implements Engine {
 
     public async create(
         model: typeof SolidModel,
-        allAttributes: Database.Attributes
-    ): Promise<Database.Key> {
+        allAttributes: Attributes
+    ): Promise<Key> {
         this.assertModelType(model);
 
-        const { id: url, ...attributes } = allAttributes;
+        const { [model.primaryKey]: url, ...attributes } = allAttributes;
         const properties = this.convertModelAttributesToResourceProperties(model, attributes);
 
         for (const type of model.rdfsClasses) {
@@ -28,7 +37,7 @@ export default class SolidEngine implements Engine {
         return url as string;
     }
 
-    public async readOne(model: typeof SolidModel, id: Database.Key): Promise<Database.Document> {
+    public async readOne(model: typeof SolidModel, id: Key): Promise<Document> {
         this.assertModelType(model);
 
         const resource = await Solid.getResource(id);
@@ -40,7 +49,7 @@ export default class SolidEngine implements Engine {
         return this.parseResourceAttributes(model, resource);
     }
 
-    public async readMany(model: typeof SolidModel): Promise<Database.Document[]> {
+    public async readMany(model: typeof SolidModel): Promise<Document[]> {
         this.assertModelType(model);
 
         return Solid
@@ -52,8 +61,8 @@ export default class SolidEngine implements Engine {
 
     public async update(
         model: typeof SolidModel,
-        id: Database.Key,
-        dirtyAttributes: Database.Attributes,
+        id: Key,
+        dirtyAttributes: Attributes,
         removedAttributes: string[],
     ): Promise<void> {
         this.assertModelType(model);
@@ -75,7 +84,7 @@ export default class SolidEngine implements Engine {
         }
     }
 
-    public async delete(model: typeof Model, id: Database.Key): Promise<void> {
+    public async delete(model: typeof Model, id: Key): Promise<void> {
         // TODO
     }
 
@@ -88,13 +97,17 @@ export default class SolidEngine implements Engine {
     private parseResourceAttributes(
         model: typeof SolidModel,
         resource: Resource
-    ): Database.Document {
-        const document: Database.Document = {
-            id: resource.url,
+    ): Document {
+        const document: Document = {
+            [model.primaryKey]: resource.url,
         };
 
         for (const field in model.fields) {
             const definition = model.fields[field];
+
+            if (!definition || definition.rdfProperty === null) {
+                continue;
+            }
 
             const property = resource.getProperty(definition.rdfProperty);
 
@@ -109,7 +122,7 @@ export default class SolidEngine implements Engine {
 
     private convertModelAttributesToResourceProperties(
         model: typeof SolidModel,
-        attributes: Database.Attributes,
+        attributes: Attributes,
     ): ResourceProperty[] {
         const properties: ResourceProperty[] = [];
 
@@ -121,31 +134,17 @@ export default class SolidEngine implements Engine {
                 throw new SoukaiError(`Trying to create model with an undefined field "${field}"`);
             }
 
+            if (typeof fieldDefinition.rdfProperty === 'undefined') {
+                continue;
+            }
+
             switch (fieldDefinition.type) {
-                case FieldType.Boolean:
-                    properties.push(ResourceProperty.literal(fieldDefinition.rdfProperty, !!value));
-                    break;
                 case FieldType.Key:
                     properties.push(ResourceProperty.link(fieldDefinition.rdfProperty, value.toString()));
                     break;
-                case FieldType.Number:
-                    properties.push(
-                        ResourceProperty.literal(
-                            fieldDefinition.rdfProperty,
-                            typeof value !== 'number' ? parseFloat(value.toString()) : value,
-                        )
-                    );
-                    break;
-                case FieldType.String:
-                    properties.push(ResourceProperty.literal(fieldDefinition.rdfProperty, value.toString()));
-                    break;
-                case FieldType.Date:
-                    properties.push(ResourceProperty.literal(fieldDefinition.rdfProperty, new Date(value as number * 1000)));
-                    break;
                 default:
-                    throw new Error(
-                        `Field "${field}" is of type ${fieldDefinition.type} and hasn't been implemented in SolidEngine`
-                    );
+                    properties.push(ResourceProperty.literal(fieldDefinition.rdfProperty, value));
+                    break;
             }
         }
 

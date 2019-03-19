@@ -40,7 +40,7 @@ class RDFLibMock {
             mock[spy] = jest.spyOn(original, spy);
         }
 
-        const proxies = ['NamedNode'];
+        const proxies = ['NamedNode', 'Literal'];
         for (const proxy of proxies) {
             mock[proxy] = original[proxy];
         }

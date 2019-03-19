@@ -9,10 +9,12 @@ export interface SolidFieldsDefinition extends FieldsDefinition {
 }
 
 export interface SolidFieldDefinition extends FieldDefinition {
-    rdfProperty: string;
+    rdfProperty?: string;
 }
 
 export default class SolidModel extends Model {
+
+    public static primaryKey: string = 'url';
 
     public static fields: SolidFieldsDefinition | any;
 
@@ -41,6 +43,20 @@ export default class SolidModel extends Model {
 
         const defaultRdfContext = Object.keys(this.rdfContexts).shift();
 
+        if (
+            this.hasAutomaticTimestamp('created_at') &&
+            typeof this.fields['created_at'].rdfProperty === 'undefined'
+        ) {
+            this.fields['created_at'].rdfProperty = 'http://purl.org/dc/terms/created';
+        }
+
+        if (
+            this.hasAutomaticTimestamp('updated_at') &&
+            typeof this.fields['updated_at'].rdfProperty === 'undefined'
+        ) {
+            this.fields['updated_at'].rdfProperty = 'http://purl.org/dc/terms/modified';
+        }
+
         this.rdfsClasses = new Set([...this.rdfsClasses].map(
             expression => this.resolveType(expression)
         ));
@@ -60,6 +76,8 @@ export default class SolidModel extends Model {
                 this.fields[field].rdfProperty || `${defaultRdfContext}:${field}`,
             );
         }
+
+        this.fields[this.primaryKey].rdfProperty = null;
     }
 
     private static resolveType(type: string): string {
@@ -79,11 +97,11 @@ export default class SolidModel extends Model {
     }
 
     public save<T extends SolidModel>(): Promise<T> {
-        if (!this.hasAttribute('id')) {
-            const classDef = this.constructor as typeof SolidModel;
+        const classDef = this.constructor as typeof SolidModel;
 
+        if (!this.hasAttribute(classDef.primaryKey)) {
             this.setAttribute(
-                'id',
+                classDef.primaryKey,
                 Url.resolve(
                     classDef.collection,
                     (classDef.ldpContainer && this.hasAttribute('name'))
