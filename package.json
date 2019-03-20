@@ -8,7 +8,11 @@
   "jsdelivr": "dist/soukai-solid.js",
   "types": "types/index.d.ts",
   "scripts": {
-    "test": "jest"
+    "test": "jest",
+    "build": "rm dist -rf && npm run build-umd && npm run build-common && npm run build-esm",
+    "build-umd": "cross-env NODE_ENV=development TARGET_BUILD=umd webpack --mode='development' --no-progress --hide-modules",
+    "build-common": "cross-env NODE_ENV=development TARGET_BUILD=commonjs webpack --mode='development' --no-progress --hide-modules",
+    "build-esm": "cross-env NODE_ENV=development TARGET_BUILD=esmodule webpack --mode='development' --no-progress --hide-modules"
   },
   "repository": {
     "type": "git",
@@ -19,22 +23,23 @@
   "bugs": {
     "url": "https://github.com/NoelDeMartin/soukai-solid/issues"
   },
-  "peerDependencies": {
+  "dependencies": {
+    "rdflib": "^0.19.1",
+    "solid-auth-client": "^2.2.14",
     "soukai": "^0.0.1"
   },
   "devDependencies": {
     "@types/faker": "^4.1.5",
     "@types/jest": "^23.3.13",
     "@types/rdflib": "^0.17.1",
+    "cross-env": "^5.2.0",
     "events": "^3.0.0",
     "faker": "^4.1.0",
     "jest": "^24.0.0",
-    "soukai": "0.0.1",
     "ts-jest": "^23.10.5",
-    "typescript": "^3.3.1"
-  },
-  "dependencies": {
-    "rdflib": "^0.19.1",
-    "solid-auth-client": "^2.2.14"
+    "ts-loader": "^5.3.3",
+    "typescript": "^3.3.1",
+    "webpack": "^4.29.6",
+    "webpack-cli": "^3.2.3"
   }
 }
