@@ -44,17 +44,17 @@ export default class SolidModel extends Model {
         const defaultRdfContext = Object.keys(this.rdfContexts).shift();
 
         if (
-            this.hasAutomaticTimestamp('created_at') &&
-            typeof this.fields['created_at'].rdfProperty === 'undefined'
+            this.hasAutomaticTimestamp('createdAt') &&
+            typeof this.fields['createdAt'].rdfProperty === 'undefined'
         ) {
-            this.fields['created_at'].rdfProperty = 'http://purl.org/dc/terms/created';
+            this.fields['createdAt'].rdfProperty = 'http://purl.org/dc/terms/created';
         }
 
         if (
-            this.hasAutomaticTimestamp('updated_at') &&
-            typeof this.fields['updated_at'].rdfProperty === 'undefined'
+            this.hasAutomaticTimestamp('updatedAt') &&
+            typeof this.fields['updatedAt'].rdfProperty === 'undefined'
         ) {
-            this.fields['updated_at'].rdfProperty = 'http://purl.org/dc/terms/modified';
+            this.fields['updatedAt'].rdfProperty = 'http://purl.org/dc/terms/modified';
         }
 
         this.rdfsClasses = new Set([...this.rdfsClasses].map(
