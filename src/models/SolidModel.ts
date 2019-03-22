@@ -1,4 +1,4 @@
-import { Model, FieldsDefinition, FieldDefinition, SoukaiError } from 'soukai';
+import { Model, FieldsDefinition, FieldDefinition, Key } from 'soukai';
 
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
@@ -96,7 +96,7 @@ export default class SolidModel extends Model {
         return type;
     }
 
-    public save<T extends SolidModel>(): Promise<T> {
+    public save<T extends Model>(): Promise<T> {
         const classDef = this.constructor as typeof SolidModel;
 
         if (!this.hasAttribute(classDef.primaryKey)) {
@@ -112,6 +112,10 @@ export default class SolidModel extends Model {
         }
 
         return super.save();
+    }
+
+    public getIdAttribute(): Key {
+        return this.getAttribute('url');
     }
 
 }

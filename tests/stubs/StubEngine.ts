@@ -8,7 +8,7 @@ export default class StubEngine implements Engine {
         model: typeof Model,
         attributes: Attributes,
     ): Promise<Key> {
-        return UUID.generate();
+        return attributes[model.primaryKey] || UUID.generate();
     }
 
     public async readOne(

@@ -173,4 +173,19 @@ describe('SolidModel', () => {
         expect(attributes.url).toEqual(Url.resolve(containerUrl, Str.slug(name)));
     });
 
+    it('aliases url attribute as id', async () => {
+        class StubModel extends SolidModel {
+        }
+
+        Soukai.loadModel('StubModel', StubModel);
+        Soukai.useEngine(new StubEngine());
+
+        const model = new StubModel();
+
+        await model.save();
+
+        expect(model.url).toBeTruthy();
+        expect(model.url).toEqual(model.id);
+    });
+
 });
