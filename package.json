@@ -26,7 +26,7 @@
   "dependencies": {
     "rdflib": "^0.19.1",
     "solid-auth-client": "^2.2.14",
-    "soukai": "^0.0.1"
+    "soukai": "^0.1.0"
   },
   "devDependencies": {
     "@types/faker": "^4.1.5",
