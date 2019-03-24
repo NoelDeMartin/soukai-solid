@@ -1,4 +1,4 @@
-import { Model, FieldsDefinition, FieldDefinition, Key } from 'soukai';
+import { Attributes, Model, FieldsDefinition, FieldDefinition, Key } from 'soukai';
 
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
@@ -80,6 +80,17 @@ export default class SolidModel extends Model {
         this.fields[this.primaryKey].rdfProperty = null;
     }
 
+    public static create<T extends Model>(
+        attributes?: Attributes,
+        containerUrl?: string,
+    ): Promise<T> {
+        if (containerUrl) {
+            this.from(containerUrl);
+        }
+
+        return super.create(attributes);
+    }
+
     private static resolveType(type: string): string {
         const index = type.indexOf(':');
 
@@ -96,14 +107,14 @@ export default class SolidModel extends Model {
         return type;
     }
 
-    public save<T extends Model>(): Promise<T> {
+    public save<T extends Model>(containerUrl?: string): Promise<T> {
         const classDef = this.constructor as typeof SolidModel;
 
         if (!this.hasAttribute(classDef.primaryKey)) {
             this.setAttribute(
                 classDef.primaryKey,
                 Url.resolve(
-                    classDef.collection,
+                    containerUrl || classDef.collection,
                     (classDef.ldpContainer && this.hasAttribute('name'))
                         ? Str.slug(this.getAttribute('name'))
                         : UUID.generate(),

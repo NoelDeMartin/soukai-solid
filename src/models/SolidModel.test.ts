@@ -109,7 +109,7 @@ describe('SolidModel', () => {
         });
     });
 
-    it('mints URI for new models', async () => {
+    it('mints url for new models', async () => {
         class StubModel extends SolidModel {
         }
 
@@ -136,7 +136,63 @@ describe('SolidModel', () => {
         expect((attributes.url as string).startsWith(containerUrl)).toBe(true);
     });
 
-    it('uses name for minting URI for new containers', async () => {
+    it('uses explicit containerUrl for minting url on save', async () => {
+        class StubModel extends SolidModel {
+        }
+
+        const containerUrl = Faker.internet.url();
+        const engine = new StubEngine();
+
+        jest.spyOn(engine, 'create');
+
+        Soukai.loadModel('StubModel', StubModel);
+        Soukai.useEngine(engine);
+
+        const model = new StubModel();
+
+        await model.save(containerUrl);
+
+        expect(engine.create).toHaveBeenCalledWith(
+            StubModel,
+
+            // TODO test argument using argument matcher
+            expect.anything(),
+        );
+
+        const attributes = (engine.create as any).mock.calls[0][1];
+
+        expect(attributes).toHaveProperty('url');
+        expect((attributes.url as string).startsWith(containerUrl)).toBe(true);
+    });
+
+    it('uses explicit containerUrl for minting url on create', async () => {
+        class StubModel extends SolidModel {
+        }
+
+        const containerUrl = Faker.internet.url();
+        const engine = new StubEngine();
+
+        jest.spyOn(engine, 'create');
+
+        Soukai.loadModel('StubModel', StubModel);
+        Soukai.useEngine(engine);
+
+        await StubModel.create({}, containerUrl);
+
+        expect(engine.create).toHaveBeenCalledWith(
+            StubModel,
+
+            // TODO test argument using argument matcher
+            expect.anything(),
+        );
+
+        const attributes = (engine.create as any).mock.calls[0][1];
+
+        expect(attributes).toHaveProperty('url');
+        expect((attributes.url as string).startsWith(containerUrl)).toBe(true);
+    });
+
+    it('uses name for minting url for new containers', async () => {
         class StubModel extends SolidModel {
             public static ldpContainer = true;
 
