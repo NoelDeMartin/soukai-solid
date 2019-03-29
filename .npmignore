@@ -1,0 +1,8 @@
+scripts
+src/**/*.test.ts
+__mocks__
+tests
+jest.config.js
+tsconfig.json
+tslint.json
+webpack.config.js
