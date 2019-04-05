@@ -1,4 +1,4 @@
-import { FieldType } from 'soukai';
+import { FieldType, Relation } from 'soukai';
 
 import SolidModel from '@/models/SolidModel';
 
@@ -14,6 +14,14 @@ export default class Person extends SolidModel {
 
     public static fields = {
         name: FieldType.String,
+        knows: {
+            type: FieldType.Key,
+            rdfProperty: 'foaf:knows',
+        },
     };
+
+    public friendsRelationship(): Relation {
+        return this.hasMany(Person, 'knows');
+    }
 
 }

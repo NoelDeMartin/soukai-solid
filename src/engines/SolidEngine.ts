@@ -4,6 +4,7 @@ import {
     DocumentNotFound,
     Engine,
     FieldType,
+    Filters,
     Key,
     Model,
     SoukaiError,
@@ -49,8 +50,10 @@ export default class SolidEngine implements Engine {
         return this.parseResourceAttributes(model, resource);
     }
 
-    public async readMany(model: typeof SolidModel): Promise<Document[]> {
+    public async readMany(model: typeof SolidModel, filters?: Filters): Promise<Document[]> {
         this.assertModelType(model);
+
+        // TODO implement filters
 
         return Solid
             .getResources(model.collection, [...model.rdfsClasses])

@@ -1,4 +1,6 @@
-import { Attributes, Model, FieldsDefinition, FieldDefinition, Key } from 'soukai';
+import { Attributes, Model, FieldsDefinition, FieldDefinition, Key, MultipleModelsRelation } from 'soukai';
+
+import SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
 
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
@@ -127,6 +129,10 @@ export default class SolidModel extends Model {
 
     public getIdAttribute(): Key {
         return this.getAttribute('url');
+    }
+
+    protected hasMany(model: typeof SolidModel, linksField: string): MultipleModelsRelation {
+        return new SolidHasManyRelation(this, model, linksField);
     }
 
 }

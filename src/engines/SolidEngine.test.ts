@@ -154,6 +154,66 @@ describe('SolidEngine', () => {
         );
     });
 
+    xit('gets many resources using filters', async () => {
+        const containerUrl = Faker.internet.url();
+        const name = Faker.name.firstName();
+        const url = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+
+        // TODO add resources to Solid Mock
+
+        Person.from(containerUrl);
+
+        const documents = await engine.readMany(Person, { name });
+
+        expect(documents).toHaveLength(1);
+        expect(documents[0].url).toBe(url);
+        expect(documents[0].name).toBe(name);
+
+        expect(Solid.getResources).toHaveBeenCalledWith(
+            containerUrl,
+            [
+                'http://cmlns.com/foaf/0.1/Person',
+                'http://www.w3.org/ns/ldp#Resource',
+            ],
+            { 'http://cmlns.com/foaf/0.1/name': name },
+        );
+    });
+
+    xit('gets many resources using $in filter', async () => {
+        const firstName = Faker.name.firstName();
+        const firstUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const secondName = Faker.name.firstName();
+        const secondUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+
+        // TODO add resources to Solid Mock
+
+        const documents = await engine.readMany(Person, {
+            $in: [firstUrl, secondUrl],
+        });
+
+        expect(documents).toHaveLength(2);
+        expect(documents[0].url).toBe(firstUrl);
+        expect(documents[0].name).toBe(firstName);
+        expect(documents[1].url).toBe(secondUrl);
+        expect(documents[1].name).toBe(secondName);
+
+        expect(Solid.getResource).toHaveBeenCalledWith(
+            firstUrl,
+            [
+                'http://cmlns.com/foaf/0.1/Person',
+                'http://www.w3.org/ns/ldp#Resource',
+            ],
+        );
+
+        expect(Solid.getResource).toHaveBeenCalledWith(
+            secondUrl,
+            [
+                'http://cmlns.com/foaf/0.1/Person',
+                'http://www.w3.org/ns/ldp#Resource',
+            ],
+        );
+    });
+
     it('updates dirty attributes', async () => {
         const id = Url.resolve(Faker.internet.url(), Faker.random.uuid());
         const name = Faker.random.word();

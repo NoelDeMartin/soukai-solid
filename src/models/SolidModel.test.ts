@@ -5,6 +5,7 @@ import Soukai, { FieldType } from 'soukai';
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 
+import Person from '@tests/stubs/Person';
 import StubEngine from '@tests/stubs/StubEngine';
 
 import SolidModel from './SolidModel';
@@ -242,6 +243,50 @@ describe('SolidModel', () => {
 
         expect(model.url).toBeTruthy();
         expect(model.url).toEqual(model.id);
+    });
+
+    it('implements has many relationship', async () => {
+        Soukai.loadModel('Person', Person);
+
+        const engine = new StubEngine();
+
+        jest.spyOn(engine, 'readMany');
+
+        Soukai.useEngine(engine);
+
+        engine.setMany([
+            { url: 'https://example.org/alice', name: 'Alice' },
+            { url: 'https://example.org/bob', name: 'Bob' },
+        ]);
+
+        const john = new Person({
+            name: 'John',
+            knows: [
+                'https://example.org/alice',
+                'https://example.org/bob',
+            ],
+        });
+
+        await john.loadRelation('friends');
+
+        expect(john.friends).toHaveLength(2);
+        expect(john.friends[0]).toBeInstanceOf(Person);
+        expect(john.friends[0].url).toBe('https://example.org/alice');
+        expect(john.friends[0].name).toBe('Alice');
+        expect(john.friends[1]).toBeInstanceOf(Person);
+        expect(john.friends[1].url).toBe('https://example.org/bob');
+        expect(john.friends[1].name).toBe('Bob');
+
+        expect(engine.readMany).toHaveBeenCalledTimes(1);
+        expect(engine.readMany).toHaveBeenCalledWith(
+            Person,
+            {
+                $in: [
+                    'https://example.org/alice',
+                    'https://example.org/bob',
+                ],
+            },
+        );
     });
 
 });

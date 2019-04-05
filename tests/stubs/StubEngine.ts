@@ -1,8 +1,22 @@
-import { Engine, Key, Attributes, Document, Model, DocumentNotFound } from 'soukai';
+import {
+    Attributes,
+    Document,
+    DocumentNotFound,
+    Engine,
+    Filters,
+    Key,
+    Model,
+} from 'soukai';
 
 import UUID from '@/utils/UUID';
 
 export default class StubEngine implements Engine {
+
+    private many: Document[] = [];
+
+    public setMany(many: Document[]): void {
+        this.many = many;
+    }
 
     public async create(
         model: typeof Model,
@@ -19,8 +33,8 @@ export default class StubEngine implements Engine {
         throw new DocumentNotFound(id);
     }
 
-    public async readMany(model: typeof Model): Promise<Document[]> {
-        return [];
+    public async readMany(model: typeof Model, filters?: Filters): Promise<Document[]> {
+        return this.many;
     }
 
     public async update(
