@@ -9,8 +9,21 @@ import Person from '@tests/stubs/Person';
 import StubEngine from '@tests/stubs/StubEngine';
 
 import SolidModel from './SolidModel';
+import Group from '@tests/stubs/Group';
+
+let engine: StubEngine;
 
 describe('SolidModel', () => {
+
+    beforeAll(() => {
+        Soukai.loadModel('Group', Group);
+        Soukai.loadModel('Person', Person);
+    });
+
+    beforeEach(() => {
+        engine = new StubEngine();
+        Soukai.useEngine(engine);
+    });
 
     it('resolves contexts when booting', () => {
         class StubModel extends SolidModel {
@@ -115,12 +128,10 @@ describe('SolidModel', () => {
         }
 
         const containerUrl = Faker.internet.url();
-        const engine = new StubEngine();
 
         jest.spyOn(engine, 'create');
 
         Soukai.loadModel('StubModel', StubModel);
-        Soukai.useEngine(engine);
 
         await StubModel.from(containerUrl).create();
 
@@ -142,12 +153,10 @@ describe('SolidModel', () => {
         }
 
         const containerUrl = Faker.internet.url();
-        const engine = new StubEngine();
 
         jest.spyOn(engine, 'create');
 
         Soukai.loadModel('StubModel', StubModel);
-        Soukai.useEngine(engine);
 
         const model = new StubModel();
 
@@ -171,12 +180,10 @@ describe('SolidModel', () => {
         }
 
         const containerUrl = Faker.internet.url();
-        const engine = new StubEngine();
 
         jest.spyOn(engine, 'create');
 
         Soukai.loadModel('StubModel', StubModel);
-        Soukai.useEngine(engine);
 
         await StubModel.create({}, containerUrl);
 
@@ -208,12 +215,10 @@ describe('SolidModel', () => {
 
         const containerUrl = Faker.internet.url();
         const name = Faker.random.word();
-        const engine = new StubEngine();
 
         jest.spyOn(engine, 'create');
 
         Soukai.loadModel('StubModel', StubModel);
-        Soukai.useEngine(engine);
 
         await StubModel.from(containerUrl).create({ name });
 
@@ -235,7 +240,6 @@ describe('SolidModel', () => {
         }
 
         Soukai.loadModel('StubModel', StubModel);
-        Soukai.useEngine(new StubEngine());
 
         const model = new StubModel();
 
@@ -248,11 +252,7 @@ describe('SolidModel', () => {
     it('implements has many relationship', async () => {
         Soukai.loadModel('Person', Person);
 
-        const engine = new StubEngine();
-
         jest.spyOn(engine, 'readMany');
-
-        Soukai.useEngine(engine);
 
         engine.setMany([
             { url: 'https://example.org/alice', name: 'Alice' },
@@ -287,6 +287,61 @@ describe('SolidModel', () => {
                 ],
             },
         );
+    });
+
+    it('implements contains relationship', async () => {
+        const containerUrl = Faker.internet.url();
+
+        const group = new Group({
+            url: containerUrl,
+        });
+
+        jest.spyOn(engine, 'readMany');
+
+        engine.setMany([
+            { url: 'https://example.org/musashi', name: 'Musashi' },
+            { url: 'https://example.org/kojiro', name: 'Kojiro' },
+        ]);
+
+        expect(group.members).toBeUndefined();
+
+        await group.loadRelation('members');
+
+        expect(group.members).toHaveLength(2);
+        expect(group.members[0]).toBeInstanceOf(Person);
+        expect(group.members[0].url).toBe('https://example.org/musashi');
+        expect(group.members[0].name).toBe('Musashi');
+        expect(group.members[1]).toBeInstanceOf(Person);
+        expect(group.members[1].url).toBe('https://example.org/kojiro');
+        expect(group.members[1].name).toBe('Kojiro');
+
+        expect(engine.readMany).toHaveBeenCalledTimes(1);
+        expect(engine.readMany).toHaveBeenCalledWith(
+            // TODO test that person had containerUrl as collection
+            Person,
+            undefined
+        );
+    });
+
+    it('implements is contained by relationship', async () => {
+        const name = Faker.random.word();
+        const containerUrl = Url.resolve(Faker.internet.url(), Str.slug(name));
+        const person = new Person({
+            url: Url.resolve(containerUrl, Faker.random.uuid()),
+        });
+
+        jest.spyOn(engine, 'readOne');
+
+        engine.setOne({ url: containerUrl, name });
+
+        expect(person.group).toBeUndefined();
+
+        await person.loadRelation('group');
+
+        expect(person.group).toBeInstanceOf(Group);
+        expect(person.group.name).toBe(name);
+
+        expect(engine.readOne).toHaveBeenCalledWith(Group, containerUrl);
     });
 
 });

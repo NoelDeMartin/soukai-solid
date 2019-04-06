@@ -1,6 +1,8 @@
-import { FieldType, Relation } from 'soukai';
+import { FieldType, Relation, SingleModelRelation } from 'soukai';
 
 import SolidModel from '@/models/SolidModel';
+
+import Group from '@tests/stubs/Group';
 
 export default class Person extends SolidModel {
 
@@ -22,6 +24,10 @@ export default class Person extends SolidModel {
 
     public friendsRelationship(): Relation {
         return this.hasMany(Person, 'knows');
+    }
+
+    public groupRelationship(): SingleModelRelation {
+        return this.isContainedBy(Group);
     }
 
 }

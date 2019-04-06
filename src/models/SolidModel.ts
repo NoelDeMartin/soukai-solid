@@ -1,6 +1,8 @@
-import { Attributes, Model, FieldsDefinition, FieldDefinition, Key, MultipleModelsRelation } from 'soukai';
+import { Attributes, Model, FieldsDefinition, FieldDefinition, Key, MultipleModelsRelation, SingleModelRelation } from 'soukai';
 
 import SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
+import SolidContainsRelation from '@/models/relations/SolidContainsRelation';
+import SolidIsContainedByRelation from '@/models/relations/SolidIsContainedByRelation';
 
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
@@ -86,11 +88,15 @@ export default class SolidModel extends Model {
         attributes?: Attributes,
         containerUrl?: string,
     ): Promise<T> {
-        if (containerUrl) {
-            this.from(containerUrl);
-        }
+        const oldCollection = this.collection;
 
-        return super.create(attributes);
+        this.collection = containerUrl || oldCollection;
+
+        const result = super.create<T>(attributes);
+
+        this.collection = oldCollection;
+
+        return result;
     }
 
     private static resolveType(type: string): string {
@@ -133,6 +139,14 @@ export default class SolidModel extends Model {
 
     protected hasMany(model: typeof SolidModel, linksField: string): MultipleModelsRelation {
         return new SolidHasManyRelation(this, model, linksField);
+    }
+
+    protected contains(model: typeof SolidModel): MultipleModelsRelation {
+        return new SolidContainsRelation(this, model);
+    }
+
+    protected isContainedBy(model: typeof SolidModel): SingleModelRelation {
+        return new SolidIsContainedByRelation(this, model);
     }
 
 }

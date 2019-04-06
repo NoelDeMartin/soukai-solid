@@ -1,4 +1,13 @@
-import { Model, Engine, Attributes, Document, Key, FieldsDefinition, FieldDefinition } from 'soukai';
+import {
+    Attributes,
+    Document,
+    Engine,
+    FieldDefinition,
+    FieldsDefinition,
+    Filters,
+    Key,
+    Model,
+} from 'soukai';
 
 export interface SolidFieldsDefinition extends FieldsDefinition {
     [field: string]: SolidFieldDefinition;
@@ -34,7 +43,7 @@ export class SolidEngine implements Engine {
 
     readOne(model: typeof SolidModel, id: Key): Promise<Document>;
 
-    readMany(model: typeof SolidModel): Promise<Document[]>;
+    readMany(model: typeof SolidModel, filters?: Filters): Promise<Document[]>;
 
     update(
         model: typeof SolidModel,

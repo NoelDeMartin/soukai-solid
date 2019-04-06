@@ -12,7 +12,12 @@ import UUID from '@/utils/UUID';
 
 export default class StubEngine implements Engine {
 
+    private one: Document;
     private many: Document[] = [];
+
+    public setOne(one: Document): void {
+        this.one = one;
+    }
 
     public setMany(many: Document[]): void {
         this.many = many;
@@ -30,7 +35,11 @@ export default class StubEngine implements Engine {
         id: Key,
     ): Promise<Document>
     {
-        throw new DocumentNotFound(id);
+        if (!this.one) {
+            throw new DocumentNotFound(id);
+        }
+
+        return this.one;
     }
 
     public async readMany(model: typeof Model, filters?: Filters): Promise<Document[]> {

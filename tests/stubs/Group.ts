@@ -1,6 +1,8 @@
-import { FieldType } from 'soukai';
+import { FieldType, MultipleModelsRelation } from 'soukai';
 
 import SolidModel from '@/models/SolidModel';
+
+import Person from '@tests/stubs/Person';
 
 export default class Group extends SolidModel {
 
@@ -17,5 +19,9 @@ export default class Group extends SolidModel {
     public static fields = {
         name: FieldType.String,
     };
+
+    public membersRelationship(): MultipleModelsRelation {
+        return this.contains(Person);
+    }
 
 }

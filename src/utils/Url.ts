@@ -27,6 +27,12 @@ class Url {
             : url;
     }
 
+    public relativeBase(url: string): string {
+        const pathIndex = url.lastIndexOf('/');
+
+        return pathIndex !== -1 ? url.substr(0, pathIndex) : url;
+    }
+
 }
 
 export default new Url();
