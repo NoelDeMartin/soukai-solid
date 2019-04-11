@@ -1,10 +1,10 @@
 class Url {
 
-    public resolve(...urls: string[]): string {
-        let url = urls.shift() as string;
+    public resolve(...parts: string[]): string {
+        let url = parts.shift() as string;
 
-        while (urls.length > 0) {
-            const fragment = urls.shift() as string;
+        while (parts.length > 0) {
+            const fragment = parts.shift() as string;
 
             if (fragment.startsWith('/')) {
                 url = this.base(url) + fragment;
@@ -16,6 +16,12 @@ class Url {
         }
 
         return url;
+    }
+
+    public resolveDirectory(...parts: string[]): string {
+        const url = this.resolve(...parts);
+
+        return url.endsWith('/') ? url : (url + '/');
     }
 
     public base(url: string): string {
@@ -30,7 +36,13 @@ class Url {
     public relativeBase(url: string): string {
         const pathIndex = url.lastIndexOf('/');
 
-        return pathIndex !== -1 ? url.substr(0, pathIndex) : url;
+        return pathIndex !== -1 ? url.substr(0, pathIndex + 1) : url;
+    }
+
+    public filename(url: string): string {
+        const pathIndex = url.lastIndexOf('/');
+
+        return pathIndex !== -1 ? url.substr(pathIndex + 1) : '';
     }
 
 }

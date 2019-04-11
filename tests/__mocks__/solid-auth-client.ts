@@ -6,6 +6,10 @@ class SolidAuthClientMock extends EventEmitter {
 
     private fetchResponses: Response[] = [];
 
+    public reset(): void {
+        this.fetchResponses = [];
+    }
+
     public addFetchNotFoundResponse(): void {
         this.fetchResponses.push(StubResponse.notFound());
     }

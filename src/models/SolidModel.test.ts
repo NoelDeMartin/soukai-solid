@@ -88,7 +88,7 @@ describe('SolidModel', () => {
 
         expect(StubModel.rdfsClasses).toEqual(new Set([
             'http://www.w3.org/ns/ldp#Resource',
-            'http://www.w3.org/ns/ldp#BasicContainer',
+            'http://www.w3.org/ns/ldp#Container',
         ]));
     });
 
@@ -232,7 +232,7 @@ describe('SolidModel', () => {
         const attributes = (engine.create as any).mock.calls[0][1];
 
         expect(attributes).toHaveProperty('url');
-        expect(attributes.url).toEqual(Url.resolve(containerUrl, Str.slug(name)));
+        expect(attributes.url).toEqual(Url.resolveDirectory(containerUrl, Str.slug(name)));
     });
 
     it('aliases url attribute as id', async () => {
@@ -325,7 +325,7 @@ describe('SolidModel', () => {
 
     it('implements is contained by relationship', async () => {
         const name = Faker.random.word();
-        const containerUrl = Url.resolve(Faker.internet.url(), Str.slug(name));
+        const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(name));
         const person = new Person({
             url: Url.resolve(containerUrl, Faker.random.uuid()),
         });

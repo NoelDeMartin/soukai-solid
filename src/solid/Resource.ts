@@ -99,6 +99,14 @@ export default class Resource {
         return typeTerms.map(term => decodeURI(term.value));
     }
 
+    public is(type: string | NamedNode): boolean {
+        if (typeof type !== 'string') {
+            type = type.uri;
+        }
+
+        return this.types.indexOf(type) !== -1;
+    }
+
     public getProperty(
         property: string,
         defaultValue: LiteralValue | null = null,

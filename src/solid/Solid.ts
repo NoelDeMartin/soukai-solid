@@ -3,6 +3,8 @@ import SolidAuthClient from 'solid-auth-client';
 
 import Resource, { ResourceProperty } from '@/solid/Resource';
 
+import Url from '@/utils/Url';
+
 const LDP = $rdf.Namespace('http://www.w3.org/ns/ldp#');
 const RDFS = $rdf.Namespace('http://www.w3.org/1999/02/22-rdf-syntax-ns#');
 
@@ -35,6 +37,10 @@ class Solid {
         url: string,
         properties: ResourceProperty[] = [],
     ): Promise<Resource> {
+        if (!url.endsWith('/')) {
+            throw new Error(`Container urls must end with a trailing slash, given ${url}`);
+        }
+
         if (await this.resourceExists(url)) {
             throw new Error(`Cannot create a resource at ${url}, url already in use`);
         }
@@ -44,10 +50,12 @@ class Solid {
             .join("\n");
 
         await SolidAuthClient.fetch(
-            url, {
+            Url.relativeBase(url.substr(0, url.length - 1)),
+            {
                 method: 'POST',
                 body: turtleData,
                 headers: {
+                    'Slug': Url.filename(url.substr(0, url.length - 1)),
                     'Content-Type': 'text/turtle',
                     'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                 },
@@ -73,29 +81,20 @@ class Solid {
         }
 
         try {
-            const data = await SolidAuthClient.fetch(containerUrl + '*').then(res => res.text());
-            const store = $rdf.graph();
+            // Globbing only returns non-container resources
+            const resources = types.indexOf(LDP('Container').uri) === -1
+                ? await this.getContainerResourcesUsingGlobbing(containerUrl)
+                : await this.getContainerResources(containerUrl, true);
 
-            $rdf.parse(data, store, containerUrl, 'text/turtle', null as any);
-
-            const resourceNodes = store.each(
-                null as any,
-                RDFS('type'),
-                LDP('Resource'),
-                null as any
-            );
-
-            return resourceNodes
-                .map(node => new Resource(node.value, store))
-                .filter(resource => {
-                    for (const type of types) {
-                        if (resource.types.indexOf(type) === -1) {
-                            return false;
-                        }
+            return resources.filter(resource => {
+                for (const type of types) {
+                    if (!resource.is(type)) {
+                        return false;
                     }
+                }
 
-                    return true;
-                });
+                return true;
+            });
         } catch (e) {
             // Due to an existing bug, empty containers return 404
             // see: https://github.com/solid/node-solid-server/issues/900
@@ -164,6 +163,42 @@ class Solid {
                 `Couldn't determine if resource at ${url} exists, got ${response.status} response`
             );
         }
+    }
+
+    private async getContainerResources(containerUrl: string, onlyContainers: boolean): Promise<Resource[]> {
+        const store = $rdf.graph();
+        const data = await SolidAuthClient.fetch(containerUrl).then(res => res.text());
+
+        $rdf.parse(data, store, containerUrl, 'text/turtle', null as any);
+
+        const resources = await Promise.all(
+            store
+                .statementsMatching($rdf.sym(containerUrl), LDP('contains'), null as any, null as any, false)
+                .map(async statement => {
+                    const resource = new Resource(statement.object.value, store);
+
+                    // Requests only return ldp types for unexpanded resources, so we can only filter
+                    // by containers or plain resources
+                    if (onlyContainers && !resource.is(LDP('Container'))) {
+                        return null;
+                    }
+
+                    return await this.getResource(resource.url);
+                }),
+        );
+
+        return resources.filter(resource => resource !== null) as Resource[];
+    }
+
+    private async getContainerResourcesUsingGlobbing(containerUrl: string): Promise<Resource[]> {
+        const store = $rdf.graph();
+        const data = await SolidAuthClient.fetch(containerUrl + '*').then(res => res.text());
+
+        $rdf.parse(data, store, containerUrl, 'text/turtle', null as any);
+
+        return store
+            .each(null as any, RDFS('type'), LDP('Resource'), null as any)
+            .map(node => new Resource(node.value, store));
     }
 
 }

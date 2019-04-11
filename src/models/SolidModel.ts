@@ -70,7 +70,7 @@ export default class SolidModel extends Model {
             this.rdfsClasses.add(ldpResource);
         }
 
-        const ldpContainerType = this.resolveType('ldp:BasicContainer');
+        const ldpContainerType = this.resolveType('ldp:Container');
         if (this.ldpContainer && !this.rdfsClasses.has(ldpContainerType)) {
             this.rdfsClasses.add(ldpContainerType);
         }
@@ -119,14 +119,14 @@ export default class SolidModel extends Model {
         const classDef = this.constructor as typeof SolidModel;
 
         if (!this.hasAttribute(classDef.primaryKey)) {
+            const urlSuffix = classDef.ldpContainer ? '/' : '';
+            const urlPath = (classDef.ldpContainer && this.hasAttribute('name'))
+                ? Str.slug(this.getAttribute('name'))
+                : UUID.generate();
+
             this.setAttribute(
                 classDef.primaryKey,
-                Url.resolve(
-                    containerUrl || classDef.collection,
-                    (classDef.ldpContainer && this.hasAttribute('name'))
-                        ? Str.slug(this.getAttribute('name'))
-                        : UUID.generate(),
-                ),
+                Url.resolve(containerUrl || classDef.collection, urlPath) + urlSuffix,
             );
         }
 
