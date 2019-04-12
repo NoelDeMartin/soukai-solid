@@ -7,6 +7,8 @@ import {
     Filters,
     Key,
     Model,
+    MultipleModelsRelation,
+    SingleModelRelation,
 } from 'soukai';
 
 export interface SolidFieldsDefinition extends FieldsDefinition {
@@ -32,6 +34,10 @@ export class SolidModel extends Model {
     public static create<T extends Model>(attributes?: Attributes, containerUrl?: string): Promise<T>;
 
     public save<T extends Model>(containerUrl?: string): Promise<T>;
+
+    protected contains(model: typeof SolidModel): MultipleModelsRelation;
+
+    protected isContainedBy(model: typeof SolidModel): SingleModelRelation;
 
 }
 
