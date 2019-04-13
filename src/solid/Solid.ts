@@ -66,7 +66,9 @@ class Solid {
     }
 
     public async getResource(url: string): Promise<Resource | null> {
-        const response = await SolidAuthClient.fetch(url);
+        const response = await SolidAuthClient.fetch(url, {
+            headers: { 'Accept': 'text/turtle' },
+        });
 
         if (response.status !== 200) {
             return null;
@@ -152,7 +154,9 @@ class Solid {
     }
 
     public async resourceExists(url: string): Promise<boolean> {
-        const response = await SolidAuthClient.fetch(url);
+        const response = await SolidAuthClient.fetch(url, {
+            headers: { 'Accept': 'text/turtle' },
+        });
 
         if (response.status === 200) {
             return true;
@@ -167,7 +171,9 @@ class Solid {
 
     private async getContainerResources(containerUrl: string, onlyContainers: boolean): Promise<Resource[]> {
         const store = $rdf.graph();
-        const data = await SolidAuthClient.fetch(containerUrl).then(res => res.text());
+        const data = await SolidAuthClient
+            .fetch(containerUrl, { headers: { 'Accept': 'text/turtle' } })
+            .then(res => res.text());
 
         $rdf.parse(data, store, containerUrl, 'text/turtle', null as any);
 
@@ -192,7 +198,9 @@ class Solid {
 
     private async getContainerResourcesUsingGlobbing(containerUrl: string): Promise<Resource[]> {
         const store = $rdf.graph();
-        const data = await SolidAuthClient.fetch(containerUrl + '*').then(res => res.text());
+        const data = await SolidAuthClient
+            .fetch(containerUrl + '*', { headers: { 'Accept': 'text/turtle' } })
+            .then(res => res.text());
 
         $rdf.parse(data, store, containerUrl, 'text/turtle', null as any);
 

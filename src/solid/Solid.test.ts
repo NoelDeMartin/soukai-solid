@@ -117,7 +117,9 @@ describe('Solid', () => {
         expect(resource).not.toBeNull();
         expect(resource.name).toEqual('Foo Bar');
 
-        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(url);
+        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(url, {
+            headers: { 'Accept': 'text/turtle' },
+        });
     });
 
     it('getting non-existent resource returns null', async () => {
@@ -146,7 +148,9 @@ describe('Solid', () => {
         expect(resources[0].name).toEqual('Foo Bar');
         expect(resources[0].types).toEqual(['http://www.w3.org/ns/ldp#Resource']);
 
-        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(containerUrl + '/*');
+        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(containerUrl + '/*', {
+            headers: { 'Accept': 'text/turtle' },
+        });
     });
 
     it('getting resources ignores all documents that are not resources', async () => {
@@ -258,10 +262,18 @@ describe('Solid', () => {
             type,
         ]);
 
-        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(containerUrl);
-        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(containerUrl + 'foo');
-        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(containerUrl + 'bar');
-        expect(SolidAuthClient.fetch).not.toHaveBeenCalledWith(containerUrl + 'baz');
+        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(containerUrl, {
+            headers: { 'Accept': 'text/turtle' },
+        });
+        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(containerUrl + 'foo', {
+            headers: { 'Accept': 'text/turtle' },
+        });
+        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(containerUrl + 'bar', {
+            headers: { 'Accept': 'text/turtle' },
+        });
+        expect(SolidAuthClient.fetch).not.toHaveBeenCalledWith(containerUrl + 'baz', {
+            headers: { 'Accept': 'text/turtle' },
+        });
     });
 
     it('updates resources', async () => {
