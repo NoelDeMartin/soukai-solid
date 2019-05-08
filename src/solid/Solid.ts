@@ -50,7 +50,7 @@ class Solid {
             .join("\n");
 
         await SolidAuthClient.fetch(
-            Url.relativeBase(url.substr(0, url.length - 1)),
+            Url.parentDirectory(url.substr(0, url.length - 1)),
             {
                 method: 'POST',
                 body: turtleData,

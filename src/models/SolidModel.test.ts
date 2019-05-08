@@ -5,11 +5,12 @@ import Soukai, { FieldType } from 'soukai';
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 
+import { stubPersonJsonLD, stubGroupJsonLD } from '@tests/stubs/helpers';
+import Group from '@tests/stubs/Group';
 import Person from '@tests/stubs/Person';
 import StubEngine from '@tests/stubs/StubEngine';
 
 import SolidModel from './SolidModel';
-import Group from '@tests/stubs/Group';
 
 let engine: StubEngine;
 
@@ -127,32 +128,29 @@ describe('SolidModel', () => {
         class StubModel extends SolidModel {
         }
 
-        const containerUrl = Faker.internet.url();
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
 
         jest.spyOn(engine, 'create');
 
         Soukai.loadModel('StubModel', StubModel);
 
-        await StubModel.from(containerUrl).create();
+        const model = await StubModel.from(containerUrl).create();
+
+        expect(typeof model.url).toEqual('string');
+        expect(model.url.startsWith(containerUrl)).toBe(true);
 
         expect(engine.create).toHaveBeenCalledWith(
-            StubModel,
-
-            // TODO test argument using argument matcher
+            containerUrl,
             expect.anything(),
+            model.url,
         );
-
-        const attributes = (engine.create as any).mock.calls[0][1];
-
-        expect(attributes).toHaveProperty('url');
-        expect((attributes.url as string).startsWith(containerUrl)).toBe(true);
     });
 
     it('uses explicit containerUrl for minting url on save', async () => {
         class StubModel extends SolidModel {
         }
 
-        const containerUrl = Faker.internet.url();
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
 
         jest.spyOn(engine, 'create');
 
@@ -162,42 +160,36 @@ describe('SolidModel', () => {
 
         await model.save(containerUrl);
 
+        expect(typeof model.url).toEqual('string');
+        expect(model.url.startsWith(containerUrl)).toBe(true);
+
         expect(engine.create).toHaveBeenCalledWith(
-            StubModel,
-
-            // TODO test argument using argument matcher
+            containerUrl,
             expect.anything(),
+            model.url,
         );
-
-        const attributes = (engine.create as any).mock.calls[0][1];
-
-        expect(attributes).toHaveProperty('url');
-        expect((attributes.url as string).startsWith(containerUrl)).toBe(true);
     });
 
     it('uses explicit containerUrl for minting url on create', async () => {
         class StubModel extends SolidModel {
         }
 
-        const containerUrl = Faker.internet.url();
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
 
         jest.spyOn(engine, 'create');
 
         Soukai.loadModel('StubModel', StubModel);
 
-        await StubModel.create({}, containerUrl);
+        const model = await StubModel.create({}, containerUrl);
+
+        expect(typeof model.url).toEqual('string');
+        expect(model.url.startsWith(containerUrl)).toBe(true);
 
         expect(engine.create).toHaveBeenCalledWith(
-            StubModel,
-
-            // TODO test argument using argument matcher
+            containerUrl,
             expect.anything(),
+            model.url,
         );
-
-        const attributes = (engine.create as any).mock.calls[0][1];
-
-        expect(attributes).toHaveProperty('url');
-        expect((attributes.url as string).startsWith(containerUrl)).toBe(true);
     });
 
     it('uses name for minting url for new containers', async () => {
@@ -213,26 +205,23 @@ describe('SolidModel', () => {
             };
         }
 
-        const containerUrl = Faker.internet.url();
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const name = Faker.random.word();
 
         jest.spyOn(engine, 'create');
 
         Soukai.loadModel('StubModel', StubModel);
 
-        await StubModel.from(containerUrl).create({ name });
+        const model = await StubModel.from(containerUrl).create({ name });
+
+        expect(typeof model.url).toEqual('string');
+        expect(model.url).toEqual(Url.resolveDirectory(containerUrl, Str.slug(name)));
 
         expect(engine.create).toHaveBeenCalledWith(
-            StubModel,
-
-            // TODO test argument using argument matcher
+            containerUrl,
             expect.anything(),
+            model.url,
         );
-
-        const attributes = (engine.create as any).mock.calls[0][1];
-
-        expect(attributes).toHaveProperty('url');
-        expect(attributes.url).toEqual(Url.resolveDirectory(containerUrl, Str.slug(name)));
     });
 
     it('aliases url attribute as id', async () => {
@@ -249,20 +238,45 @@ describe('SolidModel', () => {
         expect(model.url).toEqual(model.id);
     });
 
+    it('sends JsonLD to engines', async () => {
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const name = Faker.random.word();
+
+        jest.spyOn(engine, 'create');
+
+        Soukai.loadModel('Person', Person);
+
+        const model = await Person.create({ name }, containerUrl);
+
+        const attributes = (engine.create as any).mock.calls[0][1];
+
+        expect(attributes).toEqual({
+            '@id': model.url,
+            '@type': [
+                { '@id': 'http://cmlns.com/foaf/0.1/Person' },
+                { '@id': 'http://www.w3.org/ns/ldp#Resource' },
+            ],
+            'http://cmlns.com/foaf/0.1/name': name,
+        });
+    });
+
     it('implements has many relationship', async () => {
         Soukai.loadModel('Person', Person);
 
         jest.spyOn(engine, 'readMany');
 
-        engine.setMany([
-            { url: 'https://example.org/alice', name: 'Alice' },
-            { url: 'https://example.org/bob', name: 'Bob' },
-        ]);
+        engine.setMany('https://example.com/', {
+            'https://example.com/alice': stubPersonJsonLD('https://example.com/alice', 'Alice'),
+        });
+
+        engine.setMany('https://example.org/', {
+            'https://example.org/bob': stubPersonJsonLD('https://example.org/bob', 'Bob'),
+        });
 
         const john = new Person({
             name: 'John',
             knows: [
-                'https://example.org/alice',
+                'https://example.com/alice',
                 'https://example.org/bob',
             ],
         });
@@ -271,26 +285,47 @@ describe('SolidModel', () => {
 
         expect(john.friends).toHaveLength(2);
         expect(john.friends[0]).toBeInstanceOf(Person);
-        expect(john.friends[0].url).toBe('https://example.org/alice');
+        expect(john.friends[0].url).toBe('https://example.com/alice');
         expect(john.friends[0].name).toBe('Alice');
         expect(john.friends[1]).toBeInstanceOf(Person);
         expect(john.friends[1].url).toBe('https://example.org/bob');
         expect(john.friends[1].name).toBe('Bob');
 
-        expect(engine.readMany).toHaveBeenCalledTimes(1);
+        expect(engine.readMany).toHaveBeenCalledTimes(2);
         expect(engine.readMany).toHaveBeenCalledWith(
-            Person,
+            'https://example.com/',
             {
                 $in: [
-                    'https://example.org/alice',
+                    'https://example.com/alice',
+                ],
+                '@type': {
+                    $contains: [
+                        { '@id': 'http://cmlns.com/foaf/0.1/Person' },
+                        { '@id': 'http://www.w3.org/ns/ldp#Resource' },
+                    ],
+                },
+            },
+        );
+        expect(engine.readMany).toHaveBeenCalledWith(
+            'https://example.org/',
+            {
+                $in: [
                     'https://example.org/bob',
                 ],
+                '@type': {
+                    $contains: [
+                        { '@id': 'http://cmlns.com/foaf/0.1/Person' },
+                        { '@id': 'http://www.w3.org/ns/ldp#Resource' },
+                    ],
+                },
             },
         );
     });
 
     it('implements contains relationship', async () => {
-        const containerUrl = Faker.internet.url();
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const musashiUrl = Url.resolve(containerUrl, 'musashi');
+        const kojiroUrl = Url.resolve(containerUrl, 'kojiro');
 
         const group = new Group({
             url: containerUrl,
@@ -298,10 +333,10 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'readMany');
 
-        engine.setMany([
-            { url: 'https://example.org/musashi', name: 'Musashi' },
-            { url: 'https://example.org/kojiro', name: 'Kojiro' },
-        ]);
+        engine.setMany(containerUrl, {
+            [musashiUrl]: stubPersonJsonLD(musashiUrl, 'Musashi'),
+            [kojiroUrl]: stubPersonJsonLD(kojiroUrl, 'Kojiro'),
+        });
 
         expect(group.members).toBeUndefined();
 
@@ -309,17 +344,23 @@ describe('SolidModel', () => {
 
         expect(group.members).toHaveLength(2);
         expect(group.members[0]).toBeInstanceOf(Person);
-        expect(group.members[0].url).toBe('https://example.org/musashi');
+        expect(group.members[0].url).toBe(musashiUrl);
         expect(group.members[0].name).toBe('Musashi');
         expect(group.members[1]).toBeInstanceOf(Person);
-        expect(group.members[1].url).toBe('https://example.org/kojiro');
+        expect(group.members[1].url).toBe(kojiroUrl);
         expect(group.members[1].name).toBe('Kojiro');
 
         expect(engine.readMany).toHaveBeenCalledTimes(1);
         expect(engine.readMany).toHaveBeenCalledWith(
-            // TODO test that person had containerUrl as collection
-            Person,
-            undefined
+            containerUrl,
+            {
+                '@type': {
+                    $contains: [
+                        { '@id': 'http://cmlns.com/foaf/0.1/Person' },
+                        { '@id': 'http://www.w3.org/ns/ldp#Resource' },
+                    ],
+                },
+            },
         );
     });
 
@@ -332,7 +373,7 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'readOne');
 
-        engine.setOne({ url: containerUrl, name });
+        engine.setOne(stubGroupJsonLD(containerUrl, name));
 
         expect(person.group).toBeUndefined();
 
@@ -341,7 +382,7 @@ describe('SolidModel', () => {
         expect(person.group).toBeInstanceOf(Group);
         expect(person.group.name).toBe(name);
 
-        expect(engine.readOne).toHaveBeenCalledWith(Group, containerUrl);
+        expect(engine.readOne).toHaveBeenCalledWith(Url.parentDirectory(containerUrl), containerUrl);
     });
 
 });

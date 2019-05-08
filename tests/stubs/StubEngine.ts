@@ -1,62 +1,53 @@
 import {
     Attributes,
-    Document,
     DocumentNotFound,
+    Documents,
     Engine,
-    Filters,
-    Key,
-    Model,
 } from 'soukai';
 
 import UUID from '@/utils/UUID';
 
 export default class StubEngine implements Engine {
 
-    private one: Document;
-    private many: Document[] = [];
+    private one: Attributes | null = null;
+    private many: { [collection: string]: Documents } = {};
 
-    public setOne(one: Document): void {
+    public setOne(one: Attributes): void {
         this.one = one;
     }
 
-    public setMany(many: Document[]): void {
-        this.many = many;
+    public setMany(collection: string, documents: Documents): void {
+        this.many[collection] = documents;
     }
 
-    public async create(
-        model: typeof Model,
-        attributes: Attributes,
-    ): Promise<Key> {
-        return attributes[model.primaryKey] || UUID.generate();
+    public async create(collection: string, attributes: Attributes, id?: string): Promise<string> {
+        return id || UUID.generate();
     }
 
-    public async readOne(
-        modelDatabase: typeof Model,
-        id: Key,
-    ): Promise<Document>
+    public async readOne(collection: string, id: string): Promise<Attributes>
     {
-        if (!this.one) {
+        if (this.one === null) {
             throw new DocumentNotFound(id);
         }
 
         return this.one;
     }
 
-    public async readMany(model: typeof Model, filters?: Filters): Promise<Document[]> {
-        return this.many;
+    public async readMany(collection: string): Promise<Documents> {
+        return this.many[collection];
     }
 
     public async update(
-        model: typeof Model,
-        id: Key,
+        collection: string,
+        id: string,
         dirtyAttributes: Attributes,
         removedAttributes: string[],
     ): Promise<void> {
         //
     }
 
-    public async delete(model: typeof Model, id: Key): Promise<void> {
-
+    public async delete(collection: string, id: string): Promise<void> {
+        //
     }
 
 }

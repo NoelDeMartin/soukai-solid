@@ -1,11 +1,11 @@
 import {
     Attributes,
-    Document,
+    Documents,
     Engine,
+    EngineAttributes,
     FieldDefinition,
     FieldsDefinition,
     Filters,
-    Key,
     Model,
     MultipleModelsRelation,
     SingleModelRelation,
@@ -45,19 +45,19 @@ export class SolidEngine implements Engine {
 
     constructor();
 
-    create(model: typeof SolidModel, attributes: Attributes): Promise<Key>;
+    create(collection: string, attributes: EngineAttributes, id?: string): Promise<string>;
 
-    readOne(model: typeof SolidModel, id: Key): Promise<Document>;
+    readOne(collection: string, id: string): Promise<EngineAttributes>;
 
-    readMany(model: typeof SolidModel, filters?: Filters): Promise<Document[]>;
+    readMany(collection: string, filters?: Filters): Promise<Documents>;
 
     update(
-        model: typeof SolidModel,
-        id: Key,
+        collection: string,
+        id: string,
         dirtyAttributes: Attributes,
         removedAttributes: string[],
     ): Promise<void>;
 
-    delete(model: typeof SolidModel, id: Key): Promise<void>;
+    delete(collection: string, id: string): Promise<void>;
 
 }

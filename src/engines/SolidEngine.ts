@@ -1,83 +1,87 @@
 import {
-    Attributes,
-    Document,
+    Documents,
+    EngineAttributes,
     DocumentNotFound,
     Engine,
-    FieldType,
     Filters,
-    Key,
-    Model,
-    SoukaiError,
+    EngineHelper,
 } from 'soukai';
 
-import SolidModel, { SolidFieldDefinition } from '@/models/SolidModel';
-
 import Solid, { Resource, ResourceProperty } from '@/solid';
+import UUID from '@/utils/UUID';
 
 export default class SolidEngine implements Engine {
 
-    public async create(
-        model: typeof SolidModel,
-        allAttributes: Attributes
-    ): Promise<Key> {
-        this.assertModelType(model);
+    private helper: EngineHelper;
 
-        const { [model.primaryKey]: url, ...attributes } = allAttributes;
-        const properties = this.convertModelAttributesToResourceProperties(model, attributes);
-
-        for (const type of model.rdfsClasses) {
-            properties.push(ResourceProperty.type(type));
-        }
-
-        if (model.ldpContainer) {
-            await Solid.createContainer(url as string, properties);
-        } else {
-            await Solid.createResource(url as string, properties);
-        }
-
-        return url as string;
+    public constructor() {
+        this.helper = new EngineHelper();
     }
 
-    public async readOne(model: typeof SolidModel, id: Key): Promise<Document> {
-        this.assertModelType(model);
+    public async create(
+        collection: string,
+        attributes: EngineAttributes,
+        id?: string,
+    ): Promise<string> {
+        const properties = this.convertJsonLDToResourceProperties(attributes);
+        const url = id || collection + UUID.generate();
 
+        if (this.hasContainerType(properties)) {
+            await Solid.createContainer(url, properties);
+        } else {
+            await Solid.createResource(url, properties);
+        }
+
+        return url;
+    }
+
+    public async readOne(_: string, id: string): Promise<EngineAttributes> {
         const resource = await Solid.getResource(id);
 
         if (resource === null) {
             throw new DocumentNotFound(id);
         }
 
-        return this.parseResourceAttributes(model, resource);
+        return this.convertResourceToJsonLD(resource);
     }
 
-    public async readMany(model: typeof SolidModel, filters?: Filters): Promise<Document[]> {
-        this.assertModelType(model);
+    public async readMany(collection: string, filters: Filters = {}): Promise<Documents> {
+        const rdfsClasses: string[] = [];
 
-        // TODO implement filters
+        if ('@type' in filters) {
+            const value = filters['@type'];
 
-        return Solid
-            .getResources(model.collection, [...model.rdfsClasses])
-            .then(resources => resources.map(
-                resource => this.parseResourceAttributes(model, resource),
-            ));
+            if ('$contains' in value) {
+                for (const childValue of value['$contains']) {
+                    if (typeof childValue === 'string') {
+                        rdfsClasses.push(childValue);
+                    }
+                }
+            } else if (typeof value === 'string') {
+                rdfsClasses.push(value);
+            }
+        }
+
+        const resources = await Solid.getResources(collection, rdfsClasses);
+
+        const documentsArray = resources.map(this.convertResourceToJsonLD);
+        const documents = {};
+
+        for (const document of documentsArray) {
+            documents[document['@id'] as string] = document;
+        }
+
+        return this.helper.filterDocuments(documents);
     }
 
     public async update(
-        model: typeof SolidModel,
-        id: Key,
-        dirtyAttributes: Attributes,
+        collection: string,
+        id: string,
+        updatedAttributes: EngineAttributes,
         removedAttributes: string[],
     ): Promise<void> {
-        this.assertModelType(model);
-
-        const updatedProperties = this.convertModelAttributesToResourceProperties(
-            model,
-            dirtyAttributes,
-        );
-
-        const removedProperties = removedAttributes.map(
-            attribute => model.fields[attribute].rdfProperty,
-        );
+        const updatedProperties = this.convertJsonLDToResourceProperties(updatedAttributes);
+        const removedProperties = removedAttributes;
 
         try {
             await Solid.updateResource(id, updatedProperties, removedProperties);
@@ -87,71 +91,115 @@ export default class SolidEngine implements Engine {
         }
     }
 
-    public async delete(model: typeof Model, id: Key): Promise<void> {
+    public async delete(collection: string, id: string): Promise<void> {
         // TODO
     }
 
-    private assertModelType(model: typeof SolidModel): void {
-        if (!(model.prototype instanceof SolidModel)) {
-            throw new SoukaiError('SolidEngine only supports querying SolidModel models');
-        }
-    }
-
-    private parseResourceAttributes(
-        model: typeof SolidModel,
-        resource: Resource
-    ): Document {
-        const document: Document = {
-            [model.primaryKey]: resource.url,
-        };
-
-        for (const field in model.fields) {
-            const definition = model.fields[field];
-
-            if (!definition || definition.rdfProperty === null) {
-                continue;
-            }
-
-            const property = resource.getProperty(definition.rdfProperty);
-
-            if (property !== null) {
-                // TODO handle types
-                document[field] = property as any;
-            }
-        }
-
-        return document;
-    }
-
-    private convertModelAttributesToResourceProperties(
-        model: typeof SolidModel,
-        attributes: Attributes,
-    ): ResourceProperty[] {
+    private convertJsonLDToResourceProperties(attributes: EngineAttributes): ResourceProperty[] {
         const properties: ResourceProperty[] = [];
 
         for (const field in attributes) {
-            const fieldDefinition: SolidFieldDefinition = model.fields[field];
             const value = attributes[field];
 
-            if (!fieldDefinition) {
-                throw new SoukaiError(`Trying to create model with an undefined field "${field}"`);
-            }
-
-            if (typeof fieldDefinition.rdfProperty === 'undefined') {
+            if (value === null) {
                 continue;
-            }
-
-            switch (fieldDefinition.type) {
-                case FieldType.Key:
-                    properties.push(ResourceProperty.link(fieldDefinition.rdfProperty, value.toString()));
-                    break;
-                default:
-                    properties.push(ResourceProperty.literal(fieldDefinition.rdfProperty, value));
-                    break;
+            } else if (field === '@type') {
+                this.addJsonLDTypeProperty(properties, value);
+            } else if (Array.isArray(value)) {
+                for (const childValue of value) {
+                    this.addJsonLDProperty(properties, field, childValue);
+                }
+            } else {
+                this.addJsonLDProperty(properties, field, value);
             }
         }
 
         return properties;
+    }
+
+    private convertResourceToJsonLD(resource: Resource): EngineAttributes {
+        const attributes: EngineAttributes = {};
+
+        for (const property of resource.properties) {
+            const value = resource.getPropertyValue(property);
+
+            if (property === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') {
+                if (Array.isArray(value)) {
+                    attributes['@type'] = value.map(link => ({ '@id': link }));
+                } else {
+                    attributes['@type'] = { '@id': value };
+                }
+                continue;
+            }
+
+            switch (resource.getPropertyType(property)) {
+                case 'literal':
+                    attributes[property] = value;
+                    break;
+                case 'link':
+                    if (Array.isArray(value)) {
+                        attributes[property] = value.map(link => ({ '@id': link }));
+                    } else {
+                        attributes[property] = { '@id': value };
+                    }
+                    break;
+            }
+        }
+
+        attributes['@id'] = resource.url;
+
+        return attributes;
+    }
+
+    private hasContainerType(properties: ResourceProperty[]): boolean {
+        for (const property of properties) {
+            if (property.isType('http://www.w3.org/ns/ldp#Container')) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private addJsonLDProperty(properties: ResourceProperty[], field: string, value: any): void {
+        if (value === null) {
+            return;
+        }
+
+        if (
+            typeof value === 'object' &&
+            '@id' in value &&
+            typeof value['@id'] === 'string'
+        ) {
+            properties.push(ResourceProperty.type(value['@id']));
+            return;
+        }
+
+        if (!Array.isArray(value) && typeof value !== 'object') {
+            properties.push(ResourceProperty.literal(field, value));
+        }
+    }
+
+    private addJsonLDTypeProperty(properties: ResourceProperty[], value: any): void {
+        if (Array.isArray(value)) {
+            for (const childValue of value) {
+                if (
+                    childValue !== null &&
+                    typeof childValue === 'object' &&
+                    '@id' in childValue &&
+                    typeof childValue['@id'] === 'string'
+                ) {
+                    properties.push(ResourceProperty.type(childValue['@id']));
+                }
+            }
+        } else if (
+            value !== null &&
+            typeof value === 'object' &&
+            '@id' in value &&
+            typeof value['@id'] === 'string'
+        ) {
+            properties.push(ResourceProperty.type(value['@id']));
+        }
     }
 
 }

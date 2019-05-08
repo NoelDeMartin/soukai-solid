@@ -154,7 +154,7 @@ describe('Solid', () => {
     });
 
     it('getting resources ignores all documents that are not resources', async () => {
-        const containerUrl = Faker.internet.url();
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const data = `
             <foo> <http://cmlns.com/foaf/0.1/name> "Foo" .
             <bar> a <http://www.w3.org/ns/ldp#Resource> .

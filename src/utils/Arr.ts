@@ -8,6 +8,10 @@ class Arr {
         return (new Array(length)).fill(value);
     }
 
+    public unique<T>(array: T[]): T[] {
+        return array.filter((item: T, index: number) => array.indexOf(item) === index);
+    }
+
 }
 
 export default new Arr();

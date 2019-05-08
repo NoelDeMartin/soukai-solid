@@ -1,17 +1,16 @@
 jest.mock('@/solid');
 
-import Soukai, { Model, DocumentNotFound, SoukaiError } from 'soukai';
+import { DocumentNotFound } from 'soukai';
 
 import Faker from 'faker';
-
-import Group from '@tests/stubs/Group';
-import Person from '@tests/stubs/Person';
 
 import SolidEngine from '@/engines/SolidEngine';
 
 import { ResourceProperty } from '@/solid';
 
 import { SolidMock } from '@/solid/__mocks__';
+
+import { stubPersonJsonLD, stubGroupJsonLD } from '@tests/stubs/helpers';
 
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
@@ -23,43 +22,22 @@ let Solid: SolidMock = require('@/solid').default;
 describe('SolidEngine', () => {
 
     beforeAll(() => {
-        Soukai.loadModel('Group', Group);
-        Soukai.loadModel('Person', Person);
-
         Solid.reset();
 
         engine = new SolidEngine();
-    });
-
-    it ('fails when using non-solid models', async () => {
-        class MyModel extends Model {}
-
-        Soukai.loadModel('MyModel', MyModel);
-
-        const operations = [
-            engine.create(MyModel as any, {}),
-            engine.readMany(MyModel as any),
-            engine.readOne(MyModel as any, Faker.random.uuid()),
-        ];
-
-        for (const operation of operations) {
-            await expect(operation).rejects.toBeInstanceOf(SoukaiError);
-
-            const error = await operation.catch(error => error);
-            expect(error.message).toEqual('SolidEngine only supports querying SolidModel models');
-        }
     });
 
     it('creates one resource', async () => {
         const resourceUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
         const name = Faker.name.firstName();
 
-        const newModelId = await engine.create(Person, {
-            url: resourceUrl,
-            name,
-        });
+        const id = await engine.create(
+            Url.parentDirectory(resourceUrl),
+            stubPersonJsonLD(resourceUrl, name),
+            resourceUrl,
+        );
 
-        expect(newModelId).toEqual(resourceUrl);
+        expect(id).toEqual(resourceUrl);
 
         expect(Solid.createResource).toHaveBeenCalledWith(
             resourceUrl,
@@ -73,12 +51,13 @@ describe('SolidEngine', () => {
         const name = Faker.name.firstName();
         const resourceUrl = Url.resolve(Faker.internet.url(), Str.slug(name));
 
-        const newModelId = await engine.create(Group, {
-            url: resourceUrl,
-            name,
-        });
+        const id = await engine.create(
+            Url.parentDirectory(resourceUrl),
+            stubGroupJsonLD(resourceUrl, name),
+            resourceUrl,
+        );
 
-        expect(newModelId).toEqual(resourceUrl);
+        expect(id).toEqual(resourceUrl);
 
         expect(Solid.createContainer).toHaveBeenCalledWith(
             resourceUrl,
@@ -88,82 +67,109 @@ describe('SolidEngine', () => {
         );
     });
 
-    it('fails when creating resources with undefined fields', async () => {
-        const operation = engine.create(Person, {
-            lastname: Faker.name.firstName(),
-        });
-
-        await expect(operation).rejects.toBeInstanceOf(SoukaiError);
-
-        const error = await operation.catch(error => error);
-        expect(error.message).toEqual('Trying to create model with an undefined field "lastname"');
-    });
-
     it('gets one resource', async () => {
         const resourceUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
         const name = Faker.name.firstName();
 
         await Solid.createResource(resourceUrl, [
+            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
+            ResourceProperty.type('http://www.w3.org/ns/ldp#Container'),
+            ResourceProperty.type('http://cmlns.com/foaf/0.1/Group'),
             ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
         ]);
 
-        const document = await engine.readOne(Person, resourceUrl);
+        const document = await engine.readOne(Url.parentDirectory(resourceUrl), resourceUrl);
 
-        expect(document).toEqual({ url: resourceUrl, name });
+        expect(document).toEqual(stubGroupJsonLD(resourceUrl, name));
 
         expect(Solid.getResource).toHaveBeenCalledWith(resourceUrl);
     });
 
     it("fails reading when resource doesn't exist", async () => {
-        await expect(engine.readOne(Person, Faker.internet.url()))
+        const resourceUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+
+        await expect(engine.readOne(Url.parentDirectory(resourceUrl), resourceUrl))
             .rejects
             .toBeInstanceOf(DocumentNotFound);
     });
 
     it('gets many resources', async () => {
-        const containerUrl = Faker.internet.url();
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const firstUrl = Url.resolve(containerUrl, 'first');
         const secondUrl = Url.resolve(containerUrl, 'second');
         const firstName = Faker.name.firstName();
         const secondName = Faker.name.firstName();
 
         await Solid.createResource(firstUrl, [
+            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
             ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', firstName),
         ]);
 
         await Solid.createResource(secondUrl, [
+            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
             ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', secondName),
         ]);
 
-        Person.from(containerUrl);
+        const documents = await engine.readMany(containerUrl);
 
-        const documents = await engine.readMany(Person);
+        expect(Object.keys(documents)).toHaveLength(2);
+        expect(documents[firstUrl]).toEqual(stubPersonJsonLD(firstUrl, firstName));
+        expect(documents[secondUrl]).toEqual(stubPersonJsonLD(secondUrl, secondName));
 
-        expect(documents).toHaveLength(2);
-        expect(documents[0]).toEqual({ url: firstUrl, name: firstName });
-        expect(documents[1]).toEqual({ url: secondUrl, name: secondName });
-
-        expect(Solid.getResources).toHaveBeenCalledWith(
-            containerUrl,
-            [
-                'http://cmlns.com/foaf/0.1/Person',
-                'http://www.w3.org/ns/ldp#Resource',
-            ],
-        );
+        expect(Solid.getResources).toHaveBeenCalledWith(containerUrl, []);
     });
 
-    xit('gets many resources using filters', async () => {
-        const containerUrl = Faker.internet.url();
+    it('gets many resources filtering by type', async () => {
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const firstUrl = Url.resolve(containerUrl, 'first');
+        const secondUrl = Url.resolve(containerUrl, 'second');
+        const firstName = Faker.name.firstName();
+        const secondName = Faker.name.firstName();
+
+        await Solid.createResource(firstUrl, [
+            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
+            ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
+            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', firstName),
+        ]);
+
+        await Solid.createResource(secondUrl, [
+            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
+            ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
+            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', secondName),
+        ]);
+
+        const documents = await engine.readMany(containerUrl, {
+            '@type': {
+                $contains: [
+                    'http://www.w3.org/ns/ldp#Resource',
+                    'http://cmlns.com/foaf/0.1/Person',
+                ],
+            },
+        });
+
+        expect(Object.keys(documents)).toHaveLength(2);
+        expect(documents[firstUrl]).toEqual(stubPersonJsonLD(firstUrl, firstName));
+        expect(documents[secondUrl]).toEqual(stubPersonJsonLD(secondUrl, secondName));
+
+        expect(Solid.getResources).toHaveBeenCalledWith(containerUrl, [
+            'http://www.w3.org/ns/ldp#Resource',
+            'http://cmlns.com/foaf/0.1/Person',
+        ]);
+    });
+
+    xit('gets many resources filtering by attributes', async () => {
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const name = Faker.name.firstName();
         const url = Url.resolve(Faker.internet.url(), Faker.random.uuid());
 
         // TODO add resources to Solid Mock
 
-        Person.from(containerUrl);
-
-        const documents = await engine.readMany(Person, { name });
+        const documents = await engine.readMany(
+            containerUrl,
+            { name },
+        );
 
         expect(documents).toHaveLength(1);
         expect(documents[0].url).toBe(url);
@@ -180,14 +186,15 @@ describe('SolidEngine', () => {
     });
 
     xit('gets many resources using $in filter', async () => {
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const firstName = Faker.name.firstName();
-        const firstUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const firstUrl = Url.resolve(containerUrl, Faker.random.uuid());
         const secondName = Faker.name.firstName();
-        const secondUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const secondUrl = Url.resolve(containerUrl, Faker.random.uuid());
 
         // TODO add resources to Solid Mock
 
-        const documents = await engine.readMany(Person, {
+        const documents = await engine.readMany(containerUrl, {
             $in: [firstUrl, secondUrl],
         });
 
@@ -214,16 +221,21 @@ describe('SolidEngine', () => {
         );
     });
 
-    it('updates dirty attributes', async () => {
-        const id = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+    it('updates resources updated attributes', async () => {
+        const resourceUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
         const name = Faker.random.word();
 
-        await Solid.createResource(id);
+        await Solid.createResource(resourceUrl);
 
-        await engine.update(Person, id, { name }, []);
+        await engine.update(
+            Url.parentDirectory(resourceUrl),
+            resourceUrl,
+            { 'http://cmlns.com/foaf/0.1/name': name },
+            [],
+        );
 
         expect(Solid.updateResource).toHaveBeenCalledWith(
-            id,
+            resourceUrl,
             [
                 ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
             ],
@@ -231,22 +243,29 @@ describe('SolidEngine', () => {
         );
     });
 
-    it('deletes attributes', async () => {
-        const id = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+    it('updates resources removed attributes', async () => {
+        const resourceUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
 
-        await Solid.createResource(id);
+        await Solid.createResource(resourceUrl);
 
-        await engine.update(Person, id, {}, ['name']);
+        await engine.update(
+            Url.parentDirectory(resourceUrl),
+            resourceUrl,
+            {},
+            ['http://cmlns.com/foaf/0.1/name'],
+        );
 
         expect(Solid.updateResource).toHaveBeenCalledWith(
-            id,
+            resourceUrl,
             [],
             ['http://cmlns.com/foaf/0.1/name'],
         );
     });
 
     it("fails updating when resource doesn't exist", async () => {
-        await expect(engine.readOne(Person, Faker.internet.url()))
+        const resourceUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+
+        await expect(engine.readOne(Url.parentDirectory(resourceUrl), resourceUrl))
             .rejects
             .toBeInstanceOf(DocumentNotFound);
     });

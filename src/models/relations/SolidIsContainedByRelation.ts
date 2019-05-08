@@ -12,7 +12,17 @@ export default class SolidIsContainedByRelation extends SingleModelRelation {
     }
 
     public resolve(): Promise<SolidModel | null> {
-        return this.related.find<SolidModel>(Url.relativeBase(this.parent.url));
+        const oldCollection = this.related.collection;
+
+        const containerUrl = Url.parentDirectory(this.parent.url);
+
+        const result = this.related
+            .from(Url.parentDirectory(containerUrl))
+            .find<SolidModel>(containerUrl);
+
+        this.related.collection = oldCollection;
+
+        return result;
     }
 
 }

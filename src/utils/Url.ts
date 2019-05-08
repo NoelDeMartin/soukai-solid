@@ -33,7 +33,11 @@ class Url {
             : url;
     }
 
-    public relativeBase(url: string): string {
+    public parentDirectory(url: string): string {
+        if (url.endsWith('/')) {
+            url = url.substring(0, url.length - 1);
+        }
+
         const pathIndex = url.lastIndexOf('/');
 
         return pathIndex !== -1 ? url.substr(0, pathIndex + 1) : url;
