@@ -53,8 +53,8 @@ export default class SolidEngine implements Engine {
 
             if ('$contains' in value) {
                 for (const childValue of value['$contains']) {
-                    if (typeof childValue === 'string') {
-                        rdfsClasses.push(childValue);
+                    if ('@id' in childValue) {
+                        rdfsClasses.push(childValue['@id']);
                     }
                 }
             } else if (typeof value === 'string') {

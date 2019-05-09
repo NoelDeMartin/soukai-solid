@@ -143,8 +143,8 @@ describe('SolidEngine', () => {
         const documents = await engine.readMany(containerUrl, {
             '@type': {
                 $contains: [
-                    'http://www.w3.org/ns/ldp#Resource',
-                    'http://cmlns.com/foaf/0.1/Person',
+                    { '@id': 'http://www.w3.org/ns/ldp#Resource' },
+                    { '@id': 'http://cmlns.com/foaf/0.1/Person' },
                 ],
             },
         });
