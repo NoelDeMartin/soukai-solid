@@ -1,10 +1,10 @@
-import { Model, MultipleModelsRelation } from 'soukai';
+import { Model, MultiModelRelation } from 'soukai';
 
 import SolidModel from '@/models/SolidModel';
 
 import Url from '@/utils/Url';
 
-export default class SolidHasManyRelation extends MultipleModelsRelation {
+export default class SolidHasManyRelation extends MultiModelRelation {
 
     protected linksField: string;
 

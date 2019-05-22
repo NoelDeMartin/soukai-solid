@@ -1,8 +1,8 @@
-import { MultipleModelsRelation } from 'soukai';
+import { MultiModelRelation } from 'soukai';
 
 import SolidModel from '@/models/SolidModel';
 
-export default class SolidContainsRelation extends MultipleModelsRelation {
+export default class SolidContainsRelation extends MultiModelRelation {
 
     protected related: typeof SolidModel;
 

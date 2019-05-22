@@ -7,7 +7,7 @@ import {
     FieldType,
     Filters,
     Model,
-    MultipleModelsRelation,
+    MultiModelRelation,
     SingleModelRelation,
     SoukaiError,
 } from 'soukai';
@@ -145,11 +145,11 @@ export default class SolidModel extends Model {
         return this.getAttribute('url');
     }
 
-    protected hasMany(model: typeof SolidModel, linksField: string): MultipleModelsRelation {
+    protected hasMany(model: typeof SolidModel, linksField: string): MultiModelRelation {
         return new SolidHasManyRelation(this, model, linksField);
     }
 
-    protected contains(model: typeof SolidModel): MultipleModelsRelation {
+    protected contains(model: typeof SolidModel): MultiModelRelation {
         return new SolidContainsRelation(this, model);
     }
 
