@@ -164,66 +164,68 @@ describe('SolidEngine', () => {
         ]);
     });
 
-    xit('gets many resources filtering by attributes', async () => {
+    // TODO test that model translates attributes
+
+    it('gets many resources filtering by attributes', async () => {
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const name = Faker.name.firstName();
-        const url = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const url = Url.resolve(containerUrl, Faker.random.uuid());
 
-        // TODO add resources to Solid Mock
+        await Solid.createResource(containerUrl, url, [
+            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
+            ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
+            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
+        ]);
+
+        await Solid.createResource(containerUrl, Url.resolve(containerUrl, Faker.random.uuid()), [
+            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
+            ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
+            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', Faker.name.firstName()),
+        ]);
 
         const documents = await engine.readMany(
             containerUrl,
-            { name },
+            { 'http://cmlns.com/foaf/0.1/name': name },
         );
 
-        expect(documents).toHaveLength(1);
-        expect(documents[0].url).toBe(url);
-        expect(documents[0].name).toBe(name);
+        expect(Object.keys(documents)).toHaveLength(1);
+        expect(documents[url]).toEqual(stubPersonJsonLD(url, name));
 
         expect(Solid.getResources).toHaveBeenCalledWith(
             containerUrl,
-            [
-                'http://cmlns.com/foaf/0.1/Person',
-                'http://www.w3.org/ns/ldp#Resource',
-            ],
-            { 'http://cmlns.com/foaf/0.1/name': name },
+            [],
         );
     });
 
-    xit('gets many resources using $in filter', async () => {
+    it('gets many resources using $in filter', async () => {
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const firstName = Faker.name.firstName();
         const firstUrl = Url.resolve(containerUrl, Faker.random.uuid());
         const secondName = Faker.name.firstName();
         const secondUrl = Url.resolve(containerUrl, Faker.random.uuid());
 
-        // TODO add resources to Solid Mock
+        await Solid.createResource(containerUrl, firstUrl, [
+            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
+            ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
+            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', firstName),
+        ]);
+
+        await Solid.createResource(containerUrl, secondUrl, [
+            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
+            ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
+            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', secondName),
+        ]);
 
         const documents = await engine.readMany(containerUrl, {
             $in: [firstUrl, secondUrl],
         });
 
-        expect(documents).toHaveLength(2);
-        expect(documents[0].url).toBe(firstUrl);
-        expect(documents[0].name).toBe(firstName);
-        expect(documents[1].url).toBe(secondUrl);
-        expect(documents[1].name).toBe(secondName);
+        expect(Object.keys(documents)).toHaveLength(2);
+        expect(documents[firstUrl]).toEqual(stubPersonJsonLD(firstUrl, firstName));
+        expect(documents[secondUrl]).toEqual(stubPersonJsonLD(secondUrl, secondName));
 
-        expect(Solid.getResource).toHaveBeenCalledWith(
-            firstUrl,
-            [
-                'http://cmlns.com/foaf/0.1/Person',
-                'http://www.w3.org/ns/ldp#Resource',
-            ],
-        );
-
-        expect(Solid.getResource).toHaveBeenCalledWith(
-            secondUrl,
-            [
-                'http://cmlns.com/foaf/0.1/Person',
-                'http://www.w3.org/ns/ldp#Resource',
-            ],
-        );
+        expect(Solid.getResource).toHaveBeenCalledWith(firstUrl);
+        expect(Solid.getResource).toHaveBeenCalledWith(secondUrl);
     });
 
     it('updates resources updated attributes', async () => {

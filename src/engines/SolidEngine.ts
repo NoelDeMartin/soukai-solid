@@ -43,23 +43,34 @@ export default class SolidEngine implements Engine {
     }
 
     public async readMany(collection: string, filters: Filters = {}): Promise<Documents> {
-        const rdfsClasses: string[] = [];
+        let resources;
 
-        if ('@type' in filters) {
-            const value = filters['@type'];
+        if ('$in' in filters) {
+            // TODO to improve efficiency by making a batch request
+            resources = await Promise.all(
+                filters['$in'].map(url => Solid.getResource(url)),
+            );
+        } else {
+            const rdfsClasses: string[] = [];
 
-            if ('$contains' in value) {
-                for (const childValue of value['$contains']) {
-                    if ('@id' in childValue) {
-                        rdfsClasses.push(childValue['@id']);
+            if ('@type' in filters) {
+                const value = filters['@type'];
+
+                if ('$contains' in value) {
+                    for (const childValue of value['$contains']) {
+                        if ('@id' in childValue) {
+                            rdfsClasses.push(childValue['@id']);
+                        }
                     }
+                } else if (typeof value === 'string') {
+                    rdfsClasses.push(value);
                 }
-            } else if (typeof value === 'string') {
-                rdfsClasses.push(value);
             }
-        }
 
-        const resources = await Solid.getResources(collection, rdfsClasses);
+            // TODO to improve efficiency, use more filters than just types in the request
+            // (filters are only applied on the client at the moment)
+            resources = await Solid.getResources(collection, rdfsClasses);
+        }
 
         const documentsArray = resources.map(this.convertResourceToJsonLD);
         const documents = {};
@@ -68,7 +79,7 @@ export default class SolidEngine implements Engine {
             documents[document['@id'] as string] = document;
         }
 
-        return this.helper.filterDocuments(documents);
+        return this.helper.filterDocuments(documents, filters);
     }
 
     public async update(
