@@ -146,6 +146,26 @@ describe('SolidModel', () => {
         );
     });
 
+    it("doesn't mint urls for new models if disabled", async () => {
+        class StubModel extends SolidModel {
+            static mintsUrls = false;
+        }
+
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+
+        jest.spyOn(engine, 'create');
+
+        Soukai.loadModel('StubModel', StubModel);
+
+        await StubModel.from(containerUrl).create();
+
+        expect(engine.create).toHaveBeenCalledWith(
+            containerUrl,
+            expect.anything(),
+            undefined,
+        );
+    });
+
     it('uses explicit containerUrl for minting url on save', async () => {
         class StubModel extends SolidModel {
         }

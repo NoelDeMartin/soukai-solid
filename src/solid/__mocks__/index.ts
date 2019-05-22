@@ -1,5 +1,8 @@
 import Resource, { ResourceProperty } from '@/solid/Resource';
 
+import Url from '@/utils/Url';
+import UUID from '@/utils/UUID';
+
 export class SolidMock {
 
     private resources: { [url: string]: Resource } = {};
@@ -9,16 +12,21 @@ export class SolidMock {
     }
 
     public async createResource(
-        url: string,
+        parentUrl: string,
+        url: string | null = null,
         properties: ResourceProperty[] = [],
     ): Promise<Resource> {
+        const turtleData = properties
+            .map(property => property.toTurtle(url || '') + ' .')
+            .join("\n");
+
+        if (url === null) {
+            url = Url.resolve(parentUrl, UUID.generate());
+        }
+
         if (await this.resourceExists(url)) {
             throw new Error(`Cannot create a resource at ${url}, url already in use`);
         }
-
-        const turtleData = properties
-            .map(property => property.toTurtle(url) + ' .')
-            .join("\n");
 
         const resource = new Resource(url, turtleData);
 
@@ -28,10 +36,11 @@ export class SolidMock {
     }
 
     public async createContainer(
-        url: string,
+        parentUrl: string,
+        url: string | null = null,
         properties: ResourceProperty[] = [],
     ): Promise<Resource> {
-        return this.createResource(url, properties);
+        return this.createResource(parentUrl, url, properties);
     }
 
     public async getResource(url: string): Promise<Resource | null> {

@@ -28,11 +28,12 @@ describe('SolidEngine', () => {
     });
 
     it('creates one resource', async () => {
-        const resourceUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
         const name = Faker.name.firstName();
 
         const id = await engine.create(
-            Url.parentDirectory(resourceUrl),
+            parentUrl,
             stubPersonJsonLD(resourceUrl, name),
             resourceUrl,
         );
@@ -40,6 +41,7 @@ describe('SolidEngine', () => {
         expect(id).toEqual(resourceUrl);
 
         expect(Solid.createResource).toHaveBeenCalledWith(
+            parentUrl,
             resourceUrl,
 
             // TODO test body using argument matcher
@@ -49,7 +51,8 @@ describe('SolidEngine', () => {
 
     it('creates one container', async () => {
         const name = Faker.name.firstName();
-        const resourceUrl = Url.resolve(Faker.internet.url(), Str.slug(name));
+        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const resourceUrl = Url.resolve(parentUrl, Str.slug(name));
 
         const id = await engine.create(
             Url.parentDirectory(resourceUrl),
@@ -60,6 +63,7 @@ describe('SolidEngine', () => {
         expect(id).toEqual(resourceUrl);
 
         expect(Solid.createContainer).toHaveBeenCalledWith(
+            parentUrl,
             resourceUrl,
 
             // TODO test body using argument matcher
@@ -68,10 +72,11 @@ describe('SolidEngine', () => {
     });
 
     it('gets one resource', async () => {
-        const resourceUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
         const name = Faker.name.firstName();
 
-        await Solid.createResource(resourceUrl, [
+        await Solid.createResource(parentUrl, resourceUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://www.w3.org/ns/ldp#Container'),
             ResourceProperty.type('http://cmlns.com/foaf/0.1/Group'),
@@ -100,13 +105,13 @@ describe('SolidEngine', () => {
         const firstName = Faker.name.firstName();
         const secondName = Faker.name.firstName();
 
-        await Solid.createResource(firstUrl, [
+        await Solid.createResource(containerUrl, firstUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
             ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', firstName),
         ]);
 
-        await Solid.createResource(secondUrl, [
+        await Solid.createResource(containerUrl, secondUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
             ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', secondName),
@@ -128,13 +133,13 @@ describe('SolidEngine', () => {
         const firstName = Faker.name.firstName();
         const secondName = Faker.name.firstName();
 
-        await Solid.createResource(firstUrl, [
+        await Solid.createResource(containerUrl, firstUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
             ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', firstName),
         ]);
 
-        await Solid.createResource(secondUrl, [
+        await Solid.createResource(containerUrl, secondUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
             ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', secondName),
@@ -222,13 +227,14 @@ describe('SolidEngine', () => {
     });
 
     it('updates resources updated attributes', async () => {
-        const resourceUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
         const name = Faker.random.word();
 
-        await Solid.createResource(resourceUrl);
+        await Solid.createResource(parentUrl, resourceUrl);
 
         await engine.update(
-            Url.parentDirectory(resourceUrl),
+            parentUrl,
             resourceUrl,
             { 'http://cmlns.com/foaf/0.1/name': name },
             [],
@@ -244,12 +250,13 @@ describe('SolidEngine', () => {
     });
 
     it('updates resources removed attributes', async () => {
-        const resourceUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
 
-        await Solid.createResource(resourceUrl);
+        await Solid.createResource(parentUrl, resourceUrl);
 
         await engine.update(
-            Url.parentDirectory(resourceUrl),
+            parentUrl,
             resourceUrl,
             {},
             ['http://cmlns.com/foaf/0.1/name'],

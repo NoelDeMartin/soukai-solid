@@ -29,6 +29,8 @@ export class SolidModel extends Model {
 
     public static rdfsClasses: string[] | Set<string>;
 
+    public static mintsUrls: boolean;
+
     public static from(containerUrl: string): typeof SolidModel;
 
     public static create<T extends Model>(attributes?: Attributes, containerUrl?: string): Promise<T>;

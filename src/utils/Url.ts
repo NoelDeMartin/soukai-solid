@@ -8,6 +8,8 @@ class Url {
 
             if (fragment.startsWith('/')) {
                 url = this.base(url) + fragment;
+            } else if (fragment.startsWith('http://') || fragment.startsWith('https://')) {
+                url = fragment;
             } else if (url.endsWith('/')) {
                 url += fragment;
             } else {

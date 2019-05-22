@@ -11,16 +11,34 @@ const RDFS = $rdf.Namespace('http://www.w3.org/1999/02/22-rdf-syntax-ns#');
 class Solid {
 
     public async createResource(
-        url: string,
+        parentUrl: string,
+        url: string | null = null,
         properties: ResourceProperty[] = [],
     ): Promise<Resource> {
+        const turtleData = properties
+            .map(property => property.toTurtle(url || '') + ' .')
+            .join("\n");
+
+        const headers = {
+            'Content-Type': 'text/turtle',
+        };
+
+        if (url === null) {
+            const response = await SolidAuthClient.fetch(parentUrl, {
+                headers,
+                method: 'POST',
+                body: turtleData,
+            });
+
+            return new Resource(
+                Url.resolve(parentUrl, response.headers.get('Location') || ''),
+                turtleData,
+            );
+        }
+
         if (await this.resourceExists(url)) {
             throw new Error(`Cannot create a resource at ${url}, url already in use`);
         }
-
-        const turtleData = properties
-            .map(property => property.toTurtle(url) + ' .')
-            .join("\n");
 
         await SolidAuthClient.fetch(url, {
             method: 'PUT',
@@ -34,9 +52,35 @@ class Solid {
     }
 
     public async createContainer(
-        url: string,
+        parentUrl: string,
+        url: string | null = null,
         properties: ResourceProperty[] = [],
     ): Promise<Resource> {
+        const turtleData = properties
+            .map(property => property.toTurtle(url || '') + ' .')
+            .join("\n");
+
+        const headers = {
+            'Content-Type': 'text/turtle',
+            'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
+        };
+
+        if (url === null) {
+            const response = await SolidAuthClient.fetch(
+                parentUrl,
+                {
+                    headers,
+                    method: 'POST',
+                    body: turtleData,
+                },
+            );
+
+            return new Resource(
+                Url.resolve(parentUrl, response.headers.get('Location') || ''),
+                turtleData,
+            );
+        }
+
         if (!url.endsWith('/')) {
             throw new Error(`Container urls must end with a trailing slash, given ${url}`);
         }
@@ -45,19 +89,14 @@ class Solid {
             throw new Error(`Cannot create a resource at ${url}, url already in use`);
         }
 
-        const turtleData = properties
-            .map(property => property.toTurtle(url) + ' .')
-            .join("\n");
-
         await SolidAuthClient.fetch(
-            Url.parentDirectory(url.substr(0, url.length - 1)),
+            parentUrl,
             {
                 method: 'POST',
                 body: turtleData,
                 headers: {
+                    ...headers,
                     'Slug': Url.filename(url.substr(0, url.length - 1)),
-                    'Content-Type': 'text/turtle',
-                    'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                 },
             },
         );

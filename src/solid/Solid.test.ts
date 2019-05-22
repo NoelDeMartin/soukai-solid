@@ -14,7 +14,8 @@ describe('Solid', () => {
     });
 
     it('creates resources', async () => {
-        const url = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
         const name = Faker.random.word();
         const firstType = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
         const secondType = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
@@ -23,7 +24,8 @@ describe('Solid', () => {
         SolidAuthClient.addFetchResponse();
 
         const resource = await Solid.createResource(
-            url,
+            parentUrl,
+            resourceUrl,
             [
                 ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
                 ResourceProperty.type(firstType),
@@ -32,7 +34,7 @@ describe('Solid', () => {
             ],
         );
 
-        expect(resource.url).toEqual(url);
+        expect(resource.url).toEqual(resourceUrl);
         expect(resource.name).toEqual(name);
         expect(resource.types).toEqual([
             firstType,
@@ -41,7 +43,7 @@ describe('Solid', () => {
         ]);
 
         expect(SolidAuthClient.fetch).toHaveBeenCalledWith(
-            url,
+            resourceUrl,
             {
                 method: 'PUT',
                 headers: { 'Content-Type': 'text/turtle' },
@@ -52,26 +54,56 @@ describe('Solid', () => {
         );
     });
 
+    it('creates resources without minted url', async () => {
+        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
+
+        SolidAuthClient.addFetchResponse('', { Location: resourceUrl });
+
+        const resource = await Solid.createResource(
+            parentUrl,
+            null,
+            [
+                ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
+            ],
+        );
+
+        expect(resource.url).toEqual(resourceUrl);
+
+        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(
+            parentUrl,
+            {
+                method: 'POST',
+                headers: { 'Content-Type': 'text/turtle' },
+
+                // TODO test body using argument matcher
+                body: expect.anything(),
+            },
+        );
+    });
+
     it('fails creating resources if the provided url is already in use', async () => {
-        const url = Faker.internet.url();
+        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
 
         SolidAuthClient.addFetchResponse();
 
-        await expect(Solid.createResource(url, []))
+        await expect(Solid.createResource(parentUrl, resourceUrl, []))
             .rejects
-            .toThrowError(`Cannot create a resource at ${url}, url already in use`);
+            .toThrowError(`Cannot create a resource at ${resourceUrl}, url already in use`);
     });
 
     it('creates containers', async () => {
         const name = Faker.random.word();
-        const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const url = Url.resolveDirectory(containerUrl, Str.slug(name));
+        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const containerUrl = Url.resolveDirectory(parentUrl, Str.slug(name));
 
         SolidAuthClient.addFetchNotFoundResponse();
         SolidAuthClient.addFetchResponse();
 
         const resource = await Solid.createContainer(
-            url,
+            parentUrl,
+            containerUrl,
             [
                 ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
                 ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
@@ -79,7 +111,7 @@ describe('Solid', () => {
             ],
         );
 
-        expect(resource.url).toEqual(url);
+        expect(resource.url).toEqual(containerUrl);
         expect(resource.name).toEqual(name);
         expect(resource.types).toEqual([
             'http://www.w3.org/ns/ldp#Resource',
@@ -87,13 +119,45 @@ describe('Solid', () => {
         ]);
 
         expect(SolidAuthClient.fetch).toHaveBeenCalledWith(
-            containerUrl,
+            parentUrl,
             {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'text/turtle',
                     'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                     'Slug': Str.slug(name),
+                },
+
+                // TODO test body using argument matcher
+                body: expect.anything(),
+            },
+        );
+    });
+
+    it('creates containers without minted url', async () => {
+        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const containerUrl = Url.resolveDirectory(parentUrl, Str.slug(name));
+
+        SolidAuthClient.addFetchResponse('', { Location: containerUrl });
+
+        const resource = await Solid.createContainer(
+            parentUrl,
+            null,
+            [
+                ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
+                ResourceProperty.type('http://www.w3.org/ns/ldp#Container'),
+            ],
+        );
+
+        expect(resource.url).toEqual(containerUrl);
+
+        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(
+            parentUrl,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/turtle',
+                    'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                 },
 
                 // TODO test body using argument matcher

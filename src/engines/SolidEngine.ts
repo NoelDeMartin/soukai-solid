@@ -24,15 +24,12 @@ export default class SolidEngine implements Engine {
         id?: string,
     ): Promise<string> {
         const properties = this.convertJsonLDToResourceProperties(attributes);
-        const url = id || collection + UUID.generate();
 
-        if (this.hasContainerType(properties)) {
-            await Solid.createContainer(url, properties);
-        } else {
-            await Solid.createResource(url, properties);
-        }
+        const resource = this.hasContainerType(properties)
+            ? await Solid.createContainer(collection, id, properties)
+            : await Solid.createResource(collection, id, properties);
 
-        return url;
+        return resource.url;
     }
 
     public async readOne(_: string, id: string): Promise<EngineAttributes> {

@@ -40,6 +40,8 @@ export default class SolidModel extends Model {
 
     public static rdfsClasses: string[] | Set<string> = [];
 
+    public static mintsUrls: boolean = true;
+
     protected static instance: SolidModel;
 
     protected static pureInstance: SolidModel;
@@ -125,7 +127,7 @@ export default class SolidModel extends Model {
     protected classDef: typeof SolidModel;
 
     public save<T extends Model>(containerUrl?: string): Promise<T> {
-        if (!this.hasAttribute(this.classDef.primaryKey)) {
+        if (this.classDef.mintsUrls && !this.hasAttribute(this.classDef.primaryKey)) {
             const urlPath = (this.classDef.ldpContainer && this.hasAttribute('name'))
                 ? Str.slug(this.getAttribute('name'))
                 : UUID.generate();
