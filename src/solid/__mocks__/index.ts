@@ -3,7 +3,7 @@ import Resource, { ResourceProperty } from '@/solid/Resource';
 import Url from '@/utils/Url';
 import UUID from '@/utils/UUID';
 
-export class SolidMock {
+export class SolidClientMock {
 
     private resources: { [url: string]: Resource } = {};
 
@@ -78,7 +78,7 @@ export class SolidMock {
     }
 }
 
-const instance = new SolidMock();
+const instance = new SolidClientMock();
 
 jest.spyOn(instance, 'createResource');
 jest.spyOn(instance, 'createContainer');

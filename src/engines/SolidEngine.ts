@@ -7,15 +7,17 @@ import {
     EngineHelper,
 } from 'soukai';
 
-import Solid, { Resource, ResourceProperty } from '@/solid';
-import UUID from '@/utils/UUID';
+import { SolidClient, Fetch, Resource, ResourceProperty } from '@/solid';
 
 export default class SolidEngine implements Engine {
 
     private helper: EngineHelper;
 
-    public constructor() {
+    private client: SolidClient;
+
+    public constructor(fetch: Fetch) {
         this.helper = new EngineHelper();
+        this.client = new SolidClient(fetch);
     }
 
     public async create(
@@ -26,14 +28,14 @@ export default class SolidEngine implements Engine {
         const properties = this.convertJsonLDToResourceProperties(attributes);
 
         const resource = this.hasContainerType(properties)
-            ? await Solid.createContainer(collection, id, properties)
-            : await Solid.createResource(collection, id, properties);
+            ? await this.client.createContainer(collection, id, properties)
+            : await this.client.createResource(collection, id, properties);
 
         return resource.url;
     }
 
     public async readOne(_: string, id: string): Promise<EngineAttributes> {
-        const resource = await Solid.getResource(id);
+        const resource = await this.client.getResource(id);
 
         if (resource === null) {
             throw new DocumentNotFound(id);
@@ -48,7 +50,7 @@ export default class SolidEngine implements Engine {
         if ('$in' in filters) {
             // TODO to improve efficiency by making a batch request
             resources = await Promise.all(
-                filters['$in'].map(url => Solid.getResource(url)),
+                filters['$in'].map(url => this.client.getResource(url)),
             );
         } else {
             const rdfsClasses: string[] = [];
@@ -69,7 +71,7 @@ export default class SolidEngine implements Engine {
 
             // TODO to improve efficiency, use more filters than just types in the request
             // (filters are only applied on the client at the moment)
-            resources = await Solid.getResources(collection, rdfsClasses);
+            resources = await this.client.getResources(collection, rdfsClasses);
         }
 
         const documentsArray = resources.map(this.convertResourceToJsonLD);
@@ -92,7 +94,7 @@ export default class SolidEngine implements Engine {
         const removedProperties = removedAttributes;
 
         try {
-            await Solid.updateResource(id, updatedProperties, removedProperties);
+            await this.client.updateResource(id, updatedProperties, removedProperties);
         } catch (error) {
             // TODO this may fail for reasons other than resource not found
             throw new DocumentNotFound(id);

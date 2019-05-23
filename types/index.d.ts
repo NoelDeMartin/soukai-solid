@@ -43,9 +43,17 @@ export class SolidModel extends Model {
 
 }
 
+interface RequestOptions {
+    headers?: object;
+    method?: string;
+    body?: string;
+}
+
+export type Fetch = (url: string, options?: RequestOptions) => Promise<Response>;
+
 export class SolidEngine implements Engine {
 
-    constructor();
+    constructor(fetch: Fetch);
 
     create(collection: string, attributes: EngineAttributes, id?: string): Promise<string>;
 

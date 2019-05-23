@@ -31,7 +31,7 @@ module.exports = {
 
     output,
 
-    externals: ['soukai', 'rdflib', 'solid-auth-client'],
+    externals: ['soukai', 'rdflib'],
 
     module: {
 

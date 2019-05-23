@@ -1,14 +1,27 @@
 import $rdf from 'rdflib';
-import SolidAuthClient from 'solid-auth-client';
 
 import Resource, { ResourceProperty } from '@/solid/Resource';
 
 import Url from '@/utils/Url';
 
+interface RequestOptions {
+    headers?: object;
+    method?: string;
+    body?: string;
+}
+
+export type Fetch = (url: string, options?: RequestOptions) => Promise<Response>;
+
 const LDP = $rdf.Namespace('http://www.w3.org/ns/ldp#');
 const RDFS = $rdf.Namespace('http://www.w3.org/1999/02/22-rdf-syntax-ns#');
 
-class Solid {
+export default class SolidClient {
+
+    private fetch: Fetch;
+
+    constructor(fetch: Fetch) {
+        this.fetch = fetch;
+    }
 
     public async createResource(
         parentUrl: string,
@@ -24,7 +37,7 @@ class Solid {
         };
 
         if (url === null) {
-            const response = await SolidAuthClient.fetch(parentUrl, {
+            const response = await this.fetch(parentUrl, {
                 headers,
                 method: 'POST',
                 body: turtleData,
@@ -40,7 +53,7 @@ class Solid {
             throw new Error(`Cannot create a resource at ${url}, url already in use`);
         }
 
-        await SolidAuthClient.fetch(url, {
+        await this.fetch(url, {
             method: 'PUT',
             body: turtleData,
             headers: {
@@ -66,7 +79,7 @@ class Solid {
         };
 
         if (url === null) {
-            const response = await SolidAuthClient.fetch(
+            const response = await this.fetch(
                 parentUrl,
                 {
                     headers,
@@ -89,7 +102,7 @@ class Solid {
             throw new Error(`Cannot create a resource at ${url}, url already in use`);
         }
 
-        await SolidAuthClient.fetch(
+        await this.fetch(
             parentUrl,
             {
                 method: 'POST',
@@ -105,7 +118,7 @@ class Solid {
     }
 
     public async getResource(url: string): Promise<Resource | null> {
-        const response = await SolidAuthClient.fetch(url, {
+        const response = await this.fetch(url, {
             headers: { 'Accept': 'text/turtle' },
         });
 
@@ -171,7 +184,7 @@ class Solid {
             .filter(part => part !== null)
             .join(';');
 
-        const response = await SolidAuthClient.fetch(
+        const response = await this.fetch(
             url,
             {
                 method: 'PATCH',
@@ -193,7 +206,7 @@ class Solid {
     }
 
     public async resourceExists(url: string): Promise<boolean> {
-        const response = await SolidAuthClient.fetch(url, {
+        const response = await this.fetch(url, {
             headers: { 'Accept': 'text/turtle' },
         });
 
@@ -210,7 +223,7 @@ class Solid {
 
     private async getContainerResources(containerUrl: string, onlyContainers: boolean): Promise<Resource[]> {
         const store = $rdf.graph();
-        const data = await SolidAuthClient
+        const data = await this
             .fetch(containerUrl, { headers: { 'Accept': 'text/turtle' } })
             .then(res => res.text());
 
@@ -237,7 +250,7 @@ class Solid {
 
     private async getContainerResourcesUsingGlobbing(containerUrl: string): Promise<Resource[]> {
         const store = $rdf.graph();
-        const data = await SolidAuthClient
+        const data = await this
             .fetch(containerUrl + '*', { headers: { 'Accept': 'text/turtle' } })
             .then(res => res.text());
 
@@ -249,5 +262,3 @@ class Solid {
     }
 
 }
-
-export default new Solid();

@@ -1,5 +1,3 @@
-jest.mock('@/solid');
-
 import { DocumentNotFound } from 'soukai';
 
 import Faker from 'faker';
@@ -8,7 +6,7 @@ import SolidEngine from '@/engines/SolidEngine';
 
 import { ResourceProperty } from '@/solid';
 
-import { SolidMock } from '@/solid/__mocks__';
+import SolidClientMock from '@/solid/__mocks__';
 
 import { stubPersonJsonLD, stubGroupJsonLD } from '@tests/stubs/helpers';
 
@@ -17,14 +15,14 @@ import Url from '@/utils/Url';
 
 let engine: SolidEngine;
 
-let Solid: SolidMock = require('@/solid').default;
-
 describe('SolidEngine', () => {
 
     beforeAll(() => {
-        Solid.reset();
+        SolidClientMock.reset();
 
-        engine = new SolidEngine();
+        // TODO use dependency injection instead of doing this
+        engine = new SolidEngine(null as any);
+        (engine as any).client = SolidClientMock;
     });
 
     it('creates one resource', async () => {
@@ -40,7 +38,7 @@ describe('SolidEngine', () => {
 
         expect(id).toEqual(resourceUrl);
 
-        expect(Solid.createResource).toHaveBeenCalledWith(
+        expect(SolidClientMock.createResource).toHaveBeenCalledWith(
             parentUrl,
             resourceUrl,
 
@@ -62,7 +60,7 @@ describe('SolidEngine', () => {
 
         expect(id).toEqual(resourceUrl);
 
-        expect(Solid.createContainer).toHaveBeenCalledWith(
+        expect(SolidClientMock.createContainer).toHaveBeenCalledWith(
             parentUrl,
             resourceUrl,
 
@@ -76,7 +74,7 @@ describe('SolidEngine', () => {
         const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
         const name = Faker.name.firstName();
 
-        await Solid.createResource(parentUrl, resourceUrl, [
+        await SolidClientMock.createResource(parentUrl, resourceUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://www.w3.org/ns/ldp#Container'),
             ResourceProperty.type('http://cmlns.com/foaf/0.1/Group'),
@@ -87,7 +85,7 @@ describe('SolidEngine', () => {
 
         expect(document).toEqual(stubGroupJsonLD(resourceUrl, name));
 
-        expect(Solid.getResource).toHaveBeenCalledWith(resourceUrl);
+        expect(SolidClientMock.getResource).toHaveBeenCalledWith(resourceUrl);
     });
 
     it("fails reading when resource doesn't exist", async () => {
@@ -105,13 +103,13 @@ describe('SolidEngine', () => {
         const firstName = Faker.name.firstName();
         const secondName = Faker.name.firstName();
 
-        await Solid.createResource(containerUrl, firstUrl, [
+        await SolidClientMock.createResource(containerUrl, firstUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
             ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', firstName),
         ]);
 
-        await Solid.createResource(containerUrl, secondUrl, [
+        await SolidClientMock.createResource(containerUrl, secondUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
             ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', secondName),
@@ -123,7 +121,7 @@ describe('SolidEngine', () => {
         expect(documents[firstUrl]).toEqual(stubPersonJsonLD(firstUrl, firstName));
         expect(documents[secondUrl]).toEqual(stubPersonJsonLD(secondUrl, secondName));
 
-        expect(Solid.getResources).toHaveBeenCalledWith(containerUrl, []);
+        expect(SolidClientMock.getResources).toHaveBeenCalledWith(containerUrl, []);
     });
 
     it('gets many resources filtering by type', async () => {
@@ -133,13 +131,13 @@ describe('SolidEngine', () => {
         const firstName = Faker.name.firstName();
         const secondName = Faker.name.firstName();
 
-        await Solid.createResource(containerUrl, firstUrl, [
+        await SolidClientMock.createResource(containerUrl, firstUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
             ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', firstName),
         ]);
 
-        await Solid.createResource(containerUrl, secondUrl, [
+        await SolidClientMock.createResource(containerUrl, secondUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
             ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', secondName),
@@ -158,7 +156,7 @@ describe('SolidEngine', () => {
         expect(documents[firstUrl]).toEqual(stubPersonJsonLD(firstUrl, firstName));
         expect(documents[secondUrl]).toEqual(stubPersonJsonLD(secondUrl, secondName));
 
-        expect(Solid.getResources).toHaveBeenCalledWith(containerUrl, [
+        expect(SolidClientMock.getResources).toHaveBeenCalledWith(containerUrl, [
             'http://www.w3.org/ns/ldp#Resource',
             'http://cmlns.com/foaf/0.1/Person',
         ]);
@@ -171,13 +169,13 @@ describe('SolidEngine', () => {
         const name = Faker.name.firstName();
         const url = Url.resolve(containerUrl, Faker.random.uuid());
 
-        await Solid.createResource(containerUrl, url, [
+        await SolidClientMock.createResource(containerUrl, url, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
             ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
         ]);
 
-        await Solid.createResource(containerUrl, Url.resolve(containerUrl, Faker.random.uuid()), [
+        await SolidClientMock.createResource(containerUrl, Url.resolve(containerUrl, Faker.random.uuid()), [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
             ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', Faker.name.firstName()),
@@ -191,7 +189,7 @@ describe('SolidEngine', () => {
         expect(Object.keys(documents)).toHaveLength(1);
         expect(documents[url]).toEqual(stubPersonJsonLD(url, name));
 
-        expect(Solid.getResources).toHaveBeenCalledWith(
+        expect(SolidClientMock.getResources).toHaveBeenCalledWith(
             containerUrl,
             [],
         );
@@ -204,13 +202,13 @@ describe('SolidEngine', () => {
         const secondName = Faker.name.firstName();
         const secondUrl = Url.resolve(containerUrl, Faker.random.uuid());
 
-        await Solid.createResource(containerUrl, firstUrl, [
+        await SolidClientMock.createResource(containerUrl, firstUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
             ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', firstName),
         ]);
 
-        await Solid.createResource(containerUrl, secondUrl, [
+        await SolidClientMock.createResource(containerUrl, secondUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
             ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', secondName),
@@ -224,8 +222,8 @@ describe('SolidEngine', () => {
         expect(documents[firstUrl]).toEqual(stubPersonJsonLD(firstUrl, firstName));
         expect(documents[secondUrl]).toEqual(stubPersonJsonLD(secondUrl, secondName));
 
-        expect(Solid.getResource).toHaveBeenCalledWith(firstUrl);
-        expect(Solid.getResource).toHaveBeenCalledWith(secondUrl);
+        expect(SolidClientMock.getResource).toHaveBeenCalledWith(firstUrl);
+        expect(SolidClientMock.getResource).toHaveBeenCalledWith(secondUrl);
     });
 
     it('updates resources updated attributes', async () => {
@@ -233,7 +231,7 @@ describe('SolidEngine', () => {
         const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
         const name = Faker.random.word();
 
-        await Solid.createResource(parentUrl, resourceUrl);
+        await SolidClientMock.createResource(parentUrl, resourceUrl);
 
         await engine.update(
             parentUrl,
@@ -242,7 +240,7 @@ describe('SolidEngine', () => {
             [],
         );
 
-        expect(Solid.updateResource).toHaveBeenCalledWith(
+        expect(SolidClientMock.updateResource).toHaveBeenCalledWith(
             resourceUrl,
             [
                 ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
@@ -255,7 +253,7 @@ describe('SolidEngine', () => {
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
 
-        await Solid.createResource(parentUrl, resourceUrl);
+        await SolidClientMock.createResource(parentUrl, resourceUrl);
 
         await engine.update(
             parentUrl,
@@ -264,7 +262,7 @@ describe('SolidEngine', () => {
             ['http://cmlns.com/foaf/0.1/name'],
         );
 
-        expect(Solid.updateResource).toHaveBeenCalledWith(
+        expect(SolidClientMock.updateResource).toHaveBeenCalledWith(
             resourceUrl,
             [],
             ['http://cmlns.com/foaf/0.1/name'],

@@ -1,7 +1,7 @@
-import Solid from './Solid';
+import SolidClient, { Fetch } from './SolidClient';
 
 import Resource, { ResourceProperty } from './Resource';
 
 export { Resource, ResourceProperty };
 
-export default Solid;
+export { SolidClient, Fetch };

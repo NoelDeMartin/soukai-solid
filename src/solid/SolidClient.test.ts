@@ -3,14 +3,17 @@ import Faker from 'faker';
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 
-import Solid, { ResourceProperty, Resource } from '@/solid';
+import { SolidClient, ResourceProperty, Resource } from '@/solid';
 
-import SolidAuthClient from '@mocks/solid-auth-client';
+import StubFetcher from '@tests/stubs/StubFetcher';
 
 describe('Solid', () => {
 
+    let client: SolidClient;
+
     beforeEach(() => {
-        SolidAuthClient.reset();
+        StubFetcher.reset();
+        client = new SolidClient(StubFetcher.fetch.bind(StubFetcher));
     });
 
     it('creates resources', async () => {
@@ -20,10 +23,10 @@ describe('Solid', () => {
         const firstType = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
         const secondType = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
 
-        SolidAuthClient.addFetchNotFoundResponse();
-        SolidAuthClient.addFetchResponse();
+        StubFetcher.addFetchNotFoundResponse();
+        StubFetcher.addFetchResponse();
 
-        const resource = await Solid.createResource(
+        const resource = await client.createResource(
             parentUrl,
             resourceUrl,
             [
@@ -42,7 +45,7 @@ describe('Solid', () => {
             'http://www.w3.org/ns/ldp#Resource',
         ]);
 
-        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(
             resourceUrl,
             {
                 method: 'PUT',
@@ -58,9 +61,9 @@ describe('Solid', () => {
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
 
-        SolidAuthClient.addFetchResponse('', { Location: resourceUrl });
+        StubFetcher.addFetchResponse('', { Location: resourceUrl });
 
-        const resource = await Solid.createResource(
+        const resource = await client.createResource(
             parentUrl,
             null,
             [
@@ -70,7 +73,7 @@ describe('Solid', () => {
 
         expect(resource.url).toEqual(resourceUrl);
 
-        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(
             parentUrl,
             {
                 method: 'POST',
@@ -86,9 +89,9 @@ describe('Solid', () => {
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
 
-        SolidAuthClient.addFetchResponse();
+        StubFetcher.addFetchResponse();
 
-        await expect(Solid.createResource(parentUrl, resourceUrl, []))
+        await expect(client.createResource(parentUrl, resourceUrl, []))
             .rejects
             .toThrowError(`Cannot create a resource at ${resourceUrl}, url already in use`);
     });
@@ -98,10 +101,10 @@ describe('Solid', () => {
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const containerUrl = Url.resolveDirectory(parentUrl, Str.slug(name));
 
-        SolidAuthClient.addFetchNotFoundResponse();
-        SolidAuthClient.addFetchResponse();
+        StubFetcher.addFetchNotFoundResponse();
+        StubFetcher.addFetchResponse();
 
-        const resource = await Solid.createContainer(
+        const resource = await client.createContainer(
             parentUrl,
             containerUrl,
             [
@@ -118,7 +121,7 @@ describe('Solid', () => {
             'http://www.w3.org/ns/ldp#Container',
         ]);
 
-        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(
             parentUrl,
             {
                 method: 'POST',
@@ -138,9 +141,9 @@ describe('Solid', () => {
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const containerUrl = Url.resolveDirectory(parentUrl, Str.slug(name));
 
-        SolidAuthClient.addFetchResponse('', { Location: containerUrl });
+        StubFetcher.addFetchResponse('', { Location: containerUrl });
 
-        const resource = await Solid.createContainer(
+        const resource = await client.createContainer(
             parentUrl,
             null,
             [
@@ -151,7 +154,7 @@ describe('Solid', () => {
 
         expect(resource.url).toEqual(containerUrl);
 
-        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(
             parentUrl,
             {
                 method: 'POST',
@@ -174,22 +177,22 @@ describe('Solid', () => {
                 <http://cmlns.com/foaf/0.1/name> "Foo Bar" .
         `;
 
-        SolidAuthClient.addFetchResponse(data);
+        StubFetcher.addFetchResponse(data);
 
-        const resource = await Solid.getResource(url) as Resource;
+        const resource = await client.getResource(url) as Resource;
 
         expect(resource).not.toBeNull();
         expect(resource.name).toEqual('Foo Bar');
 
-        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(url, {
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(url, {
             headers: { 'Accept': 'text/turtle' },
         });
     });
 
     it('getting non-existent resource returns null', async () => {
-        SolidAuthClient.addFetchNotFoundResponse();
+        StubFetcher.addFetchNotFoundResponse();
 
-        const resource = await Solid.getResource(Faker.internet.url());
+        const resource = await client.getResource(Faker.internet.url());
 
         expect(resource).toBeNull();
     });
@@ -202,9 +205,9 @@ describe('Solid', () => {
                 <http://cmlns.com/foaf/0.1/name> "Foo Bar" .
         `;
 
-        SolidAuthClient.addFetchResponse(data);
+        StubFetcher.addFetchResponse(data);
 
-        const resources = await Solid.getResources(containerUrl);
+        const resources = await client.getResources(containerUrl);
 
         expect(resources).toHaveLength(1);
 
@@ -212,7 +215,7 @@ describe('Solid', () => {
         expect(resources[0].name).toEqual('Foo Bar');
         expect(resources[0].types).toEqual(['http://www.w3.org/ns/ldp#Resource']);
 
-        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(containerUrl + '/*', {
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl + '/*', {
             headers: { 'Accept': 'text/turtle' },
         });
     });
@@ -224,9 +227,9 @@ describe('Solid', () => {
             <bar> a <http://www.w3.org/ns/ldp#Resource> .
         `;
 
-        SolidAuthClient.addFetchResponse(data);
+        StubFetcher.addFetchResponse(data);
 
-        const resources = await Solid.getResources(containerUrl);
+        const resources = await client.getResources(containerUrl);
 
         expect(resources).toHaveLength(1);
         expect(resources[0].url).toEqual(Url.resolve(containerUrl, 'bar'));
@@ -242,9 +245,9 @@ describe('Solid', () => {
                 <http://cmlns.com/foaf/0.1/name> "Bar" .
         `;
 
-        SolidAuthClient.addFetchResponse(data);
+        StubFetcher.addFetchResponse(data);
 
-        const resources = await Solid.getResources(Faker.internet.url());
+        const resources = await client.getResources(Faker.internet.url());
 
         expect(resources).toHaveLength(2);
 
@@ -278,9 +281,9 @@ describe('Solid', () => {
                 <http://cmlns.com/foaf/0.1/name> "Bar" .
         `;
 
-        SolidAuthClient.addFetchResponse(data);
+        StubFetcher.addFetchResponse(data);
 
-        const resources = await Solid.getResources(Faker.internet.url(), [firstType]);
+        const resources = await client.getResources(Faker.internet.url(), [firstType]);
 
         expect(resources).toHaveLength(1);
         expect(resources[0].name).toEqual('Foo');
@@ -290,7 +293,7 @@ describe('Solid', () => {
         const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const type = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
 
-        SolidAuthClient.addFetchResponse(`
+        StubFetcher.addFetchResponse(`
             <>
                 <http://www.w3.org/ns/ldp#contains> <foo>, <bar>, <baz> .
             <foo>
@@ -300,18 +303,18 @@ describe('Solid', () => {
             <baz>
                 a <http://www.w3.org/ns/ldp#Resource> .
         `);
-        SolidAuthClient.addFetchResponse(`
+        StubFetcher.addFetchResponse(`
             <${containerUrl}foo>
                 a <http://www.w3.org/ns/ldp#Resource>, <http://www.w3.org/ns/ldp#Container>, <${type}> ;
                 <http://cmlns.com/foaf/0.1/name> "Foo" .
         `);
-        SolidAuthClient.addFetchResponse(`
+        StubFetcher.addFetchResponse(`
             <${containerUrl}bar>
                 a <http://www.w3.org/ns/ldp#Resource>, <http://www.w3.org/ns/ldp#Container> ;
                 <http://cmlns.com/foaf/0.1/name> "Bar" .
         `);
 
-        const resources = await Solid.getResources(containerUrl, [
+        const resources = await client.getResources(containerUrl, [
             'http://www.w3.org/ns/ldp#Container',
             type,
         ]);
@@ -326,16 +329,16 @@ describe('Solid', () => {
             type,
         ]);
 
-        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(containerUrl, {
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl, {
             headers: { 'Accept': 'text/turtle' },
         });
-        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(containerUrl + 'foo', {
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl + 'foo', {
             headers: { 'Accept': 'text/turtle' },
         });
-        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(containerUrl + 'bar', {
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl + 'bar', {
             headers: { 'Accept': 'text/turtle' },
         });
-        expect(SolidAuthClient.fetch).not.toHaveBeenCalledWith(containerUrl + 'baz', {
+        expect(StubFetcher.fetch).not.toHaveBeenCalledWith(containerUrl + 'baz', {
             headers: { 'Accept': 'text/turtle' },
         });
     });
@@ -351,11 +354,11 @@ describe('Solid', () => {
             'deletedTwo',
         ];
 
-        SolidAuthClient.addFetchResponse();
+        StubFetcher.addFetchResponse();
 
-        await Solid.updateResource(url, updatedProperties, deletedProperties);
+        await client.updateResource(url, updatedProperties, deletedProperties);
 
-        expect(SolidAuthClient.fetch).toHaveBeenCalledWith(
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(
             url,
             {
                 method: 'PATCH',
@@ -370,9 +373,9 @@ describe('Solid', () => {
     it('fails updating non-existent resources', async () => {
         const url = Faker.internet.url();
 
-        SolidAuthClient.addFetchNotFoundResponse();
+        StubFetcher.addFetchNotFoundResponse();
 
-        await expect(Solid.updateResource(url, [], []))
+        await expect(client.updateResource(url, [], []))
             .rejects
             .toThrowError(`Error updating resource at ${url}, returned status code 404`);
     });
