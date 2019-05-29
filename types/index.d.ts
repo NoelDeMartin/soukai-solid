@@ -33,7 +33,7 @@ export class SolidModel extends Model {
 
     public static from(containerUrl: string): typeof SolidModel;
 
-    public static create<T extends Model>(attributes?: Attributes, containerUrl?: string): Promise<T>;
+    public static at(containerUrl: string): typeof SolidModel;
 
     public save<T extends Model>(containerUrl?: string): Promise<T>;
 

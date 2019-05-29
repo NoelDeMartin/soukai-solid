@@ -52,6 +52,10 @@ export default class SolidModel extends Model {
         return this;
     }
 
+    public static at(containerUrl: string): typeof SolidModel {
+        return this.from(containerUrl);
+    }
+
     public static boot(name: string): void {
         super.boot(name);
 
@@ -100,13 +104,6 @@ export default class SolidModel extends Model {
         }
 
         this.fields[this.primaryKey].rdfProperty = null;
-    }
-
-    public static create<T extends Model>(
-        attributes?: Attributes,
-        containerUrl?: string,
-    ): Promise<T> {
-        return this.instance.withCollection(containerUrl, () => super.create(attributes));
     }
 
     public static all<T extends Model>(filters: Filters = {}): Promise<T[]> {

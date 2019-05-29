@@ -134,7 +134,7 @@ describe('SolidModel', () => {
 
         Soukai.loadModel('StubModel', StubModel);
 
-        const model = await StubModel.from(containerUrl).create();
+        const model = await StubModel.at(containerUrl).create();
 
         expect(typeof model.url).toEqual('string');
         expect(model.url.startsWith(containerUrl)).toBe(true);
@@ -157,7 +157,7 @@ describe('SolidModel', () => {
 
         Soukai.loadModel('StubModel', StubModel);
 
-        await StubModel.from(containerUrl).create();
+        await StubModel.at(containerUrl).create();
 
         expect(engine.create).toHaveBeenCalledWith(
             containerUrl,
@@ -190,28 +190,6 @@ describe('SolidModel', () => {
         );
     });
 
-    it('uses explicit containerUrl for minting url on create', async () => {
-        class StubModel extends SolidModel {
-        }
-
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-
-        jest.spyOn(engine, 'create');
-
-        Soukai.loadModel('StubModel', StubModel);
-
-        const model = await StubModel.create({}, containerUrl);
-
-        expect(typeof model.url).toEqual('string');
-        expect(model.url.startsWith(containerUrl)).toBe(true);
-
-        expect(engine.create).toHaveBeenCalledWith(
-            containerUrl,
-            expect.anything(),
-            model.url,
-        );
-    });
-
     it('uses name for minting url for new containers', async () => {
         class StubModel extends SolidModel {
             public static ldpContainer = true;
@@ -232,7 +210,7 @@ describe('SolidModel', () => {
 
         Soukai.loadModel('StubModel', StubModel);
 
-        const model = await StubModel.from(containerUrl).create({ name });
+        const model = await StubModel.at(containerUrl).create({ name });
 
         expect(typeof model.url).toEqual('string');
         expect(model.url).toEqual(Url.resolveDirectory(containerUrl, Str.slug(name)));
@@ -266,7 +244,7 @@ describe('SolidModel', () => {
 
         Soukai.loadModel('Person', Person);
 
-        const model = await Person.create({ name }, containerUrl);
+        const model = await Person.at(containerUrl).create({ name });
 
         const attributes = (engine.create as any).mock.calls[0][1];
 
