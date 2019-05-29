@@ -124,6 +124,23 @@ describe('SolidModel', () => {
         });
     });
 
+    it('allows adding undefined fields', async () => {
+        class StubModel extends SolidModel {
+        }
+
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+
+        jest.spyOn(engine, 'create');
+
+        Soukai.loadModel('StubModel', StubModel);
+
+        await StubModel.at(containerUrl).create({ nickname: 'Johnny' });
+
+        const attributes = (engine.create as any).mock.calls[0][1];
+
+        expect(attributes['http://www.w3.org/ns/solid/terms#nickname']).toEqual('Johnny');
+    });
+
     it('mints url for new models', async () => {
         class StubModel extends SolidModel {
         }

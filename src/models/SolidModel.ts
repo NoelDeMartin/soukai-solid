@@ -67,7 +67,7 @@ export default class SolidModel extends Model {
             ldp: 'http://www.w3.org/ns/ldp#',
         };
 
-        const defaultRdfContext = Object.keys(this.rdfContexts).shift();
+        const defaultRdfContext = this.instance.getDefaultRdfContext();
 
         if (
             this.instance.hasAutomaticTimestamp('createdAt') &&
@@ -99,7 +99,7 @@ export default class SolidModel extends Model {
 
         for (const field in this.fields) {
             this.fields[field].rdfProperty = this.instance.resolveRDFType(
-                this.fields[field].rdfProperty || `${defaultRdfContext}:${field}`,
+                this.fields[field].rdfProperty || `${defaultRdfContext}${field}`,
             );
         }
 
@@ -156,6 +156,10 @@ export default class SolidModel extends Model {
         return new SolidIsContainedByRelation(this, model);
     }
 
+    protected getDefaultRdfContext(): string {
+        return Object.values(this.classDef.rdfContexts).shift() || '';
+    }
+
     protected prepareEngineAttributes(_: Engine, attributes: Attributes): EngineAttributes {
         return this.convertAttributesToJsonLD(attributes) as EngineAttributes;
     }
@@ -168,12 +172,12 @@ export default class SolidModel extends Model {
                 const fieldDefinition = fieldsDefinition[name];
 
                 if (!fieldDefinition) {
-                    throw new SoukaiError(`Trying to use undefined field "${name}" in ${this.classDef.modelName} model`);
+                    return this.getDefaultRdfContext() + name;
                 }
 
                 return fieldDefinition.rdfProperty;
             })
-            .filter(name => typeof name !== 'undefined');
+            .filter(name => name !== null);
     }
 
     protected parseEngineAttributes(_: Engine, attributes: EngineAttributes): Attributes {
@@ -221,28 +225,29 @@ export default class SolidModel extends Model {
             const fieldDefinition: SolidFieldDefinition = fieldsDefinition[field];
             const value = attributes[field];
 
-            if (!fieldDefinition) {
-                throw new SoukaiError(`Trying to use undefined field "${field}" in ${this.classDef.modelName} model`);
-            }
-
-            if (typeof fieldDefinition.rdfProperty === 'undefined') {
-                continue;
-            }
-
             if (field === this.classDef.primaryKey) {
                 jsonld['@id'] = value.toString();
                 continue;
             }
 
-            switch (fieldDefinition.type) {
+            const fieldType = fieldDefinition ? fieldDefinition.type : null;
+            const fieldRdfProperty = fieldDefinition
+                ? fieldDefinition.rdfProperty as (string | null)
+                : this.getDefaultRdfContext() + field;
+
+            if (fieldRdfProperty === null) {
+                continue;
+            }
+
+            switch (fieldType) {
                 case FieldType.Key:
-                    jsonld[fieldDefinition.rdfProperty] = { '@id': value.toString() };
+                    jsonld[fieldRdfProperty] = { '@id': value.toString() };
                     break;
                 case FieldType.Date:
-                    jsonld[fieldDefinition.rdfProperty] = new Date(value);
+                    jsonld[fieldRdfProperty] = new Date(value);
                     break;
                 default:
-                    jsonld[fieldDefinition.rdfProperty] = JSON.parse(JSON.stringify(value));
+                    jsonld[fieldRdfProperty] = JSON.parse(JSON.stringify(value));
                     break;
             }
         }

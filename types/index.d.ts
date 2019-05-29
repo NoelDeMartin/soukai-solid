@@ -41,6 +41,8 @@ export class SolidModel extends Model {
 
     protected isContainedBy(model: typeof SolidModel): SingleModelRelation;
 
+    protected getDefaultRdfContext(): string;
+
 }
 
 interface RequestOptions {
