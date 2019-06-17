@@ -163,6 +163,17 @@ export default class SolidClient {
         updatedProperties: ResourceProperty[],
         removedProperties: string[],
     ): Promise<void> {
+        if (updatedProperties.length + removedProperties.length === 0) {
+            return;
+        }
+
+        // We need to remove the previous value of updated properties or else they'll be duplicated
+        removedProperties.push(
+            ...updatedProperties
+                .map(property => (property.predicate !== 'a') ? property.predicate.url : null)
+                .filter(property => property !== null) as string[],
+        );
+
         const where = removedProperties
             .map((property, i) => `<${url}> <${property}> ?d${i} .`)
             .join('\n');
@@ -177,9 +188,9 @@ export default class SolidClient {
 
         const operations = [
             `solid:patches <${url}>`,
-            updatedProperties.length > 0 ? `solid:inserts { ${inserts} }` : null,
-            removedProperties.length > 0 ? `solid:where { ${where} }` : null,
-            removedProperties.length > 0 ? `solid:deletes { ${deletes} }` : null,
+            `solid:inserts { ${inserts} }`,
+            `solid:where { ${where} }`,
+            `solid:deletes { ${deletes} }`,
         ]
             .filter(part => part !== null)
             .join(';');

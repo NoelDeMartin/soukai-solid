@@ -161,7 +161,20 @@ export default class SolidModel extends Model {
     }
 
     protected prepareEngineAttributes(_: Engine, attributes: Attributes): EngineAttributes {
-        return this.convertAttributesToJsonLD(attributes) as EngineAttributes;
+        const jsonld = this.convertAttributesToJsonLD(attributes) as EngineAttributes;
+
+        // We only need to send the types when the model is being created, because we
+        // assume they won't be changed.
+        if ('@id' in jsonld || !this.exists) {
+            const types: { '@id': string }[] = [];
+            for (const rdfClass of this.classDef.rdfsClasses) {
+                types.push({ '@id': rdfClass });
+            }
+
+            jsonld['@type'] = types;
+        }
+
+        return jsonld;
     }
 
     protected prepareEngineAttributeNames(_: Engine, names: string[]): string[] {
@@ -251,13 +264,6 @@ export default class SolidModel extends Model {
                     break;
             }
         }
-
-        const types: { '@id': string }[] = [];
-        for (const rdfClass of this.classDef.rdfsClasses) {
-            types.push({ '@id': rdfClass });
-        }
-
-        jsonld['@type'] = types;
 
         return jsonld;
     }

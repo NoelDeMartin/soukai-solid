@@ -8,6 +8,7 @@ class StubFetcher extends EventEmitter {
 
     public reset(): void {
         this.fetchResponses = [];
+        (this as any).fetch.mockClear();
     }
 
     public addFetchNotFoundResponse(): void {

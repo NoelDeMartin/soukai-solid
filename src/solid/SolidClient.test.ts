@@ -375,9 +375,15 @@ describe('Solid', () => {
 
         StubFetcher.addFetchNotFoundResponse();
 
-        await expect(client.updateResource(url, [], []))
+        await expect(client.updateResource(url, [], ['foobar']))
             .rejects
             .toThrowError(`Error updating resource at ${url}, returned status code 404`);
+    });
+
+    it('ignores empty updates', async () => {
+        await client.updateResource(Faker.internet.url(), [], []);
+
+        expect(StubFetcher.fetch).not.toHaveBeenCalled();
     });
 
 });

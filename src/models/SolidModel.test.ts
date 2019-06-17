@@ -141,6 +141,41 @@ describe('SolidModel', () => {
         expect(attributes['http://www.w3.org/ns/solid/terms#nickname']).toEqual('Johnny');
     });
 
+    it('serializes types on create', async () => {
+        class StubModel extends SolidModel {
+        }
+
+        jest.spyOn(engine, 'create');
+
+        Soukai.loadModel('StubModel', StubModel);
+
+        await StubModel.create({});
+
+        const attributes = (engine.create as any).mock.calls[0][1];
+
+        expect(attributes['@type']).not.toBeUndefined();
+    });
+
+    it("doesn't serialize types on update", async () => {
+        class StubModel extends SolidModel {
+        }
+
+        jest.spyOn(engine, 'update');
+
+        Soukai.loadModel('StubModel', StubModel);
+
+        const model = new StubModel(
+            { url: Url.resolve(Faker.internet.url(), Faker.random.uuid()) },
+            true,
+        );
+
+        await model.update({ name: 'John' });
+
+        const attributes = (engine.update as any).mock.calls[0][2];
+
+        expect(attributes['@type']).toBeUndefined();
+    });
+
     it('mints url for new models', async () => {
         class StubModel extends SolidModel {
         }

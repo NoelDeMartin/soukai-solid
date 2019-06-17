@@ -29,12 +29,12 @@ describe('SolidEngine', () => {
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
         const name = Faker.name.firstName();
+        const date = Faker.date.recent();
 
-        const id = await engine.create(
-            parentUrl,
-            stubPersonJsonLD(resourceUrl, name),
-            resourceUrl,
-        );
+        const jsonLD = stubPersonJsonLD(resourceUrl, name);
+        jsonLD['date'] = date;
+
+        const id = await engine.create(parentUrl, jsonLD, resourceUrl);
 
         expect(id).toEqual(resourceUrl);
 
@@ -45,6 +45,14 @@ describe('SolidEngine', () => {
             // TODO test body using argument matcher
             expect.anything(),
         );
+
+        const properties = (SolidClientMock.createResource as any).mock.calls[0][2];
+
+        expect(properties).toHaveLength(4);
+        expect(properties).toContainEqual(ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'));
+        expect(properties).toContainEqual(ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'));
+        expect(properties).toContainEqual(ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name));
+        expect(properties).toContainEqual(ResourceProperty.literal('date', date));
     });
 
     it('creates one container', async () => {

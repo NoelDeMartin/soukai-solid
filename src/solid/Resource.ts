@@ -28,9 +28,9 @@ export class ResourceProperty {
         return new ResourceProperty('a', { url: type });
     }
 
-    private predicate: IRI | 'a';
+    public readonly predicate: IRI | 'a';
 
-    private object: LiteralValue | IRI;
+    public readonly object: LiteralValue | IRI;
 
     private constructor(
         predicate: IRI | 'a',

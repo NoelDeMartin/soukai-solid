@@ -111,7 +111,7 @@ export default class SolidEngine implements Engine {
         for (const field in attributes) {
             const value = attributes[field];
 
-            if (value === null) {
+            if (value === null || field === '@id') {
                 continue;
             } else if (field === '@type') {
                 this.addJsonLDTypeProperty(properties, value);
@@ -173,6 +173,11 @@ export default class SolidEngine implements Engine {
 
     private addJsonLDProperty(properties: ResourceProperty[], field: string, value: any): void {
         if (value === null) {
+            return;
+        }
+
+        if (value instanceof Date) {
+            properties.push(ResourceProperty.literal(field, value));
             return;
         }
 
