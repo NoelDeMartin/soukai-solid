@@ -274,6 +274,67 @@ describe('SolidModel', () => {
         );
     });
 
+    it('uses model url container on find', async () => {
+        class StubModel extends SolidModel {
+        }
+
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+
+        jest.spyOn(engine, 'readOne');
+
+        Soukai.loadModel('StubModel', StubModel);
+
+        await StubModel.find(Url.resolve(containerUrl, Faker.random.uuid()));
+
+        const collection = (engine.readOne as any).mock.calls[0][0];
+
+        expect(collection).toEqual(containerUrl);
+    });
+
+    it('uses model url container on save', async () => {
+        class StubModel extends SolidModel {
+        }
+
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+
+        jest.spyOn(engine, 'update');
+
+        Soukai.loadModel('StubModel', StubModel);
+
+        const model = new StubModel(
+            { url: Url.resolve(containerUrl, Faker.random.uuid()) },
+            true,
+        );
+
+        await model.update({ name: 'John' });
+
+        const collection = (engine.update as any).mock.calls[0][0];
+
+        expect(collection).toEqual(containerUrl);
+    });
+
+    it('uses model url container on delete', async () => {
+        class StubModel extends SolidModel {
+        }
+
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+
+        jest.spyOn(engine, 'delete');
+
+        Soukai.loadModel('StubModel', StubModel);
+
+        const model = new StubModel(
+            { url: Url.resolve(containerUrl, Faker.random.uuid()) },
+            true,
+        );
+
+        await model.delete();
+
+        const collection = (engine.delete as any).mock.calls[0][0];
+
+        expect(collection).toEqual(containerUrl);
+    });
+
     it('aliases url attribute as id', async () => {
         class StubModel extends SolidModel {
         }

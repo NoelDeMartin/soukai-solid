@@ -106,6 +106,10 @@ export default class SolidModel extends Model {
         this.fields[this.primaryKey].rdfProperty = null;
     }
 
+    public static find<T extends Model>(id: string): Promise<T | null> {
+        return this.instance.withCollection(Url.parentDirectory(id), () => super.find(id));
+    }
+
     public static all<T extends Model>(filters: Filters = {}): Promise<T[]> {
         // TODO translate filters from attributes to jsonld specification
 
@@ -138,6 +142,10 @@ export default class SolidModel extends Model {
         }
 
         return this.withCollection(containerUrl, () => super.save());
+    }
+
+    public delete<T extends Model>(): Promise<T> {
+        return this.withCollection(() => super.delete());
     }
 
     public getIdAttribute(): string {
@@ -213,9 +221,18 @@ export default class SolidModel extends Model {
         return type;
     }
 
-    private withCollection<Result>(collection: string = '', method: () => Result): Result {
+    private withCollection<Result>(collection: string | (() => Result) = '', method?: () => Result): Result {
         const classDef = this.constructor as typeof SolidModel;
         const oldCollection = classDef.collection;
+
+        if (typeof collection !== 'string') {
+            method = collection;
+            collection = '';
+        }
+
+        if (!method) {
+            throw new SoukaiError('Invalid method given to withCollection (SolidModel internals)');
+        }
 
         if (collection) {
             classDef.collection = collection;
