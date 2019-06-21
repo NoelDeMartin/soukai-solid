@@ -216,6 +216,25 @@ export default class SolidClient {
         }
     }
 
+    public async deleteResource(url: string): Promise<void> {
+        const resource = await this.getResource(url);
+
+        if (resource === null) {
+            return;
+        }
+
+        if (resource.is(LDP('Container'))) {
+            // TODO implement
+            throw new Error(
+                'Removing container resources is not implemented yet.' +
+                "If you really need it, open an issue and I'll give it more priority: " +
+                'https://github.com/NoelDeMartin/soukai-solid',
+            );
+        }
+
+        await this.fetch(url, { method: 'DELETE' });
+    }
+
     public async resourceExists(url: string): Promise<boolean> {
         const response = await this.fetch(url, {
             headers: { 'Accept': 'text/turtle' },

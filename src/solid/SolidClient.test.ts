@@ -386,4 +386,20 @@ describe('Solid', () => {
         expect(StubFetcher.fetch).not.toHaveBeenCalled();
     });
 
+    it('deletes non-container resources', async () => {
+        const url = Faker.internet.url();
+        const data = `
+            <${url}>
+                a <http://www.w3.org/ns/ldp#Resource> ;
+                <http://cmlns.com/foaf/0.1/name> "Foo Bar" .
+        `;
+
+        StubFetcher.addFetchResponse(data);
+        StubFetcher.addFetchResponse();
+
+        await client.deleteResource(url);
+
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(url, { method: 'DELETE' });
+    });
+
 });

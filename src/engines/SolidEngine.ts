@@ -102,7 +102,7 @@ export default class SolidEngine implements Engine {
     }
 
     public async delete(collection: string, id: string): Promise<void> {
-        // TODO
+        await this.client.deleteResource(id);
     }
 
     private convertJsonLDToResourceProperties(attributes: EngineAttributes): ResourceProperty[] {
