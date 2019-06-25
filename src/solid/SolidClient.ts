@@ -167,11 +167,20 @@ export default class SolidClient {
             return;
         }
 
+        const resource = await this.getResource(url);
+
+        if (resource === null) {
+            throw new Error(
+                `Error updating resource at ${url}, resource wasn't found`,
+            );
+        }
+
         // We need to remove the previous value of updated properties or else they'll be duplicated
         removedProperties.push(
             ...updatedProperties
                 .map(property => (property.predicate !== 'a') ? property.predicate.url : null)
-                .filter(property => property !== null) as string[],
+                .filter(property => property !== null)
+                .filter((property: string) => resource.properties.indexOf(property) !== -1) as string[],
         );
 
         const where = removedProperties

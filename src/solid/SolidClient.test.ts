@@ -345,6 +345,14 @@ describe('Solid', () => {
 
     it('updates resources', async () => {
         const url = Faker.internet.url();
+        const data = `
+            <${url}>
+                a <http://www.w3.org/ns/ldp#Resource> ;
+                a <Type> ;
+                <literalName> "" ;
+                <http://cmlns.com/foaf/0.1/deletedOne> "" ;
+                <http://cmlns.com/foaf/0.1/deletedTwo> "" .
+        `;
         const updatedProperties = [
             ResourceProperty.type('Type'),
             ResourceProperty.literal('literalName', 'literalValue'),
@@ -354,6 +362,7 @@ describe('Solid', () => {
             'deletedTwo',
         ];
 
+        StubFetcher.addFetchResponse(data);
         StubFetcher.addFetchResponse();
 
         await client.updateResource(url, updatedProperties, deletedProperties);
@@ -370,9 +379,35 @@ describe('Solid', () => {
         );
     });
 
+    it('adds new properties when updating', async () => {
+        const url = Faker.internet.url();
+        const data = `<${url}> a <http://www.w3.org/ns/ldp#Resource> .`;
+        const updatedProperties = [
+            ResourceProperty.literal('literalName', 'literalValue'),
+        ];
+
+        StubFetcher.addFetchResponse(data);
+        StubFetcher.addFetchResponse();
+
+        await client.updateResource(url, updatedProperties, []);
+
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(
+            url,
+            {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'text/n3' },
+
+                // TODO test body using argument matcher
+                body: expect.anything(),
+            }
+        );
+    });
+
     it('fails updating non-existent resources', async () => {
         const url = Faker.internet.url();
+        const data = `<${url}> a <http://www.w3.org/ns/ldp#Resource> .`;
 
+        StubFetcher.addFetchResponse(data);
         StubFetcher.addFetchNotFoundResponse();
 
         await expect(client.updateResource(url, [], ['foobar']))
