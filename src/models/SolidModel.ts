@@ -168,7 +168,7 @@ export default class SolidModel extends Model {
         return Object.values(this.classDef.rdfContexts).shift() || '';
     }
 
-    protected prepareEngineAttributes(_: Engine, attributes: Attributes): EngineAttributes {
+    protected prepareEngineAttributes(attributes: Attributes): EngineAttributes {
         const jsonld = this.convertAttributesToJsonLD(attributes) as EngineAttributes;
 
         // We only need to send the types when the model is being created, because we
@@ -185,7 +185,7 @@ export default class SolidModel extends Model {
         return jsonld;
     }
 
-    protected prepareEngineAttributeNames(_: Engine, names: string[]): string[] {
+    protected prepareEngineAttributeNames(names: string[]): string[] {
         const fieldsDefinition = this.classDef.fields;
 
         return names
@@ -201,7 +201,7 @@ export default class SolidModel extends Model {
             .filter(name => name !== null);
     }
 
-    protected parseEngineAttributes(_: Engine, attributes: EngineAttributes): Attributes {
+    protected parseEngineAttributes(attributes: EngineAttributes): Attributes {
         return this.convertJsonLDToAttributes(attributes);
     }
 
