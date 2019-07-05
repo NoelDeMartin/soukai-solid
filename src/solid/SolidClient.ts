@@ -183,6 +183,12 @@ export default class SolidClient {
                 .filter((property: string) => resource.properties.indexOf(property) !== -1) as string[],
         );
 
+        if (resource.is(LDP('Container'))) {
+            await this.updateContainerResource(resource, updatedProperties, removedProperties);
+
+            return;
+        }
+
         const where = removedProperties
             .map((property, i) => `<${url}> <${property}> ?d${i} .`)
             .join('\n');
@@ -298,6 +304,46 @@ export default class SolidClient {
         return store
             .each(null as any, RDFS('type'), LDP('Resource'), null as any)
             .map(node => new Resource(node.value, store));
+    }
+
+    private async updateContainerResource(
+        resource: Resource,
+        updatedProperties: ResourceProperty[],
+        removedProperties: string[],
+    ): Promise<void> {
+        // TODO this may change in future versions of node-solid-server
+        // https://github.com/solid/node-solid-server/issues/1040
+        const url = resource.url;
+        const properties = resource.getProperties()
+            .filter(property => {
+                const predicate = property.getPredicateUrl();
+
+                return predicate !== 'http://www.w3.org/ns/ldp#contains'
+                    && predicate !== 'http://www.w3.org/ns/posix/stat#mtime'
+                    && predicate !== 'http://www.w3.org/ns/posix/stat#size'
+                    && !removedProperties.find(removedProperty => removedProperty === predicate);
+            });
+
+        properties.push(...updatedProperties);
+
+        const response = await this.fetch(
+            url + '.meta',
+            {
+                method: 'PUT',
+                body: properties
+                    .map(property => property.toTurtle(url || '') + ' .')
+                    .join("\n"),
+                headers: {
+                    'Content-Type': 'text/turtle',
+                },
+            }
+        );
+
+        if (response.status !== 201) {
+            throw new Error(
+                `Error updating container resource at ${resource.url}, returned status code ${response.status}`,
+            );
+        }
     }
 
 }

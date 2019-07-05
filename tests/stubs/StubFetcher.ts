@@ -15,8 +15,8 @@ class StubFetcher extends EventEmitter {
         this.fetchResponses.push(StubResponse.notFound());
     }
 
-    public addFetchResponse(content: string = '', headers: object = {}): void {
-        this.fetchResponses.push(StubResponse.success(content, headers));
+    public addFetchResponse(content: string = '', headers: object = {}, status: number = 200): void {
+        this.fetchResponses.push(StubResponse.make(content, headers, status));
     }
 
     public async fetch(): Promise<Response> {

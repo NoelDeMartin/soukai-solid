@@ -2,8 +2,8 @@ import StubHeaders from '@tests/stubs/StubHeaders';
 
 export default class StubResponse implements Response {
 
-    public static success(content: string = '', headers: object = {}): StubResponse {
-        return new StubResponse(200, content, headers);
+    public static make(content: string = '', headers: object = {}, status: number = 200): StubResponse {
+        return new StubResponse(status, content, headers);
     }
 
     public static notFound(): StubResponse {

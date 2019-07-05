@@ -1,4 +1,4 @@
-import $rdf, { IndexedFormula, NamedNode } from 'rdflib';
+import $rdf, { IndexedFormula, NamedNode, Literal } from 'rdflib';
 
 import Arr from '@/utils/Arr';
 
@@ -38,6 +38,12 @@ export class ResourceProperty {
     ) {
         this.predicate = predicate;
         this.object = object;
+    }
+
+    public getPredicateUrl(): string {
+        return this.predicate === 'a'
+            ? 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
+            : this.predicate.url;
     }
 
     public isType(type: string): boolean {
@@ -159,23 +165,40 @@ export default class Resource {
         }
     }
 
-    public getProperties(): { [property: string]: IRI | LiteralValue } {
-        const properties = {};
+    public getProperties(): ResourceProperty[] {
+        const properties: ResourceProperty[] = [];
 
-        const terms = this.data.each(
+        const statements = this.data.statementsMatching(
             $rdf.sym(this.url),
             null as any,
             null as any,
-            null as any
+            null as any,
+            false,
         );
 
-        for (const term of terms) {
-            properties[term.value] = this.data.anyValue(
-                $rdf.sym(this.url),
-                $rdf.sym(term.value),
-                null as any,
-                null as any
-            );
+        for (const statement of statements) {
+            switch (statement.object.termType) {
+                case 'Literal':
+                    const literal = statement.object as Literal;
+
+                    properties.push(
+                        ResourceProperty.literal(
+                            statement.predicate.value,
+                            literal.datatype.value === 'http://www.w3.org/2001/XMLSchema#dateTime'
+                                ? new Date(literal.value)
+                                : literal.value,
+                        ),
+                    );
+                    break;
+                case 'NamedNode':
+                    properties.push(
+                        ResourceProperty.link(
+                            statement.predicate.value,
+                            statement.object.value,
+                        ),
+                    );
+                    break;
+            }
         }
 
         return properties;

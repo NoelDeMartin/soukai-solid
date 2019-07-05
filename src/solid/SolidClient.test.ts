@@ -253,17 +253,23 @@ describe('Solid', () => {
 
         const fooProperties = resources[0].getProperties();
         expect(Object.values(fooProperties)).toHaveLength(2);
-        expect(fooProperties['http://www.w3.org/1999/02/22-rdf-syntax-ns#type'])
-            .toEqual('http://www.w3.org/ns/ldp#Resource');
-        expect(fooProperties['http://cmlns.com/foaf/0.1/name'])
-            .toEqual('Foo');
+        expect(fooProperties.find(property => property.isType('http://www.w3.org/ns/ldp#Resource')))
+            .not.toBeUndefined();
+        expect(fooProperties.find(property => (
+            property.getPredicateUrl() === 'http://cmlns.com/foaf/0.1/name') &&
+            property.object === 'Foo'
+        ))
+            .not.toBeUndefined();
 
         const barProperties = resources[1].getProperties();
         expect(Object.values(barProperties)).toHaveLength(2);
-        expect(barProperties['http://www.w3.org/1999/02/22-rdf-syntax-ns#type'])
-            .toEqual('http://www.w3.org/ns/ldp#Resource');
-        expect(barProperties['http://cmlns.com/foaf/0.1/name'])
-            .toEqual('Bar');
+        expect(barProperties.find(property => property.isType('http://www.w3.org/ns/ldp#Resource')))
+            .not.toBeUndefined();
+        expect(barProperties.find(property => (
+            property.getPredicateUrl() === 'http://cmlns.com/foaf/0.1/name') &&
+            property.object === 'Bar'
+        ))
+            .not.toBeUndefined();
     });
 
     it('gets resources filtered by type', async () => {
@@ -372,6 +378,43 @@ describe('Solid', () => {
             {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'text/n3' },
+
+                // TODO test body using argument matcher
+                body: expect.anything(),
+            }
+        );
+    });
+
+    it('updates container resources', async () => {
+        const url = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const data = `
+            <${url}>
+                a <http://www.w3.org/ns/ldp#Resource> ;
+                a <http://www.w3.org/ns/ldp#Container> ;
+                a <Type> ;
+                <literalName> "" ;
+                <http://cmlns.com/foaf/0.1/deletedOne> "" ;
+                <http://cmlns.com/foaf/0.1/deletedTwo> "" .
+        `;
+        const updatedProperties = [
+            ResourceProperty.type('Type'),
+            ResourceProperty.literal('literalName', 'literalValue'),
+        ];
+        const deletedProperties = [
+            'deletedOne',
+            'deletedTwo',
+        ];
+
+        StubFetcher.addFetchResponse(data);
+        StubFetcher.addFetchResponse('', {}, 201);
+
+        await client.updateResource(url, updatedProperties, deletedProperties);
+
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(
+            url + '.meta',
+            {
+                method: 'PUT',
+                headers: { 'Content-Type': 'text/turtle' },
 
                 // TODO test body using argument matcher
                 body: expect.anything(),
