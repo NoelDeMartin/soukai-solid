@@ -480,4 +480,35 @@ describe('Solid', () => {
         expect(StubFetcher.fetch).toHaveBeenCalledWith(url, { method: 'DELETE' });
     });
 
+    it('deletes container resources', async () => {
+        const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const resourceUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const containerData = `
+            <${containerUrl}>
+                a <http://www.w3.org/ns/ldp#Resource> ;
+                a <http://www.w3.org/ns/ldp#Container> .
+        `;
+        const resourceData = `
+            <${resourceUrl}>
+                a <http://www.w3.org/ns/ldp#Resource> .
+        `;
+
+        StubFetcher.addFetchResponse(containerData);
+        StubFetcher.addFetchResponse(containerData); // TODO this one is technically not necessary
+        StubFetcher.addFetchResponse(resourceData);
+        StubFetcher.addFetchResponse(resourceData); // TODO this one is technically not necessary
+        StubFetcher.addFetchResponse();
+        StubFetcher.addFetchResponse();
+
+        await client.deleteResource(containerUrl);
+
+        expect(StubFetcher.fetch).toHaveBeenCalledTimes(6);
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(1, containerUrl, { headers: { 'Accept': 'text/turtle' } });
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(2, containerUrl, { headers: { 'Accept': 'text/turtle' } });
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(3, containerUrl + '*', { headers: { 'Accept': 'text/turtle' } });
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(4, resourceUrl, { headers: { 'Accept': 'text/turtle' } });
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(5, resourceUrl, { method: 'DELETE' });
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(6, containerUrl, { method: 'DELETE' });
+    });
+
 });

@@ -15,7 +15,7 @@ class SolidAuthClientMock extends EventEmitter {
     }
 
     public addFetchResponse(content: string = '', headers: object = {}): void {
-        this.fetchResponses.push(StubResponse.success(content, headers));
+        this.fetchResponses.push(StubResponse.make(content, headers));
     }
 
     public async fetch(): Promise<Response | undefined> {

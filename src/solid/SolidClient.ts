@@ -239,12 +239,17 @@ export default class SolidClient {
         }
 
         if (resource.is(LDP('Container'))) {
-            // TODO implement
-            throw new Error(
-                'Removing container resources is not implemented yet.' +
-                "If you really need it, open an issue and I'll give it more priority: " +
-                'https://github.com/NoelDeMartin/soukai-solid',
-            );
+            const resources = (await Promise.all([
+                this.getResources(url, ['http://www.w3.org/ns/ldp#Container']),
+                this.getResources(url),
+            ]))
+                .reduce((resources, allResources) => {
+                    allResources.push(...resources);
+
+                    return allResources;
+                }, []);
+
+            await Promise.all(resources.map(resource => this.deleteResource(resource.url)));
         }
 
         await this.fetch(url, { method: 'DELETE' });
