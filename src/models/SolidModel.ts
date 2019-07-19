@@ -1,6 +1,5 @@
 import {
     Attributes,
-    Engine,
     EngineAttributes,
     FieldDefinition,
     FieldsDefinition,
@@ -13,7 +12,6 @@ import {
 } from 'soukai';
 
 import SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
-import SolidContainsRelation from '@/models/relations/SolidContainsRelation';
 import SolidIsContainedByRelation from '@/models/relations/SolidIsContainedByRelation';
 
 import Str from '@/utils/Str';
@@ -92,9 +90,21 @@ export default class SolidModel extends Model {
             this.rdfsClasses.add(ldpResource);
         }
 
-        const ldpContainerType = this.instance.resolveRDFType('ldp:Container');
-        if (this.ldpContainer && !this.rdfsClasses.has(ldpContainerType)) {
-            this.rdfsClasses.add(ldpContainerType);
+        if (this.ldpContainer) {
+            const ldpContainerType = this.instance.resolveRDFType('ldp:Container');
+
+            if (!this.rdfsClasses.has(ldpContainerType)) {
+                this.rdfsClasses.add(ldpContainerType);
+            }
+
+            this.fields['resourceUrls'] = {
+                type: FieldType.Array,
+                required: false,
+                rdfProperty: 'http://www.w3.org/ns/ldp#contains',
+                items: {
+                    type: FieldType.Key,
+                },
+            };
         }
 
         for (const field in this.fields) {
@@ -157,7 +167,7 @@ export default class SolidModel extends Model {
     }
 
     protected contains(model: typeof SolidModel): MultiModelRelation {
-        return new SolidContainsRelation(this, model);
+        return this.hasMany(model, 'resourceUrls');
     }
 
     protected isContainedBy(model: typeof SolidModel): SingleModelRelation {
@@ -205,6 +215,15 @@ export default class SolidModel extends Model {
         return this.convertJsonLDToAttributes(attributes);
     }
 
+    protected castAttribute(value: any, definition?: FieldDefinition): any {
+        if (definition && definition.type === FieldType.Array && !Array.isArray(value)) {
+            return [value];
+        }
+
+        return super.castAttribute(value, definition);
+    }
+
+    // TODO rename to resolveRDFAlias
     private resolveRDFType(type: string): string {
         const index = type.indexOf(':');
 
@@ -276,6 +295,21 @@ export default class SolidModel extends Model {
                 case FieldType.Date:
                     jsonld[fieldRdfProperty] = new Date(value);
                     break;
+                case FieldType.Array:
+                    // TODO convert items as well
+                    switch (value.length) {
+                        case 0:
+                            // nothing to do here
+                            break;
+                        case 1:
+                            jsonld[fieldRdfProperty] = value[0];
+                            break;
+                        default:
+                            jsonld[fieldRdfProperty] = value;
+                            break;
+                    }
+                    break;
+                // TODO convert object fields as well
                 default:
                     jsonld[fieldRdfProperty] = JSON.parse(JSON.stringify(value));
                     break;
@@ -301,11 +335,7 @@ export default class SolidModel extends Model {
             const property = jsonld[fieldDefinition.rdfProperty];
 
             if (typeof property !== 'undefined') {
-                if (typeof property === 'object' && '@id' in property) {
-                    attributes[field] = property['@id'];
-                } else {
-                    attributes[field] = property;
-                }
+                attributes[field] = this.convertJsonLDToAttribute(property);
             }
         }
 
@@ -324,6 +354,16 @@ export default class SolidModel extends Model {
         }
 
         return attributes;
+    }
+
+    private convertJsonLDToAttribute(property: any): any {
+        if (typeof property === 'object' && '@id' in property) {
+            return property['@id'];
+        } else if (Array.isArray(property)) {
+            return property.map(p => this.convertJsonLDToAttribute(p));
+        } else {
+            return property;
+        }
     }
 
 }

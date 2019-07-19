@@ -16,14 +16,15 @@ export default class Person extends SolidModel {
 
     public static fields = {
         name: FieldType.String,
-        knows: {
-            type: FieldType.Key,
+        friendUrls: {
+            type: FieldType.Array,
             rdfProperty: 'foaf:knows',
+            items: { type: FieldType.Key },
         },
     };
 
     public friendsRelationship(): Relation {
-        return this.hasMany(Person, 'knows');
+        return this.hasMany(Person, 'friendUrls');
     }
 
     public groupRelationship(): SingleModelRelation {

@@ -93,6 +93,34 @@ describe('SolidModel', () => {
         ]));
     });
 
+    it('adds resourceUrls to container models', () => {
+        class StubModel extends SolidModel {
+
+            public static timestamps = false;
+
+            public static ldpContainer = true;
+
+        }
+
+        Soukai.loadModel('StubModel', StubModel);
+
+        expect(StubModel.fields).toEqual({
+            url: {
+                type: FieldType.Key,
+                required: false,
+                rdfProperty: null,
+            },
+            resourceUrls: {
+                type: FieldType.Array,
+                required: false,
+                rdfProperty: 'http://www.w3.org/ns/ldp#contains',
+                items: {
+                    type: FieldType.Key,
+                },
+            },
+        });
+    });
+
     it('defaults to first context if rdfProperty is missing', () => {
         class StubModel extends SolidModel {
 
@@ -386,7 +414,7 @@ describe('SolidModel', () => {
 
         const john = new Person({
             name: 'John',
-            knows: [
+            friendUrls: [
                 'https://example.com/alice',
                 'https://example.org/bob',
             ],
@@ -440,6 +468,10 @@ describe('SolidModel', () => {
 
         const group = new Group({
             url: containerUrl,
+            resourceUrls: [
+                musashiUrl,
+                kojiroUrl,
+            ],
         });
 
         jest.spyOn(engine, 'readMany');
@@ -465,6 +497,10 @@ describe('SolidModel', () => {
         expect(engine.readMany).toHaveBeenCalledWith(
             containerUrl,
             {
+                $in: [
+                    musashiUrl,
+                    kojiroUrl,
+                ],
                 '@type': {
                     $contains: [
                         { '@id': 'http://cmlns.com/foaf/0.1/Person' },

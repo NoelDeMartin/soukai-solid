@@ -47,6 +47,9 @@ export default class SolidEngine implements Engine {
     public async readMany(collection: string, filters: Filters = {}): Promise<Documents> {
         let resources;
 
+        // TODO improve efficiency by using globbing (if we're getting resources within
+        // a collection, it's very likely that they are inside the root)
+
         if ('$in' in filters) {
             // TODO to improve efficiency by making a batch request
             resources = await Promise.all(
