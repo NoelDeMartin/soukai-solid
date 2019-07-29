@@ -189,7 +189,7 @@ export default class SolidEngine implements Engine {
             '@id' in value &&
             typeof value['@id'] === 'string'
         ) {
-            properties.push(ResourceProperty.type(value['@id']));
+            properties.push(ResourceProperty.link(field, value['@id']));
             return;
         }
 
