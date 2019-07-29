@@ -271,7 +271,7 @@ export default class SolidModel extends Model {
         const fieldsDefinition = this.classDef.fields;
 
         for (const field in attributes) {
-            const fieldDefinition: SolidFieldDefinition = fieldsDefinition[field];
+            const fieldDefinition = fieldsDefinition[field];
             const value = attributes[field];
 
             if (field === this.classDef.primaryKey) {
@@ -279,7 +279,6 @@ export default class SolidModel extends Model {
                 continue;
             }
 
-            const fieldType = fieldDefinition ? fieldDefinition.type : null;
             const fieldRdfProperty = fieldDefinition
                 ? fieldDefinition.rdfProperty as (string | null)
                 : this.getDefaultRdfContext() + field;
@@ -288,35 +287,39 @@ export default class SolidModel extends Model {
                 continue;
             }
 
-            switch (fieldType) {
-                case FieldType.Key:
-                    jsonld[fieldRdfProperty] = { '@id': value.toString() };
-                    break;
-                case FieldType.Date:
-                    jsonld[fieldRdfProperty] = new Date(value);
-                    break;
-                case FieldType.Array:
-                    // TODO convert items as well
-                    switch (value.length) {
-                        case 0:
-                            // nothing to do here
-                            break;
-                        case 1:
-                            jsonld[fieldRdfProperty] = value[0];
-                            break;
-                        default:
-                            jsonld[fieldRdfProperty] = value;
-                            break;
-                    }
-                    break;
-                // TODO convert object fields as well
-                default:
-                    jsonld[fieldRdfProperty] = JSON.parse(JSON.stringify(value));
-                    break;
+            const jsonValue = this.convertAttributeToJsonLD(fieldDefinition, value);
+
+            if (jsonValue !== undefined) {
+                jsonld[fieldRdfProperty] = jsonValue;
             }
         }
 
         return jsonld;
+    }
+
+    private convertAttributeToJsonLD(definition: SolidFieldDefinition | undefined, value: any): any {
+        const fieldType = definition ? definition.type : null;
+
+        switch (fieldType) {
+            case FieldType.Key:
+                return { '@id': value.toString() };
+            case FieldType.Date:
+                return new Date(value);
+            case FieldType.Array:
+                switch (value.length) {
+                    case 0:
+                        // nothing to do here
+                        return;
+                    case 1:
+                        return this.convertAttributeToJsonLD(definition!.items!, value[0]);
+                    default:
+                        return value.map(v => this.convertAttributeToJsonLD(definition!.items!, v));
+                }
+                break;
+            // TODO convert object fields as well
+            default:
+                return JSON.parse(JSON.stringify(value));
+        }
     }
 
     private convertJsonLDToAttributes(jsonld: object): Attributes {

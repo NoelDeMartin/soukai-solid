@@ -380,12 +380,17 @@ describe('SolidModel', () => {
     it('sends JsonLD to engines', async () => {
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const name = Faker.random.word();
+        const friendUrls = [
+            Faker.internet.url(),
+            Faker.internet.url(),
+            Faker.internet.url(),
+        ];
 
         jest.spyOn(engine, 'create');
 
         Soukai.loadModel('Person', Person);
 
-        const model = await Person.at(containerUrl).create({ name });
+        const model = await Person.at(containerUrl).create({ name, friendUrls });
 
         const attributes = (engine.create as any).mock.calls[0][1];
 
@@ -396,6 +401,9 @@ describe('SolidModel', () => {
                 { '@id': 'http://www.w3.org/ns/ldp#Resource' },
             ],
             'http://cmlns.com/foaf/0.1/name': name,
+            'http://cmlns.com/foaf/0.1/knows': friendUrls.map(
+                url => ({ '@id': url }),
+            ),
         });
     });
 
