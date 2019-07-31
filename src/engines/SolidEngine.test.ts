@@ -170,8 +170,6 @@ describe('SolidEngine', () => {
         ]);
     });
 
-    // TODO test that model translates attributes
-
     it('gets many resources filtering by attributes', async () => {
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const name = Faker.name.firstName();
