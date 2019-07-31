@@ -82,16 +82,16 @@ export default class SolidModel extends Model {
         }
 
         this.rdfsClasses = new Set([...this.rdfsClasses].map(
-            expression => this.instance.resolveRDFType(expression)
+            expression => this.instance.resolveRDFAlias(expression)
         ));
 
-        const ldpResource = this.instance.resolveRDFType('ldp:Resource');
+        const ldpResource = this.instance.resolveRDFAlias('ldp:Resource');
         if (!this.rdfsClasses.has(ldpResource)) {
             this.rdfsClasses.add(ldpResource);
         }
 
         if (this.ldpContainer) {
-            const ldpContainerType = this.instance.resolveRDFType('ldp:Container');
+            const ldpContainerType = this.instance.resolveRDFAlias('ldp:Container');
 
             if (!this.rdfsClasses.has(ldpContainerType)) {
                 this.rdfsClasses.add(ldpContainerType);
@@ -108,7 +108,7 @@ export default class SolidModel extends Model {
         }
 
         for (const field in this.fields) {
-            this.fields[field].rdfProperty = this.instance.resolveRDFType(
+            this.fields[field].rdfProperty = this.instance.resolveRDFAlias(
                 this.fields[field].rdfProperty || `${defaultRdfContext}${field}`,
             );
         }
@@ -223,8 +223,7 @@ export default class SolidModel extends Model {
         return super.castAttribute(value, definition);
     }
 
-    // TODO rename to resolveRDFAlias
-    private resolveRDFType(type: string): string {
+    private resolveRDFAlias(type: string): string {
         const index = type.indexOf(':');
 
         if (index !== -1) {
