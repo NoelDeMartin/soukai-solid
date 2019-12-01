@@ -203,6 +203,7 @@ describe('SolidEngine', () => {
 
     it('gets many resources using $in filter', async () => {
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const brokenUrl = Url.resolve(containerUrl, Faker.random.uuid());
         const firstName = Faker.name.firstName();
         const firstUrl = Url.resolve(containerUrl, Faker.random.uuid());
         const secondName = Faker.name.firstName();
@@ -221,7 +222,7 @@ describe('SolidEngine', () => {
         ]);
 
         const documents = await engine.readMany(containerUrl, {
-            $in: [firstUrl, secondUrl],
+            $in: [brokenUrl, firstUrl, secondUrl],
         });
 
         expect(Object.keys(documents)).toHaveLength(2);

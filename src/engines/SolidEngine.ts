@@ -55,6 +55,7 @@ export default class SolidEngine implements Engine {
             resources = await Promise.all(
                 filters['$in'].map(url => this.client.getResource(url)),
             );
+            resources = resources.filter(resource => resource !== null);
         } else {
             const rdfsClasses: string[] = [];
 
