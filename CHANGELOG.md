@@ -1,5 +1,9 @@
 # Changelog
 
+## v0.2.1
+
+- Fixed a bug where using urls of missing resources within a `$in` filter would throw an error.
+
 ## v0.2.0
 
 - Added new functionality related to Soukai 0.2.0 release (relationships, filters).
