@@ -204,6 +204,22 @@ describe('SolidModel', () => {
         expect(attributes['@type']).toBeUndefined();
     });
 
+    it('uses container url when reading many', async () => {
+        class StubModel extends SolidModel {
+        }
+
+        const collection = Faker.random.word();
+        const containerUrl = Url.resolveDirectory(collection);
+
+        jest.spyOn(engine, 'readMany');
+
+        Soukai.loadModel('StubModel', StubModel);
+
+        await StubModel.at(collection).all();
+
+        expect(engine.readMany).toHaveBeenCalledWith(containerUrl, expect.anything());
+    });
+
     it('mints url for new models', async () => {
         class StubModel extends SolidModel {
         }

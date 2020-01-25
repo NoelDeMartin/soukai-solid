@@ -12,8 +12,13 @@ describe('Url helper', () => {
             .toEqual('http://somethingelse.com/foobar');
     });
 
-    it('resolves directory', () => {
+    it('resolves directory adding paths', () => {
         expect(Url.resolveDirectory('http://example.com', 'foobar'))
+            .toEqual('http://example.com/foobar/');
+    });
+
+    it('resolves directory for existing directory', () => {
+        expect(Url.resolveDirectory('http://example.com/foobar/'))
             .toEqual('http://example.com/foobar/');
     });
 

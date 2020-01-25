@@ -117,7 +117,7 @@ export default class SolidModel extends Model {
     }
 
     public static find<T extends Model>(id: string): Promise<T | null> {
-        return this.instance.withCollection(Url.parentDirectory(id), () => super.find(id));
+        return this.withCollection(Url.parentDirectory(id), () => super.find(id));
     }
 
     public static all<T extends Model>(filters: Filters = {}): Promise<T[]> {
@@ -132,7 +132,7 @@ export default class SolidModel extends Model {
             $contains: types,
         };
 
-        return super.all(filters);
+        return this.withCollection(() => super.all(filters));
     }
 
     protected classDef: typeof SolidModel;
@@ -151,11 +151,16 @@ export default class SolidModel extends Model {
             );
         }
 
-        return this.withCollection(containerUrl, () => super.save());
+        if (this.url && !containerUrl)
+            containerUrl = Url.parentDirectory(this.url);
+
+        return this.classDef.withCollection(containerUrl, () => super.save());
     }
 
     public delete<T extends Model>(): Promise<T> {
-        return this.withCollection(() => super.delete());
+        const collection = this.url ? Url.parentDirectory(this.url) : '';
+
+        return this.classDef.withCollection(collection, () => super.delete());
     }
 
     public getIdAttribute(): string {
@@ -239,28 +244,22 @@ export default class SolidModel extends Model {
         return type;
     }
 
-    private withCollection<Result>(collection: string | (() => Result) = '', method?: () => Result): Result {
-        const classDef = this.constructor as typeof SolidModel;
-        const oldCollection = classDef.collection;
+    private static withCollection<Result>(collection: string | (() => Result) = '', operation?: () => Result): Result {
+        const oldCollection = this.collection;
 
         if (typeof collection !== 'string') {
-            method = collection;
+            operation = collection;
             collection = '';
         }
 
-        if (!method) {
+        if (!operation)
             throw new SoukaiError('Invalid method given to withCollection (SolidModel internals)');
-        }
 
-        if (collection) {
-            classDef.collection = collection;
-        } else if (this.url) {
-            classDef.collection = Url.parentDirectory(this.url);
-        }
+        this.collection = Url.resolveDirectory(collection || oldCollection);
 
-        const result = method();
+        const result = operation();
 
-        classDef.collection = oldCollection;
+        this.collection = oldCollection;
 
         return result;
     }
