@@ -27,7 +27,7 @@
   },
   "dependencies": {
     "rdflib": "^0.19.1",
-    "soukai": "^0.2.0"
+    "soukai": "next"
   },
   "devDependencies": {
     "@types/faker": "^4.1.5",
