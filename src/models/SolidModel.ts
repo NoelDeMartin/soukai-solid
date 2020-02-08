@@ -255,7 +255,7 @@ export default class SolidModel extends Model {
         if (!operation)
             throw new SoukaiError('Invalid method given to withCollection (SolidModel internals)');
 
-        this.collection = Url.resolveDirectory(collection || oldCollection);
+        this.collection = collection || oldCollection;
 
         const result = operation();
 

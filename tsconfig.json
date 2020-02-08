@@ -14,7 +14,6 @@
     "allowSyntheticDefaultImports": true,
     "downlevelIteration": true,
     "esModuleInterop": true,
-    "rootDir": "src",
     "outDir": "dist",
     "baseUrl": ".",
     "paths": {
