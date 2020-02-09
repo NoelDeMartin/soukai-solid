@@ -32,4 +32,45 @@ describe('Url helper', () => {
             .toEqual('http://example.com/foo/');
     });
 
+
+    it('parses standard urls', () => {
+        expect(Url.parse('https://my.subdomain.com/path/?query=search#hash')).toEqual({
+            protocol: 'https',
+            domain: 'my.subdomain.com',
+            path: '/path/',
+            query: 'query=search',
+            fragment: 'hash',
+        });
+    });
+
+    it('parses domains without TLD', () => {
+        expect(Url.parse('ftp://localhost/nested/path')).toEqual({
+            protocol: 'ftp',
+            domain: 'localhost',
+            path: '/nested/path',
+        });
+    });
+
+    it('parses ips', () => {
+        expect(Url.parse('http://192.168.1.157:8080/')).toEqual({
+            protocol: 'http',
+            domain: '192.168.1.157',
+            port: '8080',
+            path: '/',
+        });
+    });
+
+    it ('cleans parts', () => {
+        expect(
+            Url.clean(
+                'http://example.com/path/?query=search#myhash',
+                {
+                    path: false,
+                    fragment: false,
+                },
+            ),
+        )
+            .toEqual('http://example.com?query=search');
+    });
+
 });

@@ -1,3 +1,12 @@
+interface UrlParts {
+    protocol?: string;
+    domain?: string;
+    port?: string;
+    path?: string;
+    query?: string;
+    fragment?: string;
+}
+
 class Url {
 
     public resolve(...parts: string[]): string {
@@ -49,6 +58,52 @@ class Url {
         const pathIndex = url.lastIndexOf('/');
 
         return pathIndex !== -1 ? url.substr(pathIndex + 1) : '';
+    }
+
+    public parse(url: string): UrlParts | null {
+        const match = url.trim().match(/^(([^:/?#]+):)?(\/\/([^/?#]*))?([^?#]*)(\?([^#]*))?(#(.*))?/);
+
+        if (!match)
+            return null;
+
+        const host = match[4] || '';
+        const [domain, port]: string[] = host.indexOf(':') === -1 ? [host] : host.split(':');
+
+        return {
+            protocol: match[2] || undefined,
+            domain: domain || undefined,
+            port: port || undefined,
+            path: match[5] || undefined,
+            query: match[7] || undefined,
+            fragment: match[9] || undefined,
+        };
+    }
+
+    public clean(url: string, includedParts: { [part in keyof UrlParts]?: boolean }): string {
+        const parts = this.parse(url);
+
+        if (!parts)
+            return url;
+
+        for (const [part, value] of Object.entries(parts)) {
+            parts[part] = includedParts[part] !== false ? value || '' : '';
+        }
+
+        let cleanUrl = `${parts.protocol}://${parts.domain}`;
+
+        if (parts.port)
+            cleanUrl += ':' + parts.port;
+
+        if (parts.path)
+            cleanUrl += parts.path;
+
+        if (parts.query)
+            cleanUrl += '?' + parts.query;
+
+        if (parts.fragment)
+            cleanUrl += '#' + parts.fragment;
+
+        return cleanUrl;
     }
 
 }
