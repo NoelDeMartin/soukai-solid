@@ -23,6 +23,8 @@ export class SolidModel extends Model {
 
     public static fields: SolidFieldsDefinition | any;
 
+    public static ldpResource: boolean;
+
     public static ldpContainer: boolean;
 
     public static rdfContexts: { [alias: string]: string };
@@ -42,6 +44,8 @@ export class SolidModel extends Model {
     protected isContainedBy(model: typeof SolidModel): SingleModelRelation;
 
     protected getDefaultRdfContext(): string;
+
+    protected newUrl(parentUrl?: string): string;
 
 }
 

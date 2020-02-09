@@ -32,6 +32,8 @@ export default class SolidModel extends Model {
 
     public static fields: SolidFieldsDefinition | any;
 
+    public static ldpResource: boolean;
+
     public static ldpContainer: boolean;
 
     public static rdfContexts: { [alias: string]: string } = {};
@@ -44,14 +46,14 @@ export default class SolidModel extends Model {
 
     protected static pureInstance: SolidModel;
 
-    public static from(containerUrl: string): typeof SolidModel {
-        this.collection = containerUrl;
+    public static from(parentUrl: string): typeof SolidModel {
+        this.collection = parentUrl;
 
         return this;
     }
 
-    public static at(containerUrl: string): typeof SolidModel {
-        return this.from(containerUrl);
+    public static at(parentUrl: string): typeof SolidModel {
+        return this.from(parentUrl);
     }
 
     public static boot(name: string): void {
@@ -85,9 +87,14 @@ export default class SolidModel extends Model {
             expression => this.instance.resolveRDFAlias(expression)
         ));
 
-        const ldpResource = this.instance.resolveRDFAlias('ldp:Resource');
-        if (!this.rdfsClasses.has(ldpResource)) {
-            this.rdfsClasses.add(ldpResource);
+        this.ldpResource = this.ldpResource || this.ldpResource === undefined;
+        this.ldpContainer = !!this.ldpContainer;
+
+        if (this.ldpResource) {
+            const ldpResource = this.instance.resolveRDFAlias('ldp:Resource');
+
+            if (!this.rdfsClasses.has(ldpResource))
+                this.rdfsClasses.add(ldpResource);
         }
 
         if (this.ldpContainer) {
@@ -137,30 +144,18 @@ export default class SolidModel extends Model {
 
     protected classDef: typeof SolidModel;
 
-    public save<T extends Model>(containerUrl?: string): Promise<T> {
-        if (this.classDef.mintsUrls && !this.hasAttribute(this.classDef.primaryKey)) {
-            const urlPath = (this.classDef.ldpContainer && this.hasAttribute('name'))
-                ? Str.slug(this.getAttribute('name'))
-                : UUID.generate();
+    public save<T extends Model>(parentUrl?: string): Promise<T> {
+        if (this.classDef.mintsUrls && !this.hasAttribute(this.classDef.primaryKey))
+            this.setAttribute(this.classDef.primaryKey, this.newUrl(parentUrl));
 
-            this.setAttribute(
-                this.classDef.primaryKey,
-                this.classDef.ldpContainer
-                    ? Url.resolveDirectory(containerUrl || this.classDef.collection, urlPath)
-                    : Url.resolve(containerUrl || this.classDef.collection, urlPath),
-            );
-        }
-
-        if (this.url && !containerUrl)
-            containerUrl = Url.parentDirectory(this.url);
-
-        return this.classDef.withCollection(containerUrl, () => super.save());
+        return this.classDef.withCollection(
+            parentUrl || this.getParentUrl(),
+            () => super.save(),
+        );
     }
 
     public delete<T extends Model>(): Promise<T> {
-        const collection = this.url ? Url.parentDirectory(this.url) : '';
-
-        return this.classDef.withCollection(collection, () => super.delete());
+        return this.classDef.withCollection(this.getParentUrl() || '', () => super.delete());
     }
 
     public getIdAttribute(): string {
@@ -226,6 +221,33 @@ export default class SolidModel extends Model {
         }
 
         return super.castAttribute(value, definition);
+    }
+
+    protected newUrl(parentUrl?: string): string {
+        parentUrl = parentUrl || this.classDef.collection;
+
+        if (this.classDef.ldpContainer)
+            return Url.resolveDirectory(
+                parentUrl,
+                this.hasAttribute('name')
+                    ? Str.slug(this.getAttribute('name'))
+                    : UUID.generate(),
+            );
+
+        if (this.classDef.ldpResource)
+            return Url.resolve(parentUrl, UUID.generate());
+
+        return parentUrl + '#' + UUID.generate();
+    }
+
+    private getParentUrl(): string | undefined {
+        if (!this.url)
+            return;
+
+        if (!this.classDef.ldpResource)
+            return Url.clean(this.url, { fragment: false });
+
+        return Url.parentDirectory(this.url);
     }
 
     private resolveRDFAlias(type: string): string {

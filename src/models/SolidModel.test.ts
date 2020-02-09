@@ -332,6 +332,31 @@ describe('SolidModel', () => {
         );
     });
 
+    it('uses hash fragment for minting non ldp resource urls', async () => {
+        class StubModel extends SolidModel {
+            public static ldpResource = false;
+        }
+
+        const parentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+
+        jest.spyOn(engine, 'create');
+
+        Soukai.loadModel('StubModel', StubModel);
+
+        const model = new StubModel();
+
+        await model.save(parentUrl);
+
+        expect(typeof model.url).toEqual('string');
+        expect(model.url.startsWith(parentUrl + '#')).toBe(true);
+
+        expect(engine.create).toHaveBeenCalledWith(
+            parentUrl,
+            expect.anything(),
+            model.url,
+        );
+    });
+
     it('uses model url container on find', async () => {
         class StubModel extends SolidModel {
         }
@@ -391,6 +416,29 @@ describe('SolidModel', () => {
         const collection = (engine.delete as any).mock.calls[0][0];
 
         expect(collection).toEqual(containerUrl);
+    });
+
+    it('uses parent document url on save for non ldp resources', async () => {
+        class StubModel extends SolidModel {
+            public static ldpResource = false;
+        }
+
+        const parentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+
+        jest.spyOn(engine, 'update');
+
+        Soukai.loadModel('StubModel', StubModel);
+
+        const model = new StubModel(
+            { url: parentUrl + '#' + Faker.random.uuid() },
+            true,
+        );
+
+        await model.update({ name: 'John' });
+
+        const collection = (engine.update as any).mock.calls[0][0];
+
+        expect(collection).toEqual(parentUrl);
     });
 
     it('aliases url attribute as id', async () => {
