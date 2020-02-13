@@ -11,6 +11,7 @@ import {
     SoukaiError,
 } from 'soukai';
 
+import SolidEmbedsRelation from '@/models/relations/SolidEmbedsRelation';
 import SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
 import SolidIsContainedByRelation from '@/models/relations/SolidIsContainedByRelation';
 
@@ -141,9 +142,10 @@ export default class SolidModel extends Model {
             types.push({ '@id': rdfClass });
         }
 
-        filters['@type'] = {
-            $contains: types,
-        };
+        filters['@type'] = { $contains: types };
+
+        if (types.length === 1)
+            filters['@type'] = { $or: [filters['@type'], { $eq: types[0] }] };
 
         return this.withCollection(() => super.all(filters));
     }
@@ -178,6 +180,10 @@ export default class SolidModel extends Model {
 
     protected isContainedBy(model: typeof SolidModel): SingleModelRelation {
         return new SolidIsContainedByRelation(this, model);
+    }
+
+    protected embeds(model: typeof SolidModel): MultiModelRelation {
+        return new SolidEmbedsRelation(this, model);
     }
 
     protected getDefaultRdfContext(): string {

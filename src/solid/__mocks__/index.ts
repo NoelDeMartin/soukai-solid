@@ -5,7 +5,7 @@ import UUID from '@/utils/UUID';
 
 export class SolidClientMock {
 
-    private resources: { [url: string]: Resource } = {};
+    private resources: { [url: string]: Resource[] } = {};
 
     public reset(): void {
         this.resources = {};
@@ -20,17 +20,37 @@ export class SolidClientMock {
             .map(property => property.toTurtle(url || '') + ' .')
             .join("\n");
 
-        if (url === null) {
+        if (url === null)
             url = Url.resolve(parentUrl, UUID.generate());
-        }
 
-        if (await this.resourceExists(url)) {
+        if (await this.resourceExists(url))
             throw new Error(`Cannot create a resource at ${url}, url already in use`);
-        }
 
         const resource = new Resource(url, turtleData);
 
-        this.resources[url] = resource;
+        this.resources[url] = [resource];
+
+        return resource;
+    }
+
+    public async createEmbeddedResource(
+        parentUrl: string,
+        url: string | null = null,
+        properties: ResourceProperty[] = [],
+    ) {
+        const turtleData = properties
+            .map(property => property.toTurtle(url || '') + ' .')
+            .join("\n");
+
+        if (url === null)
+            url = `${parentUrl}#${UUID.generate()}`;
+
+        if (!(await this.resourceExists(parentUrl)))
+            throw new Error(`Cannot create an embedded resource at ${url}, parent doesn't exist`);
+
+        const resource = new Resource(url, turtleData);
+
+        this.resources[parentUrl].push(resource);
 
         return resource;
     }
@@ -44,15 +64,17 @@ export class SolidClientMock {
     }
 
     public async getResource(url: string): Promise<Resource | null> {
-        return url in this.resources ? this.resources[url] : null;
+        return url in this.resources ? this.resources[url][0] : null;
     }
 
     public async getResources(containerUrl: string, types: string[] = []): Promise<Resource[]> {
         const resources: Resource[] = [];
 
-        for (const resource of Object.values(this.resources)) {
-            if (resource.url.startsWith(containerUrl)) {
-                resources.push(resource);
+        for (const urlResources of Object.values(this.resources)) {
+            for (const resource of urlResources) {
+                if (resource.url.startsWith(containerUrl)) {
+                    resources.push(resource);
+                }
             }
         }
 
@@ -74,7 +96,17 @@ export class SolidClientMock {
     }
 
     public async resourceExists(url: string): Promise<boolean> {
-        return url in this.resources;
+        return !!Object.keys(this.resources).find(resourceUrl => {
+            if (!url.startsWith(resourceUrl))
+                return false;
+
+            for (const resource of this.resources[resourceUrl]) {
+                if (resource.url === url)
+                    return true;
+            }
+
+            return false;
+        });
     }
 }
 

@@ -43,6 +43,8 @@ export class SolidModel extends Model {
 
     protected isContainedBy(model: typeof SolidModel): SingleModelRelation;
 
+    protected embeds(model: typeof SolidModel): MultiModelRelation;
+
     protected getDefaultRdfContext(): string;
 
     protected newUrl(parentUrl?: string): string;

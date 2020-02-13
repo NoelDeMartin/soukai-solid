@@ -5,10 +5,12 @@ import Soukai, { FieldType } from 'soukai';
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 
-import { stubPersonJsonLD, stubGroupJsonLD } from '@tests/stubs/helpers';
+import { stubPersonJsonLD, stubGroupJsonLD, stubWatchActionJsonLD, stubMovieJsonLD } from '@tests/stubs/helpers';
 import Group from '@tests/stubs/Group';
+import Movie from '@tests/stubs/Movie';
 import Person from '@tests/stubs/Person';
 import StubEngine from '@tests/stubs/StubEngine';
+import WatchAction from '@tests/stubs/WatchAction';
 
 import SolidModel from './SolidModel';
 
@@ -19,6 +21,8 @@ describe('SolidModel', () => {
     beforeAll(() => {
         Soukai.loadModel('Group', Group);
         Soukai.loadModel('Person', Person);
+        Soukai.loadModel('Movie', Movie);
+        Soukai.loadModel('WatchAction', WatchAction);
     });
 
     beforeEach(() => {
@@ -591,6 +595,40 @@ describe('SolidModel', () => {
                     $contains: [
                         { '@id': 'http://cmlns.com/foaf/0.1/Person' },
                         { '@id': 'http://www.w3.org/ns/ldp#Resource' },
+                    ],
+                },
+            },
+        );
+    });
+
+    it('implements embeds relationship', async () => {
+        const movieUrl = Url.resolve(Faker.internet.url());
+        const watchActionUrl = `${movieUrl}#${Faker.random.uuid()}`;
+
+        const movie = new Movie({url: movieUrl});
+
+        jest.spyOn(engine, 'readMany');
+
+        engine.setMany(movieUrl, {
+            [watchActionUrl]: stubWatchActionJsonLD(watchActionUrl, movieUrl),
+        });
+
+        expect(movie.actions).toBeUndefined();
+
+        await movie.loadRelation('actions');
+
+        expect(movie.actions).toHaveLength(1);
+        expect(movie.actions[0]).toBeInstanceOf(WatchAction);
+        expect(movie.actions[0].object).toBe(movieUrl);
+
+        expect(engine.readMany).toHaveBeenCalledTimes(1);
+        expect(engine.readMany).toHaveBeenCalledWith(
+            movieUrl,
+            {
+                '@type': {
+                    $or: [
+                        { $contains: [{ '@id': 'https://schema.org/WatchAction' }] },
+                        { $eq: { '@id': 'https://schema.org/WatchAction' } },
                     ],
                 },
             },

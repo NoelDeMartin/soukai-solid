@@ -69,6 +69,8 @@ export default class SolidEngine implements Engine {
                 } else if (typeof value === 'string') {
                     rdfsClasses.push(value);
                 }
+
+                // TODO support $or filter
             }
 
             // TODO to improve efficiency, use more filters than just types in the request
