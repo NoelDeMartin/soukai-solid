@@ -98,6 +98,9 @@ export default class SolidModel extends Model {
         }
 
         if (this.ldpContainer) {
+            if (!this.ldpResource)
+                throw new Error(`Model ${this.name} cannot be declared as an ldpContainer if ldpResource is disabled`);
+
             const ldpContainerType = this.instance.resolveRDFAlias('ldp:Container');
 
             if (!this.rdfsClasses.has(ldpContainerType)) {
@@ -113,6 +116,9 @@ export default class SolidModel extends Model {
                 },
             };
         }
+
+        if (!this.ldpResource && !this.mintsUrls)
+            throw new Error(`Model ${this.name} cannot disable url minting because it isn't an ldpResource`);
 
         for (const field in this.fields) {
             this.fields[field].rdfProperty = this.instance.resolveRDFAlias(

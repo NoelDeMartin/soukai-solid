@@ -27,9 +27,7 @@ export default class SolidEngine implements Engine {
     ): Promise<string> {
         const properties = this.convertJsonLDToResourceProperties(attributes);
 
-        const resource = this.hasContainerType(properties)
-            ? await this.client.createContainer(collection, id, properties)
-            : await this.client.createResource(collection, id, properties);
+        const resource = await this.client.createResource(collection, id, properties);
 
         return resource.url;
     }
@@ -163,16 +161,6 @@ export default class SolidEngine implements Engine {
         attributes['@id'] = resource.url;
 
         return attributes;
-    }
-
-    private hasContainerType(properties: ResourceProperty[]): boolean {
-        for (const property of properties) {
-            if (property.isType('http://www.w3.org/ns/ldp#Container')) {
-                return true;
-            }
-        }
-
-        return false;
     }
 
     private addJsonLDProperty(properties: ResourceProperty[], field: string, value: any): void {

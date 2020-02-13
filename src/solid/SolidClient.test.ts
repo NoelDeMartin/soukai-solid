@@ -89,7 +89,7 @@ describe('Solid', () => {
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
 
-        StubFetcher.addFetchResponse();
+        StubFetcher.addFetchResponse(`<${resourceUrl}> a <http://www.w3.org/ns/ldp#Resource> .`);
 
         await expect(client.createResource(parentUrl, resourceUrl, []))
             .rejects
@@ -104,7 +104,7 @@ describe('Solid', () => {
         StubFetcher.addFetchNotFoundResponse();
         StubFetcher.addFetchResponse();
 
-        const resource = await client.createContainer(
+        const resource = await client.createResource(
             parentUrl,
             containerUrl,
             [
@@ -143,7 +143,7 @@ describe('Solid', () => {
 
         StubFetcher.addFetchResponse('', { Location: containerUrl });
 
-        const resource = await client.createContainer(
+        const resource = await client.createResource(
             parentUrl,
             null,
             [
@@ -198,7 +198,10 @@ describe('Solid', () => {
     });
 
     it('gets resources using a trailing slash', async () => {
-        const containerUrl = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const containerUrl = Url.resolveDirectory(
+            Faker.internet.url(),
+            Str.slug(Faker.random.word()),
+        );
         const data = `
             <foobar>
                 a <http://www.w3.org/ns/ldp#Resource> ;
@@ -211,11 +214,34 @@ describe('Solid', () => {
 
         expect(resources).toHaveLength(1);
 
-        expect(resources[0].url).toEqual(containerUrl + '/foobar');
+        expect(resources[0].url).toEqual(containerUrl + 'foobar');
         expect(resources[0].name).toEqual('Foo Bar');
         expect(resources[0].types).toEqual(['http://www.w3.org/ns/ldp#Resource']);
 
-        expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl + '/*', {
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl + '*', {
+            headers: { 'Accept': 'text/turtle' },
+        });
+    });
+
+    it('gets embedded resources', async () => {
+        const url = Faker.internet.url();
+        const embeddedUrl = url + '#' + Faker.random.uuid();
+        const data = `
+            <${url}>
+                a <http://www.w3.org/ns/ldp#Resource> ;
+                <http://cmlns.com/foaf/0.1/name> "Foo" .
+            <${embeddedUrl}>
+                <http://cmlns.com/foaf/0.1/name> "Bar" .
+        `;
+
+        StubFetcher.addFetchResponse(data);
+
+        const resource = await client.getResource(embeddedUrl) as Resource;
+
+        expect(resource).not.toBeNull();
+        expect(resource.name).toEqual('Bar');
+
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(embeddedUrl, {
             headers: { 'Accept': 'text/turtle' },
         });
     });

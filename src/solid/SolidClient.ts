@@ -1,7 +1,8 @@
-import $rdf from 'rdflib';
+import $rdf, { NamedNode, IndexedFormula, Node } from 'rdflib';
 
 import Resource, { ResourceProperty } from '@/solid/Resource';
 
+import Arr from '@/utils/Arr';
 import Url from '@/utils/Url';
 
 interface RequestOptions {
@@ -28,93 +29,20 @@ export default class SolidClient {
         url: string | null = null,
         properties: ResourceProperty[] = [],
     ): Promise<Resource> {
+        if (url && await this.resourceExists(url))
+            throw new Error(`Cannot create a resource at ${url}, url already in use`);
+
         const turtleData = properties
             .map(property => property.toTurtle(url || '') + ' .')
             .join("\n");
 
-        const headers = {
-            'Content-Type': 'text/turtle',
-        };
+        if (this.containsType(properties, LDP('Container')))
+            return this.createLDPContainer(parentUrl, url, turtleData);
 
-        if (url === null) {
-            const response = await this.fetch(parentUrl, {
-                headers,
-                method: 'POST',
-                body: turtleData,
-            });
+        if (this.containsType(properties, LDP('Resource')))
+            return this.createLDPResource(parentUrl, url, turtleData);
 
-            return new Resource(
-                Url.resolve(parentUrl, response.headers.get('Location') || ''),
-                turtleData,
-            );
-        }
-
-        if (await this.resourceExists(url)) {
-            throw new Error(`Cannot create a resource at ${url}, url already in use`);
-        }
-
-        await this.fetch(url, {
-            method: 'PUT',
-            body: turtleData,
-            headers: {
-                'Content-Type': 'text/turtle',
-            },
-        });
-
-        return new Resource(url, turtleData);
-    }
-
-    public async createContainer(
-        parentUrl: string,
-        url: string | null = null,
-        properties: ResourceProperty[] = [],
-    ): Promise<Resource> {
-        const turtleData = properties
-            .map(property => property.toTurtle(url || '') + ' .')
-            .join("\n");
-
-        const headers = {
-            'Content-Type': 'text/turtle',
-            'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
-        };
-
-        if (url === null) {
-            const response = await this.fetch(
-                parentUrl,
-                {
-                    headers,
-                    method: 'POST',
-                    body: turtleData,
-                },
-            );
-
-            return new Resource(
-                Url.resolve(parentUrl, response.headers.get('Location') || ''),
-                turtleData,
-            );
-        }
-
-        if (!url.endsWith('/')) {
-            throw new Error(`Container urls must end with a trailing slash, given ${url}`);
-        }
-
-        if (await this.resourceExists(url)) {
-            throw new Error(`Cannot create a resource at ${url}, url already in use`);
-        }
-
-        await this.fetch(
-            parentUrl,
-            {
-                method: 'POST',
-                body: turtleData,
-                headers: {
-                    ...headers,
-                    'Slug': Url.filename(url.substr(0, url.length - 1)),
-                },
-            },
-        );
-
-        return new Resource(url, turtleData);
+        return this.createEmbeddedResource(parentUrl, url, turtleData);
     }
 
     public async getResource(url: string): Promise<Resource | null> {
@@ -130,15 +58,11 @@ export default class SolidClient {
     }
 
     public async getResources(containerUrl: string, types: string[] = []): Promise<Resource[]> {
-        if (!containerUrl.endsWith('/')) {
-            containerUrl += '/';
-        }
-
         try {
-            // Globbing only returns non-container resources
-            const resources = types.indexOf(LDP('Container').uri) === -1
-                ? await this.getContainerResourcesUsingGlobbing(containerUrl)
-                : await this.getContainerResources(containerUrl, true);
+            const resources = await this.getResourcesFromParent(
+                containerUrl,
+                types.indexOf(LDP('Container').uri) !== -1,
+            );
 
             return resources.filter(resource => {
                 for (const type of types) {
@@ -261,7 +185,12 @@ export default class SolidClient {
         });
 
         if (response.status === 200) {
-            return true;
+            const store = $rdf.graph();
+            const data = await response.text();
+
+            $rdf.parse(data, store, url, 'text/turtle', null as any);
+
+            return !!store.any(store.sym(url), null as any, null as any, null as any);
         } else if (response.status === 404) {
             return false;
         } else {
@@ -271,7 +200,140 @@ export default class SolidClient {
         }
     }
 
-    private async getContainerResources(containerUrl: string, onlyContainers: boolean): Promise<Resource[]> {
+    private async createLDPContainer(
+        parentUrl: string,
+        url: string | null,
+        data: string,
+    ): Promise<Resource> {
+        if (!url) {
+            const response = await this.fetch(
+                parentUrl,
+                {
+                    headers: {
+                        'Content-Type': 'text/turtle',
+                        'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
+                    },
+                    method: 'POST',
+                    body: data,
+                },
+            );
+
+            return new Resource(
+                Url.resolve(parentUrl, response.headers.get('Location') || ''),
+                data,
+            );
+        }
+
+        if (!url.startsWith(parentUrl))
+            throw new Error('Explicit resource url should start with the parent url');
+
+        if (!url.endsWith('/'))
+            throw new Error(`Container urls must end with a trailing slash, given ${url}`);
+
+        await this.fetch(
+            parentUrl,
+            {
+                method: 'POST',
+                body: data,
+                headers: {
+                    'Content-Type': 'text/turtle',
+                    'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
+                    'Slug': Url.filename(url.substr(0, url.length - 1)),
+                },
+            },
+        );
+
+        return new Resource(url, data);
+    }
+
+    private async createLDPResource(
+        parentUrl: string,
+        url: string | null,
+        data: string,
+    ): Promise<Resource> {
+        if (!url) {
+            const response = await this.fetch(parentUrl, {
+                headers: { 'Content-Type': 'text/turtle' },
+                method: 'POST',
+                body: data,
+            });
+
+            return new Resource(
+                Url.resolve(parentUrl, response.headers.get('Location') || ''),
+                data,
+            );
+        }
+
+        if (!url.startsWith(parentUrl))
+            throw new Error('Explicit resource url should start with the parent url');
+
+        await this.fetch(url, {
+            headers: { 'Content-Type': 'text/turtle' },
+            method: 'PUT',
+            body: data,
+        });
+
+        return new Resource(url, data);
+    }
+
+    private async createEmbeddedResource(
+        parentUrl: string,
+        url: string | null,
+        data: string,
+    ): Promise<Resource> {
+        if (!url || !url.startsWith(parentUrl))
+            throw new Error('Embedded resources require an explicit url starting with the parent url');
+
+        if (!await this.resourceExists(parentUrl))
+            throw new Error(`Cannot create a embedded resource at ${parentUrl} because it doesn't exist`);
+
+        await this.fetch(
+            parentUrl,
+            {
+                method: 'PATCH',
+                body: `
+                    @prefix solid: <http://www.w3.org/ns/solid/terms#> .
+                    <>
+                        solid:patches <${parentUrl}> ;
+                        solid:inserts { ${data} } .
+                `,
+                headers: {
+                    'Content-Type': 'text/n3',
+                },
+            },
+        );
+
+        return new Resource(url, data);
+    }
+
+    private async getResourcesFromParent(containerUrl: string, includeChildContainers: boolean): Promise<Resource[]> {
+        if (!containerUrl.endsWith('/'))
+            return this.getEmbeddedResources(containerUrl);
+
+        // Globbing only returns non-container resources
+        if (!includeChildContainers)
+            return this.getLDPResourcesUsingGlobbing(containerUrl);
+
+        return this.getLDPContainers(containerUrl, true);
+    }
+
+    private async getEmbeddedResources(containerUrl: string): Promise<Resource[]> {
+        const store = $rdf.graph();
+        const data = await this
+            .fetch(containerUrl, { headers: { 'Accept': 'text/turtle' } })
+            .then(res => res.text());
+
+        $rdf.parse(data, store, containerUrl, 'text/turtle', null as any);
+
+        const subjectNodes = Arr.unique(
+            store.each(null as any, null as any, null as any, null as any),
+            node => node.value,
+        );
+
+        return subjectNodes.map(node => this.createResourceFromSubject(node, store));
+    }
+
+    private async getLDPContainers(containerUrl: string, onlyContainers: boolean): Promise<Resource[]> {
         const store = $rdf.graph();
         const data = await this
             .fetch(containerUrl, { headers: { 'Accept': 'text/turtle' } })
@@ -283,7 +345,7 @@ export default class SolidClient {
             store
                 .statementsMatching($rdf.sym(containerUrl), LDP('contains'), null as any, null as any, false)
                 .map(async statement => {
-                    const resource = new Resource(statement.object.value, store);
+                    const resource = this.createResourceFromSubject(statement.object, store);
 
                     // Requests only return ldp types for unexpanded resources, so we can only filter
                     // by containers or plain resources
@@ -298,7 +360,7 @@ export default class SolidClient {
         return resources.filter(resource => resource !== null) as Resource[];
     }
 
-    private async getContainerResourcesUsingGlobbing(containerUrl: string): Promise<Resource[]> {
+    private async getLDPResourcesUsingGlobbing(containerUrl: string): Promise<Resource[]> {
         const store = $rdf.graph();
         const data = await this
             .fetch(containerUrl + '*', { headers: { 'Accept': 'text/turtle' } })
@@ -308,7 +370,7 @@ export default class SolidClient {
 
         return store
             .each(null as any, RDFS('type'), LDP('Resource'), null as any)
-            .map(node => new Resource(node.value, store));
+            .map(node => this.createResourceFromSubject(node, store));
     }
 
     private async updateContainerResource(
@@ -349,6 +411,21 @@ export default class SolidClient {
                 `Error updating container resource at ${resource.url}, returned status code ${response.status}`,
             );
         }
+    }
+
+    private containsType(properties: ResourceProperty[], type: string | NamedNode): boolean {
+        if (type instanceof NamedNode)
+            type = type.uri;
+
+        return !!properties.find(property => property.isType(type as string));
+    }
+
+    private createResourceFromSubject(subjectNode: Node, store: IndexedFormula): Resource {
+        const subjectStore = $rdf.graph();
+
+        subjectStore.addAll(store.connectedStatements(subjectNode, null as any, null as any));
+
+        return new Resource(subjectNode.value, subjectStore);
     }
 
 }

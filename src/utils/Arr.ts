@@ -8,8 +8,10 @@ class Arr {
         return (new Array(length)).fill(value);
     }
 
-    public unique<T>(array: T[]): T[] {
-        return array.filter((item: T, index: number) => array.indexOf(item) === index);
+    public unique<T>(array: T[], getId: ((i: T) => any) | null = null): T[] {
+        const ids = array.map(item => getId ? getId(item) : item);
+
+        return array.filter((item, index) => ids.indexOf(ids[index]) === index);
     }
 
 }

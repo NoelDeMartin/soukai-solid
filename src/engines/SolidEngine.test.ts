@@ -68,7 +68,7 @@ describe('SolidEngine', () => {
 
         expect(id).toEqual(resourceUrl);
 
-        expect(SolidClientMock.createContainer).toHaveBeenCalledWith(
+        expect(SolidClientMock.createResource).toHaveBeenCalledWith(
             parentUrl,
             resourceUrl,
 

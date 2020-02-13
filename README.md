@@ -101,7 +101,7 @@ As you may have noticed in the Getting Started example, all those properties are
 
   Those prefixes will always be available for definitions, so you should abstain from adding them to `rdfContexts` in your models.
 
-- `rdfsClasses` will include the `ldp:Resource` type, and also `ldp:Container` if the `ldpContainer` static property is set to `true`.
+- `rdfsClasses` will include the `ldp:Resource` type (that can be disabled setting `ldpResource` static property to `false`), and also `ldp:Container` if the `ldpContainer` static property is set to `true`.
 
 - `rdfProperty` within field definitions will default to using the default prefix (the first one on your `rdfContexts` definition) plus the field name.
 
@@ -175,6 +175,6 @@ class Group extends SolidModel {
 
 ## Going Further
 
-If you want to learn more about this library, look at the [tests](tests) folder to see other examples.
+If you want to learn more about this library, look at the files ending with `.test.ts` throughout the source code to see other examples.
 
-The code is written using TypeScript, so looking at the source would also provide more insights.
+The code is written using TypeScript, so looking at the source should provide more insights.
