@@ -411,6 +411,10 @@ describe('Solid', () => {
         );
     });
 
+    it.skip('updates embedded resources', () => {
+        // TODO
+    });
+
     it('updates container resources', async () => {
         const url = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
         const data = `
@@ -504,6 +508,10 @@ describe('Solid', () => {
         await client.deleteResource(url);
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(url, { method: 'DELETE' });
+    });
+
+    it.skip('deletes embedded resources', () => {
+        // TODO
     });
 
     it('deletes container resources', async () => {

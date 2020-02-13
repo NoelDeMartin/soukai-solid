@@ -54,6 +54,7 @@ export default class SolidClient {
             return null;
         }
 
+        // TODO filter only relevant statements
         return new Resource(url, await response.text());
     }
 
