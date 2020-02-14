@@ -89,21 +89,14 @@ class Url {
             parts[part] = includedParts[part] !== false ? value || '' : '';
         }
 
-        let cleanUrl = `${parts.protocol}://${parts.domain}`;
-
-        if (parts.port)
-            cleanUrl += ':' + parts.port;
-
-        if (parts.path)
-            cleanUrl += parts.path;
-
-        if (parts.query)
-            cleanUrl += '?' + parts.query;
-
-        if (parts.fragment)
-            cleanUrl += '#' + parts.fragment;
-
-        return cleanUrl;
+        return [
+            parts.protocol ? `${parts.protocol}://` : '',
+            parts.domain || '',
+            parts.port ? `:${parts.port}` : '',
+            parts.path || '',
+            parts.query ? `?${parts.query}` : '',
+            parts.fragment ? `#${parts.fragment}` : '',
+        ].join('');
     }
 
 }
