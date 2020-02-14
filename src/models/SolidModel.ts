@@ -182,7 +182,7 @@ export default class SolidModel extends Model {
         return new SolidIsContainedByRelation(this, model);
     }
 
-    protected embeds(model: typeof SolidModel): MultiModelRelation {
+    protected embeds(model: typeof SolidModel): SolidEmbedsRelation {
         return new SolidEmbedsRelation(this, model);
     }
 
@@ -201,7 +201,7 @@ export default class SolidModel extends Model {
                 types.push({ '@id': rdfClass });
             }
 
-            jsonld['@type'] = types;
+            jsonld['@type'] = types.length === 1 ? types[0] : types;
         }
 
         return jsonld;

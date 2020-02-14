@@ -1,5 +1,6 @@
-import { FieldType, MultiModelRelation } from 'soukai';
+import { FieldType } from 'soukai';
 
+import SolidEmbedsRelation from '@/models/relations/SolidEmbedsRelation';
 import SolidModel from '@/models/SolidModel';
 
 import WatchAction from '@tests/stubs/WatchAction';
@@ -18,8 +19,8 @@ export default class Movie extends SolidModel {
         name: FieldType.String,
     };
 
-    public actionsRelationship(): MultiModelRelation {
-        return this.embeds(WatchAction);
+    public actionsRelationship(): SolidEmbedsRelation<Movie, WatchAction, typeof WatchAction> {
+        return this.embeds(WatchAction) as any;
     }
 
 }

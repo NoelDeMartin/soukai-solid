@@ -40,6 +40,6 @@ export function stubWatchActionJsonLD(url: string, movieUrl: string): EngineAttr
     return {
         '@id': url,
         '@type': { '@id': 'https://schema.org/WatchAction' },
-        'https://schema.org/object': movieUrl,
+        'https://schema.org/object': { '@id': movieUrl },
     };
 }

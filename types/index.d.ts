@@ -11,6 +11,16 @@ import {
     SingleModelRelation,
 } from 'soukai';
 
+export interface SolidEmbedsRelation<
+    P extends SolidModel = SolidModel,
+    R extends SolidModel = SolidModel,
+    RC extends typeof SolidModel = typeof SolidModel,
+> extends MultiModelRelation<P, R, RC> {
+
+    create(attributes: Attributes): Promise<R>;
+
+}
+
 export interface SolidFieldsDefinition extends FieldsDefinition {
     [field: string]: SolidFieldDefinition;
 }
@@ -43,7 +53,7 @@ export class SolidModel extends Model {
 
     protected isContainedBy(model: typeof SolidModel): SingleModelRelation;
 
-    protected embeds(model: typeof SolidModel): MultiModelRelation;
+    protected embeds(model: typeof SolidModel): SolidEmbedsRelation;
 
     protected getDefaultRdfContext(): string;
 
