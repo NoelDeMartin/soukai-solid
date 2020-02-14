@@ -4,19 +4,21 @@ import SolidModel from '@/models/SolidModel';
 
 import Url from '@/utils/Url';
 
-export default class SolidHasManyRelation extends MultiModelRelation {
+export default class SolidHasManyRelation<
+    P extends SolidModel = SolidModel,
+    R extends SolidModel = SolidModel,
+    RC extends typeof SolidModel = typeof SolidModel,
+> extends MultiModelRelation<P, R, RC> {
 
     protected linksField: string;
 
-    protected related: typeof SolidModel;
-
-    public constructor(parent: SolidModel, related: typeof SolidModel, linksField: string) {
+    public constructor(parent: P, related: RC, linksField: string) {
         super(parent, related);
 
         this.linksField = linksField;
     }
 
-    public async resolve(): Promise<Model[]> {
+    public async resolve(): Promise<R[]> {
         const links = this.parent.getAttribute(this.linksField);
         const linksByContainerUrl = {};
 
@@ -32,14 +34,14 @@ export default class SolidHasManyRelation extends MultiModelRelation {
 
         const results = await Promise.all(
             Object.keys(linksByContainerUrl).map(
-                containerUrl => this.related.from(containerUrl).all({
+                containerUrl => this.related.from(containerUrl).all<R>({
                     $in: linksByContainerUrl[containerUrl],
                 }),
             ),
         );
 
         return results.reduce(
-            (models: SolidModel[], containerModels: SolidModel[]) => {
+            (models: R[], containerModels: R[]) => {
                 models.push(...containerModels);
 
                 return models;
