@@ -130,8 +130,8 @@ export default class SolidModel extends Model {
         this.fields[this.primaryKey].rdfProperty = null;
     }
 
-    public static find<T extends Model>(id: string): Promise<T | null> {
-        return this.withCollection(Url.parentDirectory(id), () => super.find(id));
+    public static find<T extends Model, Key = string>(id: Key): Promise<T | null> {
+        return this.withCollection(Url.parentDirectory(id as any), () => super.find(id));
     }
 
     public static all<T extends Model>(filters: Filters = {}): Promise<T[]> {
@@ -223,8 +223,14 @@ export default class SolidModel extends Model {
             .filter(name => name !== null);
     }
 
-    protected parseEngineAttributes(attributes: EngineAttributes): Attributes {
-        return this.convertJsonLDToAttributes(attributes);
+    protected parseEngineAttributes<T extends Model>(id: any, document: EngineAttributes): T {
+        const { __embeddedResourceDocuments, ...attributes } = document;
+
+        const model = super.parseEngineAttributes<T>(id, this.convertJsonLDToAttributes(attributes));
+
+        // TODO load embedded models
+
+        return model;
     }
 
     protected castAttribute(value: any, definition?: FieldDefinition): any {

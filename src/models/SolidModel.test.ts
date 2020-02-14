@@ -635,6 +635,10 @@ describe('SolidModel', () => {
         );
     });
 
+    it.skip('eager loads embedded models', () => {
+        // TODO
+    });
+
     it('implements is contained by relationship', async () => {
         const name = Faker.random.word();
         const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(name));

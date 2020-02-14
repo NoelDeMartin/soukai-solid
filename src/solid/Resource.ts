@@ -76,17 +76,17 @@ export default class Resource {
 
     public readonly url: string;
 
-    private data: IndexedFormula;
+    private source: IndexedFormula;
 
-    public constructor(url: string, data: IndexedFormula | string) {
+    public constructor(url: string, source: IndexedFormula | string) {
         this.url = url;
 
-        if (typeof data === 'string') {
-            this.data = $rdf.graph();
+        if (typeof source === 'string') {
+            this.source = $rdf.graph();
 
-            $rdf.parse(data, this.data, url, 'text/turtle', null as any);
+            $rdf.parse(source, this.source, url, 'text/turtle', null as any);
         } else {
-            this.data = data;
+            this.source = source;
         }
     }
 
@@ -101,7 +101,7 @@ export default class Resource {
     }
 
     public get types(): string[] {
-        const typeTerms = this.data.each(
+        const typeTerms = this.source.each(
             $rdf.sym(this.url),
             new NamedNode('http://www.w3.org/1999/02/22-rdf-syntax-ns#type'),
             null as any,
@@ -112,7 +112,7 @@ export default class Resource {
     }
 
     public get properties(): string[] {
-        const typeTerms = this.data.each(
+        const typeTerms = this.source.each(
             $rdf.sym(this.url),
             null as any,
             null as any,
@@ -131,7 +131,7 @@ export default class Resource {
     }
 
     public getPropertyType(property: string): 'literal' | 'link' | null {
-        const statements = this.data.statementsMatching(
+        const statements = this.source.statementsMatching(
             $rdf.sym(this.url),
             new NamedNode(property),
             null as any,
@@ -148,7 +148,7 @@ export default class Resource {
         property: string,
         defaultValue: LiteralValue | null = null,
     ): LiteralValue | LiteralValue[] | null {
-        const statements = this.data.statementsMatching(
+        const statements = this.source.statementsMatching(
             $rdf.sym(this.url),
             new NamedNode(property),
             null as any,
@@ -168,7 +168,7 @@ export default class Resource {
     public getProperties(): ResourceProperty[] {
         const properties: ResourceProperty[] = [];
 
-        const statements = this.data.statementsMatching(
+        const statements = this.source.statementsMatching(
             $rdf.sym(this.url),
             null as any,
             null as any,
@@ -202,6 +202,42 @@ export default class Resource {
         }
 
         return properties;
+    }
+
+    public getSource(): IndexedFormula {
+        return this.source;
+    }
+
+    public toJsonLD(): object {
+        const jsonld = { '@id': this.url };
+
+        for (const property of this.properties) {
+            const value = this.getPropertyValue(property);
+
+            if (property === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') {
+                if (Array.isArray(value)) {
+                    jsonld['@type'] = value.map(link => ({ '@id': link }));
+                } else {
+                    jsonld['@type'] = { '@id': value };
+                }
+                continue;
+            }
+
+            switch (this.getPropertyType(property)) {
+                case 'literal':
+                    jsonld[property] = value;
+                    break;
+                case 'link':
+                    if (Array.isArray(value)) {
+                        jsonld[property] = value.map(link => ({ '@id': link }));
+                    } else {
+                        jsonld[property] = { '@id': value };
+                    }
+                    break;
+            }
+        }
+
+        return jsonld;
     }
 
 }

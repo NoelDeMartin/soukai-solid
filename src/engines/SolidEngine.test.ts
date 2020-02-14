@@ -1,4 +1,4 @@
-import { DocumentNotFound } from 'soukai';
+import { DocumentNotFound, EngineAttributes } from 'soukai';
 
 import Faker from 'faker';
 
@@ -89,7 +89,9 @@ describe('SolidEngine', () => {
             ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
         ]);
 
-        const document = await engine.readOne(Url.parentDirectory(resourceUrl), resourceUrl);
+        const document = withoutEmbeddedResources(
+            await engine.readOne(Url.parentDirectory(resourceUrl), resourceUrl),
+        );
 
         expect(document).toEqual(stubGroupJsonLD(resourceUrl, name));
 
@@ -133,9 +135,9 @@ describe('SolidEngine', () => {
         const documents = await engine.readMany(containerUrl);
 
         expect(Object.keys(documents)).toHaveLength(3);
-        expect(documents[firstUrl]).toEqual(stubPersonJsonLD(firstUrl, firstName));
-        expect(documents[secondUrl]).toEqual(stubPersonJsonLD(secondUrl, secondName));
-        expect(documents[thirdUrl]).toEqual(stubPersonJsonLD(thirdUrl, thirdName, false));
+        expect(withoutEmbeddedResources(documents[firstUrl])).toEqual(stubPersonJsonLD(firstUrl, firstName));
+        expect(withoutEmbeddedResources(documents[secondUrl])).toEqual(stubPersonJsonLD(secondUrl, secondName));
+        expect(withoutEmbeddedResources(documents[thirdUrl])).toEqual(stubPersonJsonLD(thirdUrl, thirdName, false));
 
         expect(SolidClientMock.getResources).toHaveBeenCalledWith(containerUrl, []);
     });
@@ -182,9 +184,9 @@ describe('SolidEngine', () => {
         });
 
         expect(Object.keys(documents)).toHaveLength(3);
-        expect(documents[firstUrl]).toEqual(stubPersonJsonLD(firstUrl, firstName));
-        expect(documents[secondUrl]).toEqual(stubPersonJsonLD(secondUrl, secondName));
-        expect(documents[thirdUrl]).toEqual(stubPersonJsonLD(thirdUrl, thirdName, false));
+        expect(withoutEmbeddedResources(documents[firstUrl])).toEqual(stubPersonJsonLD(firstUrl, firstName));
+        expect(withoutEmbeddedResources(documents[secondUrl])).toEqual(stubPersonJsonLD(secondUrl, secondName));
+        expect(withoutEmbeddedResources(documents[thirdUrl])).toEqual(stubPersonJsonLD(thirdUrl, thirdName, false));
 
         // TODO this should filter by Person type for better network performance
         expect(SolidClientMock.getResources).toHaveBeenCalledWith(containerUrl, []);
@@ -213,7 +215,7 @@ describe('SolidEngine', () => {
         );
 
         expect(Object.keys(documents)).toHaveLength(1);
-        expect(documents[url]).toEqual(stubPersonJsonLD(url, name));
+        expect(withoutEmbeddedResources(documents[url])).toEqual(stubPersonJsonLD(url, name));
 
         expect(SolidClientMock.getResources).toHaveBeenCalledWith(
             containerUrl,
@@ -246,8 +248,8 @@ describe('SolidEngine', () => {
         });
 
         expect(Object.keys(documents)).toHaveLength(2);
-        expect(documents[firstUrl]).toEqual(stubPersonJsonLD(firstUrl, firstName));
-        expect(documents[secondUrl]).toEqual(stubPersonJsonLD(secondUrl, secondName));
+        expect(withoutEmbeddedResources(documents[firstUrl])).toEqual(stubPersonJsonLD(firstUrl, firstName));
+        expect(withoutEmbeddedResources(documents[secondUrl])).toEqual(stubPersonJsonLD(secondUrl, secondName));
 
         expect(SolidClientMock.getResource).toHaveBeenCalledWith(firstUrl);
         expect(SolidClientMock.getResource).toHaveBeenCalledWith(secondUrl);
@@ -305,3 +307,9 @@ describe('SolidEngine', () => {
     });
 
 });
+
+function withoutEmbeddedResources(document: EngineAttributes, depth: number = 1): EngineAttributes {
+    const { __embeddedResourceDocuments, ...cleanDocument } = document;
+
+    return cleanDocument;
+}

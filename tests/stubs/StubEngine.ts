@@ -34,7 +34,7 @@ export default class StubEngine implements Engine {
     }
 
     public async readMany(collection: string): Promise<Documents> {
-        return this.many[collection];
+        return this.many[collection] || {};
     }
 
     public async update(

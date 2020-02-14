@@ -9,6 +9,8 @@ import {
 
 import { SolidClient, Fetch, Resource, ResourceProperty } from '@/solid';
 
+import Arr from '@/utils/Arr';
+
 export default class SolidEngine implements Engine {
 
     private helper: EngineHelper;
@@ -39,7 +41,7 @@ export default class SolidEngine implements Engine {
             throw new DocumentNotFound(id);
         }
 
-        return this.convertResourceToJsonLD(resource);
+        return this.convertResourceToDocument(resource);
     }
 
     public async readMany(collection: string, filters: Filters = {}): Promise<Documents> {
@@ -78,7 +80,7 @@ export default class SolidEngine implements Engine {
             resources = await this.client.getResources(collection, rdfsClasses);
         }
 
-        const documentsArray = resources.map(this.convertResourceToJsonLD);
+        const documentsArray = resources.map(this.convertResourceToDocument);
         const documents = {};
 
         for (const document of documentsArray) {
@@ -131,38 +133,20 @@ export default class SolidEngine implements Engine {
         return properties;
     }
 
-    private convertResourceToJsonLD(resource: Resource): EngineAttributes {
-        const attributes: EngineAttributes = {};
+    private convertResourceToDocument(resource: Resource): EngineAttributes {
+        const source = resource.getSource();
+        const subjectNodes = source.each(null as any, null as any, null as any, null as any);
 
-        for (const property of resource.properties) {
-            const value = resource.getPropertyValue(property);
-
-            if (property === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') {
-                if (Array.isArray(value)) {
-                    attributes['@type'] = value.map(link => ({ '@id': link }));
-                } else {
-                    attributes['@type'] = { '@id': value };
-                }
-                continue;
-            }
-
-            switch (resource.getPropertyType(property)) {
-                case 'literal':
-                    attributes[property] = value;
-                    break;
-                case 'link':
-                    if (Array.isArray(value)) {
-                        attributes[property] = value.map(link => ({ '@id': link }));
-                    } else {
-                        attributes[property] = { '@id': value };
-                    }
-                    break;
-            }
-        }
-
-        attributes['@id'] = resource.url;
-
-        return attributes;
+        return {
+            ...resource.toJsonLD() as EngineAttributes,
+            __embeddedResourceDocuments: Arr.unique(subjectNodes.map(node => node.value))
+                .filter(url => url.startsWith(resource.url) && url !== resource.url)
+                .map(url => new Resource(url, source))
+                .reduce((documents, resource) => ({
+                    ...documents,
+                    [resource.url]: resource.toJsonLD(),
+                }), {}),
+        };
     }
 
     private addJsonLDProperty(properties: ResourceProperty[], field: string, value: any): void {

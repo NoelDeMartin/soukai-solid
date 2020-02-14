@@ -54,7 +54,6 @@ export default class SolidClient {
             return null;
         }
 
-        // TODO filter only relevant statements
         return new Resource(url, await response.text());
     }
 
@@ -326,12 +325,11 @@ export default class SolidClient {
 
         $rdf.parse(data, store, containerUrl, 'text/turtle', null as any);
 
-        const subjectNodes = Arr.unique(
-            store.each(null as any, null as any, null as any, null as any),
-            node => node.value,
-        );
+        const urls = store
+            .each(null as any, null as any, null as any, null as any)
+            .map(node => node.value);
 
-        return subjectNodes.map(node => this.createResourceFromSubject(node, store));
+        return Arr.unique(urls).map(url => new Resource(url, store));
     }
 
     private async getLDPContainers(containerUrl: string, onlyContainers: boolean): Promise<Resource[]> {
@@ -346,7 +344,7 @@ export default class SolidClient {
             store
                 .statementsMatching($rdf.sym(containerUrl), LDP('contains'), null as any, null as any, false)
                 .map(async statement => {
-                    const resource = this.createResourceFromSubject(statement.object, store);
+                    const resource = new Resource(statement.object.value, store);
 
                     // Requests only return ldp types for unexpanded resources, so we can only filter
                     // by containers or plain resources
@@ -371,7 +369,7 @@ export default class SolidClient {
 
         return store
             .each(null as any, RDFS('type'), LDP('Resource'), null as any)
-            .map(node => this.createResourceFromSubject(node, store));
+            .map(node => new Resource(node.value, store));
     }
 
     private async updateContainerResource(
@@ -419,14 +417,6 @@ export default class SolidClient {
             type = type.uri;
 
         return !!properties.find(property => property.isType(type as string));
-    }
-
-    private createResourceFromSubject(subjectNode: Node, store: IndexedFormula): Resource {
-        const subjectStore = $rdf.graph();
-
-        subjectStore.addAll(store.connectedStatements(subjectNode, null as any, null as any));
-
-        return new Resource(subjectNode.value, subjectStore);
     }
 
 }
