@@ -308,8 +308,6 @@ describe('SolidEngine', () => {
 
 });
 
-function withoutEmbeddedResources(document: EngineAttributes, depth: number = 1): EngineAttributes {
-    const { __embeddedResourceDocuments, ...cleanDocument } = document;
-
-    return cleanDocument;
+function withoutEmbeddedResources(document: EngineAttributes): EngineAttributes {
+   return SolidEngine.decantEmbeddedDocuments(document)[0];
 }

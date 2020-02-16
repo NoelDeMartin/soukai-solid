@@ -11,7 +11,17 @@ import { SolidClient, Fetch, Resource, ResourceProperty } from '@/solid';
 
 import Arr from '@/utils/Arr';
 
+interface SolidDocument extends EngineAttributes {
+    __embedded: Documents;
+}
+
 export default class SolidEngine implements Engine {
+
+    public static decantEmbeddedDocuments(document: EngineAttributes): [EngineAttributes, Documents | undefined] {
+        const { __embedded: embeddedResources, ...attributes } = document;
+
+        return [attributes, embeddedResources as Documents];
+    }
 
     private helper: EngineHelper;
 
@@ -133,13 +143,13 @@ export default class SolidEngine implements Engine {
         return properties;
     }
 
-    private convertResourceToDocument(resource: Resource): EngineAttributes {
+    private convertResourceToDocument(resource: Resource): SolidDocument {
         const source = resource.getSource();
         const subjectNodes = source.each(null as any, null as any, null as any, null as any);
 
         return {
             ...resource.toJsonLD() as EngineAttributes,
-            __embeddedResourceDocuments: Arr.unique(subjectNodes.map(node => node.value))
+            __embedded: Arr.unique(subjectNodes.map(node => node.value))
                 .filter(url => url.startsWith(resource.url) && url !== resource.url)
                 .map(url => new Resource(url, source))
                 .reduce((documents, resource) => ({

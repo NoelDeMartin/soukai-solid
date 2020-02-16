@@ -1,4 +1,4 @@
-import { MultiModelRelation, Attributes } from 'soukai';
+import { MultiModelRelation, Attributes, Documents, EngineHelper } from 'soukai';
 
 import SolidModel from '@/models/SolidModel';
 
@@ -18,6 +18,15 @@ export default class SolidEmbedsRelation<
         // array of loaded models.
 
         return this.related.at(this.parent.url).create(attributes);
+    }
+
+    public resolveFromDocuments(documents: Documents): R[] {
+        const engineHelper = new EngineHelper();
+        const filters = this.related.prepareEngineFilters();
+
+        return Object
+            .entries(engineHelper.filterDocuments(documents, filters))
+            .map(([id, attributes]) => this.related.instance.fromEngineAttributes(id, attributes));
     }
 
 }

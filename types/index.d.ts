@@ -43,9 +43,15 @@ export class SolidModel extends Model {
 
     public static mintsUrls: boolean;
 
+    public static instance: SolidModel;
+
     public static from(containerUrl: string): typeof SolidModel;
 
     public static at(containerUrl: string): typeof SolidModel;
+
+    public static prepareEngineFilters(filters?: Filters): Filters;
+
+    protected static pureInstance: SolidModel;
 
     public save<T extends Model>(containerUrl?: string): Promise<T>;
 

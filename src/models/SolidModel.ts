@@ -9,7 +9,10 @@ import {
     MultiModelRelation,
     SingleModelRelation,
     SoukaiError,
+    Documents,
 } from 'soukai';
+
+import SolidEngine from '@/engines/SolidEngine';
 
 import SolidEmbedsRelation from '@/models/relations/SolidEmbedsRelation';
 import SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
@@ -43,7 +46,7 @@ export default class SolidModel extends Model {
 
     public static mintsUrls: boolean = true;
 
-    protected static instance: SolidModel;
+    public static instance: SolidModel;
 
     protected static pureInstance: SolidModel;
 
@@ -135,6 +138,12 @@ export default class SolidModel extends Model {
     }
 
     public static all<T extends Model>(filters: Filters = {}): Promise<T[]> {
+        filters = this.prepareEngineFilters(filters);
+
+        return this.withCollection(() => super.all(filters));
+    }
+
+    public static prepareEngineFilters(filters: Filters = {}): Filters {
         // TODO translate filters from attributes to jsonld specification
 
         const types: { '@id': string }[] = [];
@@ -147,7 +156,7 @@ export default class SolidModel extends Model {
         if (types.length === 1)
             filters['@type'] = { $or: [filters['@type'], { $eq: types[0] }] };
 
-        return this.withCollection(() => super.all(filters));
+        return filters;
     }
 
     protected classDef: typeof SolidModel;
@@ -168,6 +177,16 @@ export default class SolidModel extends Model {
 
     public getIdAttribute(): string {
         return this.getAttribute('url');
+    }
+
+    public fromEngineAttributes<T extends Model>(id: any, document: EngineAttributes): T {
+        const [mainDocument, embeddedDocuments] = SolidEngine.decantEmbeddedDocuments(document);
+        const model = super.fromEngineAttributes<SolidModel>(id, mainDocument);
+
+        if (embeddedDocuments)
+            model.loadEmbeddedRelations(embeddedDocuments);
+
+        return model as any as T;
     }
 
     protected hasMany(model: typeof SolidModel, linksField: string): MultiModelRelation {
@@ -223,14 +242,8 @@ export default class SolidModel extends Model {
             .filter(name => name !== null);
     }
 
-    protected parseEngineAttributes<T extends Model>(id: any, document: EngineAttributes): T {
-        const { __embeddedResourceDocuments, ...attributes } = document;
-
-        const model = super.parseEngineAttributes<T>(id, this.convertJsonLDToAttributes(attributes));
-
-        // TODO load embedded models
-
-        return model;
+    protected parseEngineAttributes(document: EngineAttributes): Attributes {
+        return this.convertJsonLDToAttributes(document);
     }
 
     protected castAttribute(value: any, definition?: FieldDefinition): any {
@@ -282,6 +295,17 @@ export default class SolidModel extends Model {
         }
 
         return type;
+    }
+
+    private loadEmbeddedRelations(documents: Documents) {
+        for (const relation of this.classDef.relations) {
+            const relationship = this[relation + 'Relationship']();
+
+            if (!(relationship instanceof SolidEmbedsRelation))
+                continue;
+
+            this.setRelationModels(relation, relationship.resolveFromDocuments(documents));
+        }
     }
 
     private static withCollection<Result>(collection: string | (() => Result) = '', operation?: () => Result): Result {

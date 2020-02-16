@@ -635,8 +635,22 @@ describe('SolidModel', () => {
         );
     });
 
-    it.skip('eager loads embedded models', () => {
-        // TODO
+    it('eager loads embedded models', async () => {
+        const movieUrl = Url.resolve(Faker.internet.url());
+        const watchActionUrl = `${movieUrl}#${Faker.random.uuid()}`;
+
+        engine.setOne({
+            ...stubMovieJsonLD(movieUrl, Faker.lorem.sentence()),
+            __embedded: {
+                [watchActionUrl]: stubWatchActionJsonLD(watchActionUrl, movieUrl),
+            },
+        });
+
+        const movie = await Movie.find(movieUrl) as Movie;
+
+        expect(movie.actions).toHaveLength(1);
+        expect(movie.actions[0]).toBeInstanceOf(WatchAction);
+        expect(movie.actions[0].object).toBe(movieUrl);
     });
 
     it('implements is contained by relationship', async () => {

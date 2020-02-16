@@ -1,5 +1,5 @@
 import {
-    Attributes,
+    EngineAttributes,
     DocumentNotFound,
     Documents,
     Engine,
@@ -9,10 +9,10 @@ import UUID from '@/utils/UUID';
 
 export default class StubEngine implements Engine {
 
-    private one: Attributes | null = null;
+    private one: EngineAttributes | null = null;
     private many: { [collection: string]: Documents } = {};
 
-    public setOne(one: Attributes): void {
+    public setOne(one: EngineAttributes): void {
         this.one = one;
     }
 
@@ -20,11 +20,11 @@ export default class StubEngine implements Engine {
         this.many[collection] = documents;
     }
 
-    public async create(collection: string, attributes: Attributes, id?: string): Promise<string> {
+    public async create(collection: string, attributes: EngineAttributes, id?: string): Promise<string> {
         return id || UUID.generate();
     }
 
-    public async readOne(collection: string, id: string): Promise<Attributes>
+    public async readOne(collection: string, id: string): Promise<EngineAttributes>
     {
         if (this.one === null) {
             throw new DocumentNotFound(id);
@@ -40,7 +40,7 @@ export default class StubEngine implements Engine {
     public async update(
         collection: string,
         id: string,
-        dirtyAttributes: Attributes,
+        dirtyAttributes: EngineAttributes,
         removedAttributes: string[],
     ): Promise<void> {
         //
