@@ -149,9 +149,11 @@ class Person extends SolidModel {
 
 ### Relations
 
-In addition to the [relations included with the core library](https://soukai.js.org/guide/defining-models.html#relationships), two other relations are provided in this package to declare resource-container relationships.
+In addition to the [relations included with the core library](https://soukai.js.org/guide/defining-models.html#relationships), other relations are provided in this package.
 
-These can be declared using the `contains` and `isContainedBy` methods:
+#### LDP Containers
+
+Two relations are included to declare resource-container relationships. These can be declared using the `contains` and `isContainedBy` methods:
 
 ```js
 class Person extends SolidModel {
@@ -172,6 +174,34 @@ class Group extends SolidModel {
 
 }
 ```
+
+#### Embedded Resources
+
+Embedded resources are included in their parent's document and they are not declared as ldp resources.
+
+In order to declare this relationship, the `embeds` and `isEmbeddedBy` methods can be used:
+
+```js
+class WatchAction extends SolidModel {
+
+    static ldpResource = false;
+
+    objectRelationship() {
+        return this.isEmbeddedBy(Movie);
+    }
+
+}
+
+class Movie extends SolidModel {
+
+    actionsRelationship() {
+        return this.embeds(WatchAction);
+    }
+
+}
+```
+
+Embeds relationships will be eager loaded when a `SolidEngine` is used.
 
 ## Going Further
 

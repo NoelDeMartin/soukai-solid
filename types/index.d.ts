@@ -61,6 +61,8 @@ export class SolidModel extends Model {
 
     protected embeds(model: typeof SolidModel): SolidEmbedsRelation;
 
+    protected isEmbeddedBy(model: typeof SolidModel): SingleModelRelation;
+
     protected getDefaultRdfContext(): string;
 
     protected newUrl(parentUrl?: string): string;

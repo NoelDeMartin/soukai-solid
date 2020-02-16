@@ -17,6 +17,7 @@ import SolidEngine from '@/engines/SolidEngine';
 import SolidEmbedsRelation from '@/models/relations/SolidEmbedsRelation';
 import SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
 import SolidIsContainedByRelation from '@/models/relations/SolidIsContainedByRelation';
+import SolidIsEmbeddedByRelation from '@/models/relations/SolidIsEmbeddedByRelation';
 
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
@@ -203,6 +204,10 @@ export default class SolidModel extends Model {
 
     protected embeds(model: typeof SolidModel): SolidEmbedsRelation {
         return new SolidEmbedsRelation(this, model);
+    }
+
+    protected isEmbeddedBy(model: typeof SolidModel): SingleModelRelation {
+        return new SolidIsEmbeddedByRelation(this, model);
     }
 
     protected getDefaultRdfContext(): string {
