@@ -29,9 +29,6 @@ export default class SolidClient {
         url: string | null = null,
         properties: ResourceProperty[] = [],
     ): Promise<Resource> {
-        if (url && await this.resourceExists(url))
-            throw new Error(`Cannot create a resource at ${url}, url already in use`);
-
         const turtleData = properties
             .map(property => property.toTurtle(url || '') + ' .')
             .join("\n");

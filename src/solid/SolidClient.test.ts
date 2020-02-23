@@ -85,17 +85,6 @@ describe('Solid', () => {
         );
     });
 
-    it('fails creating resources if the provided url is already in use', async () => {
-        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
-
-        StubFetcher.addFetchResponse(`<${resourceUrl}> a <http://www.w3.org/ns/ldp#Resource> .`);
-
-        await expect(client.createResource(parentUrl, resourceUrl, []))
-            .rejects
-            .toThrowError(`Cannot create a resource at ${resourceUrl}, url already in use`);
-    });
-
     it('creates containers', async () => {
         const name = Faker.random.word();
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));

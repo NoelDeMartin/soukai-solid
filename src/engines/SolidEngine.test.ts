@@ -1,4 +1,4 @@
-import { DocumentNotFound, EngineAttributes } from 'soukai';
+import { DocumentNotFound, EngineAttributes, DocumentAlreadyExists } from 'soukai';
 
 import Faker from 'faker';
 
@@ -75,6 +75,19 @@ describe('SolidEngine', () => {
             // TODO test body using argument matcher
             expect.anything(),
         );
+    });
+
+    it('fails creating resources if the provided url is already in use', async () => {
+        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
+
+        await SolidClientMock.createResource(parentUrl, resourceUrl, [
+            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
+        ]);
+
+        await expect(engine.create(parentUrl, {}, resourceUrl))
+            .rejects
+            .toBeInstanceOf(DocumentAlreadyExists);
     });
 
     it('gets one resource', async () => {

@@ -1,10 +1,11 @@
 import {
-    Documents,
-    EngineAttributes,
+    DocumentAlreadyExists,
     DocumentNotFound,
+    Documents,
     Engine,
-    Filters,
+    EngineAttributes,
     EngineHelper,
+    Filters,
 } from 'soukai';
 
 import { SolidClient, Fetch, Resource, ResourceProperty } from '@/solid';
@@ -38,6 +39,9 @@ export default class SolidEngine implements Engine {
         id?: string,
     ): Promise<string> {
         const properties = this.convertJsonLDToResourceProperties(attributes);
+
+        if (id && await this.client.resourceExists(id))
+            throw new DocumentAlreadyExists(id);
 
         const resource = await this.client.createResource(collection, id, properties);
 
