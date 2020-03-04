@@ -1,5 +1,7 @@
 import {
     Attributes,
+    DocumentAlreadyExists,
+    Documents,
     EngineAttributes,
     FieldDefinition,
     FieldsDefinition,
@@ -9,7 +11,6 @@ import {
     MultiModelRelation,
     SingleModelRelation,
     SoukaiError,
-    Documents,
 } from 'soukai';
 
 import SolidEngine from '@/engines/SolidEngine';
@@ -163,13 +164,21 @@ export default class SolidModel extends Model {
     protected classDef: typeof SolidModel;
 
     public save<T extends Model>(parentUrl?: string): Promise<T> {
-        if (this.classDef.mintsUrls && !this.hasAttribute(this.classDef.primaryKey))
-            this.setAttribute(this.classDef.primaryKey, this.newUrl(parentUrl));
+        return this.classDef.withCollection(parentUrl || this.getParentUrl(), async () => {
+            if (this.classDef.mintsUrls && !this.hasAttribute(this.classDef.primaryKey))
+                this.setAttribute(this.classDef.primaryKey, this.newUrl());
 
-        return this.classDef.withCollection(
-            parentUrl || this.getParentUrl(),
-            () => super.save(),
-        );
+            try {
+                return await super.save() as any;
+            } catch (error) {
+                if (!(error instanceof DocumentAlreadyExists))
+                    throw error;
+
+                this.url += '-' + UUID.generate();
+
+                return super.save();
+            }
+        });
     }
 
     public delete<T extends Model>(): Promise<T> {
@@ -259,8 +268,8 @@ export default class SolidModel extends Model {
         return super.castAttribute(value, definition);
     }
 
-    protected newUrl(parentUrl?: string): string {
-        parentUrl = parentUrl || this.classDef.collection;
+    protected newUrl(): string {
+        const parentUrl = this.classDef.collection;
 
         if (this.classDef.ldpContainer)
             return Url.resolveDirectory(

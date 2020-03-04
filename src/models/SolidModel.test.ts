@@ -280,6 +280,39 @@ describe('SolidModel', () => {
         );
     });
 
+    it('adds url prefixes when urls are already in use', async () => {
+        class StubModel extends SolidModel {
+        }
+
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const resourceUrl = Url.resolve(containerUrl, Faker.random.word());
+
+        engine.setOne({ url: resourceUrl });
+
+        jest.spyOn(engine, 'create');
+
+        Soukai.loadModel('StubModel', StubModel);
+
+        const model = await StubModel.at(containerUrl).create({
+            url: resourceUrl,
+        });
+
+        expect(typeof model.url).toEqual('string');
+        expect(model.url).not.toEqual(resourceUrl);
+        expect(model.url.startsWith(containerUrl)).toBe(true);
+
+        expect(engine.create).toHaveBeenCalledWith(
+            containerUrl,
+            expect.anything(),
+            resourceUrl,
+        );
+        expect(engine.create).toHaveBeenCalledWith(
+            containerUrl,
+            expect.anything(),
+            model.url,
+        );
+    });
+
     it('uses explicit containerUrl for minting url on save', async () => {
         class StubModel extends SolidModel {
         }

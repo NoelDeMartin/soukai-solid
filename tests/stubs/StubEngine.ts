@@ -1,8 +1,9 @@
 import {
-    EngineAttributes,
+    DocumentAlreadyExists,
     DocumentNotFound,
     Documents,
     Engine,
+    EngineAttributes,
 } from 'soukai';
 
 import UUID from '@/utils/UUID';
@@ -21,6 +22,12 @@ export default class StubEngine implements Engine {
     }
 
     public async create(collection: string, attributes: EngineAttributes, id?: string): Promise<string> {
+        if (id && this.one && this.one.url === id)
+            throw new DocumentAlreadyExists(id);
+
+        if (id && this.many && this.many[collection] && this.many[collection][id])
+            throw new DocumentAlreadyExists(id);
+
         return id || UUID.generate();
     }
 

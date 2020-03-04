@@ -65,7 +65,7 @@ export class SolidModel extends Model {
 
     protected getDefaultRdfContext(): string;
 
-    protected newUrl(parentUrl?: string): string;
+    protected newUrl(): string;
 
 }
 
