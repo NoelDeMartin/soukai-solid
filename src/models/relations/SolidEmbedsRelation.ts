@@ -12,12 +12,16 @@ export default class SolidEmbedsRelation<
         return this.related.from(this.parent.url).all();
     }
 
-    public async create(attributes: Attributes): Promise<R> {
+    public save(model: R): Promise<R> {
+        return model.save(this.parent.url);
+    }
+
+    public create(attributes: Attributes): Promise<R> {
         // TODO refactor relations so that models are stored in the relation instance,
         // not in the model. Doing that, operations such as this can add new models to the
         // array of loaded models.
 
-        return this.related.at(this.parent.url).create(attributes);
+        return this.save(new this.related(attributes) as R);
     }
 
     public resolveFromDocuments(documents: Documents): R[] {

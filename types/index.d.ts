@@ -17,6 +17,8 @@ export interface SolidEmbedsRelation<
     RC extends typeof SolidModel = typeof SolidModel,
 > extends MultiModelRelation<P, R, RC> {
 
+    save(model: R): Promise<R>;
+
     create(attributes: Attributes): Promise<R>;
 
 }
