@@ -55,6 +55,8 @@ export class SolidModel extends Model {
 
     protected static pureInstance: SolidModel;
 
+    protected classDef: typeof SolidModel;
+
     public save<T extends Model>(containerUrl?: string): Promise<T>;
 
     protected contains(model: typeof SolidModel): MultiModelRelation;
@@ -79,9 +81,13 @@ interface RequestOptions {
 
 export type Fetch = (url: string, options?: RequestOptions) => Promise<Response>;
 
+export interface SolidEngineConfig {
+    globbingMinimumBatchSize: number | null;
+}
+
 export class SolidEngine implements Engine {
 
-    constructor(fetch: Fetch);
+    constructor(fetch: Fetch, config?: Partial<SolidEngineConfig>);
 
     create(collection: string, attributes: EngineAttributes, id?: string): Promise<string>;
 

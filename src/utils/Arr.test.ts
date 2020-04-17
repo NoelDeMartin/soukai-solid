@@ -10,4 +10,8 @@ describe('Arr helper', () => {
         expect(Arr.unique([4,1,2,1,3,4,2], n => n % 2)).toEqual([4,1]);
     });
 
+    it('zips arrays', () => {
+        expect(Arr.zip([1, 2, 3], [4, 5, 6])).toEqual([[1, 4], [2, 5], [3, 6]])
+    });
+
 });

@@ -11,9 +11,14 @@ import {
 import { SolidClient, Fetch, Resource, ResourceProperty } from '@/solid';
 
 import Arr from '@/utils/Arr';
+import Url from '@/utils/Url';
 
 interface SolidDocument extends EngineAttributes {
     __embedded: Documents;
+}
+
+export interface SolidEngineConfig {
+    globbingMinimumBatchSize: number | null;
 }
 
 export default class SolidEngine implements Engine {
@@ -28,9 +33,15 @@ export default class SolidEngine implements Engine {
 
     private client: SolidClient;
 
-    public constructor(fetch: Fetch) {
+    private config: SolidEngineConfig;
+
+    public constructor(fetch: Fetch, config: Partial<SolidEngineConfig> = {}) {
         this.helper = new EngineHelper();
         this.client = new SolidClient(fetch);
+        this.config = {
+            globbingMinimumBatchSize: 5,
+            ...config,
+        };
     }
 
     public async create(
@@ -59,41 +70,7 @@ export default class SolidEngine implements Engine {
     }
 
     public async readMany(collection: string, filters: Filters = {}): Promise<Documents> {
-        let resources;
-
-        // TODO improve efficiency by using globbing (if we're getting resources within
-        // a collection, it's very likely that they are inside the root)
-
-        if ('$in' in filters) {
-            // TODO to improve efficiency by making a batch request
-            resources = await Promise.all(
-                filters['$in'].map(url => this.client.getResource(url)),
-            );
-            resources = resources.filter(resource => resource !== null);
-        } else {
-            const rdfsClasses: string[] = [];
-
-            if ('@type' in filters) {
-                const value = filters['@type'];
-
-                if ('$contains' in value) {
-                    for (const childValue of value['$contains']) {
-                        if ('@id' in childValue) {
-                            rdfsClasses.push(childValue['@id']);
-                        }
-                    }
-                } else if (typeof value === 'string') {
-                    rdfsClasses.push(value);
-                }
-
-                // TODO support $or filter
-            }
-
-            // TODO to improve efficiency, use more filters than just types in the request
-            // (filters are only applied on the client at the moment)
-            resources = await this.client.getResources(collection, rdfsClasses);
-        }
-
+        const resources = await this.getResourcesForFilters(collection, filters);
         const documentsArray = resources.map(this.convertResourceToDocument);
         const documents = {};
 
@@ -123,6 +100,51 @@ export default class SolidEngine implements Engine {
 
     public async delete(collection: string, id: string): Promise<void> {
         await this.client.deleteResource(id);
+    }
+
+    private async getResourcesForFilters(collection: string, filters: Filters): Promise<Resource[]> {
+        const rdfsClasses = this.getRdfsClassesFilter(filters);
+
+        // TODO use filters for SPARQL when supported
+        // See https://github.com/solid/node-solid-server/issues/962
+
+        if (!('$in' in filters))
+            return this.client.getResources(collection, rdfsClasses);
+
+        return this.getResourcesFromUrls(collection, rdfsClasses, filters['$in']);
+    }
+
+    private async getResourcesFromUrls(collection: string, rdfsClasses: string[], urls: string[]): Promise<Resource[]> {
+        const containerResourceUrlsMap = urls
+            .reduce((resourcesByContainerUrl, resourceUrl) => {
+                const containerUrl = Url.parentDirectory(resourceUrl);
+
+                if (!containerUrl.startsWith(collection))
+                    return resourcesByContainerUrl;
+
+                return {
+                    ...resourcesByContainerUrl,
+                    [containerUrl]: [
+                        ...(resourcesByContainerUrl[containerUrl] || []),
+                        resourceUrl,
+                    ],
+                };
+            }, {} as { [containerUrl: string]: string[] });
+
+        const containerResourcesPromises = Object.entries(containerResourceUrlsMap)
+            .map(async ([containerUrl, resourceUrls]) => {
+                if (this.config.globbingMinimumBatchSize !== null && resourceUrls.length > this.config.globbingMinimumBatchSize)
+                    return this.client.getResources(containerUrl, rdfsClasses);
+
+                const resourcePromises = resourceUrls.map(url => this.client.getResource(url));
+                const resources = await Promise.all(resourcePromises);
+
+                return resources.filter(resource => resource != null) as Resource[];
+            });
+
+        const containersResources = await Promise.all(containerResourcesPromises);
+
+        return Arr.flatten(containersResources);
     }
 
     private convertJsonLDToResourceProperties(attributes: EngineAttributes): ResourceProperty[] {
@@ -207,6 +229,25 @@ export default class SolidEngine implements Engine {
         ) {
             properties.push(ResourceProperty.type(value['@id']));
         }
+    }
+
+    private getRdfsClassesFilter(filters: Filters): string[] {
+        if (!('@type' in filters))
+            return [];
+
+        const value = filters['@type'];
+
+        if (typeof value === 'string')
+            return [value];
+
+        if ('$contains' in value)
+            return (value['$contains'] as any[])
+                .map(value => '@id' in value && value['@id'])
+                .filter(rdfsClass => !!rdfsClass);
+
+        // TODO support $or filter
+
+        return [];
     }
 
 }

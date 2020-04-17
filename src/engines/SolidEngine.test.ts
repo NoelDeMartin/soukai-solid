@@ -12,6 +12,7 @@ import { stubPersonJsonLD, stubGroupJsonLD } from '@tests/stubs/helpers';
 
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
+import Arr from '@/utils/Arr';
 
 let engine: SolidEngine;
 
@@ -266,6 +267,37 @@ describe('SolidEngine', () => {
 
         expect(SolidClientMock.getResource).toHaveBeenCalledWith(firstUrl);
         expect(SolidClientMock.getResource).toHaveBeenCalledWith(secondUrl);
+    });
+
+    it('gets many resources using globbing for $in filter', async () => {
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const resourcesCount = 10;
+        const urls: string[] = [];
+        const names: string[] = [];
+
+        await Promise.all(Arr.range(resourcesCount).map(async i => {
+            const url = Url.resolve(containerUrl, `resource-${i}`);
+            const name = Faker.name.firstName();
+
+            urls.push(url);
+            names.push(name);
+
+            await SolidClientMock.createResource(containerUrl, url, [
+                ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
+                ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
+                ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
+            ]);
+        }));
+
+        const documents = await engine.readMany(containerUrl, { $in: urls });
+
+        expect(Object.keys(documents)).toHaveLength(resourcesCount);
+
+        Arr.zip(urls, names).map(([url, name]) => {
+            expect(withoutEmbeddedResources(documents[url])).toEqual(stubPersonJsonLD(url, name));
+        });
+
+        expect(SolidClientMock.getResources).toHaveBeenCalledWith(containerUrl, []);
     });
 
     it('updates resources updated attributes', async () => {
