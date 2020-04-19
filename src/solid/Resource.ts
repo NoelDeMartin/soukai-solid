@@ -215,11 +215,9 @@ export default class Resource {
             const value = this.getPropertyValue(property);
 
             if (property === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') {
-                if (Array.isArray(value)) {
-                    jsonld['@type'] = value.map(link => ({ '@id': link }));
-                } else {
-                    jsonld['@type'] = { '@id': value };
-                }
+                jsonld['@type'] = Array.isArray(value)
+                    ? value.map(link => ({ '@id': link as string }))
+                    : { '@id': value as string };
                 continue;
             }
 

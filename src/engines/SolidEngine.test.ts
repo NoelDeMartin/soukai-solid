@@ -300,6 +300,51 @@ describe('SolidEngine', () => {
         expect(SolidClientMock.getResources).toHaveBeenCalledWith(containerUrl, []);
     });
 
+    it.only('gets many resources using cache', async () => {
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const resourcesCount = 5;
+        const cachedResourcesCount = 5;
+        const urls: string[] = [];
+        const names: string[] = [];
+
+        engine.config.globbingBatchSize = null;
+        engine.config.useCache = true;
+
+        await Promise.all(Arr.range(resourcesCount).map(async i => {
+            const url = Url.resolve(containerUrl, `resource-${i}`);
+            const name = Faker.name.firstName();
+
+            urls.push(url);
+            names.push(name);
+
+            await SolidClientMock.createResource(containerUrl, url, [
+                ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
+                ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
+                ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
+            ]);
+        }));
+
+        Arr.range(cachedResourcesCount).forEach(i => {
+            const url = Url.resolve(containerUrl, `cached-resource-${i}`);
+            const name = Faker.name.firstName();
+
+            urls.push(url);
+            names.push(name);
+            engine.cache.add({ ...stubPersonJsonLD(url, name), __embedded: {} });
+        });
+
+        const documents = await engine.readMany(containerUrl, { $in: urls });
+
+        expect(Object.keys(documents)).toHaveLength(resourcesCount + cachedResourcesCount);
+
+        Arr.zip(urls, names).map(([url, name]) => {
+            expect(withoutEmbeddedResources(documents[url])).toEqual(stubPersonJsonLD(url, name));
+        });
+
+        urls.slice(0, resourcesCount).map(url => expect(SolidClientMock.getResource).toHaveBeenCalledWith(url));
+        urls.slice(resourcesCount).map(url => expect(SolidClientMock.getResource).not.toHaveBeenCalledWith(url));
+    });
+
     it('updates resources updated attributes', async () => {
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());

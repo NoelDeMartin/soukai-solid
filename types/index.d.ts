@@ -81,11 +81,29 @@ interface RequestOptions {
 
 export type Fetch = (url: string, options?: RequestOptions) => Promise<Response>;
 
+interface SolidDocumentsCache {
+    add(document: SolidDocument): void;
+    get(id: string): SolidDocument | null;
+    forget(id: string): void;
+    clear(): void;
+}
+
+export interface SolidDocument extends EngineAttributes {
+    '@id': string;
+    '@type': { '@id': string } | { '@id': string }[];
+    __embedded: Documents;
+}
+
 export interface SolidEngineConfig {
-    globbingMinimumBatchSize: number | null;
+    globbingBatchSize: number | null;
+    useCache: boolean;
 }
 
 export class SolidEngine implements Engine {
+
+    readonly cache: SolidDocumentsCache;
+
+    readonly config: SolidEngineConfig;
 
     constructor(fetch: Fetch, config?: Partial<SolidEngineConfig>);
 

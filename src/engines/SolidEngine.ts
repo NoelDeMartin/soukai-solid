@@ -11,14 +11,23 @@ import {
 import { SolidClient, Fetch, Resource, ResourceProperty } from '@/solid';
 
 import Arr from '@/utils/Arr';
+import Obj from '@/utils/Obj';
 import Url from '@/utils/Url';
 
-interface SolidDocument extends EngineAttributes {
+import SolidDocumentsCache from './SolidDocumentsCache';
+
+export interface LinkedDataDocument extends EngineAttributes {
+    '@id': string;
+    '@type': { '@id': string } | { '@id': string }[];
+}
+
+export interface SolidDocument extends LinkedDataDocument {
     __embedded: Documents;
 }
 
 export interface SolidEngineConfig {
-    globbingMinimumBatchSize: number | null;
+    globbingBatchSize: number | null;
+    useCache: boolean;
 }
 
 export default class SolidEngine implements Engine {
@@ -29,17 +38,20 @@ export default class SolidEngine implements Engine {
         return [attributes, embeddedResources as Documents];
     }
 
-    private helper: EngineHelper;
+    public readonly cache: SolidDocumentsCache;
+    public readonly config: SolidEngineConfig;
 
+    private helper: EngineHelper;
     private client: SolidClient;
 
-    private config: SolidEngineConfig;
-
     public constructor(fetch: Fetch, config: Partial<SolidEngineConfig> = {}) {
+        this.cache = new SolidDocumentsCache();
+
         this.helper = new EngineHelper();
         this.client = new SolidClient(fetch);
         this.config = {
-            globbingMinimumBatchSize: 5,
+            globbingBatchSize: 5,
+            useCache: false,
             ...config,
         };
     }
@@ -62,23 +74,24 @@ export default class SolidEngine implements Engine {
     public async readOne(_: string, id: string): Promise<EngineAttributes> {
         const resource = await this.client.getResource(id);
 
-        if (resource === null) {
+        if (resource === null)
             throw new DocumentNotFound(id);
-        }
 
-        return this.convertResourceToDocument(resource);
+        const document = this.convertResourceToDocument(resource);
+
+        if (this.config.useCache)
+            this.cache.add(document);
+
+        return document;
     }
 
     public async readMany(collection: string, filters: Filters = {}): Promise<Documents> {
-        const resources = await this.getResourcesForFilters(collection, filters);
-        const documentsArray = resources.map(this.convertResourceToDocument);
-        const documents = {};
+        const documents = await this.getDocumentsForFilters(collection, filters);
 
-        for (const document of documentsArray) {
-            documents[document['@id'] as string] = document;
-        }
+        if (this.config.useCache)
+            documents.forEach(document => this.cache.add(document));
 
-        return this.helper.filterDocuments(documents, filters);
+        return this.helper.filterDocuments(Obj.createMap(documents, '@id'), filters);
     }
 
     public async update(
@@ -92,6 +105,9 @@ export default class SolidEngine implements Engine {
 
         try {
             await this.client.updateResource(id, updatedProperties, removedProperties);
+
+            if (this.config.useCache)
+                this.cache.forget(id);
         } catch (error) {
             // TODO this may fail for reasons other than resource not found
             throw new DocumentNotFound(id);
@@ -100,6 +116,28 @@ export default class SolidEngine implements Engine {
 
     public async delete(collection: string, id: string): Promise<void> {
         await this.client.deleteResource(id);
+
+        if (this.config.useCache)
+            this.cache.forget(id);
+    }
+
+    private async getDocumentsForFilters(collection: string, filters: Filters): Promise<SolidDocument[]> {
+        if (!this.config.useCache || !filters.$in) {
+            const resources = await this.getResourcesForFilters(collection, filters);
+
+            return resources.map(this.convertResourceToDocument);
+        }
+
+        const cachedDocuments = Arr.clean(filters.$in.map(url => this.cache.get(url)));
+        const resources = await this.getResourcesForFilters(collection, {
+            ...filters,
+            $in: Arr.without(filters.$in, cachedDocuments.map(document => document['@id'])),
+        });
+
+        return [
+            ...cachedDocuments,
+            ...resources.map(this.convertResourceToDocument)
+        ];
     }
 
     private async getResourcesForFilters(collection: string, filters: Filters): Promise<Resource[]> {
@@ -108,10 +146,10 @@ export default class SolidEngine implements Engine {
         // TODO use filters for SPARQL when supported
         // See https://github.com/solid/node-solid-server/issues/962
 
-        if (!('$in' in filters))
+        if (!filters.$in)
             return this.client.getResources(collection, rdfsClasses);
 
-        return this.getResourcesFromUrls(collection, rdfsClasses, filters['$in']);
+        return this.getResourcesFromUrls(collection, rdfsClasses, filters.$in);
     }
 
     private async getResourcesFromUrls(collection: string, rdfsClasses: string[], urls: string[]): Promise<Resource[]> {
@@ -133,7 +171,7 @@ export default class SolidEngine implements Engine {
 
         const containerResourcesPromises = Object.entries(containerResourceUrlsMap)
             .map(async ([containerUrl, resourceUrls]) => {
-                if (this.config.globbingMinimumBatchSize !== null && resourceUrls.length > this.config.globbingMinimumBatchSize)
+                if (this.config.globbingBatchSize !== null && resourceUrls.length >= this.config.globbingBatchSize)
                     return this.client.getResources(containerUrl, rdfsClasses);
 
                 const resourcePromises = resourceUrls.map(url => this.client.getResource(url));
@@ -174,7 +212,7 @@ export default class SolidEngine implements Engine {
         const subjectNodes = source.each(null as any, null as any, null as any, null as any);
 
         return {
-            ...resource.toJsonLD() as EngineAttributes,
+            ...resource.toJsonLD() as LinkedDataDocument,
             __embedded: Arr.unique(subjectNodes.map(node => node.value))
                 .filter(url => url.startsWith(resource.url) && url !== resource.url)
                 .map(url => new Resource(url, source))

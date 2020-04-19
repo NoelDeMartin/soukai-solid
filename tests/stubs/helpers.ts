@@ -1,6 +1,6 @@
-import { EngineAttributes } from 'soukai';
+import { LinkedDataDocument } from "@/engines/SolidEngine";
 
-export function stubPersonJsonLD(url: string, name: string, isLDPResource: boolean = true): EngineAttributes {
+export function stubPersonJsonLD(url: string, name: string, isLDPResource: boolean = true): LinkedDataDocument {
     return {
         '@id': url,
         '@type': isLDPResource
@@ -13,7 +13,7 @@ export function stubPersonJsonLD(url: string, name: string, isLDPResource: boole
     };
 }
 
-export function stubGroupJsonLD(url: string, name: string): EngineAttributes {
+export function stubGroupJsonLD(url: string, name: string): LinkedDataDocument {
     return {
         '@id': url,
         '@type': [
@@ -25,7 +25,7 @@ export function stubGroupJsonLD(url: string, name: string): EngineAttributes {
     };
 }
 
-export function stubMovieJsonLD(url: string, name: string): EngineAttributes {
+export function stubMovieJsonLD(url: string, name: string): LinkedDataDocument {
     return {
         '@id': url,
         '@type': [
@@ -36,7 +36,7 @@ export function stubMovieJsonLD(url: string, name: string): EngineAttributes {
     };
 }
 
-export function stubWatchActionJsonLD(url: string, movieUrl: string): EngineAttributes {
+export function stubWatchActionJsonLD(url: string, movieUrl: string): LinkedDataDocument {
     return {
         '@id': url,
         '@type': { '@id': 'https://schema.org/WatchAction' },

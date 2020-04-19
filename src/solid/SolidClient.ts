@@ -1,4 +1,4 @@
-import $rdf, { NamedNode, IndexedFormula, Node } from 'rdflib';
+import $rdf, { NamedNode } from 'rdflib';
 
 import Resource, { ResourceProperty } from '@/solid/Resource';
 
