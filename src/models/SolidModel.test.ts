@@ -36,7 +36,7 @@ describe('SolidModel', () => {
             public static timestamps = false;
 
             public static rdfContexts = {
-                'foaf': 'http://cmlns.com/foaf/0.1/',
+                'foaf': 'http://xmlns.com/foaf/0.1/',
             };
 
             public static rdfsClasses = ['foaf:Person'];
@@ -53,7 +53,7 @@ describe('SolidModel', () => {
         Soukai.loadModel('StubModel', StubModel);
 
         expect(StubModel.rdfsClasses).toEqual(new Set([
-            'http://cmlns.com/foaf/0.1/Person',
+            'http://xmlns.com/foaf/0.1/Person',
             'http://www.w3.org/ns/ldp#Resource',
         ]));
 
@@ -66,7 +66,7 @@ describe('SolidModel', () => {
             name: {
                 type: FieldType.String,
                 required: false,
-                rdfProperty: 'http://cmlns.com/foaf/0.1/givenname',
+                rdfProperty: 'http://xmlns.com/foaf/0.1/givenname',
             },
         });
     });
@@ -131,7 +131,7 @@ describe('SolidModel', () => {
             public static timestamps = false;
 
             public static rdfContexts = {
-                'foaf': 'http://cmlns.com/foaf/0.1/',
+                'foaf': 'http://xmlns.com/foaf/0.1/',
             };
 
             public static fields = {
@@ -151,7 +151,7 @@ describe('SolidModel', () => {
             name: {
                 type: FieldType.String,
                 required: false,
-                rdfProperty: 'http://cmlns.com/foaf/0.1/name',
+                rdfProperty: 'http://xmlns.com/foaf/0.1/name',
             },
         });
     });
@@ -342,7 +342,7 @@ describe('SolidModel', () => {
             public static ldpContainer = true;
 
             public static rdfContexts = {
-                'foaf': 'http://cmlns.com/foaf/0.1/',
+                'foaf': 'http://xmlns.com/foaf/0.1/',
             };
 
             public static fields = {
@@ -512,11 +512,11 @@ describe('SolidModel', () => {
         expect(attributes).toEqual({
             '@id': model.url,
             '@type': [
-                { '@id': 'http://cmlns.com/foaf/0.1/Person' },
+                { '@id': 'http://xmlns.com/foaf/0.1/Person' },
                 { '@id': 'http://www.w3.org/ns/ldp#Resource' },
             ],
-            'http://cmlns.com/foaf/0.1/name': name,
-            'http://cmlns.com/foaf/0.1/knows': friendUrls.map(
+            'http://xmlns.com/foaf/0.1/name': name,
+            'http://xmlns.com/foaf/0.1/knows': friendUrls.map(
                 url => ({ '@id': url }),
             ),
         });
@@ -562,7 +562,7 @@ describe('SolidModel', () => {
                 ],
                 '@type': {
                     $contains: [
-                        { '@id': 'http://cmlns.com/foaf/0.1/Person' },
+                        { '@id': 'http://xmlns.com/foaf/0.1/Person' },
                         { '@id': 'http://www.w3.org/ns/ldp#Resource' },
                     ],
                 },
@@ -576,7 +576,7 @@ describe('SolidModel', () => {
                 ],
                 '@type': {
                     $contains: [
-                        { '@id': 'http://cmlns.com/foaf/0.1/Person' },
+                        { '@id': 'http://xmlns.com/foaf/0.1/Person' },
                         { '@id': 'http://www.w3.org/ns/ldp#Resource' },
                     ],
                 },
@@ -626,7 +626,7 @@ describe('SolidModel', () => {
                 ],
                 '@type': {
                     $contains: [
-                        { '@id': 'http://cmlns.com/foaf/0.1/Person' },
+                        { '@id': 'http://xmlns.com/foaf/0.1/Person' },
                         { '@id': 'http://www.w3.org/ns/ldp#Resource' },
                     ],
                 },

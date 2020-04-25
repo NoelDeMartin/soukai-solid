@@ -91,7 +91,7 @@ export default class Resource {
     }
 
     public get name(): string | null {
-        let name = this.getPropertyValue('http://cmlns.com/foaf/0.1/name');
+        let name = this.getPropertyValue('http://xmlns.com/foaf/0.1/name');
 
         if (Array.isArray(name)) {
             name = name[0];

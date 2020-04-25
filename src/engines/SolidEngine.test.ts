@@ -51,8 +51,8 @@ describe('SolidEngine', () => {
 
         expect(properties).toHaveLength(4);
         expect(properties).toContainEqual(ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'));
-        expect(properties).toContainEqual(ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'));
-        expect(properties).toContainEqual(ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name));
+        expect(properties).toContainEqual(ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'));
+        expect(properties).toContainEqual(ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', name));
         expect(properties).toContainEqual(ResourceProperty.literal('date', date));
     });
 
@@ -99,8 +99,8 @@ describe('SolidEngine', () => {
         await SolidClientMock.createResource(parentUrl, resourceUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
             ResourceProperty.type('http://www.w3.org/ns/ldp#Container'),
-            ResourceProperty.type('http://cmlns.com/foaf/0.1/Group'),
-            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
+            ResourceProperty.type('http://xmlns.com/foaf/0.1/Group'),
+            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', name),
         ]);
 
         const document = withoutEmbeddedResources(
@@ -131,19 +131,19 @@ describe('SolidEngine', () => {
 
         await SolidClientMock.createResource(containerUrl, firstUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', firstName),
+            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
+            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', firstName),
         ]);
 
         await SolidClientMock.createResource(containerUrl, secondUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', secondName),
+            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
+            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', secondName),
         ]);
 
         await SolidClientMock.createEmbeddedResource(secondUrl, thirdUrl, [
-            ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', thirdName),
+            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
+            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', thirdName),
         ]);
 
         const documents = await engine.readMany(containerUrl);
@@ -167,19 +167,19 @@ describe('SolidEngine', () => {
 
         await SolidClientMock.createResource(containerUrl, firstUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', firstName),
+            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
+            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', firstName),
         ]);
 
         await SolidClientMock.createResource(containerUrl, secondUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', secondName),
+            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
+            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', secondName),
         ]);
 
         await SolidClientMock.createEmbeddedResource(secondUrl, thirdUrl, [
-            ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', thirdName),
+            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
+            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', thirdName),
         ]);
 
         const documents = await engine.readMany(containerUrl, {
@@ -187,11 +187,11 @@ describe('SolidEngine', () => {
                 $or: [
                     {
                         $contains: [
-                            { '@id': 'http://cmlns.com/foaf/0.1/Person' },
+                            { '@id': 'http://xmlns.com/foaf/0.1/Person' },
                         ],
                     },
                     {
-                        $eq: { '@id': 'http://cmlns.com/foaf/0.1/Person' },
+                        $eq: { '@id': 'http://xmlns.com/foaf/0.1/Person' },
                     },
                 ],
             },
@@ -213,19 +213,19 @@ describe('SolidEngine', () => {
 
         await SolidClientMock.createResource(containerUrl, url, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
+            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
+            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', name),
         ]);
 
         await SolidClientMock.createResource(containerUrl, Url.resolve(containerUrl, Faker.random.uuid()), [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', Faker.name.firstName()),
+            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
+            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', Faker.name.firstName()),
         ]);
 
         const documents = await engine.readMany(
             containerUrl,
-            { 'http://cmlns.com/foaf/0.1/name': name },
+            { 'http://xmlns.com/foaf/0.1/name': name },
         );
 
         expect(Object.keys(documents)).toHaveLength(1);
@@ -247,14 +247,14 @@ describe('SolidEngine', () => {
 
         await SolidClientMock.createResource(containerUrl, firstUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', firstName),
+            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
+            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', firstName),
         ]);
 
         await SolidClientMock.createResource(containerUrl, secondUrl, [
             ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', secondName),
+            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
+            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', secondName),
         ]);
 
         const documents = await engine.readMany(containerUrl, {
@@ -284,8 +284,8 @@ describe('SolidEngine', () => {
 
             await SolidClientMock.createResource(containerUrl, url, [
                 ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-                ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
-                ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
+                ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
+                ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', name),
             ]);
         }));
 
@@ -319,8 +319,8 @@ describe('SolidEngine', () => {
 
             await SolidClientMock.createResource(containerUrl, url, [
                 ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-                ResourceProperty.type('http://cmlns.com/foaf/0.1/Person'),
-                ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
+                ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
+                ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', name),
             ]);
         }));
 
@@ -355,14 +355,14 @@ describe('SolidEngine', () => {
         await engine.update(
             parentUrl,
             resourceUrl,
-            { 'http://cmlns.com/foaf/0.1/name': name },
+            { 'http://xmlns.com/foaf/0.1/name': name },
             [],
         );
 
         expect(SolidClientMock.updateResource).toHaveBeenCalledWith(
             resourceUrl,
             [
-                ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
+                ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', name),
             ],
             [],
         );
@@ -378,13 +378,13 @@ describe('SolidEngine', () => {
             parentUrl,
             resourceUrl,
             {},
-            ['http://cmlns.com/foaf/0.1/name'],
+            ['http://xmlns.com/foaf/0.1/name'],
         );
 
         expect(SolidClientMock.updateResource).toHaveBeenCalledWith(
             resourceUrl,
             [],
-            ['http://cmlns.com/foaf/0.1/name'],
+            ['http://xmlns.com/foaf/0.1/name'],
         );
     });
 

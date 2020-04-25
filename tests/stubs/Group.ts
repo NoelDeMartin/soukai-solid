@@ -11,7 +11,7 @@ export default class Group extends SolidModel {
     public static ldpContainer = true;
 
     public static rdfContexts = {
-        'foaf': 'http://cmlns.com/foaf/0.1/',
+        'foaf': 'http://xmlns.com/foaf/0.1/',
     };
 
     public static rdfsClasses = ['foaf:Group'];

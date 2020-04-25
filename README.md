@@ -53,12 +53,12 @@ Here's an example illustrating both:
 ```js
 class Person extends SolidModel {
 
-    static rdfsClasses = ['http://cmlns.com/foaf/0.1/Person'];
+    static rdfsClasses = ['http://xmlns.com/foaf/0.1/Person'];
 
     static fields = {
         name: {
             type: FieldType.String,
-            rdfProperty: 'http://cmlns.com/foaf/0.1/name',
+            rdfProperty: 'http://xmlns.com/foaf/0.1/name',
         },
     };
 
@@ -73,7 +73,7 @@ Here's a definition equivalent to the previous code:
 class Person extends SolidModel {
 
     static rdfContexts = {
-        'foaf': 'http://cmlns.com/foaf/0.1/',
+        'foaf': 'http://xmlns.com/foaf/0.1/',
     };
 
     static rdfsClasses = ['foaf:Person'];
@@ -113,7 +113,7 @@ class Group extends SolidModel {
     static ldpContainer = true;
 
     static rdfContexts = {
-        'foaf': 'http://cmlns.com/foaf/0.1/',
+        'foaf': 'http://xmlns.com/foaf/0.1/',
     };
 
     static rdfsClasses = ['foaf:Group'];
@@ -128,10 +128,10 @@ class Group extends SolidModel {
 RDF classes:
 - `http://www.w3.org/ns/ldp#Resource`
 - `http://www.w3.org/ns/ldp#Container`
-- `http://cmlns.com/foaf/0.1/Group`
+- `http://xmlns.com/foaf/0.1/Group`
 
 Resource properties:
-- `http://cmlns.com/foaf/0.1/name`
+- `http://xmlns.com/foaf/0.1/name`
 
 ### Url minting
 

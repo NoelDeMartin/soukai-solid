@@ -6,10 +6,10 @@ export function stubPersonJsonLD(url: string, name: string, isLDPResource: boole
         '@type': isLDPResource
             ? [
                 { '@id': 'http://www.w3.org/ns/ldp#Resource' },
-                { '@id': 'http://cmlns.com/foaf/0.1/Person' },
+                { '@id': 'http://xmlns.com/foaf/0.1/Person' },
             ]
-            : { '@id': 'http://cmlns.com/foaf/0.1/Person' },
-        'http://cmlns.com/foaf/0.1/name': name,
+            : { '@id': 'http://xmlns.com/foaf/0.1/Person' },
+        'http://xmlns.com/foaf/0.1/name': name,
     };
 }
 
@@ -19,9 +19,9 @@ export function stubGroupJsonLD(url: string, name: string): LinkedDataDocument {
         '@type': [
             { '@id': 'http://www.w3.org/ns/ldp#Resource' },
             { '@id': 'http://www.w3.org/ns/ldp#Container' },
-            { '@id': 'http://cmlns.com/foaf/0.1/Group' },
+            { '@id': 'http://xmlns.com/foaf/0.1/Group' },
         ],
-        'http://cmlns.com/foaf/0.1/name': name,
+        'http://xmlns.com/foaf/0.1/name': name,
     };
 }
 

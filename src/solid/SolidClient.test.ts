@@ -30,7 +30,7 @@ describe('Solid', () => {
             parentUrl,
             resourceUrl,
             [
-                ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
+                ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', name),
                 ResourceProperty.type(firstType),
                 ResourceProperty.type(secondType),
                 ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
@@ -97,7 +97,7 @@ describe('Solid', () => {
             parentUrl,
             containerUrl,
             [
-                ResourceProperty.literal('http://cmlns.com/foaf/0.1/name', name),
+                ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', name),
                 ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
                 ResourceProperty.type('http://www.w3.org/ns/ldp#Container'),
             ],
@@ -163,7 +163,7 @@ describe('Solid', () => {
         const data = `
             <${url}>
                 a <http://www.w3.org/ns/ldp#Resource> ;
-                <http://cmlns.com/foaf/0.1/name> "Foo Bar" .
+                <http://xmlns.com/foaf/0.1/name> "Foo Bar" .
         `;
 
         StubFetcher.addFetchResponse(data);
@@ -194,7 +194,7 @@ describe('Solid', () => {
         const data = `
             <foobar>
                 a <http://www.w3.org/ns/ldp#Resource> ;
-                <http://cmlns.com/foaf/0.1/name> "Foo Bar" .
+                <http://xmlns.com/foaf/0.1/name> "Foo Bar" .
         `;
 
         StubFetcher.addFetchResponse(data);
@@ -218,9 +218,9 @@ describe('Solid', () => {
         const data = `
             <${url}>
                 a <http://www.w3.org/ns/ldp#Resource> ;
-                <http://cmlns.com/foaf/0.1/name> "Foo" .
+                <http://xmlns.com/foaf/0.1/name> "Foo" .
             <${embeddedUrl}>
-                <http://cmlns.com/foaf/0.1/name> "Bar" .
+                <http://xmlns.com/foaf/0.1/name> "Bar" .
         `;
 
         StubFetcher.addFetchResponse(data);
@@ -238,7 +238,7 @@ describe('Solid', () => {
     it('getting resources ignores all documents that are not resources', async () => {
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const data = `
-            <foo> <http://cmlns.com/foaf/0.1/name> "Foo" .
+            <foo> <http://xmlns.com/foaf/0.1/name> "Foo" .
             <bar> a <http://www.w3.org/ns/ldp#Resource> .
         `;
 
@@ -254,10 +254,10 @@ describe('Solid', () => {
         const data = `
             <foo>
                 a <http://www.w3.org/ns/ldp#Resource> ;
-                <http://cmlns.com/foaf/0.1/name> "Foo" .
+                <http://xmlns.com/foaf/0.1/name> "Foo" .
             <bar>
                 a <http://www.w3.org/ns/ldp#Resource> ;
-                <http://cmlns.com/foaf/0.1/name> "Bar" .
+                <http://xmlns.com/foaf/0.1/name> "Bar" .
         `;
 
         StubFetcher.addFetchResponse(data);
@@ -271,7 +271,7 @@ describe('Solid', () => {
         expect(fooProperties.find(property => property.isType('http://www.w3.org/ns/ldp#Resource')))
             .not.toBeUndefined();
         expect(fooProperties.find(property => (
-            property.getPredicateUrl() === 'http://cmlns.com/foaf/0.1/name') &&
+            property.getPredicateUrl() === 'http://xmlns.com/foaf/0.1/name') &&
             property.object === 'Foo'
         ))
             .not.toBeUndefined();
@@ -281,7 +281,7 @@ describe('Solid', () => {
         expect(barProperties.find(property => property.isType('http://www.w3.org/ns/ldp#Resource')))
             .not.toBeUndefined();
         expect(barProperties.find(property => (
-            property.getPredicateUrl() === 'http://cmlns.com/foaf/0.1/name') &&
+            property.getPredicateUrl() === 'http://xmlns.com/foaf/0.1/name') &&
             property.object === 'Bar'
         ))
             .not.toBeUndefined();
@@ -295,11 +295,11 @@ describe('Solid', () => {
             <foo>
                 a <http://www.w3.org/ns/ldp#Resource> ;
                 a <${encodeURI(firstType)}> ;
-                <http://cmlns.com/foaf/0.1/name> "Foo" .
+                <http://xmlns.com/foaf/0.1/name> "Foo" .
             <bar>
                 a <http://www.w3.org/ns/ldp#Resource> ;
                 a <${encodeURI(secondType)}> ;
-                <http://cmlns.com/foaf/0.1/name> "Bar" .
+                <http://xmlns.com/foaf/0.1/name> "Bar" .
         `;
 
         StubFetcher.addFetchResponse(data);
@@ -327,12 +327,12 @@ describe('Solid', () => {
         StubFetcher.addFetchResponse(`
             <${containerUrl}foo>
                 a <http://www.w3.org/ns/ldp#Resource>, <http://www.w3.org/ns/ldp#Container>, <${type}> ;
-                <http://cmlns.com/foaf/0.1/name> "Foo" .
+                <http://xmlns.com/foaf/0.1/name> "Foo" .
         `);
         StubFetcher.addFetchResponse(`
             <${containerUrl}bar>
                 a <http://www.w3.org/ns/ldp#Resource>, <http://www.w3.org/ns/ldp#Container> ;
-                <http://cmlns.com/foaf/0.1/name> "Bar" .
+                <http://xmlns.com/foaf/0.1/name> "Bar" .
         `);
 
         const resources = await client.getResources(containerUrl, [
@@ -371,8 +371,8 @@ describe('Solid', () => {
                 a <http://www.w3.org/ns/ldp#Resource> ;
                 a <Type> ;
                 <literalName> "" ;
-                <http://cmlns.com/foaf/0.1/deletedOne> "" ;
-                <http://cmlns.com/foaf/0.1/deletedTwo> "" .
+                <http://xmlns.com/foaf/0.1/deletedOne> "" ;
+                <http://xmlns.com/foaf/0.1/deletedTwo> "" .
         `;
         const updatedProperties = [
             ResourceProperty.type('Type'),
@@ -412,8 +412,8 @@ describe('Solid', () => {
                 a <http://www.w3.org/ns/ldp#Container> ;
                 a <Type> ;
                 <literalName> "" ;
-                <http://cmlns.com/foaf/0.1/deletedOne> "" ;
-                <http://cmlns.com/foaf/0.1/deletedTwo> "" .
+                <http://xmlns.com/foaf/0.1/deletedOne> "" ;
+                <http://xmlns.com/foaf/0.1/deletedTwo> "" .
         `;
         const updatedProperties = [
             ResourceProperty.type('Type'),
@@ -488,7 +488,7 @@ describe('Solid', () => {
         const data = `
             <${url}>
                 a <http://www.w3.org/ns/ldp#Resource> ;
-                <http://cmlns.com/foaf/0.1/name> "Foo Bar" .
+                <http://xmlns.com/foaf/0.1/name> "Foo Bar" .
         `;
 
         StubFetcher.addFetchResponse(data);
