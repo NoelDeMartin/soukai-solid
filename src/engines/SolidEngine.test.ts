@@ -300,7 +300,7 @@ describe('SolidEngine', () => {
         expect(SolidClientMock.getResources).toHaveBeenCalledWith(containerUrl, []);
     });
 
-    it.only('gets many resources using cache', async () => {
+    it('gets many resources using cache', async () => {
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const resourcesCount = 5;
         const cachedResourcesCount = 5;
