@@ -80,7 +80,7 @@ export default class SolidEngine implements Engine {
         const document = this.convertResourceToDocument(resource);
 
         if (this.config.useCache)
-            this.cache.add(document);
+            await this.cache.add(document);
 
         return document;
     }
@@ -89,7 +89,7 @@ export default class SolidEngine implements Engine {
         const documents = await this.getDocumentsForFilters(collection, filters);
 
         if (this.config.useCache)
-            documents.forEach(document => this.cache.add(document));
+            await Promise.all(documents.map(document => this.cache.add(document)));
 
         return this.helper.filterDocuments(Obj.createMap(documents, '@id'), filters);
     }
@@ -107,7 +107,7 @@ export default class SolidEngine implements Engine {
             await this.client.updateResource(id, updatedProperties, removedProperties);
 
             if (this.config.useCache)
-                this.cache.forget(id);
+                await this.cache.forget(id);
         } catch (error) {
             // TODO this may fail for reasons other than resource not found
             throw new DocumentNotFound(id);
@@ -118,7 +118,7 @@ export default class SolidEngine implements Engine {
         await this.client.deleteResource(id);
 
         if (this.config.useCache)
-            this.cache.forget(id);
+            await this.cache.forget(id);
     }
 
     private async getDocumentsForFilters(collection: string, filters: Filters): Promise<SolidDocument[]> {
@@ -128,7 +128,9 @@ export default class SolidEngine implements Engine {
             return resources.map(this.convertResourceToDocument);
         }
 
-        const cachedDocuments = Arr.clean(filters.$in.map(url => this.cache.get(url)));
+        const cachedDocuments = Arr.clean(
+            await Promise.all(filters.$in.map(url => this.cache.get(url))),
+        );
         const resources = await this.getResourcesForFilters(collection, {
             ...filters,
             $in: Arr.without(filters.$in, cachedDocuments.map(document => document['@id'])),
@@ -210,16 +212,22 @@ export default class SolidEngine implements Engine {
     private convertResourceToDocument(resource: Resource): SolidDocument {
         const source = resource.getSource();
         const subjectNodes = source.each(null as any, null as any, null as any, null as any);
+        const resourceUrls = subjectNodes.map(node => node.value);
+        const embeddedDocuments = {};
+
+        for (const resourceUrl of resourceUrls) {
+            if (resourceUrl in embeddedDocuments)
+                continue;
+
+            if (resourceUrl === resource.url || !resourceUrl.startsWith(resource.url))
+                continue;
+
+            embeddedDocuments[resourceUrl] = new Resource(resourceUrl, source).toJsonLD();
+        }
 
         return {
             ...resource.toJsonLD() as LinkedDataDocument,
-            __embedded: Arr.unique(subjectNodes.map(node => node.value))
-                .filter(url => url.startsWith(resource.url) && url !== resource.url)
-                .map(url => new Resource(url, source))
-                .reduce((documents, resource) => ({
-                    ...documents,
-                    [resource.url]: resource.toJsonLD(),
-                }), {}),
+            __embedded: embeddedDocuments,
         };
     }
 

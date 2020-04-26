@@ -1,3 +1,5 @@
+import { get, set, del, keys } from 'idb-keyval';
+
 import Arr from '@/utils/Arr';
 
 import { SolidDocument } from './SolidEngine';
@@ -11,42 +13,43 @@ export default class SolidDocumentsCache {
 
     private synchronizedDocumentIds: Set<string> = new Set();
 
-    public add(document: SolidDocument): void {
+    public async add(document: SolidDocument): Promise<void> {
         const id = document['@id'];
 
-        localStorage.setItem(PREFIX + id, JSON.stringify(document));
-
         this.synchronizedDocumentIds.add(id);
-        this.synchronizeEmbeddedDocuments(document);
+
+        await set(PREFIX + id, document);
+        await this.synchronizeEmbeddedDocuments(document);
     }
 
-    public get(id: string): SolidDocument | null {
+    public async get(id: string): Promise<SolidDocument | null> {
         if (!this.synchronizedDocumentIds.has(id))
             return null;
 
-        const json = localStorage.getItem(PREFIX + id);
+        const json = await get<SolidDocument>(PREFIX + id);
 
-        return json !== null ? JSON.parse(json) : null;
+        return json || null;
     }
 
-    public forget(id: string): void {
+    public async forget(id: string): Promise<void> {
         this.synchronizedDocumentIds.delete(id);
-        localStorage.removeItem(PREFIX + id);
-        localStorage.removeItem(PREFIX + id + MODIFIED_AT_SUFFIX);
+
+        await del(PREFIX + id);
+        await del(PREFIX + id + MODIFIED_AT_SUFFIX);
     }
 
-    public clear(): void {
-        const keys = Object.keys(localStorage);
+    public async clear(): Promise<void> {
+        const dbKeys = await keys();
 
-        for (const key of keys) {
-            if (!key.startsWith(PREFIX))
-                continue;
+        await Promise.all(dbKeys.map(async key => {
+            if (typeof key !== 'string' || !key.startsWith(PREFIX))
+                return;
 
-            localStorage.removeItem(key);
-        }
+            await del(key);
+        }));
     }
 
-    private synchronizeEmbeddedDocuments(document: SolidDocument): void {
+    private async synchronizeEmbeddedDocuments(document: SolidDocument): Promise<void> {
         const ldpContains = document['http://www.w3.org/ns/ldp#contains'] as LDPContains;
         const documentTypes = Array.isArray(document['@type'])
             ? document['@type'].map(type => type['@id'])
@@ -59,25 +62,25 @@ export default class SolidDocumentsCache {
             ? ldpContains.map(type => type['@id'])
             : [ldpContains['@id']];
 
-        for (const resourceId of resourceIds) {
+        await Promise.all(resourceIds.map(async resourceId => {
             const embeddedDocument = document.__embedded[resourceId];
 
             if (!embeddedDocument)
-                continue;
+                return;
 
             const modifiedAt = embeddedDocument['http://purl.org/dc/terms/modified'] as string;
 
-            this.synchronizeDocument(resourceId, modifiedAt);
-        }
+            await this.synchronizeDocument(resourceId, modifiedAt);
+        }));
     }
 
-    private synchronizeDocument(id: string, modifiedAt: string): void {
-        const previousModifiedAt = localStorage.getItem(PREFIX + id + MODIFIED_AT_SUFFIX);
+    private async synchronizeDocument(id: string, modifiedAt: string): Promise<void> {
+        const previousModifiedAt = await get(PREFIX + id + MODIFIED_AT_SUFFIX);
 
         if (previousModifiedAt !== null && previousModifiedAt !== modifiedAt)
-            this.forget(id);
+            await this.forget(id);
 
-        localStorage.setItem(PREFIX + id + MODIFIED_AT_SUFFIX, modifiedAt);
+        await set(PREFIX + id + MODIFIED_AT_SUFFIX, modifiedAt);
 
         this.synchronizedDocumentIds.add(id);
     }

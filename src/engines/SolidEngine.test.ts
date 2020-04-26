@@ -1,3 +1,5 @@
+import 'fake-indexeddb/auto';
+
 import { DocumentNotFound, EngineAttributes, DocumentAlreadyExists } from 'soukai';
 
 import Faker from 'faker';
