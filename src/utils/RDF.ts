@@ -1,3 +1,4 @@
+import { JsonLdParser as JsonLDParser } from 'jsonld-streaming-parser';
 import { Parser as TurtleParser } from 'n3';
 import { Quad } from 'rdf-js';
 
@@ -59,6 +60,23 @@ class RDF {
 
                 quads.push(quad);
             });
+        });
+    }
+
+    public async parseJsonLD(json: object): Promise<Resource> {
+        return new Promise((resolve, reject) => {
+            const id = json['@id'];
+            const quads: Quad[] = [];
+            const parser = new JsonLDParser({ baseIRI: id });
+
+            parser.on('data', quad => {
+                quads.push(quad);
+            });
+            parser.on('error', reject);
+            parser.on('end', () => resolve(new Resource(id, quads)));
+
+            parser.write(JSON.stringify(json));
+            parser.end();
         });
     }
 

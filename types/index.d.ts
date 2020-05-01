@@ -28,7 +28,7 @@ export interface SolidFieldsDefinition extends FieldsDefinition {
 }
 
 export interface SolidFieldDefinition extends FieldDefinition {
-    rdfProperty?: string;
+    rdfProperty: string;
 }
 
 export class SolidModel extends Model {
@@ -49,6 +49,8 @@ export class SolidModel extends Model {
 
     public static from(containerUrl: string): typeof SolidModel;
 
+    public static fromJSONLD<T extends SolidModel>(json: object): Promise<T>;
+
     public static at(containerUrl: string): typeof SolidModel;
 
     public static prepareEngineFilters(filters?: Filters): Filters;
@@ -58,6 +60,8 @@ export class SolidModel extends Model {
     protected classDef: typeof SolidModel;
 
     public save<T extends Model>(containerUrl?: string): Promise<T>;
+
+    public toJSONLD(): object;
 
     protected contains(model: typeof SolidModel): MultiModelRelation;
 

@@ -6,7 +6,7 @@ import Group from '@tests/stubs/Group';
 
 export default class Person extends SolidModel {
 
-    public static timestamps = false;
+    public static timestamps = ['createdAt'];
 
     public static rdfContexts = {
         'foaf': 'http://xmlns.com/foaf/0.1/',
@@ -16,6 +16,7 @@ export default class Person extends SolidModel {
 
     public static fields = {
         name: FieldType.String,
+        lastName: FieldType.String,
         friendUrls: {
             type: FieldType.Array,
             rdfProperty: 'foaf:knows',

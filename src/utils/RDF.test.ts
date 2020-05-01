@@ -24,4 +24,24 @@ describe('RDF helper', () => {
         expect(resource.getPropertyValue('foaf:name')).toEqual(name);
     });
 
+    it('parses JSONLD', async () => {
+        // Arrange
+        const url = Faker.internet.url();
+        const name = Faker.name.firstName();
+
+        // Act
+        const resource = await RDF.parseJsonLD({
+            '@id': url,
+            '@context': { '@vocab': 'http://xmlns.com/foaf/0.1/' },
+            '@type': ['Person'],
+            'name': name,
+        });
+
+        // Assert
+        expect(resource.sourceStatements).toHaveLength(2);
+        expect(resource.url).toEqual(url);
+        expect(resource.is('foaf:Person')).toBe(true);
+        expect(resource.getPropertyValue('foaf:name')).toEqual(name);
+    });
+
 });

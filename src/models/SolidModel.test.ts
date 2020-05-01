@@ -505,7 +505,11 @@ describe('SolidModel', () => {
 
         Soukai.loadModel('Person', Person);
 
-        const model = await Person.at(containerUrl).create({ name, friendUrls });
+        const model = await Person.at(containerUrl).create({
+            name,
+            friendUrls,
+            createdAt: new Date('1997-07-21T23:42:00Z'),
+        });
 
         const attributes = (engine.create as any).mock.calls[0][1];
 
@@ -519,6 +523,8 @@ describe('SolidModel', () => {
             'http://xmlns.com/foaf/0.1/knows': friendUrls.map(
                 url => ({ '@id': url }),
             ),
+            // TODO JSONLD is not supposed to contain native dates
+            'http://purl.org/dc/terms/created': new Date('1997-07-21T23:42:00.000Z'),
         });
     });
 
@@ -705,6 +711,80 @@ describe('SolidModel', () => {
         expect(person.group.name).toBe(name);
 
         expect(engine.readOne).toHaveBeenCalledWith(Url.parentDirectory(containerUrl), containerUrl);
+    });
+
+    it('serializes to JSON-LD', () => {
+        // Arrange
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const name = Faker.random.word();
+        const person = new Person({
+            name,
+            url: Url.resolve(containerUrl, Faker.random.uuid()),
+            friendUrls: [
+                Url.resolve(containerUrl, Faker.random.uuid()),
+                Url.resolve(containerUrl, Faker.random.uuid()),
+                Url.resolve(containerUrl, Faker.random.uuid()),
+            ],
+            createdAt: new Date('1997-07-21T23:42:00Z'),
+        });
+
+        // Act
+        const json = person.toJSONLD();
+
+        // Assert
+        expect(json).toEqual({
+            '@id': person.url,
+            '@context': {
+                '@vocab': 'http://xmlns.com/foaf/0.1/',
+                'ldp': 'http://www.w3.org/ns/ldp#',
+                'purl': 'http://purl.org/dc/terms/',
+            },
+            '@type': [
+                'Person',
+                'ldp:Resource',
+            ],
+            'name': name,
+            'knows': person.friendUrls,
+            'purl:created': {
+                '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+                '@value': '1997-07-21T23:42:00.000Z',
+            }
+        });
+    });
+
+    it('parses JSON-LD', async () => {
+        // Arrange
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const name = Faker.random.word();
+        const url = Url.resolve(containerUrl, Faker.random.uuid());
+        const friendUrls = [
+            Url.resolve(containerUrl, Faker.random.uuid()),
+            Url.resolve(containerUrl, Faker.random.uuid()),
+            Url.resolve(containerUrl, Faker.random.uuid()),
+        ];
+
+        // Act
+        const person = await Person.fromJSONLD({
+            '@context': { '@vocab': 'http://xmlns.com/foaf/0.1/' },
+            '@id': url,
+            '@type': [
+                'http://xmlns.com/foaf/0.1/Person',
+                'http://www.w3.org/ns/ldp#Resource',
+            ],
+            name,
+            knows: friendUrls,
+            'http://purl.org/dc/terms/created': {
+                '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+                '@value': '1997-07-21T23:42:00.000Z',
+            },
+        });
+
+        // Assert
+        expect(person.name).toEqual(name);
+        expect(person.url).toEqual(url);
+        expect(person.friendUrls).toEqual(friendUrls);
+        expect(person.createdAt).toBeInstanceOf(Date);
+        expect(person.createdAt.toISOString()).toEqual('1997-07-21T23:42:00.000Z');
     });
 
 });
