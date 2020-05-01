@@ -1,73 +1,72 @@
-import $rdf, { IndexedFormula, NamedNode, Literal } from 'rdflib';
+import { Quad } from 'rdf-js';
 
-import Arr from '@/utils/Arr';
+import RDF, { IRI } from '@/utils/RDF';
 
 export type LiteralValue = string | number | boolean | Date;
 
-export class IRI {
+export interface IRIValue {
+    iri: string;
+}
 
-    public readonly url: string;
-
-    constructor(url: string) {
-        this.url = url;
-    }
-
-};
+function isIRIValue(value: any): value is IRIValue {
+    return typeof value === 'object' && 'iri' in value;
+}
 
 export class ResourceProperty {
 
     public static literal(property: string, value: LiteralValue): ResourceProperty {
-        return new ResourceProperty({ url: property }, value);
+        return new ResourceProperty({ iri: RDF.resolveIRI(property) }, value);
     }
 
     public static link(property: string, url: string) {
-        return new ResourceProperty({ url: property }, { url });
+        return new ResourceProperty({ iri: RDF.resolveIRI(property) }, { iri: url });
     }
 
     public static type(type: string): ResourceProperty {
-        return new ResourceProperty('a', { url: type });
+        return new ResourceProperty('a', { iri: RDF.resolveIRI(type) });
     }
 
-    public readonly predicate: IRI | 'a';
+    public readonly predicate: IRIValue | 'a';
 
-    public readonly object: LiteralValue | IRI;
+    public readonly object: IRIValue | LiteralValue;
 
-    private constructor(
-        predicate: IRI | 'a',
-        object: LiteralValue | IRI,
-    ) {
+    private constructor(predicate: IRIValue | 'a', object: IRIValue | LiteralValue) {
         this.predicate = predicate;
         this.object = object;
     }
 
-    public getPredicateUrl(): string {
-        return this.predicate === 'a'
-            ? 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
-            : this.predicate.url;
+    public getPredicateIRI(): string {
+        return this.predicate === 'a' ? IRI('rdf:type') : this.predicate.iri;
     }
 
     public isType(type: string): boolean {
-        return (
-            this.predicate === 'a' ||
-            this.predicate.url === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type'
-        ) &&
-        typeof this.object === 'object' &&
-        'url' in this.object &&
-        this.object.url === type;
+        return (this.predicate === 'a' || this.predicate.iri === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type')
+            && typeof this.object === 'object'
+            && 'iri' in this.object
+            && this.object.iri === RDF.resolveIRI(type);
     }
 
     public toTurtle(resourceUrl: string = ''): string {
-        return [
-            `<${encodeURI(resourceUrl)}>`,
-            this.predicate === 'a'
-                ? this.predicate
-                : `<${encodeURI(this.predicate.url)}>`,
-            typeof this.object !== 'object'
-                ? JSON.stringify(this.object)
-                : this.object instanceof Date
-                    ? $rdf.Literal.fromDate(this.object).toNT()
-                    : `<${encodeURI(this.object.url)}>`,
-        ].join(' ');
+        const subject = `<${encodeURI(resourceUrl)}>`;
+        const predicate = this.predicate === 'a' ? this.predicate : `<${encodeURI(this.predicate.iri)}>`;
+        const object = this.serializeObjectValue(this.object);
+
+        return `${subject} ${predicate} ${object}`;
+    }
+
+    private serializeObjectValue(value: LiteralValue | IRIValue): string {
+        if (isIRIValue(value))
+            return `<${encodeURI(value.iri)}>`;
+
+        if (value instanceof Date) {
+            const digits = (...numbers: number[]) => numbers.map(number => number.toString().padStart(2, '0'));
+            const date = digits(value.getUTCFullYear(), value.getUTCMonth() + 1, value.getUTCDate()).join('-');
+            const time = digits(value.getUTCHours(), value.getUTCMinutes(), value.getUTCSeconds()).join(':');
+
+            return `"${date}T${time}Z"^^<${IRI('xsd:dateTime')}>`;
+        }
+
+        return JSON.stringify(value);
     }
 
 }
@@ -75,23 +74,19 @@ export class ResourceProperty {
 export default class Resource {
 
     public readonly url: string;
+    public readonly sourceStatements: Quad[];
 
-    private source: IndexedFormula;
+    private statements: Quad[];
 
-    public constructor(url: string, source: IndexedFormula | string) {
+    public constructor(url: string, sourceStatements: Quad[]) {
         this.url = url;
+        this.sourceStatements = sourceStatements;
 
-        if (typeof source === 'string') {
-            this.source = $rdf.graph();
-
-            $rdf.parse(source, this.source, url, 'text/turtle', null as any);
-        } else {
-            this.source = source;
-        }
+        this.statements = this.sourceStatements.filter(statement => statement.subject.value === url);
     }
 
     public get name(): string | null {
-        let name = this.getPropertyValue('http://xmlns.com/foaf/0.1/name');
+        let name = this.getPropertyValue(IRI('foaf:name'));
 
         if (Array.isArray(name)) {
             name = name[0];
@@ -101,92 +96,65 @@ export default class Resource {
     }
 
     public get types(): string[] {
-        const typeTerms = this.source.each(
-            $rdf.sym(this.url),
-            new NamedNode('http://www.w3.org/1999/02/22-rdf-syntax-ns#type'),
-            null as any,
-            null as any
-        );
-
-        return typeTerms.map(term => decodeURI(term.value));
+        return this.statements
+            .filter(statement => statement.predicate.value === IRI('rdf:type'))
+            .map(statement => statement.object.value);
     }
 
     public get properties(): string[] {
-        const typeTerms = this.source.each(
-            $rdf.sym(this.url),
-            null as any,
-            null as any,
-            null as any
-        );
-
-        return Arr.unique(typeTerms.map(term => decodeURI(term.value)));
+        return this.statements.map(statement => statement.predicate.value);
     }
 
-    public is(type: string | NamedNode): boolean {
-        if (typeof type !== 'string') {
-            type = type.uri;
-        }
+    public is(type: string): boolean {
+        return this.types.indexOf(RDF.resolveIRI(type)) !== -1;
+    }
 
-        return this.types.indexOf(type) !== -1;
+    public isEmpty(): boolean {
+        return this.statements.length === 0;
     }
 
     public getPropertyType(property: string): 'literal' | 'link' | null {
-        const statements = this.source.statementsMatching(
-            $rdf.sym(this.url),
-            new NamedNode(property),
-            null as any,
-            null as any,
-            false
-        );
+        property = RDF.resolveIRI(property);
 
-        return statements.length > 0
-            ? (statements[0].object instanceof NamedNode ? 'link' : 'literal')
-            : null;
+        const statement = this.statements.find(statement => statement.predicate.value === property);
+
+        if (!statement)
+            return null;
+
+        return statement.object.termType === 'NamedNode' ? 'link' : 'literal';
     }
 
     public getPropertyValue(
         property: string,
         defaultValue: LiteralValue | null = null,
     ): LiteralValue | LiteralValue[] | null {
-        const statements = this.source.statementsMatching(
-            $rdf.sym(this.url),
-            new NamedNode(property),
-            null as any,
-            null as any,
-            false
-        );
+        property = RDF.resolveIRI(property);
 
-        if (statements.length === 0) {
+        const values = this.statements
+            .filter(statement => statement.predicate.value === property)
+            .map(statement => statement.object.value);
+
+        if (values.length === 0)
             return defaultValue;
-        } else if (statements.length === 1) {
-            return statements[0].object.value;
-        } else {
-            return statements.map(statement => statement.object.value);
-        }
+
+        if (values.length === 1)
+            return values[0];
+
+        return values;
     }
 
     public getProperties(): ResourceProperty[] {
         const properties: ResourceProperty[] = [];
 
-        const statements = this.source.statementsMatching(
-            $rdf.sym(this.url),
-            null as any,
-            null as any,
-            null as any,
-            false,
-        );
-
-        for (const statement of statements) {
+        for (const statement of this.statements) {
             switch (statement.object.termType) {
                 case 'Literal':
-                    const literal = statement.object as Literal;
-
                     properties.push(
                         ResourceProperty.literal(
                             statement.predicate.value,
-                            literal.datatype.value === 'http://www.w3.org/2001/XMLSchema#dateTime'
-                                ? new Date(literal.value)
-                                : literal.value,
+                            statement.object.datatype.value === IRI('xsd:dateTime')
+                                ? new Date(statement.object.value)
+                                : statement.object.value,
                         ),
                     );
                     break;
@@ -204,17 +172,13 @@ export default class Resource {
         return properties;
     }
 
-    public getSource(): IndexedFormula {
-        return this.source;
-    }
-
     public toJsonLD(): object {
         const jsonld = { '@id': this.url };
 
         for (const property of this.properties) {
             const value = this.getPropertyValue(property);
 
-            if (property === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') {
+            if (property === IRI('rdf:type')) {
                 jsonld['@type'] = Array.isArray(value)
                     ? value.map(link => ({ '@id': link as string }))
                     : { '@id': value as string };

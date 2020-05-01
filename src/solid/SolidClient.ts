@@ -1,8 +1,7 @@
-import $rdf, { NamedNode } from 'rdflib';
-
 import Resource, { ResourceProperty } from '@/solid/Resource';
 
 import Arr from '@/utils/Arr';
+import RDF, { IRI } from '@/utils/RDF';
 import Url from '@/utils/Url';
 
 interface RequestOptions {
@@ -12,9 +11,6 @@ interface RequestOptions {
 }
 
 export type Fetch = (url: string, options?: RequestOptions) => Promise<Response>;
-
-const LDP = $rdf.Namespace('http://www.w3.org/ns/ldp#');
-const RDFS = $rdf.Namespace('http://www.w3.org/1999/02/22-rdf-syntax-ns#');
 
 export default class SolidClient {
 
@@ -33,10 +29,10 @@ export default class SolidClient {
             .map(property => property.toTurtle(url || '') + ' .')
             .join("\n");
 
-        if (this.containsType(properties, LDP('Container')))
+        if (this.containsType(properties, IRI('ldp:Container')))
             return this.createLDPContainer(parentUrl, url, turtleData);
 
-        if (this.containsType(properties, LDP('Resource')))
+        if (this.containsType(properties, IRI('ldp:Resource')))
             return this.createLDPResource(parentUrl, url, turtleData);
 
         return this.createEmbeddedResource(parentUrl, url, turtleData);
@@ -51,14 +47,16 @@ export default class SolidClient {
             return null;
         }
 
-        return new Resource(url, await response.text());
+        const data = await response.text();
+
+        return RDF.parseTurtle(url, data);
     }
 
     public async getResources(containerUrl: string, types: string[] = []): Promise<Resource[]> {
         try {
             const resources = await this.getResourcesFromParent(
                 containerUrl,
-                types.indexOf(LDP('Container').uri) !== -1,
+                types.indexOf(IRI('ldp:Container')) !== -1,
             );
 
             return resources.filter(resource => {
@@ -99,12 +97,12 @@ export default class SolidClient {
         // We need to remove the previous value of updated properties or else they'll be duplicated
         removedProperties.push(
             ...updatedProperties
-                .map(property => (property.predicate !== 'a') ? property.predicate.url : null)
+                .map(property => (property.predicate !== 'a') ? property.predicate.iri : null)
                 .filter(property => property !== null)
                 .filter((property: string) => resource.properties.indexOf(property) !== -1) as string[],
         );
 
-        if (resource.is(LDP('Container'))) {
+        if (resource.is(IRI('ldp:Container'))) {
             await this.updateContainerResource(resource, updatedProperties, removedProperties);
 
             return;
@@ -159,9 +157,9 @@ export default class SolidClient {
             return;
         }
 
-        if (resource.is(LDP('Container'))) {
+        if (resource.is(IRI('ldp:Container'))) {
             const resources = (await Promise.all([
-                this.getResources(url, ['http://www.w3.org/ns/ldp#Container']),
+                this.getResources(url, [IRI('ldp:Container')]),
                 this.getResources(url),
             ]))
                 .reduce((resources, allResources) => {
@@ -182,12 +180,10 @@ export default class SolidClient {
         });
 
         if (response.status === 200) {
-            const store = $rdf.graph();
             const data = await response.text();
+            const resource = await RDF.parseTurtle(url, data);
 
-            $rdf.parse(data, store, url, 'text/turtle', null as any);
-
-            return !!store.any(store.sym(url), null as any, null as any, null as any);
+            return !resource.isEmpty();
         } else if (response.status === 404) {
             return false;
         } else {
@@ -215,10 +211,7 @@ export default class SolidClient {
                 },
             );
 
-            return new Resource(
-                Url.resolve(parentUrl, response.headers.get('Location') || ''),
-                data,
-            );
+            return RDF.parseTurtle(Url.resolve(parentUrl, response.headers.get('Location') || ''), data);
         }
 
         if (!url.startsWith(parentUrl))
@@ -240,7 +233,7 @@ export default class SolidClient {
             },
         );
 
-        return new Resource(url, data);
+        return RDF.parseTurtle(url, data);
     }
 
     private async createLDPResource(
@@ -255,10 +248,7 @@ export default class SolidClient {
                 body: data,
             });
 
-            return new Resource(
-                Url.resolve(parentUrl, response.headers.get('Location') || ''),
-                data,
-            );
+            return RDF.parseTurtle(Url.resolve(parentUrl, response.headers.get('Location') || ''), data);
         }
 
         if (!url.startsWith(parentUrl))
@@ -270,7 +260,7 @@ export default class SolidClient {
             body: data,
         });
 
-        return new Resource(url, data);
+        return RDF.parseTurtle(url, data);
     }
 
     private async createEmbeddedResource(
@@ -300,7 +290,7 @@ export default class SolidClient {
             },
         );
 
-        return new Resource(url, data);
+        return RDF.parseTurtle(url, data);
     }
 
     private async getResourcesFromParent(containerUrl: string, includeChildContainers: boolean): Promise<Resource[]> {
@@ -315,37 +305,35 @@ export default class SolidClient {
     }
 
     private async getEmbeddedResources(containerUrl: string): Promise<Resource[]> {
-        const store = $rdf.graph();
         const data = await this
             .fetch(containerUrl, { headers: { 'Accept': 'text/turtle' } })
             .then(res => res.text());
 
-        $rdf.parse(data, store, containerUrl, 'text/turtle', null as any);
+        const containerResource = await RDF.parseTurtle(containerUrl, data);
 
-        const urls = store
-            .each(null as any, null as any, null as any, null as any)
-            .map(node => node.value);
-
-        return Arr.unique(urls).map(url => new Resource(url, store));
+        return Arr
+            .unique(containerResource.sourceStatements.map(statement => statement.subject.value))
+            .map(url => new Resource(url, containerResource.sourceStatements));
     }
 
     private async getLDPContainers(containerUrl: string, onlyContainers: boolean): Promise<Resource[]> {
-        const store = $rdf.graph();
-        const data = await this
-            .fetch(containerUrl, { headers: { 'Accept': 'text/turtle' } })
-            .then(res => res.text());
+        const containerResource =
+            await this
+                .fetch(containerUrl, { headers: { 'Accept': 'text/turtle' } })
+                .then(res => res.text())
+                .then(data => RDF.parseTurtle(containerUrl, data));
 
-        $rdf.parse(data, store, containerUrl, 'text/turtle', null as any);
+        const urls = containerResource.getPropertyValue('ldp:contains') || [];
 
         const resources = await Promise.all(
-            store
-                .statementsMatching($rdf.sym(containerUrl), LDP('contains'), null as any, null as any, false)
-                .map(async statement => {
-                    const resource = new Resource(statement.object.value, store);
+            Arr
+                .create(urls as string)
+                .map(async url => {
+                    const resource = new Resource(url, containerResource.sourceStatements);
 
                     // Requests only return ldp types for unexpanded resources, so we can only filter
                     // by containers or plain resources
-                    if (onlyContainers && !resource.is(LDP('Container'))) {
+                    if (onlyContainers && !resource.is(IRI('ldp:Container'))) {
                         return null;
                     }
 
@@ -357,16 +345,15 @@ export default class SolidClient {
     }
 
     private async getLDPResourcesUsingGlobbing(containerUrl: string): Promise<Resource[]> {
-        const store = $rdf.graph();
         const data = await this
             .fetch(containerUrl + '*', { headers: { 'Accept': 'text/turtle' } })
             .then(res => res.text());
 
-        $rdf.parse(data, store, containerUrl, 'text/turtle', null as any);
+        const containerResource = await RDF.parseTurtle(containerUrl, data);
 
-        return store
-            .each(null as any, RDFS('type'), LDP('Resource'), null as any)
-            .map(node => new Resource(node.value, store));
+        return containerResource.sourceStatements
+            .filter(statement => statement.predicate.value === IRI('rdf:type') && statement.object.value === IRI('ldp:Resource'))
+            .map(statement => new Resource(statement.subject.value, containerResource.sourceStatements));
     }
 
     private async updateContainerResource(
@@ -379,9 +366,9 @@ export default class SolidClient {
         const url = resource.url;
         const properties = resource.getProperties()
             .filter(property => {
-                const predicate = property.getPredicateUrl();
+                const predicate = property.getPredicateIRI();
 
-                return predicate !== 'http://www.w3.org/ns/ldp#contains'
+                return predicate !== RDF.resolveIRI('ldp:contains')
                     && predicate !== 'http://www.w3.org/ns/posix/stat#mtime'
                     && predicate !== 'http://www.w3.org/ns/posix/stat#size'
                     && !removedProperties.find(removedProperty => removedProperty === predicate);
@@ -409,11 +396,8 @@ export default class SolidClient {
         }
     }
 
-    private containsType(properties: ResourceProperty[], type: string | NamedNode): boolean {
-        if (type instanceof NamedNode)
-            type = type.uri;
-
-        return !!properties.find(property => property.isType(type as string));
+    private containsType(properties: ResourceProperty[], type: string): boolean {
+        return !!properties.find(property => property.isType(type));
     }
 
 }

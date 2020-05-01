@@ -271,7 +271,7 @@ describe('Solid', () => {
         expect(fooProperties.find(property => property.isType('http://www.w3.org/ns/ldp#Resource')))
             .not.toBeUndefined();
         expect(fooProperties.find(property => (
-            property.getPredicateUrl() === 'http://xmlns.com/foaf/0.1/name') &&
+            property.getPredicateIRI() === 'http://xmlns.com/foaf/0.1/name') &&
             property.object === 'Foo'
         ))
             .not.toBeUndefined();
@@ -281,7 +281,7 @@ describe('Solid', () => {
         expect(barProperties.find(property => property.isType('http://www.w3.org/ns/ldp#Resource')))
             .not.toBeUndefined();
         expect(barProperties.find(property => (
-            property.getPredicateUrl() === 'http://xmlns.com/foaf/0.1/name') &&
+            property.getPredicateIRI() === 'http://xmlns.com/foaf/0.1/name') &&
             property.object === 'Bar'
         ))
             .not.toBeUndefined();

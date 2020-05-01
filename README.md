@@ -98,6 +98,7 @@ As you may have noticed in the Getting Started example, all those properties are
   | rdfs   | `http://www.w3.org/2000/01/rdf-schema#`       |
   | rdf    | `http://www.w3.org/1999/02/22-rdf-syntax-ns#` |
   | ldp    | `http://www.w3.org/ns/ldp#`                   |
+  | purl   | `http://purl.org/dc/terms/`                   |
 
   Those prefixes will always be available for definitions, so you should abstain from adding them to `rdfContexts` in your models.
 

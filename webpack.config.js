@@ -31,7 +31,11 @@ module.exports = {
 
     output,
 
-    externals: ['soukai', 'rdflib'],
+    externals: [
+        'idb-keyval',
+        'n3',
+        'soukai',
+    ],
 
     module: {
 

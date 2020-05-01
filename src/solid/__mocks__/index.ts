@@ -1,5 +1,6 @@
 import Resource, { ResourceProperty } from '@/solid/Resource';
 
+import RDF from '@/utils/RDF';
 import Url from '@/utils/Url';
 import UUID from '@/utils/UUID';
 
@@ -26,7 +27,7 @@ export class SolidClientMock {
         if (await this.resourceExists(url))
             throw new Error(`Cannot create a resource at ${url}, url already in use`);
 
-        const resource = new Resource(url, turtleData);
+        const resource = await RDF.parseTurtle(url, turtleData);
 
         this.resources[url] = [resource];
 
@@ -48,7 +49,7 @@ export class SolidClientMock {
         if (!(await this.resourceExists(parentUrl)))
             throw new Error(`Cannot create an embedded resource at ${url}, parent doesn't exist`);
 
-        const resource = new Resource(url, turtleData);
+        const resource = await RDF.parseTurtle(url, turtleData);
 
         this.resources[parentUrl].push(resource);
 

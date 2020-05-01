@@ -210,9 +210,7 @@ export default class SolidEngine implements Engine {
     }
 
     private convertResourceToDocument(resource: Resource): SolidDocument {
-        const source = resource.getSource();
-        const subjectNodes = source.each(null as any, null as any, null as any, null as any);
-        const resourceUrls = subjectNodes.map(node => node.value);
+        const resourceUrls = resource.sourceStatements.map(statement => statement.subject.value);
         const embeddedDocuments = {};
 
         for (const resourceUrl of resourceUrls) {
@@ -222,7 +220,7 @@ export default class SolidEngine implements Engine {
             if (resourceUrl === resource.url || !resourceUrl.startsWith(resource.url))
                 continue;
 
-            embeddedDocuments[resourceUrl] = new Resource(resourceUrl, source).toJsonLD();
+            embeddedDocuments[resourceUrl] = new Resource(resourceUrl, resource.sourceStatements).toJsonLD();
         }
 
         return {

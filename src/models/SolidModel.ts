@@ -20,6 +20,7 @@ import SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
 import SolidIsContainedByRelation from '@/models/relations/SolidIsContainedByRelation';
 import SolidIsEmbeddedByRelation from '@/models/relations/SolidIsEmbeddedByRelation';
 
+import RDF, { IRI } from '@/utils/RDF';
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 import UUID from '@/utils/UUID';
@@ -71,6 +72,7 @@ export default class SolidModel extends Model {
             rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
             rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
             ldp: 'http://www.w3.org/ns/ldp#',
+            purl: 'http://purl.org/dc/terms/',
         };
 
         const defaultRdfContext = this.instance.getDefaultRdfContext();
@@ -79,38 +81,32 @@ export default class SolidModel extends Model {
             this.instance.hasAutomaticTimestamp('createdAt') &&
             typeof this.fields['createdAt'].rdfProperty === 'undefined'
         ) {
-            this.fields['createdAt'].rdfProperty = 'http://purl.org/dc/terms/created';
+            this.fields['createdAt'].rdfProperty = IRI('purl:created');
         }
 
         if (
             this.instance.hasAutomaticTimestamp('updatedAt') &&
             typeof this.fields['updatedAt'].rdfProperty === 'undefined'
         ) {
-            this.fields['updatedAt'].rdfProperty = 'http://purl.org/dc/terms/modified';
+            this.fields['updatedAt'].rdfProperty = IRI('purl:modified');
         }
 
-        this.rdfsClasses = new Set([...this.rdfsClasses].map(
-            expression => this.instance.resolveRDFAlias(expression)
-        ));
+        this.rdfsClasses = new Set([...this.rdfsClasses].map(name => RDF.resolveIRI(name, this.rdfContexts)));
 
         this.ldpResource = this.ldpResource || this.ldpResource === undefined;
         this.ldpContainer = !!this.ldpContainer;
 
         if (this.ldpResource) {
-            const ldpResource = this.instance.resolveRDFAlias('ldp:Resource');
-
-            if (!this.rdfsClasses.has(ldpResource))
-                this.rdfsClasses.add(ldpResource);
+            if (!this.rdfsClasses.has(IRI('ldp:Resource')))
+                this.rdfsClasses.add(IRI('ldp:Resource'));
         }
 
         if (this.ldpContainer) {
             if (!this.ldpResource)
                 throw new Error(`Model ${this.name} cannot be declared as an ldpContainer if ldpResource is disabled`);
 
-            const ldpContainerType = this.instance.resolveRDFAlias('ldp:Container');
-
-            if (!this.rdfsClasses.has(ldpContainerType)) {
-                this.rdfsClasses.add(ldpContainerType);
+            if (!this.rdfsClasses.has(IRI('ldp:Container'))) {
+                this.rdfsClasses.add(IRI('ldp:Container'));
             }
 
             this.fields['resourceUrls'] = {
@@ -127,8 +123,9 @@ export default class SolidModel extends Model {
             throw new Error(`Model ${this.name} cannot disable url minting because it isn't an ldpResource`);
 
         for (const field in this.fields) {
-            this.fields[field].rdfProperty = this.instance.resolveRDFAlias(
+            this.fields[field].rdfProperty = RDF.resolveIRI(
                 this.fields[field].rdfProperty || `${defaultRdfContext}${field}`,
+                this.rdfContexts,
             );
         }
 
@@ -293,22 +290,6 @@ export default class SolidModel extends Model {
             return Url.clean(this.url, { fragment: false });
 
         return Url.parentDirectory(this.url);
-    }
-
-    private resolveRDFAlias(type: string): string {
-        const index = type.indexOf(':');
-
-        if (index !== -1) {
-            const prefix = type.substr(0, index);
-
-            for (const alias in this.classDef.rdfContexts) {
-                if (prefix === alias) {
-                    return this.classDef.rdfContexts[alias] + type.substr(index + 1);
-                }
-            }
-        }
-
-        return type;
     }
 
     private loadEmbeddedRelations(documents: Documents) {
