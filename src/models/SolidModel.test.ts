@@ -729,7 +729,7 @@ describe('SolidModel', () => {
         });
 
         // Act
-        const json = person.toJSONLD();
+        const json = person.toJsonLD();
 
         // Assert
         expect(json).toEqual({

@@ -1,6 +1,6 @@
 import { Quad } from 'rdf-js';
 
-import RDF, { IRI } from '@/utils/RDF';
+import RDF, { IRI } from '@/solid/utils/RDF';
 
 export type LiteralValue = string | number | boolean | Date;
 

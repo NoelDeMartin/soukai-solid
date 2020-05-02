@@ -1,6 +1,6 @@
+import RDF from '@/solid/utils/RDF';
 import Resource, { ResourceProperty } from '@/solid/Resource';
 
-import RDF from '@/utils/RDF';
 import Url from '@/utils/Url';
 import UUID from '@/utils/UUID';
 

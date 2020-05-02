@@ -1,6 +1,6 @@
 import Faker from 'faker';
 
-import RDF from '@/utils/RDF';
+import RDF from './RDF';
 
 describe('RDF helper', () => {
 

@@ -61,7 +61,7 @@ export class SolidModel extends Model {
 
     public save<T extends Model>(containerUrl?: string): Promise<T>;
 
-    public toJSONLD(): object;
+    public toJsonLD(): object;
 
     protected contains(model: typeof SolidModel): MultiModelRelation;
 

@@ -1,7 +1,7 @@
+import RDF, { IRI } from '@/solid/utils/RDF';
 import Resource, { ResourceProperty } from '@/solid/Resource';
 
 import Arr from '@/utils/Arr';
-import RDF, { IRI } from '@/utils/RDF';
 import Url from '@/utils/Url';
 
 interface RequestOptions {

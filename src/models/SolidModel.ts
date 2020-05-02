@@ -20,12 +20,14 @@ import SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
 import SolidIsContainedByRelation from '@/models/relations/SolidIsContainedByRelation';
 import SolidIsEmbeddedByRelation from '@/models/relations/SolidIsEmbeddedByRelation';
 
-import RDF, { IRI } from '@/utils/RDF';
+import RDF, { IRI } from '@/solid/utils/RDF';
+
+import { withMixins } from '@/utils/mixins';
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 import UUID from '@/utils/UUID';
 
-class EmptyJsonLDValue {}
+import SerializesToJsonLD from './mixins/SerializesToJsonLD';
 
 export interface SolidFieldsDefinition extends FieldsDefinition {
     [field: string]: SolidFieldDefinition;
@@ -35,7 +37,7 @@ export interface SolidFieldDefinition extends FieldDefinition {
     rdfProperty: string;
 }
 
-export default class SolidModel extends Model {
+class SolidModel extends Model {
 
     public static primaryKey: string = 'url';
 
@@ -205,78 +207,6 @@ export default class SolidModel extends Model {
         return model as any as T;
     }
 
-    public toJSONLD(): object {
-        const json = { '@id': this.url };
-        const rdfContexts = Object.entries(this.classDef.rdfContexts).map(([name, url]) => ({
-            prefix: `${name}:`,
-            used: false,
-            name,
-            url,
-        }));
-
-        rdfContexts[0].name = '@vocab';
-        rdfContexts[0].prefix = '';
-        rdfContexts[0].used = true;
-
-        fieldsloop:
-        for (const [fieldName, definition] of Object.entries(this.classDef.fields)) {
-            const solidDefinition = definition as SolidFieldDefinition;
-
-            if (!this.hasAttribute(fieldName) || fieldName === this.classDef.primaryKey)
-                continue;
-
-            for (const rdfContext of rdfContexts) {
-                if (!solidDefinition.rdfProperty.startsWith(rdfContext.url)) {
-                    continue;
-                }
-
-                const propertyName = solidDefinition.rdfProperty.substr(rdfContext.url.length);
-                const propertyValue = this.convertAttributeToJsonLDValue(
-                    solidDefinition,
-                    this.getAttribute(fieldName),
-                );
-
-                if (!(propertyValue instanceof EmptyJsonLDValue)) {
-                    rdfContext.used = true;
-                    json[`${rdfContext.prefix}${propertyName}`] = propertyValue;
-                }
-
-                continue fieldsloop;
-            }
-
-            const propertyValue = this.convertAttributeToJsonLDValue(
-                solidDefinition,
-                this.getAttribute(fieldName),
-            );
-
-            if (!(propertyValue instanceof EmptyJsonLDValue))
-                json[solidDefinition.rdfProperty] = propertyValue;
-        }
-
-        json['@type'] = [...this.classDef.rdfsClasses].map(rdfClass => {
-            for (const rdfContext of rdfContexts) {
-                if (!rdfClass.startsWith(rdfContext.url)) {
-                    continue;
-                }
-
-                rdfContext.used = true;
-
-                return rdfContext.prefix + rdfClass.substr(rdfContext.url.length);
-            }
-
-            return rdfClass;
-        });
-
-        json['@context'] = rdfContexts
-            .filter(rdfContext => rdfContext.used)
-            .reduce((contextDefinitions, rdfContext) => ({
-                ...contextDefinitions,
-                [rdfContext.name]: rdfContext.url,
-            }), {});
-
-        return json;
-    }
-
     protected hasMany(model: typeof SolidModel, linksField: string): MultiModelRelation {
         return new SolidHasManyRelation(this, model, linksField);
     }
@@ -371,31 +301,6 @@ export default class SolidModel extends Model {
             return Url.clean(this.url, { fragment: false });
 
         return Url.parentDirectory(this.url);
-    }
-
-    private convertAttributeToJsonLDValue(definition: FieldDefinition, value: any): any {
-        switch (definition.type ?? null) {
-            case FieldType.Key:
-                return value.toString();
-            case FieldType.Date:
-                return {
-                    '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
-                    '@value': (new Date(value)).toISOString(),
-                };
-            case FieldType.Array:
-                switch (value.length) {
-                    case 0:
-                        return new EmptyJsonLDValue();
-                    case 1:
-                        return this.convertAttributeToJsonLDValue(definition!.items!, value[0]);
-                    default:
-                        return value.map(v => this.convertAttributeToJsonLDValue(definition!.items!, v));
-                }
-                break;
-            // TODO convert object fields as well
-            default:
-                return JSON.parse(JSON.stringify(value));
-        }
     }
 
     private loadEmbeddedRelations(documents: Documents) {
@@ -533,3 +438,7 @@ export default class SolidModel extends Model {
     }
 
 }
+
+interface SolidModel extends SerializesToJsonLD {}
+
+export default withMixins(SolidModel, [SerializesToJsonLD]);
