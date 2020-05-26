@@ -91,7 +91,7 @@ export default class SolidClient {
         removedProperties.push(
             ...updatedProperties
                 .filter(property => property.type !== RDFResourcePropertyType.Type)
-                .filter(property => document.hasProperty(property.resourceUrl, property.name))
+                .filter(property => document.hasProperty(property.resourceUrl!, property.name))
                 .map(property => [property.resourceUrl, property.name] as [string, string]),
         );
 
