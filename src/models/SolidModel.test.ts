@@ -2,6 +2,8 @@ import Faker from 'faker';
 
 import Soukai, { FieldType } from 'soukai';
 
+import { IRI } from '@/solid/utils/RDF';
+
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 
@@ -19,10 +21,12 @@ let engine: StubEngine;
 describe('SolidModel', () => {
 
     beforeAll(() => {
-        Soukai.loadModel('Group', Group);
-        Soukai.loadModel('Person', Person);
-        Soukai.loadModel('Movie', Movie);
-        Soukai.loadModel('WatchAction', WatchAction);
+        Soukai.loadModels({
+            Group,
+            Person,
+            Movie,
+            WatchAction,
+        });
     });
 
     beforeEach(() => {
@@ -50,11 +54,10 @@ describe('SolidModel', () => {
 
         }
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         expect(StubModel.rdfsClasses).toEqual(new Set([
             'http://xmlns.com/foaf/0.1/Person',
-            'http://www.w3.org/ns/ldp#Resource',
         ]));
 
         expect(StubModel.fields).toEqual({
@@ -71,17 +74,6 @@ describe('SolidModel', () => {
         });
     });
 
-    it('adds ldp:Resource to models', () => {
-        class StubModel extends SolidModel {
-        }
-
-        Soukai.loadModel('StubModel', StubModel);
-
-        expect(StubModel.rdfsClasses).toEqual(new Set([
-            'http://www.w3.org/ns/ldp#Resource',
-        ]));
-    });
-
     it('adds ldp:Container to container models', () => {
         class StubModel extends SolidModel {
 
@@ -89,10 +81,9 @@ describe('SolidModel', () => {
 
         }
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         expect(StubModel.rdfsClasses).toEqual(new Set([
-            'http://www.w3.org/ns/ldp#Resource',
             'http://www.w3.org/ns/ldp#Container',
         ]));
     });
@@ -106,7 +97,7 @@ describe('SolidModel', () => {
 
         }
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         expect(StubModel.fields).toEqual({
             url: {
@@ -140,7 +131,7 @@ describe('SolidModel', () => {
 
         }
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         expect(StubModel.fields).toEqual({
             url: {
@@ -164,48 +155,143 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'create');
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         await StubModel.at(containerUrl).create({ nickname: 'Johnny' });
 
-        const attributes = (engine.create as any).mock.calls[0][1];
+        const document = (engine.create as any).mock.calls[0][1];
 
-        expect(attributes['http://www.w3.org/ns/solid/terms#nickname']).toEqual('Johnny');
+        expect(document['@graph'][0]['nickname']).toEqual('Johnny');
     });
 
-    it('serializes types on create', async () => {
+    it('sends types on create', async () => {
         class StubModel extends SolidModel {
         }
 
         jest.spyOn(engine, 'create');
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         await StubModel.create({});
 
-        const attributes = (engine.create as any).mock.calls[0][1];
+        const document = (engine.create as any).mock.calls[0][1];
 
-        expect(attributes['@type']).not.toBeUndefined();
+        expect(document['@graph'][0]['@type']).not.toBeUndefined();
     });
 
-    it("doesn't serialize types on update", async () => {
+    it('sends JSON-LD with related models in the same document', async () => {
+        // Arrange
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const movieName = Faker.name.title();
+        const movieUrl = Url.resolve(containerUrl, Str.slug(movieName));
+        const movie = new Movie({ url: movieUrl, name: movieName });
+        const action = await movie.relatedActions.create({ startTime: new Date('1997-07-21T23:42:00Z') }, true);
+
+        jest.spyOn(engine, 'create');
+
+        // Act
+        await movie.save(containerUrl);
+
+        // Assert
+        expect(engine.create).toHaveBeenCalledWith(
+            containerUrl,
+            expect.anything(),
+            movieUrl,
+        );
+
+        const document = (engine.create as any).mock.calls[0][1];
+        await expect(document).toEqualJsonLD({
+            '@graph': [
+                ...stubMovieJsonLD(movieUrl, movieName)['@graph'],
+                ...stubWatchActionJsonLD(action.url, movieUrl, '1997-07-21T23:42:00.000Z')['@graph'],
+            ],
+        });
+
+        expect(movie.exists()).toBe(true);
+        expect(movie.actions![0].exists()).toBe(true);
+        expect(movie.actions![0].object).toEqual(movieUrl);
+    });
+
+    it('converts filters to JSON-LD', async () => {
+        // Arrange
+        const peopleUrl = 'https://example.com/people/';
+        const aliceUrl = `${peopleUrl}alice`;
+
+        engine.setMany(peopleUrl, {
+            [aliceUrl]: stubPersonJsonLD(aliceUrl, 'Alice'),
+        });
+
+        jest.spyOn(engine, 'readMany');
+
+        // Act
+        const people = await Person.from(peopleUrl).all({ name: 'Alice' });
+
+        // Assert
+        expect(people).toHaveLength(1);
+        expect(people[0].url).toEqual(aliceUrl);
+        expect(people[0].name).toEqual('Alice');
+
+        expect(engine.readMany).toHaveBeenCalledWith(
+            peopleUrl,
+            {
+                '@graph': {
+                    $contains: {
+                        '@type': {
+                            $or: [
+                                { $contains: ['Person'] },
+                                { $contains: ['http://xmlns.com/foaf/0.1/Person'] },
+                                { $eq: 'Person' },
+                                { $eq: 'http://xmlns.com/foaf/0.1/Person' },
+                            ],
+                        },
+                        [IRI('foaf:name')]: 'Alice',
+                    },
+                }
+            },
+        );
+    });
+
+    it('converts updates to JSON-LD', async () => {
+        // Arrange.
         class StubModel extends SolidModel {
+            static timestamps = false;
         }
 
         jest.spyOn(engine, 'update');
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const model = new StubModel(
-            { url: Url.resolve(Faker.internet.url(), Faker.random.uuid()) },
+            {
+                url: Url.resolve(containerUrl, Faker.random.uuid()),
+                surname: Faker.name.lastName(),
+            },
             true,
         );
 
-        await model.update({ name: 'John' });
+        // Act.
+        model.name = 'John';
+        delete model.surname;
 
-        const attributes = (engine.update as any).mock.calls[0][2];
+        await model.save();
 
-        expect(attributes['@type']).toBeUndefined();
+        // Assert.
+        expect(engine.update).toHaveBeenCalledWith(
+            containerUrl,
+            model.url,
+            {
+                '@graph': {
+                    $updateItems: {
+                        $where: { '@id': model.url },
+                        $update: {
+                            [IRI('solid:name')]: 'John',
+                            [IRI('solid:surname')]: { $unset: true },
+                        },
+                    },
+                },
+            },
+        );
     });
 
     it('reads many from a directory', async () => {
@@ -216,7 +302,7 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'readMany');
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         await StubModel.at(containerUrl).all();
 
@@ -231,7 +317,7 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'readMany');
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         await StubModel.at(documentUrl).all();
 
@@ -246,7 +332,7 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'create');
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         const model = await StubModel.at(containerUrl).create();
 
@@ -269,7 +355,7 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'create');
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         await StubModel.at(containerUrl).create();
 
@@ -291,7 +377,7 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'create');
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         const model = await StubModel.at(containerUrl).create({
             url: resourceUrl,
@@ -321,7 +407,7 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'create');
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         const model = new StubModel();
 
@@ -355,7 +441,7 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'create');
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         const model = await StubModel.at(containerUrl).create({ name });
 
@@ -369,29 +455,18 @@ describe('SolidModel', () => {
         );
     });
 
-    it('uses hash fragment for minting non ldp resource urls', async () => {
-        class StubModel extends SolidModel {
-            public static ldpResource = false;
-        }
+    it('uses hash fragment for minting model urls in the same document', async () => {
+        // Arrange
+        const movieUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const movie = new Movie({ url: movieUrl }, true);
 
-        const parentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        // Act
+        const action = await movie.relatedActions.create({}, true);
 
-        jest.spyOn(engine, 'create');
-
-        Soukai.loadModel('StubModel', StubModel);
-
-        const model = new StubModel();
-
-        await model.save(parentUrl);
-
-        expect(typeof model.url).toEqual('string');
-        expect(model.url.startsWith(parentUrl + '#')).toBe(true);
-
-        expect(engine.create).toHaveBeenCalledWith(
-            parentUrl,
-            expect.anything(),
-            model.url,
-        );
+        // Assert
+        expect(typeof action.url).toEqual('string');
+        expect(action.url.startsWith(movieUrl + '#')).toBe(true);
+        expect(action.exists()).toBe(true);
     });
 
     it('uses model url container on find', async () => {
@@ -402,7 +477,7 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'readOne');
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         await StubModel.find(Url.resolve(containerUrl, Faker.random.uuid()));
 
@@ -419,7 +494,7 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'update');
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         const model = new StubModel(
             { url: Url.resolve(containerUrl, Faker.random.uuid()) },
@@ -441,7 +516,7 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'delete');
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         const model = new StubModel(
             { url: Url.resolve(containerUrl, Faker.random.uuid()) },
@@ -455,34 +530,11 @@ describe('SolidModel', () => {
         expect(collection).toEqual(containerUrl);
     });
 
-    it('uses parent document url on save for non ldp resources', async () => {
-        class StubModel extends SolidModel {
-            public static ldpResource = false;
-        }
-
-        const parentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
-
-        jest.spyOn(engine, 'update');
-
-        Soukai.loadModel('StubModel', StubModel);
-
-        const model = new StubModel(
-            { url: parentUrl + '#' + Faker.random.uuid() },
-            true,
-        );
-
-        await model.update({ name: 'John' });
-
-        const collection = (engine.update as any).mock.calls[0][0];
-
-        expect(collection).toEqual(parentUrl);
-    });
-
     it('aliases url attribute as id', async () => {
         class StubModel extends SolidModel {
         }
 
-        Soukai.loadModel('StubModel', StubModel);
+        Soukai.loadModels({ StubModel });
 
         const model = new StubModel();
 
@@ -492,45 +544,8 @@ describe('SolidModel', () => {
         expect(model.url).toEqual(model.id);
     });
 
-    it('sends JsonLD to engines', async () => {
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const name = Faker.random.word();
-        const friendUrls = [
-            Faker.internet.url(),
-            Faker.internet.url(),
-            Faker.internet.url(),
-        ];
-
-        jest.spyOn(engine, 'create');
-
-        Soukai.loadModel('Person', Person);
-
-        const model = await Person.at(containerUrl).create({
-            name,
-            friendUrls,
-            createdAt: new Date('1997-07-21T23:42:00Z'),
-        });
-
-        const attributes = (engine.create as any).mock.calls[0][1];
-
-        expect(attributes).toEqual({
-            '@id': model.url,
-            '@type': [
-                { '@id': 'http://xmlns.com/foaf/0.1/Person' },
-                { '@id': 'http://www.w3.org/ns/ldp#Resource' },
-            ],
-            'http://xmlns.com/foaf/0.1/name': name,
-            'http://xmlns.com/foaf/0.1/knows': friendUrls.map(
-                url => ({ '@id': url }),
-            ),
-            // TODO JSONLD is not supposed to contain native dates
-            'http://purl.org/dc/terms/created': new Date('1997-07-21T23:42:00.000Z'),
-        });
-    });
-
-    it('implements has many relationship', async () => {
-        Soukai.loadModel('Person', Person);
-
+    it('implements belongs to many relationship', async () => {
+        // Arrange
         jest.spyOn(engine, 'readMany');
 
         engine.setMany('https://example.com/', {
@@ -538,7 +553,7 @@ describe('SolidModel', () => {
         });
 
         engine.setMany('https://example.org/', {
-            'https://example.org/bob': stubPersonJsonLD('https://example.org/bob', 'Bob'),
+            'https://example.org/bob':  stubPersonJsonLD('https://example.org/bob', 'Bob'),
         });
 
         const john = new Person({
@@ -549,8 +564,10 @@ describe('SolidModel', () => {
             ],
         });
 
+        // Act
         await john.loadRelation('friends');
 
+        // Assert
         expect(john.friends).toHaveLength(2);
         expect(john.friends[0]).toBeInstanceOf(Person);
         expect(john.friends[0].url).toBe('https://example.com/alice');
@@ -566,11 +583,17 @@ describe('SolidModel', () => {
                 $in: [
                     'https://example.com/alice',
                 ],
-                '@type': {
-                    $contains: [
-                        { '@id': 'http://xmlns.com/foaf/0.1/Person' },
-                        { '@id': 'http://www.w3.org/ns/ldp#Resource' },
-                    ],
+                '@graph': {
+                    $contains: {
+                        '@type': {
+                            $or: [
+                                { $contains: ['Person'] },
+                                { $contains: ['http://xmlns.com/foaf/0.1/Person'] },
+                                { $eq: 'Person' },
+                                { $eq: 'http://xmlns.com/foaf/0.1/Person' },
+                            ],
+                        },
+                    },
                 },
             },
         );
@@ -580,17 +603,24 @@ describe('SolidModel', () => {
                 $in: [
                     'https://example.org/bob',
                 ],
-                '@type': {
-                    $contains: [
-                        { '@id': 'http://xmlns.com/foaf/0.1/Person' },
-                        { '@id': 'http://www.w3.org/ns/ldp#Resource' },
-                    ],
+                '@graph': {
+                    $contains: {
+                        '@type': {
+                            $or: [
+                                { $contains: ['Person'] },
+                                { $contains: ['http://xmlns.com/foaf/0.1/Person'] },
+                                { $eq: 'Person' },
+                                { $eq: 'http://xmlns.com/foaf/0.1/Person' },
+                            ],
+                        },
+                    },
                 },
             },
         );
     });
 
     it('implements contains relationship', async () => {
+        // Arrange
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const musashiUrl = Url.resolve(containerUrl, 'musashi');
         const kojiroUrl = Url.resolve(containerUrl, 'kojiro');
@@ -612,8 +642,10 @@ describe('SolidModel', () => {
 
         expect(group.members).toBeUndefined();
 
+        // Act
         await group.loadRelation('members');
 
+        // Assert
         expect(group.members).toHaveLength(2);
         expect(group.members[0]).toBeInstanceOf(Person);
         expect(group.members[0].url).toBe(musashiUrl);
@@ -630,69 +662,48 @@ describe('SolidModel', () => {
                     musashiUrl,
                     kojiroUrl,
                 ],
-                '@type': {
-                    $contains: [
-                        { '@id': 'http://xmlns.com/foaf/0.1/Person' },
-                        { '@id': 'http://www.w3.org/ns/ldp#Resource' },
-                    ],
+                '@graph': {
+                    $contains: {
+                        '@type': {
+                            $or: [
+                                { $contains: ['Person'] },
+                                { $contains: ['http://xmlns.com/foaf/0.1/Person'] },
+                                { $eq: 'Person' },
+                                { $eq: 'http://xmlns.com/foaf/0.1/Person' },
+                            ],
+                        },
+                    },
                 },
             },
         );
     });
 
-    it('implements embeds relationship', async () => {
-        const movieUrl = Url.resolve(Faker.internet.url());
-        const watchActionUrl = `${movieUrl}#${Faker.random.uuid()}`;
-
-        const movie = new Movie({url: movieUrl});
-
-        jest.spyOn(engine, 'readMany');
-
-        engine.setMany(movieUrl, {
-            [watchActionUrl]: stubWatchActionJsonLD(watchActionUrl, movieUrl),
-        });
-
-        expect(movie.actions).toBeUndefined();
-
-        await movie.loadRelation('actions');
-
-        expect(movie.actions).toHaveLength(1);
-        expect(movie.actions[0]).toBeInstanceOf(WatchAction);
-        expect(movie.actions[0].object).toBe(movieUrl);
-
-        expect(engine.readMany).toHaveBeenCalledTimes(1);
-        expect(engine.readMany).toHaveBeenCalledWith(
-            movieUrl,
-            {
-                '@type': {
-                    $or: [
-                        { $contains: [{ '@id': 'https://schema.org/WatchAction' }] },
-                        { $eq: { '@id': 'https://schema.org/WatchAction' } },
-                    ],
-                },
-            },
-        );
-    });
-
-    it('eager loads embedded models', async () => {
+    it('loads related models in the same document', async () => {
+        // Arrange
         const movieUrl = Url.resolve(Faker.internet.url());
         const watchActionUrl = `${movieUrl}#${Faker.random.uuid()}`;
 
         engine.setOne({
-            ...stubMovieJsonLD(movieUrl, Faker.lorem.sentence()),
-            __embedded: {
-                [watchActionUrl]: stubWatchActionJsonLD(watchActionUrl, movieUrl),
-            },
+            '@graph': [
+                ...stubMovieJsonLD(movieUrl, Faker.lorem.sentence())['@graph'],
+                ...stubWatchActionJsonLD(watchActionUrl, movieUrl)['@graph'],
+            ],
         });
 
+        // Act
         const movie = await Movie.find(movieUrl) as Movie;
 
+        // Assert
         expect(movie.actions).toHaveLength(1);
-        expect(movie.actions[0]).toBeInstanceOf(WatchAction);
-        expect(movie.actions[0].object).toBe(movieUrl);
+
+        const watchAction = movie.actions![0];
+        expect(watchAction).toBeInstanceOf(WatchAction);
+        expect(watchAction.object).toBe(movieUrl);
+        expect(watchAction.exists()).toBe(true);
     });
 
     it('implements is contained by relationship', async () => {
+        // Arrange
         const name = Faker.random.word();
         const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(name));
         const person = new Person({
@@ -700,13 +711,16 @@ describe('SolidModel', () => {
         });
 
         jest.spyOn(engine, 'readOne');
+        jest.spyOn(engine, 'readMany');
 
         engine.setOne(stubGroupJsonLD(containerUrl, name));
 
         expect(person.group).toBeUndefined();
 
+        // Act
         await person.loadRelation('group');
 
+        // Assert
         expect(person.group).toBeInstanceOf(Group);
         expect(person.group.name).toBe(name);
 
@@ -729,26 +743,62 @@ describe('SolidModel', () => {
         });
 
         // Act
-        const json = person.toJsonLD();
+        const jsonld = person.toJsonLD();
 
         // Assert
-        expect(json).toEqual({
+        expect(jsonld).toEqual({
             '@id': person.url,
             '@context': {
                 '@vocab': 'http://xmlns.com/foaf/0.1/',
-                'ldp': 'http://www.w3.org/ns/ldp#',
                 'purl': 'http://purl.org/dc/terms/',
             },
-            '@type': [
-                'Person',
-                'ldp:Resource',
-            ],
+            '@type': 'Person',
             'name': name,
-            'knows': person.friendUrls,
+            'knows': person.friendUrls.map(url => ({ '@id': url })),
             'purl:created': {
                 '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
                 '@value': '1997-07-21T23:42:00.000Z',
             }
+        });
+    });
+
+    it('serializes to JSON-LD with relations', () => {
+        // Arrange
+        const movieName = Faker.name.title();
+        const movieUrl = Url.resolve(Faker.internet.url(), Str.slug(movieName));
+        const watchActionUrl = `${movieUrl}#${Faker.random.uuid()}`;
+        const movie = new Movie({ url: movieUrl, name: movieName });
+
+        movie.setRelationModels('actions', [
+            new WatchAction({
+                url: watchActionUrl,
+                object: movieUrl,
+                startTime: new Date('1997-07-21T23:42:00Z'),
+            }),
+        ]);
+
+        // Act
+        const jsonld = movie.toJsonLD();
+
+        // Assert
+        expect(jsonld).toEqual({
+            '@context': {
+                '@vocab': 'https://schema.org/',
+                'actions': { '@reverse': 'object' },
+            },
+            '@type': 'Movie',
+            '@id': movieUrl,
+            'name': movieName,
+            'actions': [
+                {
+                    '@type': 'WatchAction',
+                    '@id': watchActionUrl,
+                    'startTime': {
+                        '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+                        '@value': '1997-07-21T23:42:00.000Z',
+                    },
+                },
+            ],
         });
     });
 
@@ -764,15 +814,14 @@ describe('SolidModel', () => {
         ];
 
         // Act
-        const person = await Person.fromJSONLD({
+        const person = await Person.createFromJsonLD({
             '@context': { '@vocab': 'http://xmlns.com/foaf/0.1/' },
             '@id': url,
             '@type': [
                 'http://xmlns.com/foaf/0.1/Person',
-                'http://www.w3.org/ns/ldp#Resource',
             ],
             name,
-            knows: friendUrls,
+            knows: friendUrls.map(url => ({ '@id': url })),
             'http://purl.org/dc/terms/created': {
                 '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
                 '@value': '1997-07-21T23:42:00.000Z',

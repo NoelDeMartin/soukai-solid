@@ -1,27 +1,28 @@
 import {
     DocumentAlreadyExists,
     DocumentNotFound,
-    Documents,
     Engine,
-    EngineAttributes,
+    EngineDocument,
+    EngineDocumentsCollection,
+    EngineUpdates,
 } from 'soukai';
 
 import UUID from '@/utils/UUID';
 
 export default class StubEngine implements Engine {
 
-    private one: EngineAttributes | null = null;
-    private many: { [collection: string]: Documents } = {};
+    private one: EngineDocument | null = null;
+    private many: { [collection: string]: EngineDocumentsCollection } = {};
 
-    public setOne(one: EngineAttributes): void {
+    public setOne(one: EngineDocument): void {
         this.one = one;
     }
 
-    public setMany(collection: string, documents: Documents): void {
+    public setMany(collection: string, documents: EngineDocumentsCollection): void {
         this.many[collection] = documents;
     }
 
-    public async create(collection: string, attributes: EngineAttributes, id?: string): Promise<string> {
+    public async create(collection: string, attributes: EngineDocument, id?: string): Promise<string> {
         if (id && this.one && this.one.url === id)
             throw new DocumentAlreadyExists(id);
 
@@ -31,7 +32,7 @@ export default class StubEngine implements Engine {
         return id || UUID.generate();
     }
 
-    public async readOne(collection: string, id: string): Promise<EngineAttributes>
+    public async readOne(collection: string, id: string): Promise<EngineDocument>
     {
         if (this.one === null) {
             throw new DocumentNotFound(id);
@@ -40,16 +41,11 @@ export default class StubEngine implements Engine {
         return this.one;
     }
 
-    public async readMany(collection: string): Promise<Documents> {
+    public async readMany(collection: string): Promise<EngineDocumentsCollection> {
         return this.many[collection] || {};
     }
 
-    public async update(
-        collection: string,
-        id: string,
-        dirtyAttributes: EngineAttributes,
-        removedAttributes: string[],
-    ): Promise<void> {
+    public async update(collection: string, id: string, updates: EngineUpdates): Promise<void> {
         //
     }
 

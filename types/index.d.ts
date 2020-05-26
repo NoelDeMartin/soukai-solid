@@ -1,11 +1,12 @@
 import {
     Attributes,
-    Documents,
     Engine,
-    EngineAttributes,
+    EngineDocument,
+    EngineDocumentsCollection,
+    EngineFilters,
+    EngineUpdates,
     FieldDefinition,
     FieldsDefinition,
-    Filters,
     Model,
     MultiModelRelation,
     SingleModelRelation,
@@ -35,8 +36,6 @@ export class SolidModel extends Model {
 
     public static fields: SolidFieldsDefinition | any;
 
-    public static ldpResource: boolean;
-
     public static ldpContainer: boolean;
 
     public static rdfContexts: { [alias: string]: string };
@@ -49,11 +48,13 @@ export class SolidModel extends Model {
 
     public static from(containerUrl: string): typeof SolidModel;
 
-    public static fromJSONLD<T extends SolidModel>(json: object): Promise<T>;
+    public static createFromJsonLD<T extends SolidModel>(json: object): Promise<T>;
 
     public static at(containerUrl: string): typeof SolidModel;
 
-    public static prepareEngineFilters(filters?: Filters): Filters;
+    public static prepareEngineFilters(filters?: EngineFilters): EngineFilters;
+
+    protected static withCollection<Result>(collection?: string | (() => Result), operation?: () => Result): Result;
 
     protected static pureInstance: SolidModel;
 
@@ -61,19 +62,33 @@ export class SolidModel extends Model {
 
     public save<T extends Model>(containerUrl?: string): Promise<T>;
 
+    public mintUrl(documentUrl?: string): void;
+
     public toJsonLD(): object;
+
+    public getIdAttribute(): string;
+
+    protected isDocumentRoot(): boolean;
+
+    protected getDocumentUrl(): string | null;
+
+    protected getDocumentModels(): SolidModel[];
+
+    protected createFromEngineDocument<T extends Model>(id: any, document: EngineDocument): Promise<T>;
+
+    protected hasMany(relatedClass: typeof SolidModel, foreignKeyField?: string, localKeyField?: string): MultiModelRelation;
+
+    protected belongsToMany(relatedClass: typeof SolidModel, foreignKeyField?: string, localKeyField?: string): MultiModelRelation;
 
     protected contains(model: typeof SolidModel): MultiModelRelation;
 
     protected isContainedBy(model: typeof SolidModel): SingleModelRelation;
 
-    protected embeds(model: typeof SolidModel): SolidEmbedsRelation;
-
-    protected isEmbeddedBy(model: typeof SolidModel): SingleModelRelation;
-
     protected getDefaultRdfContext(): string;
 
-    protected newUrl(): string;
+    protected newUrl(documentUrl?: string): string;
+
+    protected guessCollection(): string | undefined;
 
 }
 
@@ -85,19 +100,6 @@ interface RequestOptions {
 
 export type Fetch = (url: string, options?: RequestOptions) => Promise<Response>;
 
-interface SolidDocumentsCache {
-    add(document: SolidDocument): void;
-    get(id: string): SolidDocument | null;
-    forget(id: string): void;
-    clear(): void;
-}
-
-export interface SolidDocument extends EngineAttributes {
-    '@id': string;
-    '@type': { '@id': string } | { '@id': string }[];
-    __embedded: Documents;
-}
-
 export interface SolidEngineConfig {
     globbingBatchSize: number | null;
     useCache: boolean;
@@ -105,24 +107,15 @@ export interface SolidEngineConfig {
 
 export class SolidEngine implements Engine {
 
-    readonly cache: SolidDocumentsCache;
-
-    readonly config: SolidEngineConfig;
-
     constructor(fetch: Fetch, config?: Partial<SolidEngineConfig>);
 
-    create(collection: string, attributes: EngineAttributes, id?: string): Promise<string>;
+    create(collection: string, document: EngineDocument, id?: string): Promise<string>;
 
-    readOne(collection: string, id: string): Promise<EngineAttributes>;
+    readOne(collection: string, id: string): Promise<EngineDocument>;
 
-    readMany(collection: string, filters?: Filters): Promise<Documents>;
+    readMany(collection: string, filters?: EngineFilters): Promise<EngineDocumentsCollection>;
 
-    update(
-        collection: string,
-        id: string,
-        dirtyAttributes: Attributes,
-        removedAttributes: string[],
-    ): Promise<void>;
+    update(collection: string, id: string, updates: EngineUpdates): Promise<void>;
 
     delete(collection: string, id: string): Promise<void>;
 

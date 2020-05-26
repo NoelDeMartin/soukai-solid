@@ -25,7 +25,7 @@ export default class Person extends SolidModel {
     };
 
     public friendsRelationship(): Relation {
-        return this.hasMany(Person, 'friendUrls');
+        return this.belongsToMany(Person, 'friendUrls');
     }
 
     public groupRelationship(): SingleModelRelation {

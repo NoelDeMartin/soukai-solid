@@ -3,6 +3,9 @@ module.exports = {
         '^.+\\.ts$': 'ts-jest'
     },
     testRegex: '\\.test\\.ts$',
+    coveragePathIgnorePatterns: [
+        '<rootDir>/tests',
+    ],
     moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/src/$1',
         '^@tests/(.*)$': '<rootDir>/tests/$1',
@@ -13,5 +16,8 @@ module.exports = {
         'js',
         'json',
         'node',
+    ],
+    setupFilesAfterEnv: [
+        '<rootDir>/tests/setup.ts',
     ],
 };

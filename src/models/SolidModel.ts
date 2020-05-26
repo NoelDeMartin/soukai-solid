@@ -1,33 +1,29 @@
 import {
     Attributes,
     DocumentAlreadyExists,
-    Documents,
-    EngineAttributes,
+    EngineDocument,
+    EngineFilters,
+    EngineUpdates,
     FieldDefinition,
     FieldsDefinition,
     FieldType,
-    Filters,
     Model,
     MultiModelRelation,
     SingleModelRelation,
     SoukaiError,
 } from 'soukai';
 
-import SolidEngine from '@/engines/SolidEngine';
+import { IRI } from '@/solid/utils/RDF';
 
-import SolidEmbedsRelation from '@/models/relations/SolidEmbedsRelation';
-import SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
-import SolidIsContainedByRelation from '@/models/relations/SolidIsContainedByRelation';
-import SolidIsEmbeddedByRelation from '@/models/relations/SolidIsEmbeddedByRelation';
-
-import RDF, { IRI } from '@/solid/utils/RDF';
-
-import { withMixins } from '@/utils/mixins';
+import { useMixins } from '@/utils/mixins';
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 import UUID from '@/utils/UUID';
 
 import SerializesToJsonLD from './mixins/SerializesToJsonLD';
+import SolidBelongsToManyRelation from './relations/SolidBelongsToManyRelation';
+import SolidHasManyRelation from './relations/SolidHasManyRelation';
+import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
 
 export interface SolidFieldsDefinition extends FieldsDefinition {
     [field: string]: SolidFieldDefinition;
@@ -42,8 +38,6 @@ class SolidModel extends Model {
     public static primaryKey: string = 'url';
 
     public static fields: SolidFieldsDefinition | any;
-
-    public static ldpResource: boolean;
 
     public static ldpContainer: boolean;
 
@@ -95,23 +89,13 @@ class SolidModel extends Model {
             this.fields['updatedAt'].rdfProperty = IRI('purl:modified');
         }
 
-        this.rdfsClasses = new Set([...this.rdfsClasses].map(name => RDF.resolveIRI(name, this.rdfContexts)));
+        this.rdfsClasses = new Set([...this.rdfsClasses].map(name => IRI(name, this.rdfContexts)));
 
-        this.ldpResource = this.ldpResource || this.ldpResource === undefined;
         this.ldpContainer = !!this.ldpContainer;
 
-        if (this.ldpResource) {
-            if (!this.rdfsClasses.has(IRI('ldp:Resource')))
-                this.rdfsClasses.add(IRI('ldp:Resource'));
-        }
-
         if (this.ldpContainer) {
-            if (!this.ldpResource)
-                throw new Error(`Model ${this.name} cannot be declared as an ldpContainer if ldpResource is disabled`);
-
-            if (!this.rdfsClasses.has(IRI('ldp:Container'))) {
+            if (!this.rdfsClasses.has(IRI('ldp:Container')))
                 this.rdfsClasses.add(IRI('ldp:Container'));
-            }
 
             this.fields['resourceUrls'] = {
                 type: FieldType.Array,
@@ -123,11 +107,8 @@ class SolidModel extends Model {
             };
         }
 
-        if (!this.ldpResource && !this.mintsUrls)
-            throw new Error(`Model ${this.name} cannot disable url minting because it isn't an ldpResource`);
-
         for (const field in this.fields) {
-            this.fields[field].rdfProperty = RDF.resolveIRI(
+            this.fields[field].rdfProperty = IRI(
                 this.fields[field].rdfProperty || `${defaultRdfContext}${field}`,
                 this.rdfContexts,
             );
@@ -136,185 +117,25 @@ class SolidModel extends Model {
         this.fields[this.primaryKey].rdfProperty = null;
     }
 
-    public static async fromJSONLD<T extends SolidModel>(json: object): Promise<T> {
-        const url = json['@id'];
-        const resource = await RDF.parseJsonLD(json);
-
-        return this.instance.fromEngineAttributes(url, resource.toJsonLD() as EngineAttributes) as T;
+    public static createFromJsonLD<T extends SolidModel>(jsonld: object): Promise<T> {
+        return this.instance.createFromEngineDocument(jsonld['@id'], { '@graph': [jsonld] } as EngineDocument);
     }
 
     public static find<T extends Model, Key = string>(id: Key): Promise<T | null> {
         return this.withCollection(Url.parentDirectory(id as any), () => super.find(id));
     }
 
-    public static all<T extends Model>(filters: Filters = {}): Promise<T[]> {
+    public static all<T extends Model>(filters: EngineFilters = {}): Promise<T[]> {
         filters = this.prepareEngineFilters(filters);
 
         return this.withCollection(() => super.all(filters));
     }
 
-    public static prepareEngineFilters(filters: Filters = {}): Filters {
-        // TODO translate filters from attributes to jsonld specification
-
-        const types: { '@id': string }[] = [];
-        for (const rdfClass of this.rdfsClasses) {
-            types.push({ '@id': rdfClass });
-        }
-
-        filters['@type'] = { $contains: types };
-
-        if (types.length === 1)
-            filters['@type'] = { $or: [filters['@type'], { $eq: types[0] }] };
-
-        return filters;
+    public static prepareEngineFilters(filters: EngineFilters = {}): EngineFilters {
+        return this.instance.convertEngineFiltersToJsonLD(filters);
     }
 
-    protected classDef: typeof SolidModel;
-
-    public save<T extends Model>(parentUrl?: string): Promise<T> {
-        return this.classDef.withCollection(parentUrl || this.getParentUrl(), async () => {
-            if (this.classDef.mintsUrls && !this.hasAttribute(this.classDef.primaryKey))
-                this.setAttribute(this.classDef.primaryKey, this.newUrl());
-
-            try {
-                return await super.save() as any;
-            } catch (error) {
-                if (!(error instanceof DocumentAlreadyExists))
-                    throw error;
-
-                this.url += '-' + UUID.generate();
-
-                return super.save();
-            }
-        });
-    }
-
-    public delete<T extends Model>(): Promise<T> {
-        return this.classDef.withCollection(this.getParentUrl() || '', () => super.delete());
-    }
-
-    public getIdAttribute(): string {
-        return this.getAttribute('url');
-    }
-
-    public fromEngineAttributes<T extends Model>(id: any, document: EngineAttributes): T {
-        const [mainDocument, embeddedDocuments] = SolidEngine.decantEmbeddedDocuments(document);
-        const model = super.fromEngineAttributes<SolidModel>(id, mainDocument);
-
-        if (embeddedDocuments)
-            model.loadEmbeddedRelations(embeddedDocuments);
-
-        return model as any as T;
-    }
-
-    protected hasMany(model: typeof SolidModel, linksField: string): MultiModelRelation {
-        return new SolidHasManyRelation(this, model, linksField);
-    }
-
-    protected contains(model: typeof SolidModel): MultiModelRelation {
-        return this.hasMany(model, 'resourceUrls');
-    }
-
-    protected isContainedBy(model: typeof SolidModel): SingleModelRelation {
-        return new SolidIsContainedByRelation(this, model);
-    }
-
-    protected embeds(model: typeof SolidModel): SolidEmbedsRelation {
-        return new SolidEmbedsRelation(this, model);
-    }
-
-    protected isEmbeddedBy(model: typeof SolidModel): SingleModelRelation {
-        return new SolidIsEmbeddedByRelation(this, model);
-    }
-
-    protected getDefaultRdfContext(): string {
-        return Object.values(this.classDef.rdfContexts).shift() || '';
-    }
-
-    protected prepareEngineAttributes(attributes: Attributes): EngineAttributes {
-        const jsonld = this.convertAttributesToJsonLD(attributes) as EngineAttributes;
-
-        // We only need to send the types when the model is being created, because we
-        // assume they won't be changed.
-        if ('@id' in jsonld || !this.exists) {
-            const types: { '@id': string }[] = [];
-            for (const rdfClass of this.classDef.rdfsClasses) {
-                types.push({ '@id': rdfClass });
-            }
-
-            jsonld['@type'] = types.length === 1 ? types[0] : types;
-        }
-
-        return jsonld;
-    }
-
-    protected prepareEngineAttributeNames(names: string[]): string[] {
-        const fieldsDefinition = this.classDef.fields;
-
-        return names
-            .map(name => {
-                const fieldDefinition = fieldsDefinition[name];
-
-                if (!fieldDefinition) {
-                    return this.getDefaultRdfContext() + name;
-                }
-
-                return fieldDefinition.rdfProperty;
-            })
-            .filter(name => name !== null);
-    }
-
-    protected parseEngineAttributes(document: EngineAttributes): Attributes {
-        return this.convertJsonLDToAttributes(document);
-    }
-
-    protected castAttribute(value: any, definition?: FieldDefinition): any {
-        if (definition && definition.type === FieldType.Array && !Array.isArray(value)) {
-            return [value];
-        }
-
-        return super.castAttribute(value, definition);
-    }
-
-    protected newUrl(): string {
-        const parentUrl = this.classDef.collection;
-
-        if (this.classDef.ldpContainer)
-            return Url.resolveDirectory(
-                parentUrl,
-                this.hasAttribute('name')
-                    ? Str.slug(this.getAttribute('name'))
-                    : UUID.generate(),
-            );
-
-        if (this.classDef.ldpResource)
-            return Url.resolve(parentUrl, UUID.generate());
-
-        return parentUrl + '#' + UUID.generate();
-    }
-
-    private getParentUrl(): string | undefined {
-        if (!this.url)
-            return;
-
-        if (!this.classDef.ldpResource)
-            return Url.clean(this.url, { fragment: false });
-
-        return Url.parentDirectory(this.url);
-    }
-
-    private loadEmbeddedRelations(documents: Documents) {
-        for (const relation of this.classDef.relations) {
-            const relationship = this[relation + 'Relationship']();
-
-            if (!(relationship instanceof SolidEmbedsRelation))
-                continue;
-
-            this.setRelationModels(relation, relationship.resolveFromDocuments(documents));
-        }
-    }
-
-    private static withCollection<Result>(collection: string | (() => Result) = '', operation?: () => Result): Result {
+    protected static withCollection<Result>(collection: string | (() => Result) = '', operation?: () => Result): Result {
         const oldCollection = this.collection;
 
         if (typeof collection !== 'string') {
@@ -334,111 +155,174 @@ class SolidModel extends Model {
         return result;
     }
 
-    private convertAttributesToJsonLD(attributes: Attributes): object {
-        const jsonld = {};
-        const fieldsDefinition = this.classDef.fields;
+    protected classDef: typeof SolidModel;
 
-        for (const field in attributes) {
-            const fieldDefinition = fieldsDefinition[field];
-            const value = attributes[field];
+    public save<T extends Model>(collection?: string): Promise<T> {
+        return this.classDef.withCollection(collection || this.guessCollection(), async () => {
+            if (!this.url && this.classDef.mintsUrls)
+                this.mintUrl();
 
-            if (field === this.classDef.primaryKey) {
-                jsonld['@id'] = value.toString();
-                continue;
+            try {
+                await super.save();
+            } catch (error) {
+                if (!(error instanceof DocumentAlreadyExists))
+                    throw error;
+
+                this.url += '-' + UUID.generate();
+
+                await super.save();
             }
 
-            const fieldRdfProperty = fieldDefinition
-                ? fieldDefinition.rdfProperty as (string | null)
-                : this.getDefaultRdfContext() + field;
+            this.getDocumentModels().map(model => model.cleanDirty());
 
-            if (fieldRdfProperty === null) {
-                continue;
-            }
-
-            const jsonValue = this.convertAttributeToJsonLD(fieldDefinition, value);
-
-            if (jsonValue !== undefined) {
-                jsonld[fieldRdfProperty] = jsonValue;
-            }
-        }
-
-        return jsonld;
+            return this as any as T;
+        });
     }
 
-    private convertAttributeToJsonLD(definition: FieldDefinition | undefined, value: any): any {
-        const fieldType = definition ? definition.type : null;
-
-        switch (fieldType) {
-            case FieldType.Key:
-                return { '@id': value.toString() };
-            case FieldType.Date:
-                return new Date(value);
-            case FieldType.Array:
-                switch (value.length) {
-                    case 0:
-                        // nothing to do here
-                        return;
-                    case 1:
-                        return this.convertAttributeToJsonLD(definition!.items!, value[0]);
-                    default:
-                        return value.map(v => this.convertAttributeToJsonLD(definition!.items!, v));
-                }
-                break;
-            // TODO convert object fields as well
-            default:
-                return JSON.parse(JSON.stringify(value));
-        }
+    public delete<T extends Model>(): Promise<T> {
+        return this.classDef.withCollection(this.guessCollection() || '', () => super.delete());
     }
 
-    private convertJsonLDToAttributes(jsonld: object): Attributes {
-        const attributes: Attributes = {};
-        const fieldsDefinition = this.classDef.fields;
+    public mintUrl(documentUrl?: string): void {
+        this.setAttribute(this.classDef.primaryKey, this.newUrl(documentUrl));
+    }
 
-        attributes[this.classDef.primaryKey] = jsonld['@id'];
+    public toJsonLD(): object {
+        return this.serializeToJsonLD();
+    }
 
-        for (const field in fieldsDefinition) {
-            const fieldDefinition = fieldsDefinition[field];
+    public getIdAttribute(): string {
+        return this.getAttribute('url');
+    }
 
-            if (fieldDefinition.rdfProperty === null) {
+    protected isDocumentRoot(): boolean {
+        return this.url && this.url.indexOf('#') === -1;
+    }
+
+    protected getDocumentUrl(): string | null {
+        if (!this.url)
+            return null;
+
+        const anchorIndex = this.url.indexOf('#');
+
+        return anchorIndex !== -1 ? this.url.substr(0, anchorIndex) : this.url;
+    }
+
+    protected getDocumentModels(): SolidModel[] {
+        if (!this.isDocumentRoot())
+            return [];
+
+        const documentUrl = this.getDocumentUrl();
+
+        return Object.values(this._relations)
+            .filter(relation => relation.loaded)
+            .map(relation => {
+                if (relation instanceof MultiModelRelation)
+                    return relation.related!;
+
+                return [relation.related!];
+            })
+            .reduce((documentModels, relationModels) => [...documentModels, ...relationModels], [])
+            .filter(model => model.getDocumentUrl() === documentUrl);
+    }
+
+    protected async createFromEngineDocument<T extends Model>(id: any, document: EngineDocument): Promise<T> {
+        const model = await super.createFromEngineDocument<SolidModel>(id, document);
+
+        for (const relation of Object.values(model._relations)) {
+            if (!(relation instanceof SolidHasManyRelation))
                 continue;
-            }
 
-            const property = jsonld[fieldDefinition.rdfProperty];
-
-            if (typeof property !== 'undefined') {
-                attributes[field] = this.convertJsonLDToAttribute(property);
-            }
+            await relation.loadDocumentModels(document);
         }
 
-        if (!('@type' in jsonld)) {
-            throw new SoukaiError('@type missing from jsonld attributes');
-        }
-
-        const types = Array.isArray(jsonld['@type'])
-            ? jsonld['@type'].map(type => type['@id'])
-            : [jsonld['@type']['@id']];
-
-        for (const rdfClass of this.classDef.rdfsClasses) {
-            if (types.indexOf(rdfClass) === -1) {
-                throw new SoukaiError(`type ${rdfClass} not found in attributes`);
-            }
-        }
-
-        return attributes;
+        return model as any as T;
     }
 
-    private convertJsonLDToAttribute(property: any): any {
-        if (typeof property === 'object' && '@id' in property) {
-            return property['@id'];
-        } else if (Array.isArray(property)) {
-            return property.map(p => this.convertJsonLDToAttribute(p));
-        } else {
-            return property;
+    protected hasMany(relatedClass: typeof SolidModel, foreignKeyField?: string, localKeyField?: string): MultiModelRelation {
+        return new SolidHasManyRelation(this, relatedClass, foreignKeyField, localKeyField);
+    }
+
+    protected belongsToMany(relatedClass: typeof SolidModel, foreignKeyField?: string, localKeyField?: string): MultiModelRelation {
+        return new SolidBelongsToManyRelation(this, relatedClass, foreignKeyField, localKeyField);
+    }
+
+    protected contains(model: typeof SolidModel): MultiModelRelation {
+        return this.belongsToMany(model, 'resourceUrls');
+    }
+
+    protected isContainedBy(model: typeof SolidModel): SingleModelRelation {
+        return new SolidIsContainedByRelation(this, model);
+    }
+
+    protected getDefaultRdfContext(): string {
+        return Object.values(this.classDef.rdfContexts).shift() || '';
+    }
+
+    protected toEngineDocument(): EngineDocument {
+        return {
+            '@graph': [
+                this.serializeToJsonLD(false),
+                ...this.getDocumentModels().map(model => model.serializeToJsonLD(false)),
+            ],
+        } as EngineDocument;
+    }
+
+    protected getDirtyEngineDocumentUpdates(): EngineUpdates {
+        const updates = super.getDirtyEngineDocumentUpdates();
+
+        // TODO handle updates for related models in the same document
+
+        return {
+            '@graph': {
+                $updateItems: {
+                    $where: { '@id': this.url },
+                    $update: this.convertEngineUpdatesToJsonLD(updates),
+                },
+            },
+        };
+    }
+
+    protected async parseEngineDocumentAttributes(id: any, document: EngineDocument): Promise<Attributes> {
+        const jsonld = (document['@graph'] as EngineDocument[]).find(entity => entity['@id'] === id);
+
+        return this.convertJsonLDToAttributes(jsonld!);
+    }
+
+    protected castAttribute(value: any, definition?: FieldDefinition): any {
+        if (definition && definition.type === FieldType.Array && !Array.isArray(value)) {
+            return [value];
         }
+
+        return super.castAttribute(value, definition);
+    }
+
+    protected newUrl(documentUrl?: string): string {
+        if (this.classDef.ldpContainer)
+            return Url.resolveDirectory(
+                this.classDef.collection,
+                this.hasAttribute('name')
+                    ? Str.slug(this.getAttribute('name'))
+                    : UUID.generate(),
+            );
+
+        if (documentUrl)
+            return documentUrl + '#' + UUID.generate();
+
+        return Url.resolve(this.classDef.collection, UUID.generate());
+    }
+
+    protected guessCollection(): string | undefined {
+        if (!this.url)
+            return;
+
+        return Url.parentDirectory(this.url);
     }
 
 }
 
 interface SolidModel extends SerializesToJsonLD {}
 
-export default withMixins(SolidModel, [SerializesToJsonLD]);
+useMixins(SolidModel, [SerializesToJsonLD]);
+
+export default SolidModel;

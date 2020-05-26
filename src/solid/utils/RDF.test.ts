@@ -1,5 +1,7 @@
 import Faker from 'faker';
 
+import Url from '@/utils/Url';
+
 import RDF from './RDF';
 
 describe('RDF helper', () => {
@@ -10,27 +12,29 @@ describe('RDF helper', () => {
         const name = Faker.name.firstName();
 
         // Act
-        const resource = await RDF.parseTurtle(url, `
+        const document = await RDF.parseTurtle(`
             @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
             <${url}>
                 a foaf:Person ;
                 foaf:name "${name}" .
-        `);
+        `, { baseUrl: url });
 
         // Assert
-        expect(resource.sourceStatements).toHaveLength(2);
-        expect(resource.is('foaf:Person')).toBe(true);
-        expect(resource.getPropertyValue('foaf:name')).toEqual(name);
+        expect(document.statements).toHaveLength(2);
+        expect(document.url).toEqual(url);
+        expect(document.rootResource.url).toEqual(url);
+        expect(document.rootResource.isType('foaf:Person')).toBe(true);
+        expect(document.rootResource.getPropertyValue('foaf:name')).toEqual(name);
     });
 
-    it('parses JSONLD', async () => {
+    it('parses JSON-LD', async () => {
         // Arrange
         const url = Faker.internet.url();
         const name = Faker.name.firstName();
 
         // Act
-        const resource = await RDF.parseJsonLD({
+        const document = await RDF.parseJsonLD({
             '@id': url,
             '@context': { '@vocab': 'http://xmlns.com/foaf/0.1/' },
             '@type': ['Person'],
@@ -38,10 +42,48 @@ describe('RDF helper', () => {
         });
 
         // Assert
-        expect(resource.sourceStatements).toHaveLength(2);
-        expect(resource.url).toEqual(url);
-        expect(resource.is('foaf:Person')).toBe(true);
-        expect(resource.getPropertyValue('foaf:name')).toEqual(name);
+        expect(document.statements).toHaveLength(2);
+        expect(document.url).toEqual(url);
+        expect(document.rootResource.url).toEqual(url);
+        expect(document.rootResource.isType('foaf:Person')).toBe(true);
+        expect(document.rootResource.getPropertyValue('foaf:name')).toEqual(name);
     });
+
+    it('flattens JSON-LD', async () => {
+        // Arrange
+        const movieUrl = Url.resolve(Faker.internet.url());
+        const watchActionUrl = `${movieUrl}#${Faker.random.uuid()}`;
+        const jsonld = {
+            '@id': movieUrl,
+            '@context': {
+                '@vocab': 'https://schema.org/',
+                'ldp': 'http://www.w3.org/ns/ldp#',
+                'actions': { '@reverse': 'object' },
+            },
+            '@type': 'Movie',
+            'name': name,
+            'actions': [
+                {
+                    '@id': watchActionUrl,
+                    '@context': { '@vocab': 'https://schema.org/' },
+                    '@type': 'WatchAction',
+                    'object': { '@id': movieUrl },
+                },
+            ],
+        };
+
+        // Act
+        const flattened = await RDF.flattenJsonLD(jsonld);
+
+        // Assert
+        expect(flattened['@graph']).toHaveLength(2);
+
+        const movie = flattened['@graph'].find(jsonld => jsonld['@id'] === movieUrl);
+        expect(movie).not.toBeNull();
+        movie['https://schema.org/name'] = name;
+
+        const watchAction = flattened['@graph'].find(jsonld => jsonld['@id'] === watchActionUrl);
+        expect(watchAction).not.toBeNull();
+    })
 
 });

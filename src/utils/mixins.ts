@@ -1,4 +1,4 @@
-export function withMixins<T extends any>(baseClass: T, mixinClasses: any[]): T {
+export function useMixins<T extends any>(baseClass: T, mixinClasses: any[]): T {
     const propertyDescriptors = mixinClasses.reduce((propertyDescriptors, mixinClass) => ({
         ...propertyDescriptors,
         ...Object.getOwnPropertyDescriptors(mixinClass.prototype),

@@ -4,18 +4,6 @@ class Arr {
         return items.filter(item => !!item) as T[];
     }
 
-    public create<T>(...items: T[]): T[];
-    public create<T>(item: [T[]]): T[];
-    public create<T>(...items: T[] | [T[]]): T[] {
-        if (items.length === 0)
-            return [];
-
-        if (items.length === 1 && Array.isArray(items[0]))
-            return [...items[0]];
-
-        return items as T[];
-    }
-
     public contains<T>(items: T[], item: T): boolean {
         return items.indexOf(item) !== -1;
     }

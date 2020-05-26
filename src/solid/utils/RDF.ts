@@ -1,8 +1,9 @@
 import { JsonLdParser as JsonLDParser } from 'jsonld-streaming-parser';
+import { JsonLdSerializer as JsonLDSerializer } from 'jsonld-streaming-serializer';
 import { Parser as TurtleParser } from 'n3';
 import { Quad } from 'rdf-js';
 
-import { Resource } from '@/solid';
+import RDFDocument from '@/solid/RDFDocument';
 
 type IRINamespacesMap = { [prefix: string]: string };
 
@@ -18,33 +19,19 @@ const KNOWN_NAMESPACES: IRINamespacesMap = {
     xsd: 'http://www.w3.org/2001/XMLSchema#',
 };
 
+export interface TurtleParsingOptions {
+    baseUrl?: string,
+    format?: string,
+}
+
 class RDF {
 
-    public resolveIRI(value: string, namespaces: IRINamespacesMap = {}): string {
-        if (/^https?:\/\//.test(value))
-            return value;
-
-        namespaces = {
-            ...KNOWN_NAMESPACES,
-            ...namespaces,
-        };
-
-        for (const [prefix, url] of Object.entries(namespaces)) {
-            if (!value.startsWith(prefix + ':'))
-                continue;
-
-            return url + value.substr(prefix.length + 1);
-        }
-
-        return value;
-    }
-
-    public parseTurtle(base: string, turtle: string): Promise<Resource> {
+    public parseTurtle(turtle: string, options: TurtleParsingOptions = {}): Promise<RDFDocument> {
         return new Promise((resolve, reject) => {
             const quads: Quad[] = [];
             const parser = new TurtleParser({
-                baseIRI: base,
-                format: 'text/turtle',
+                baseIRI: options.baseUrl || '',
+                format: options.format || 'text/turtle',
             });
 
             parser.parse(turtle, (error, quad) => {
@@ -54,7 +41,7 @@ class RDF {
                 }
 
                 if (!quad) {
-                    resolve(new Resource(base, quads));
+                    resolve(new RDFDocument(options.baseUrl || '', quads));
                     return;
                 }
 
@@ -63,34 +50,66 @@ class RDF {
         });
     }
 
-    public async parseJsonLD(json: object): Promise<Resource> {
+    public async parseJsonLD(json: object): Promise<RDFDocument> {
         return new Promise((resolve, reject) => {
-            const id = json['@id'];
             const quads: Quad[] = [];
-            const parser = new JsonLDParser({ baseIRI: id });
+            const parser = new JsonLDParser({ baseIRI: json['@id'] || '' });
 
             parser.on('data', quad => {
                 quads.push(quad);
             });
             parser.on('error', reject);
-            parser.on('end', () => resolve(new Resource(id, quads)));
+            parser.on('end', () => resolve(new RDFDocument(json['@id'] || null, quads)));
 
             parser.write(JSON.stringify(json));
             parser.end();
         });
     }
 
-}
+    public async createJsonLD(statements: Quad[]): Promise<object> {
+        statements.sort((a: Quad, b: Quad) => a.subject.value.localeCompare(b.subject.value));
 
-const instance = new RDF();
-const IRIS_CACHE = {};
+        return new Promise((resolve, reject) => {
+            const serializer = new JsonLDSerializer();
+            let flattened = '';
 
-export function IRI(name: string): string {
-    if (!(name in IRIS_CACHE)) {
-        IRIS_CACHE[name] = instance.resolveIRI(name);
+            serializer.on('data', data => flattened += data);
+            serializer.on('error', reject);
+            serializer.on('end', () => resolve({ '@graph': JSON.parse(flattened) }));
+
+            for (const statement of statements) {
+                serializer.write(statement);
+            }
+            serializer.end();
+        });
     }
 
-    return IRIS_CACHE[name];
+    public async flattenJsonLD(json: object): Promise<object> {
+        const document = await this.parseJsonLD(json);
+
+        return document.toJsonLD();
+    }
+
 }
 
-export default instance;
+export function IRI(value: string, namespaces: IRINamespacesMap = {}): string {
+    if (/^https?:\/\//.test(value))
+        return value;
+
+    const colonIndex = value.indexOf(':');
+    if (colonIndex === -1)
+        return value;
+
+    namespaces = {
+        ...KNOWN_NAMESPACES,
+        ...namespaces,
+    };
+
+    const namespace = value.substr(0, colonIndex);
+    if (!(namespace in namespaces))
+        return value;
+
+    return namespaces[namespace] + value.substr(namespace.length + 1);
+}
+
+export default new RDF();

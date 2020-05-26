@@ -1,29 +1,27 @@
 import {
     DocumentAlreadyExists,
     DocumentNotFound,
-    Documents,
     Engine,
-    EngineAttributes,
+    EngineAttributeLeafValue,
+    EngineDocument,
+    EngineDocumentsCollection,
+    EngineFilters,
     EngineHelper,
-    Filters,
+    EngineUpdateItemsOperatorData,
+    EngineUpdates,
+    SoukaiError,
 } from 'soukai';
 
-import { SolidClient, Fetch, Resource, ResourceProperty } from '@/solid';
+import RDF, { IRI } from '@/solid/utils/RDF';
+import RDFDocument from '@/solid/RDFDocument';
+import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
+import SolidClient, { Fetch } from '@/solid/SolidClient';
 
 import Arr from '@/utils/Arr';
 import Obj from '@/utils/Obj';
 import Url from '@/utils/Url';
 
 import SolidDocumentsCache from './SolidDocumentsCache';
-
-export interface LinkedDataDocument extends EngineAttributes {
-    '@id': string;
-    '@type': { '@id': string } | { '@id': string }[];
-}
-
-export interface SolidDocument extends LinkedDataDocument {
-    __embedded: Documents;
-}
 
 export interface SolidEngineConfig {
     globbingBatchSize: number | null;
@@ -32,15 +30,8 @@ export interface SolidEngineConfig {
 
 export default class SolidEngine implements Engine {
 
-    public static decantEmbeddedDocuments(document: EngineAttributes): [EngineAttributes, Documents | undefined] {
-        const { __embedded: embeddedResources, ...attributes } = document;
-
-        return [attributes, embeddedResources as Documents];
-    }
-
-    public readonly cache: SolidDocumentsCache;
-    public readonly config: SolidEngineConfig;
-
+    private config: SolidEngineConfig;
+    private cache: SolidDocumentsCache;
     private helper: EngineHelper;
     private client: SolidClient;
 
@@ -56,242 +47,300 @@ export default class SolidEngine implements Engine {
         };
     }
 
-    public async create(
-        collection: string,
-        attributes: EngineAttributes,
-        id?: string,
-    ): Promise<string> {
-        const properties = this.convertJsonLDToResourceProperties(attributes);
+    public async create(collection: string, document: EngineDocument, id?: string): Promise<string> {
+        this.validateJsonLDGraph(document);
 
-        if (id && await this.client.resourceExists(id))
+        if (id && await this.client.documentExists(id))
             throw new DocumentAlreadyExists(id);
 
-        const resource = await this.client.createResource(collection, id, properties);
+        const properties = await this.getJsonLDGraphProperties(document);
+        const { url } = await this.client.createDocument(collection, id, properties);
 
-        return resource.url;
+        return url!;
     }
 
-    public async readOne(_: string, id: string): Promise<EngineAttributes> {
-        const resource = await this.client.getResource(id);
+    public async readOne(_: string, id: string): Promise<EngineDocument> {
+        const rdfDocument = await this.client.getDocument(id);
 
-        if (resource === null)
+        if (rdfDocument === null)
             throw new DocumentNotFound(id);
 
-        const document = this.convertResourceToDocument(resource);
+        const document = this.convertToEngineDocument(rdfDocument);
 
         if (this.config.useCache)
-            await this.cache.add(document);
+            await this.cache.add(id, document);
 
         return document;
     }
 
-    public async readMany(collection: string, filters: Filters = {}): Promise<Documents> {
+    public async readMany(collection: string, filters: EngineFilters = {}): Promise<EngineDocumentsCollection> {
         const documents = await this.getDocumentsForFilters(collection, filters);
 
         if (this.config.useCache)
-            await Promise.all(documents.map(document => this.cache.add(document)));
+            await Promise.all(
+                Object
+                    .entries(documents)
+                    .map(([id, document]) => this.cache.add(id, document)),
+            );
 
-        return this.helper.filterDocuments(Obj.createMap(documents, '@id'), filters);
+        return this.helper.filterDocuments(documents, filters);
     }
 
-    public async update(
-        collection: string,
-        id: string,
-        updatedAttributes: EngineAttributes,
-        removedAttributes: string[],
-    ): Promise<void> {
-        const updatedProperties = this.convertJsonLDToResourceProperties(updatedAttributes);
-        const removedProperties = removedAttributes;
+    public async update(collection: string, id: string, updates: EngineUpdates): Promise<void> {
+        const [updatedProperties, removedProperties] = this.extractJsonLDGraphUpdate(updates);
 
         try {
-            await this.client.updateResource(id, updatedProperties, removedProperties);
+            await this.client.updateDocument(id, updatedProperties, removedProperties);
 
             if (this.config.useCache)
                 await this.cache.forget(id);
         } catch (error) {
-            // TODO this may fail for reasons other than resource not found
+            // TODO this may fail for reasons other than document not found
             throw new DocumentNotFound(id);
         }
     }
 
     public async delete(collection: string, id: string): Promise<void> {
-        await this.client.deleteResource(id);
+        await this.client.deleteDocument(id);
 
         if (this.config.useCache)
             await this.cache.forget(id);
     }
 
-    private async getDocumentsForFilters(collection: string, filters: Filters): Promise<SolidDocument[]> {
-        if (!this.config.useCache || !filters.$in) {
-            const resources = await this.getResourcesForFilters(collection, filters);
-
-            return resources.map(this.convertResourceToDocument);
-        }
-
-        const cachedDocuments = Arr.clean(
-            await Promise.all(filters.$in.map(url => this.cache.get(url))),
+    private async getDocumentsForFilters(collection: string, filters: EngineFilters): Promise<EngineDocumentsCollection> {
+        const cachedDocuments = this.config.useCache
+            ? await this.getCachedDocuments(filters.$in || [])
+            : {};
+        const documents = await this.getDocumentsForFiltersWithoutCache(
+            collection,
+            Obj.withoutEmpty({
+                ...filters,
+                $in: filters.$in
+                    ? Arr.without(filters.$in, Object.keys(cachedDocuments))
+                    : undefined,
+            }) as EngineFilters,
         );
-        const resources = await this.getResourcesForFilters(collection, {
-            ...filters,
-            $in: Arr.without(filters.$in, cachedDocuments.map(document => document['@id'])),
-        });
 
-        return [
-            ...cachedDocuments,
-            ...resources.map(this.convertResourceToDocument)
-        ];
+        return documents.reduce((documents, document) => ({
+            ...documents,
+            [document.url!]: this.convertToEngineDocument(document),
+        }), cachedDocuments);
     }
 
-    private async getResourcesForFilters(collection: string, filters: Filters): Promise<Resource[]> {
-        const rdfsClasses = this.getRdfsClassesFilter(filters);
+    private async getCachedDocuments(ids: string[]): Promise<EngineDocumentsCollection> {
+        const documentIdPairs = await Promise.all(
+            ids.map(
+                async url => {
+                    const document = await this.cache.get(url);
+
+                    return [url, document];
+                },
+            ),
+        );
+
+        return documentIdPairs
+            .filter(([_, document]) => document !== null)
+            .reduce((documents, [id, document]) => ({
+                ...documents,
+                [id as string]: document,
+            }), {});
+    }
+
+    private getDocumentsForFiltersWithoutCache(collection: string, filters: EngineFilters): Promise<RDFDocument[]> {
+        const rdfsClasses = this.extractJsonLDGraphTypes(filters);
 
         // TODO use filters for SPARQL when supported
         // See https://github.com/solid/node-solid-server/issues/962
-
-        if (!filters.$in)
-            return this.client.getResources(collection, rdfsClasses);
-
-        return this.getResourcesFromUrls(collection, rdfsClasses, filters.$in);
+        return filters.$in
+            ? this.getDocumentsFromUrls(collection, rdfsClasses, filters.$in)
+            : this.getContainerDocuments(collection, rdfsClasses);
     }
 
-    private async getResourcesFromUrls(collection: string, rdfsClasses: string[], urls: string[]): Promise<Resource[]> {
-        const containerResourceUrlsMap = urls
-            .reduce((resourcesByContainerUrl, resourceUrl) => {
-                const containerUrl = Url.parentDirectory(resourceUrl);
+    private async getDocumentsFromUrls(collection: string, rdfsClasses: string[], urls: string[]): Promise<RDFDocument[]> {
+        const containerDocumentUrlsMap = urls
+            .reduce((containerDocumentUrlsMap, documentUrl) => {
+                const containerUrl = Url.parentDirectory(documentUrl);
 
                 if (!containerUrl.startsWith(collection))
-                    return resourcesByContainerUrl;
+                    return containerDocumentUrlsMap;
 
                 return {
-                    ...resourcesByContainerUrl,
+                    ...containerDocumentUrlsMap,
                     [containerUrl]: [
-                        ...(resourcesByContainerUrl[containerUrl] || []),
-                        resourceUrl,
+                        ...(containerDocumentUrlsMap[containerUrl] || []),
+                        documentUrl,
                     ],
                 };
-            }, {} as { [containerUrl: string]: string[] });
+            }, {} as MapObject<string[]>);
 
-        const containerResourcesPromises = Object.entries(containerResourceUrlsMap)
-            .map(async ([containerUrl, resourceUrls]) => {
-                if (this.config.globbingBatchSize !== null && resourceUrls.length >= this.config.globbingBatchSize)
-                    return this.client.getResources(containerUrl, rdfsClasses);
+        const containerDocumentPromises = Object.entries(containerDocumentUrlsMap)
+            .map(async ([containerUrl, documentUrls]) => {
+                if (this.config.globbingBatchSize !== null && documentUrls.length >= this.config.globbingBatchSize)
+                    return this.getContainerDocuments(containerUrl, rdfsClasses);
 
-                const resourcePromises = resourceUrls.map(url => this.client.getResource(url));
-                const resources = await Promise.all(resourcePromises);
+                const documentPromises = documentUrls.map(url => this.client.getDocument(url));
+                const documents = await Promise.all(documentPromises);
 
-                return resources.filter(resource => resource != null) as Resource[];
+                return documents.filter(document => document != null) as RDFDocument[];
             });
 
-        const containersResources = await Promise.all(containerResourcesPromises);
+        const containerDocuments = await Promise.all(containerDocumentPromises);
 
-        return Arr.flatten(containersResources);
+        return Arr.flatten(containerDocuments);
     }
 
-    private convertJsonLDToResourceProperties(attributes: EngineAttributes): ResourceProperty[] {
-        const properties: ResourceProperty[] = [];
+    private async getContainerDocuments(containerUrl: string, types: string[]): Promise<RDFDocument[]> {
+        const documents = await this.client.getDocuments(
+            containerUrl,
+            types.indexOf(IRI('ldp:Container')) !== -1,
+        );
 
-        for (const field in attributes) {
-            const value = attributes[field];
-
-            if (value === null || field === '@id') {
-                continue;
-            } else if (field === '@type') {
-                this.addJsonLDTypeProperty(properties, value);
-            } else if (Array.isArray(value)) {
-                for (const childValue of value) {
-                    this.addJsonLDProperty(properties, field, childValue);
-                }
-            } else {
-                this.addJsonLDProperty(properties, field, value);
+        return documents.filter(document => {
+            for (const type of types) {
+                if (!document.rootResource.isType(type))
+                    return false;
             }
-        }
 
-        return properties;
+            return true;
+        });
     }
 
-    private convertResourceToDocument(resource: Resource): SolidDocument {
-        const resourceUrls = resource.sourceStatements.map(statement => statement.subject.value);
-        const embeddedDocuments = {};
-
-        for (const resourceUrl of resourceUrls) {
-            if (resourceUrl in embeddedDocuments)
-                continue;
-
-            if (resourceUrl === resource.url || !resourceUrl.startsWith(resource.url))
-                continue;
-
-            embeddedDocuments[resourceUrl] = new Resource(resourceUrl, resource.sourceStatements).toJsonLD();
-        }
-
+    private convertToEngineDocument(document: RDFDocument): EngineDocument {
+        // TODO use RDF libraries instead of implementing this conversion
         return {
-            ...resource.toJsonLD() as LinkedDataDocument,
-            __embedded: embeddedDocuments,
+            '@graph': document.resources.map(resource => {
+                const attributes: any = {};
+
+                for (const [name, properties] of Object.entries(resource.propertiesIndex)) {
+                    const [firstProperty, ...otherProperties] = properties;
+
+                    let key: string = name;
+                    let cast: (value: any) => any = value => value;
+
+                    switch (firstProperty.type) {
+                        case RDFResourcePropertyType.Type:
+                            key = '@type';
+                            break;
+                        case RDFResourcePropertyType.Reference:
+                            cast = value => ({ '@id': value });
+                            break;
+                        case RDFResourcePropertyType.Literal:
+                            cast = value => value instanceof Date
+                                ? {
+                                    '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+                                    '@value': value.toISOString(),
+                                }
+                                : value
+                            break;
+                    }
+
+                    attributes[key] = otherProperties.length === 0
+                        ? cast(firstProperty.value)
+                        : [firstProperty, ...otherProperties].map(property => cast(property.value));
+                }
+
+                attributes['@id'] = resource.url;
+
+                return attributes;
+            }),
         };
     }
 
-    private addJsonLDProperty(properties: ResourceProperty[], field: string, value: any): void {
-        if (value === null) {
-            return;
-        }
-
-        if (value instanceof Date) {
-            properties.push(ResourceProperty.literal(field, value));
-            return;
-        }
-
-        if (
-            typeof value === 'object' &&
-            '@id' in value &&
-            typeof value['@id'] === 'string'
-        ) {
-            properties.push(ResourceProperty.link(field, value['@id']));
-            return;
-        }
-
-        if (!Array.isArray(value) && typeof value !== 'object') {
-            properties.push(ResourceProperty.literal(field, value));
-        }
+    private validateJsonLDGraph(document: EngineDocument): void {
+        if (!Array.isArray(document['@graph']))
+            throw new SoukaiError(
+                'Invalid JSON-LD graph provided for SolidEngine. ' +
+                "Are you using a model that isn't a SolidModel?",
+            );
     }
 
-    private addJsonLDTypeProperty(properties: ResourceProperty[], value: any): void {
-        if (Array.isArray(value)) {
-            for (const childValue of value) {
-                if (
-                    childValue !== null &&
-                    typeof childValue === 'object' &&
-                    '@id' in childValue &&
-                    typeof childValue['@id'] === 'string'
-                ) {
-                    properties.push(ResourceProperty.type(childValue['@id']));
+    private extractJsonLDGraphUpdate(updates: EngineUpdates): [RDFResourceProperty[], [string, string][]] {
+        if (!this.isJsonLDGraphUpdate(updates))
+            throw new SoukaiError(
+                'Invalid JSON-LD graph updates provided for SolidEngine. ' +
+                "Are you using a model that isn't a SolidModel?",
+            );
+
+        const updatedProperties: RDFResourceProperty[] = [];
+        const removedProperties: [string, string][] = [];
+
+        for (const { $where, $update } of updates['@graph'].$updateItems) {
+            if (!$where || !('@id' in $where))
+                throw new SoukaiError(
+                    'Invalid JSON-LD graph updates provided for SolidEngine. ' +
+                    "Are you using a model that isn't a SolidModel?",
+                );
+
+            const resourceUrl = $where!['@id'] as string;
+            const updates = $update;
+
+            for (const [attribute, value] of Object.entries(updates as MapObject<EngineAttributeLeafValue>)) {
+                if (value === null) {
+                    throw new SoukaiError("SolidEngine doesn't support setting properties to null, delete");
                 }
+
+                if (typeof value === 'object' && '$unset' in value) {
+                    removedProperties.push([resourceUrl, attribute]);
+                    continue;
+                }
+
+                updatedProperties.push(RDFResourceProperty.literal(resourceUrl, attribute, value));
             }
-        } else if (
-            value !== null &&
-            typeof value === 'object' &&
-            '@id' in value &&
-            typeof value['@id'] === 'string'
-        ) {
-            properties.push(ResourceProperty.type(value['@id']));
         }
+
+        return [updatedProperties, removedProperties];
     }
 
-    private getRdfsClassesFilter(filters: Filters): string[] {
-        if (!('@type' in filters))
-            return [];
+    private extractJsonLDGraphTypes(filters: EngineFilters): string[] {
+        if (!this.isJsonLDGraphFilter(filters))
+            throw new SoukaiError(
+                'Invalid JSON-LD graph filters provided for SolidEngine. ' +
+                "Are you using a model that isn't a SolidModel?",
+            );
 
-        const value = filters['@type'];
+        const typeFilters = filters['@graph'].$contains['@type'].$or;
+        const types = typeFilters.reduce((types, typeFilter) => {
+            if ('$contains' in typeFilter)
+                types.push(...typeFilter.$contains);
 
-        if (typeof value === 'string')
-            return [value];
+            if ('$eq' in typeFilter)
+                types.push(typeFilter.$eq);
 
-        if ('$contains' in value)
-            return (value['$contains'] as any[])
-                .map(value => '@id' in value && value['@id'])
-                .filter(rdfsClass => !!rdfsClass);
+            return types;
+        }, [] as string[]);
 
-        // TODO support $or filter
+        return Arr.unique(types.filter(type => type.startsWith('http')));
+    }
 
-        return [];
+    private async getJsonLDGraphProperties(jsonld: object): Promise<RDFResourceProperty[]> {
+        const document = await RDF.parseJsonLD(jsonld);
+
+        return document.properties;
+    }
+
+    private isJsonLDGraphUpdate(updates: any): updates is {
+        '@graph': { $updateItems: EngineUpdateItemsOperatorData[] };
+    } {
+        return typeof updates['@graph'] === 'object'
+            && Array.isArray(updates['@graph'].$updateItems);
+    }
+
+    private isJsonLDGraphFilter(filters: any): filters is {
+        '@graph': {
+            $contains: {
+                '@type': {
+                    $or: (
+                        { $contains: string[] } |
+                        { $eq: string }
+                    )[];
+                };
+            };
+        };
+    } {
+        return typeof filters['@graph'] === 'object'
+            && typeof filters['@graph'].$contains === 'object'
+            && typeof filters['@graph'].$contains['@type'] === 'object'
+            && Array.isArray(filters['@graph'].$contains['@type'].$or);
     }
 
 }

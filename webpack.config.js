@@ -34,6 +34,7 @@ module.exports = {
     externals: [
         'idb-keyval',
         'jsonld-streaming-parser',
+        'jsonld-streaming-serializer',
         'n3',
         'soukai',
     ],

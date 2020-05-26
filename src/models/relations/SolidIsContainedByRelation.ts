@@ -1,26 +1,30 @@
 import { SingleModelRelation } from 'soukai';
 
 import SolidModel from '@/models/SolidModel';
+
 import Url from '@/utils/Url';
 
 export default class SolidIsContainedByRelation<
-    P extends SolidModel = SolidModel,
-    R extends SolidModel = SolidModel,
-    RC extends typeof SolidModel = typeof SolidModel,
-> extends SingleModelRelation<P, R, RC> {
+    Parent extends SolidModel = SolidModel,
+    Related extends SolidModel = SolidModel,
+    RelatedClass extends typeof SolidModel = typeof SolidModel,
+> extends SingleModelRelation<Parent, Related, RelatedClass> {
 
-    public resolve(): Promise<R | null> {
-        const oldCollection = this.related.collection;
+    public constructor(parent: Parent, relatedClass: RelatedClass) {
+        super(parent, relatedClass, 'url');
+    }
 
+    public async resolve(): Promise<Related | null> {
+        const oldCollection = this.relatedClass.collection;
         const containerUrl = Url.parentDirectory(this.parent.url);
 
-        const result = this.related
+        this.related = await this.relatedClass
             .from(Url.parentDirectory(containerUrl))
-            .find<R>(containerUrl);
+            .find(containerUrl);
 
-        this.related.collection = oldCollection;
+        this.relatedClass.collection = oldCollection;
 
-        return result;
+        return this.related;
     }
 
 }

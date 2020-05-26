@@ -1,53 +1,83 @@
-import { Model, MultiModelRelation } from 'soukai';
+import {
+    Attributes,
+    BelongsToManyRelation,
+    BelongsToRelation,
+    EngineDocument,
+    EngineDocumentsCollection,
+    EngineHelper,
+    HasManyRelation,
+} from 'soukai';
 
 import SolidModel from '@/models/SolidModel';
 
-import Url from '@/utils/Url';
-
 export default class SolidHasManyRelation<
-    P extends SolidModel = SolidModel,
-    R extends SolidModel = SolidModel,
-    RC extends typeof SolidModel = typeof SolidModel,
-> extends MultiModelRelation<P, R, RC> {
+    Parent extends SolidModel = SolidModel,
+    Related extends SolidModel = SolidModel,
+    RelatedClass extends typeof SolidModel = typeof SolidModel,
+> extends HasManyRelation<Parent, Related, RelatedClass> {
 
-    protected linksField: string;
+    public async create(attributes: Attributes = {}, useSameDocument: boolean = false): Promise<Related> {
+        const model = new this.relatedClass(attributes) as Related;
 
-    public constructor(parent: P, related: RC, linksField: string) {
-        super(parent, related);
+        if (useSameDocument && !this.parent.url)
+            this.parent.mintUrl();
 
-        this.linksField = linksField;
+        if (useSameDocument)
+            model.mintUrl(this.parent.url);
+
+        this.inititalizeInverseRelations(model);
+        this.related = [...(this.related || []), model];
+
+        if (!useSameDocument || this.parent.exists())
+            await model.save();
+
+        return model;
     }
 
-    public async resolve(): Promise<R[]> {
-        const links = this.parent.getAttribute(this.linksField);
-        const linksByContainerUrl = {};
+    public async loadDocumentModels(document: EngineDocument): Promise<void> {
+        // TODO filter using foreignKey: parentUrl
 
-        for (const link of links) {
-            const containerUrl = Url.parentDirectory(link);
+        const helper = new EngineHelper();
+        const filters = this.relatedClass.prepareEngineFilters();
+        const documents = (document['@graph'] as any[]).reduce((documents, resource) => {
+            documents[resource['@id']] = { '@graph': [resource] };
 
-            if (!(containerUrl in linksByContainerUrl)) {
-                linksByContainerUrl[containerUrl] = [];
+            return documents;
+        }, {} as EngineDocumentsCollection);
+
+        // TODO mark as partially loaded if there are any resources outside of this document
+        this.related = await Promise.all(
+            Object
+                .entries(helper.filterDocuments(documents, filters))
+                .map(
+                    ([id, document]) =>
+                        this.relatedClass.createFromEngineDocument(id, document) as Promise<Related>,
+                ),
+        );
+    }
+
+    protected inititalizeInverseRelations(model: Related): void {
+        const parentClass = this.parent.constructor;
+
+        for (const relationName of this.relatedClass.relations) {
+            const relationInstance = model.getRelation(relationName);
+
+            if (relationInstance!.relatedClass !== parentClass)
+                continue;
+
+            if (relationInstance instanceof BelongsToManyRelation) {
+                model.setAttribute(relationInstance.foreignKeyName, [this.parent.url]);
+                relationInstance.related = [this.parent];
+
+                continue;
             }
 
-            linksByContainerUrl[containerUrl].push(link);
+            if (!(relationInstance instanceof BelongsToRelation))
+                continue;
+
+            model.setAttribute(relationInstance.foreignKeyName, this.parent.url);
+            relationInstance.related = this.parent;
         }
-
-        const results = await Promise.all(
-            Object.keys(linksByContainerUrl).map(
-                containerUrl => this.related.from(containerUrl).all<R>({
-                    $in: linksByContainerUrl[containerUrl],
-                }),
-            ),
-        );
-
-        return results.reduce(
-            (models: R[], containerModels: R[]) => {
-                models.push(...containerModels);
-
-                return models;
-            },
-            [],
-        );
     }
 
 }

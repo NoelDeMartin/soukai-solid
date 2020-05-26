@@ -1,26 +1,27 @@
 import 'fake-indexeddb/auto';
 
-import { DocumentNotFound, EngineAttributes, DocumentAlreadyExists } from 'soukai';
+import { DocumentNotFound, DocumentAlreadyExists, SoukaiError, EngineFilters } from 'soukai';
 
 import Faker from 'faker';
 
 import SolidEngine from '@/engines/SolidEngine';
 
-import { ResourceProperty } from '@/solid';
-
-import SolidClientMock from '@/solid/__mocks__';
-
-import { stubPersonJsonLD, stubGroupJsonLD } from '@tests/stubs/helpers';
+import RDF, { IRI } from '@/solid/utils/RDF';
+import RDFResourceProperty from '@/solid/RDFResourceProperty';
 
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 import Arr from '@/utils/Arr';
 
+import SolidClientMock from '@/solid/__mocks__';
+
+import { stubPersonJsonLD, stubGroupJsonLD, jsonLDGraph } from '@tests/stubs/helpers';
+
 let engine: SolidEngine;
 
 describe('SolidEngine', () => {
 
-    beforeAll(() => {
+    beforeEach(() => {
         SolidClientMock.reset();
 
         // TODO use dependency injection instead of doing this
@@ -28,101 +29,108 @@ describe('SolidEngine', () => {
         (engine as any).client = SolidClientMock;
     });
 
-    it('creates one resource', async () => {
-        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
+    it('creates one document', async () => {
+        // Arrange
+        const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const personUrl = Url.resolve(containerUrl, Faker.random.uuid());
         const name = Faker.name.firstName();
-        const date = Faker.date.recent();
+        const date = new Date('1997-07-21T23:42:00Z');
+        const jsonld = stubPersonJsonLD(personUrl, name, '1997-07-21T23:42:00.000Z');
 
-        const jsonLD = stubPersonJsonLD(resourceUrl, name);
-        jsonLD['date'] = date;
+        // Act
+        const id = await engine.create(containerUrl, jsonld, personUrl);
 
-        const id = await engine.create(parentUrl, jsonLD, resourceUrl);
+        // Assert
+        expect(id).toEqual(personUrl);
 
-        expect(id).toEqual(resourceUrl);
-
-        expect(SolidClientMock.createResource).toHaveBeenCalledWith(
-            parentUrl,
-            resourceUrl,
-
-            // TODO test body using argument matcher
+        expect(SolidClientMock.createDocument).toHaveBeenCalledWith(
+            containerUrl,
+            personUrl,
             expect.anything(),
         );
 
-        const properties = (SolidClientMock.createResource as any).mock.calls[0][2];
+        const properties = (SolidClientMock.createDocument as any).mock.calls[0][2];
 
-        expect(properties).toHaveLength(4);
-        expect(properties).toContainEqual(ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'));
-        expect(properties).toContainEqual(ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'));
-        expect(properties).toContainEqual(ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', name));
-        expect(properties).toContainEqual(ResourceProperty.literal('date', date));
+        expect(properties).toHaveLength(3);
+        expect(properties).toContainEqual(RDFResourceProperty.type(personUrl, IRI('foaf:Person')));
+        expect(properties).toContainEqual(RDFResourceProperty.literal(personUrl, IRI('foaf:name'), name));
+        expect(properties).toContainEqual(RDFResourceProperty.literal(personUrl, IRI('foaf:birthdate'), date));
     });
 
     it('creates one container', async () => {
+        // Arrange
         const name = Faker.name.firstName();
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const resourceUrl = Url.resolve(parentUrl, Str.slug(name));
+        const documentUrl = Url.resolve(parentUrl, Str.slug(name));
 
+        // Act
         const id = await engine.create(
-            Url.parentDirectory(resourceUrl),
-            stubGroupJsonLD(resourceUrl, name),
-            resourceUrl,
+            Url.parentDirectory(documentUrl),
+            stubGroupJsonLD(documentUrl, name),
+            documentUrl,
         );
 
-        expect(id).toEqual(resourceUrl);
+        // Assert
+        expect(id).toEqual(documentUrl);
 
-        expect(SolidClientMock.createResource).toHaveBeenCalledWith(
+        expect(SolidClientMock.createDocument).toHaveBeenCalledWith(
             parentUrl,
-            resourceUrl,
-
-            // TODO test body using argument matcher
+            documentUrl,
             expect.anything(),
         );
+
+        const properties = (SolidClientMock.createDocument as any).mock.calls[0][2];
+
+        expect(properties).toHaveLength(3);
+        expect(properties).toContainEqual(RDFResourceProperty.type(documentUrl, IRI('ldp:Container')));
+        expect(properties).toContainEqual(RDFResourceProperty.type(documentUrl, IRI('foaf:Group')));
+        expect(properties).toContainEqual(RDFResourceProperty.literal(documentUrl, IRI('foaf:name'), name));
     });
 
-    it('fails creating resources if the provided url is already in use', async () => {
+    it('fails creating documents if the provided url is already in use', async () => {
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
 
-        await SolidClientMock.createResource(parentUrl, resourceUrl, [
-            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
+        await SolidClientMock.createDocument(parentUrl, documentUrl, [
+            RDFResourceProperty.type(documentUrl, IRI('foaf:Person')),
         ]);
 
-        await expect(engine.create(parentUrl, {}, resourceUrl))
+        await expect(engine.create(parentUrl, jsonLDGraph(), documentUrl))
             .rejects
             .toBeInstanceOf(DocumentAlreadyExists);
     });
 
-    it('gets one resource', async () => {
+    it('gets one document', async () => {
+        // Arrange
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
         const name = Faker.name.firstName();
 
-        await SolidClientMock.createResource(parentUrl, resourceUrl, [
-            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://www.w3.org/ns/ldp#Container'),
-            ResourceProperty.type('http://xmlns.com/foaf/0.1/Group'),
-            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', name),
+        await SolidClientMock.createDocument(parentUrl, documentUrl, [
+            RDFResourceProperty.type(documentUrl, IRI('ldp:Container')),
+            RDFResourceProperty.type(documentUrl, IRI('foaf:Group')),
+            RDFResourceProperty.literal(documentUrl, IRI('foaf:name'), name),
         ]);
 
-        const document = withoutEmbeddedResources(
-            await engine.readOne(Url.parentDirectory(resourceUrl), resourceUrl),
-        );
+        // Act
+        const document = await engine.readOne(Url.parentDirectory(documentUrl), documentUrl);
 
-        expect(document).toEqual(stubGroupJsonLD(resourceUrl, name));
+        // Assert
+        expect(document).toEqualJsonLD(stubGroupJsonLD(documentUrl, name));
 
-        expect(SolidClientMock.getResource).toHaveBeenCalledWith(resourceUrl);
+        expect(SolidClientMock.getDocument).toHaveBeenCalledWith(documentUrl);
     });
 
-    it("fails reading when resource doesn't exist", async () => {
-        const resourceUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+    it("fails reading when document doesn't exist", async () => {
+        const documentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
 
-        await expect(engine.readOne(Url.parentDirectory(resourceUrl), resourceUrl))
+        await expect(engine.readOne(Url.parentDirectory(documentUrl), documentUrl))
             .rejects
             .toBeInstanceOf(DocumentNotFound);
     });
 
-    it('gets many resources', async () => {
+    it('gets many documents', async () => {
+        // Arrange
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const firstUrl = Url.resolve(containerUrl, 'first');
         const secondUrl = Url.resolve(containerUrl, 'second');
@@ -131,115 +139,96 @@ describe('SolidEngine', () => {
         const secondName = Faker.name.firstName();
         const thirdName = Faker.name.firstName();
 
-        await SolidClientMock.createResource(containerUrl, firstUrl, [
-            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', firstName),
+        await SolidClientMock.createDocument(containerUrl, firstUrl, [
+            RDFResourceProperty.type(firstUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(firstUrl, IRI('foaf:name'), firstName),
         ]);
 
-        await SolidClientMock.createResource(containerUrl, secondUrl, [
-            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', secondName),
+        await SolidClientMock.createDocument(containerUrl, secondUrl, [
+            RDFResourceProperty.type(secondUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(secondUrl, IRI('foaf:name'), secondName),
+            RDFResourceProperty.type(thirdUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(thirdUrl, IRI('foaf:name'), thirdName),
         ]);
 
-        await SolidClientMock.createEmbeddedResource(secondUrl, thirdUrl, [
-            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', thirdName),
-        ]);
+        // Act
+        const documents = await engine.readMany(containerUrl, modelFilters(['foaf:Person']));
 
-        const documents = await engine.readMany(containerUrl);
+        // Assert
+        expect(Object.keys(documents)).toHaveLength(2);
 
-        expect(Object.keys(documents)).toHaveLength(3);
-        expect(withoutEmbeddedResources(documents[firstUrl])).toEqual(stubPersonJsonLD(firstUrl, firstName));
-        expect(withoutEmbeddedResources(documents[secondUrl])).toEqual(stubPersonJsonLD(secondUrl, secondName));
-        expect(withoutEmbeddedResources(documents[thirdUrl])).toEqual(stubPersonJsonLD(thirdUrl, thirdName, false));
+        await expect(documents[firstUrl]).toEqualJsonLD(stubPersonJsonLD(firstUrl, firstName));
 
-        expect(SolidClientMock.getResources).toHaveBeenCalledWith(containerUrl, []);
-    });
-
-    it('gets many resources filtering by type', async () => {
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const firstUrl = Url.resolve(containerUrl, 'first');
-        const secondUrl = Url.resolve(containerUrl, 'second');
-        const thirdUrl = `${secondUrl}#${Faker.random.uuid()}`;
-        const firstName = Faker.name.firstName();
-        const secondName = Faker.name.firstName();
-        const thirdName = Faker.name.firstName();
-
-        await SolidClientMock.createResource(containerUrl, firstUrl, [
-            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', firstName),
-        ]);
-
-        await SolidClientMock.createResource(containerUrl, secondUrl, [
-            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', secondName),
-        ]);
-
-        await SolidClientMock.createEmbeddedResource(secondUrl, thirdUrl, [
-            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', thirdName),
-        ]);
-
-        const documents = await engine.readMany(containerUrl, {
-            '@type': {
-                $or: [
-                    {
-                        $contains: [
-                            { '@id': 'http://xmlns.com/foaf/0.1/Person' },
-                        ],
-                    },
-                    {
-                        $eq: { '@id': 'http://xmlns.com/foaf/0.1/Person' },
-                    },
-                ],
-            },
+        const secondPerson = stubPersonJsonLD(secondUrl, secondName);
+        const thirdPerson = stubPersonJsonLD(thirdUrl, thirdName);
+        await expect(documents[secondUrl]).toEqualJsonLD({
+            '@graph': [
+                secondPerson['@graph'][0],
+                thirdPerson['@graph'][0],
+            ],
         });
 
-        expect(Object.keys(documents)).toHaveLength(3);
-        expect(withoutEmbeddedResources(documents[firstUrl])).toEqual(stubPersonJsonLD(firstUrl, firstName));
-        expect(withoutEmbeddedResources(documents[secondUrl])).toEqual(stubPersonJsonLD(secondUrl, secondName));
-        expect(withoutEmbeddedResources(documents[thirdUrl])).toEqual(stubPersonJsonLD(thirdUrl, thirdName, false));
-
-        // TODO this should filter by Person type for better network performance
-        expect(SolidClientMock.getResources).toHaveBeenCalledWith(containerUrl, []);
+        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, false);
     });
 
-    it('gets many resources filtering by attributes', async () => {
+    it('gets many containers passing onlyContainers flag to client', async () => {
+        // Arrange
+        const parentUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerName = Faker.lorem.word();
+        const containerUrl = Url.resolveDirectory(parentUrl, Str.slug(containerName));
+
+        await SolidClientMock.createDocument(parentUrl, containerUrl, [
+            RDFResourceProperty.type(containerUrl, IRI('ldp:Container')),
+            RDFResourceProperty.literal(containerUrl, IRI('rdfs:label'), containerName),
+        ]);
+
+        // Act
+        const documents = await engine.readMany(parentUrl, modelFilters(['ldp:Container']));
+
+        // Assert
+        expect(Object.keys(documents)).toHaveLength(1);
+
+        await expect(documents[containerUrl]).toEqualJsonLD({
+            '@graph': [{
+                '@id': containerUrl,
+                '@type': IRI('ldp:Container'),
+                [IRI('rdfs:label')]: containerName,
+            }],
+        });
+
+        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(parentUrl, true);
+    });
+
+    it('gets many documents filtering by attributes', async () => {
+        // Arrange
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const name = Faker.name.firstName();
-        const url = Url.resolve(containerUrl, Faker.random.uuid());
+        const firstUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const secondUrl = Url.resolve(containerUrl, Faker.random.uuid());
 
-        await SolidClientMock.createResource(containerUrl, url, [
-            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', name),
+        await SolidClientMock.createDocument(containerUrl, firstUrl, [
+            RDFResourceProperty.type(firstUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(firstUrl, IRI('foaf:name'), name),
         ]);
 
-        await SolidClientMock.createResource(containerUrl, Url.resolve(containerUrl, Faker.random.uuid()), [
-            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', Faker.name.firstName()),
+        await SolidClientMock.createDocument(containerUrl, secondUrl, [
+            RDFResourceProperty.type(secondUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(secondUrl, IRI('foaf:name'), Faker.name.firstName()),
         ]);
 
+        // Act
         const documents = await engine.readMany(
             containerUrl,
-            { 'http://xmlns.com/foaf/0.1/name': name },
+            modelFilters(['foaf:Person'], { [IRI('foaf:name')]: name }),
         );
 
+        // Assert
         expect(Object.keys(documents)).toHaveLength(1);
-        expect(withoutEmbeddedResources(documents[url])).toEqual(stubPersonJsonLD(url, name));
-
-        expect(SolidClientMock.getResources).toHaveBeenCalledWith(
-            containerUrl,
-            [],
-        );
+        expect(documents[firstUrl]).toEqualJsonLD(stubPersonJsonLD(firstUrl, name));
+        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, false);
     });
 
-    it('gets many resources using $in filter', async () => {
+    it('gets many documents using $in filter', async () => {
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const brokenUrl = Url.resolve(containerUrl, Faker.random.uuid());
         const firstName = Faker.name.firstName();
@@ -247,159 +236,321 @@ describe('SolidEngine', () => {
         const secondName = Faker.name.firstName();
         const secondUrl = Url.resolve(containerUrl, Faker.random.uuid());
 
-        await SolidClientMock.createResource(containerUrl, firstUrl, [
-            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', firstName),
+        await SolidClientMock.createDocument(containerUrl, firstUrl, [
+            RDFResourceProperty.type(firstUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(firstUrl, IRI('foaf:name'), firstName),
         ]);
 
-        await SolidClientMock.createResource(containerUrl, secondUrl, [
-            ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-            ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
-            ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', secondName),
+        await SolidClientMock.createDocument(containerUrl, secondUrl, [
+            RDFResourceProperty.type(secondUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(secondUrl, IRI('foaf:name'), secondName),
         ]);
 
         const documents = await engine.readMany(containerUrl, {
             $in: [brokenUrl, firstUrl, secondUrl],
+            ...modelFilters(['foaf:Person']),
         });
 
         expect(Object.keys(documents)).toHaveLength(2);
-        expect(withoutEmbeddedResources(documents[firstUrl])).toEqual(stubPersonJsonLD(firstUrl, firstName));
-        expect(withoutEmbeddedResources(documents[secondUrl])).toEqual(stubPersonJsonLD(secondUrl, secondName));
+        expect(documents[firstUrl]).toEqualJsonLD(stubPersonJsonLD(firstUrl, firstName));
+        expect(documents[secondUrl]).toEqualJsonLD(stubPersonJsonLD(secondUrl, secondName));
 
-        expect(SolidClientMock.getResource).toHaveBeenCalledWith(firstUrl);
-        expect(SolidClientMock.getResource).toHaveBeenCalledWith(secondUrl);
+        expect(SolidClientMock.getDocument).toHaveBeenCalledWith(firstUrl);
+        expect(SolidClientMock.getDocument).toHaveBeenCalledWith(secondUrl);
     });
 
-    it('gets many resources using globbing for $in filter', async () => {
+    it('gets many documents using globbing for $in filter', async () => {
+        // Arrange
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const resourcesCount = 10;
+        const documentsCount = 10;
         const urls: string[] = [];
         const names: string[] = [];
 
-        await Promise.all(Arr.range(resourcesCount).map(async i => {
-            const url = Url.resolve(containerUrl, `resource-${i}`);
+        await Promise.all(Arr.range(documentsCount).map(async i => {
+            const url = Url.resolve(containerUrl, `document-${i}`);
             const name = Faker.name.firstName();
 
             urls.push(url);
             names.push(name);
 
-            await SolidClientMock.createResource(containerUrl, url, [
-                ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-                ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
-                ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', name),
+            await SolidClientMock.createDocument(containerUrl, url, [
+                RDFResourceProperty.type(url, IRI('foaf:Person')),
+                RDFResourceProperty.literal(url, IRI('foaf:name'), name),
             ]);
         }));
 
-        const documents = await engine.readMany(containerUrl, { $in: urls });
-
-        expect(Object.keys(documents)).toHaveLength(resourcesCount);
-
-        Arr.zip(urls, names).map(([url, name]) => {
-            expect(withoutEmbeddedResources(documents[url])).toEqual(stubPersonJsonLD(url, name));
+        // Act
+        const documents = await engine.readMany(containerUrl, {
+            $in: urls,
+            ...modelFilters(['foaf:Person']),
         });
 
-        expect(SolidClientMock.getResources).toHaveBeenCalledWith(containerUrl, []);
+        // Assert
+        expect(Object.keys(documents)).toHaveLength(documentsCount);
+
+        Arr.zip(urls, names).map(([url, name]) => {
+            expect(documents[url]).toEqualJsonLD(stubPersonJsonLD(url, name));
+        });
+
+        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, false);
     });
 
-    it('gets many resources using cache', async () => {
+    it('gets many documents using cache', async () => {
+        // Arrange
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const resourcesCount = 5;
-        const cachedResourcesCount = 5;
+        const documentsCount = 5;
+        const cachedDocumentsCount = 5;
         const urls: string[] = [];
         const names: string[] = [];
 
-        engine.config.globbingBatchSize = null;
-        engine.config.useCache = true;
+        (engine as any).config.globbingBatchSize = null;
+        (engine as any).config.useCache = true;
 
-        await Promise.all(Arr.range(resourcesCount).map(async i => {
-            const url = Url.resolve(containerUrl, `resource-${i}`);
+        await Promise.all(Arr.range(documentsCount).map(async i => {
+            const url = Url.resolve(containerUrl, `document-${i}`);
             const name = Faker.name.firstName();
 
             urls.push(url);
             names.push(name);
 
-            await SolidClientMock.createResource(containerUrl, url, [
-                ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-                ResourceProperty.type('http://xmlns.com/foaf/0.1/Person'),
-                ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', name),
+            await SolidClientMock.createDocument(containerUrl, url, [
+                RDFResourceProperty.type(url, IRI('foaf:Person')),
+                RDFResourceProperty.literal(url, IRI('foaf:name'), name),
             ]);
         }));
 
-        Arr.range(cachedResourcesCount).forEach(i => {
-            const url = Url.resolve(containerUrl, `cached-resource-${i}`);
+        await Promise.all(Arr.range(cachedDocumentsCount).map(async i => {
+            const url = Url.resolve(containerUrl, `cached-document-${i}`);
             const name = Faker.name.firstName();
 
             urls.push(url);
             names.push(name);
-            engine.cache.add({ ...stubPersonJsonLD(url, name), __embedded: {} });
+
+            await SolidClientMock.createDocument(containerUrl, url, [
+                RDFResourceProperty.type(url, IRI('foaf:Person')),
+                RDFResourceProperty.literal(url, IRI('foaf:name'), name),
+            ]);
+
+            await engine.readOne(containerUrl, url);
+        }));
+
+        (SolidClientMock.getDocument as any).mockClear();
+
+        // Act
+        const documents = await engine.readMany(containerUrl, {
+            $in: urls,
+            ...modelFilters(['foaf:Person']),
         });
 
-        const documents = await engine.readMany(containerUrl, { $in: urls });
-
-        expect(Object.keys(documents)).toHaveLength(resourcesCount + cachedResourcesCount);
+        // Assert
+        expect(Object.keys(documents)).toHaveLength(urls.length);
 
         Arr.zip(urls, names).map(([url, name]) => {
-            expect(withoutEmbeddedResources(documents[url])).toEqual(stubPersonJsonLD(url, name));
+            expect(documents[url]).toEqualJsonLD(stubPersonJsonLD(url, name));
         });
 
-        urls.slice(0, resourcesCount).map(url => expect(SolidClientMock.getResource).toHaveBeenCalledWith(url));
-        urls.slice(resourcesCount).map(url => expect(SolidClientMock.getResource).not.toHaveBeenCalledWith(url));
+        urls.slice(0, documentsCount).map(url => expect(SolidClientMock.getDocument).toHaveBeenCalledWith(url));
+        urls.slice(documentsCount).map(url => expect(SolidClientMock.getDocument).not.toHaveBeenCalledWith(url));
     });
 
-    it('updates resources updated attributes', async () => {
-        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
-        const name = Faker.random.word();
+    it('gets documents from cache using containers modified info', async () => {
+        // Arrange
+        const parentUrl = Url.resolveDirectory(Faker.internet.url())
+        const containerUrl = Url.resolveDirectory(parentUrl, Faker.random.uuid());
+        const modifiedDocumentUrl = Url.resolve(containerUrl, 'modified');
+        const modifiedDocumentName = Faker.name.firstName();
+        const sameDocumentUrl = Url.resolve(containerUrl, 'same');
+        const sameDocumentName = Faker.name.firstName();
+        const now = new Date();
+        const later = new Date(Date.now() + 1000);
 
-        await SolidClientMock.createResource(parentUrl, resourceUrl);
+        (engine as any).config.globbingBatchSize = null;
+        (engine as any).config.useCache = true;
 
-        await engine.update(
-            parentUrl,
-            resourceUrl,
-            { 'http://xmlns.com/foaf/0.1/name': name },
-            [],
+        // Arrange - create initial documents and populate cache
+        await SolidClientMock.createDocument(parentUrl, containerUrl, [
+            RDFResourceProperty.type(containerUrl, IRI('ldp:Container')),
+            RDFResourceProperty.reference(containerUrl, IRI('ldp:contains'), modifiedDocumentUrl),
+            RDFResourceProperty.literal(modifiedDocumentUrl, IRI('purl:modified'), now),
+            RDFResourceProperty.reference(containerUrl, IRI('ldp:contains'), sameDocumentUrl),
+            RDFResourceProperty.literal(sameDocumentUrl, IRI('purl:modified'), now),
+        ]);
+
+        await SolidClientMock.createDocument(containerUrl, modifiedDocumentUrl, [
+            RDFResourceProperty.type(modifiedDocumentUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(modifiedDocumentUrl, IRI('foaf:name'), Faker.lorem.word()),
+        ]);
+
+        await SolidClientMock.createDocument(containerUrl, sameDocumentUrl, [
+            RDFResourceProperty.type(sameDocumentUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(sameDocumentUrl, IRI('foaf:name'), sameDocumentName),
+        ]);
+
+        await engine.readOne(parentUrl, containerUrl);
+        await engine.readMany(
+            containerUrl,
+            {
+                $in: [modifiedDocumentUrl, sameDocumentUrl],
+                ...modelFilters(['foaf:Person']),
+            },
         );
 
-        expect(SolidClientMock.updateResource).toHaveBeenCalledWith(
-            resourceUrl,
+        // Arrange - update documents
+        await SolidClientMock.deleteDocument(containerUrl);
+        await SolidClientMock.deleteDocument(modifiedDocumentUrl);
+
+        await SolidClientMock.createDocument(parentUrl, containerUrl, [
+            RDFResourceProperty.type(containerUrl, IRI('ldp:Container')),
+            RDFResourceProperty.reference(containerUrl, IRI('ldp:contains'), modifiedDocumentUrl),
+            RDFResourceProperty.literal(modifiedDocumentUrl, IRI('purl:modified'), later),
+            RDFResourceProperty.reference(containerUrl, IRI('ldp:contains'), sameDocumentUrl),
+            RDFResourceProperty.literal(sameDocumentUrl, IRI('purl:modified'), now),
+        ]);
+
+        await SolidClientMock.createDocument(containerUrl, modifiedDocumentUrl, [
+            RDFResourceProperty.type(modifiedDocumentUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(modifiedDocumentUrl, IRI('foaf:name'), modifiedDocumentName),
+        ]);
+
+        await engine.readOne(parentUrl, containerUrl);
+
+        (SolidClientMock.getDocument as any).mockClear();
+
+        // Act
+        const documents = await engine.readMany(
+            containerUrl,
+            {
+                $in: [modifiedDocumentUrl, sameDocumentUrl],
+                ...modelFilters(['foaf:Person']),
+            },
+        );
+
+        // Assert
+        expect(Object.keys(documents)).toHaveLength(2);
+
+        await expect(documents[modifiedDocumentUrl]).toEqualJsonLD({
+            '@graph': [{
+                '@id': modifiedDocumentUrl,
+                '@type': IRI('foaf:Person'),
+                [IRI('foaf:name')]: modifiedDocumentName,
+            }],
+        });
+
+        await expect(documents[sameDocumentUrl]).toEqualJsonLD({
+            '@graph': [{
+                '@id': sameDocumentUrl,
+                '@type': IRI('foaf:Person'),
+                [IRI('foaf:name')]: sameDocumentName,
+            }],
+        });
+
+        expect(SolidClientMock.getDocument).toHaveBeenCalledTimes(1);
+        expect(SolidClientMock.getDocument).toHaveBeenCalledWith(modifiedDocumentUrl);
+    });
+
+    it('updates document updated attributes', async () => {
+        // Arrange
+        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const name = Faker.random.word();
+
+        await SolidClientMock.createDocument(parentUrl, documentUrl);
+
+        // Act
+        await engine.update(
+            parentUrl,
+            documentUrl,
+            {
+                '@graph': {
+                    $updateItems: [{
+                        $where: {
+                            '@id': documentUrl,
+                        },
+                        $update: {
+                            [IRI('foaf:name')]: name,
+                        },
+                    }],
+                },
+            },
+        );
+
+        // Assert
+        expect(SolidClientMock.updateDocument).toHaveBeenCalledWith(
+            documentUrl,
             [
-                ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', name),
+                RDFResourceProperty.literal(documentUrl, IRI('foaf:name'), name),
             ],
             [],
         );
     });
 
-    it('updates resources removed attributes', async () => {
+    it('updates document removed attributes', async () => {
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
 
-        await SolidClientMock.createResource(parentUrl, resourceUrl);
+        await SolidClientMock.createDocument(parentUrl, documentUrl);
 
         await engine.update(
             parentUrl,
-            resourceUrl,
-            {},
-            ['http://xmlns.com/foaf/0.1/name'],
+            documentUrl,
+            {
+                '@graph': {
+                    $updateItems: [{
+                        $where: {
+                            '@id': documentUrl,
+                        },
+                        $update: {
+                            [IRI('foaf:name')]: { $unset: true },
+                        },
+                    }],
+                },
+            },
         );
 
-        expect(SolidClientMock.updateResource).toHaveBeenCalledWith(
-            resourceUrl,
+        expect(SolidClientMock.updateDocument).toHaveBeenCalledWith(
+            documentUrl,
             [],
-            ['http://xmlns.com/foaf/0.1/name'],
+            [[documentUrl, IRI('foaf:name')]],
         );
     });
 
-    it("fails updating when resource doesn't exist", async () => {
-        const resourceUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+    it("fails updating when document doesn't exist", async () => {
+        const documentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
 
-        await expect(engine.readOne(Url.parentDirectory(resourceUrl), resourceUrl))
+        await expect(engine.readOne(Url.parentDirectory(documentUrl), documentUrl))
             .rejects
             .toBeInstanceOf(DocumentNotFound);
     });
 
+    it('fails when attributes are not a JSON-LD graph', async () => {
+        await expect(engine.create('', {}, '')).rejects.toBeInstanceOf(SoukaiError);
+        await expect(engine.update('', '', {})).rejects.toBeInstanceOf(SoukaiError);
+    });
+
 });
 
-function withoutEmbeddedResources(document: EngineAttributes): EngineAttributes {
-   return SolidEngine.decantEmbeddedDocuments(document)[0];
+function modelFilters(types: string[], extraFilters: object = {}): EngineFilters {
+    const expandedTypes = types.map(type => IRI(type));
+
+    return {
+        '@graph': {
+            $contains: {
+                '@type': {
+                    $or: [
+                        { $contains: types },
+                        { $contains: expandedTypes },
+                        ...(
+                            types.length === 1
+                                ? [
+                                    { $eq: types[0] },
+                                    { $eq: expandedTypes[0] },
+                                ]
+                                : []
+                        ),
+                    ],
+                },
+                ...extraFilters,
+            },
+        },
+    };
 }

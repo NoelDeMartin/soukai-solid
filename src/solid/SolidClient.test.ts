@@ -3,11 +3,14 @@ import Faker from 'faker';
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 
-import { SolidClient, ResourceProperty, Resource } from '@/solid';
+import { IRI } from '@/solid/utils/RDF';
+import RDFDocument from '@/solid/RDFDocument';
+import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
+import SolidClient from '@/solid/SolidClient';
 
 import StubFetcher from '@tests/stubs/StubFetcher';
 
-describe('Solid', () => {
+describe('SolidClient', () => {
 
     let client: SolidClient;
 
@@ -16,9 +19,10 @@ describe('Solid', () => {
         client = new SolidClient(StubFetcher.fetch.bind(StubFetcher));
     });
 
-    it('creates resources', async () => {
+    it('creates documents', async () => {
+        // Arrange
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
         const name = Faker.random.word();
         const firstType = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
         const secondType = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
@@ -26,66 +30,71 @@ describe('Solid', () => {
         StubFetcher.addFetchNotFoundResponse();
         StubFetcher.addFetchResponse();
 
-        const resource = await client.createResource(
+        // Act
+        const document = await client.createDocument(
             parentUrl,
-            resourceUrl,
+            documentUrl,
             [
-                ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', name),
-                ResourceProperty.type(firstType),
-                ResourceProperty.type(secondType),
-                ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
+                RDFResourceProperty.literal(documentUrl, IRI('foaf:name'), name),
+                RDFResourceProperty.type(documentUrl, firstType),
+                RDFResourceProperty.type(documentUrl, secondType),
             ],
         );
 
-        expect(resource.url).toEqual(resourceUrl);
-        expect(resource.name).toEqual(name);
-        expect(resource.types).toEqual([
+        // Assert
+        expect(document.url).toEqual(documentUrl);
+        expect(document.rootResource.url).toEqual(documentUrl);
+        expect(document.rootResource.name).toEqual(name);
+        expect(document.rootResource.types).toEqual([
             firstType,
             secondType,
-            'http://www.w3.org/ns/ldp#Resource',
         ]);
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
-            resourceUrl,
+            documentUrl,
             {
                 method: 'PUT',
                 headers: { 'Content-Type': 'text/turtle' },
-
-                // TODO test body using argument matcher
-                body: expect.anything(),
+                body: [
+                    `<${documentUrl}> <http://xmlns.com/foaf/0.1/name> "${name}" .`,
+                    `<${documentUrl}> a <${firstType}> .`,
+                    `<${documentUrl}> a <${secondType}> .`,
+                ].join('\n'),
             },
         );
     });
 
-    it('creates resources without minted url', async () => {
+    it('creates documents without minted url', async () => {
+        // Arrange
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const resourceUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
 
-        StubFetcher.addFetchResponse('', { Location: resourceUrl });
+        StubFetcher.addFetchResponse('', { Location: documentUrl });
 
-        const resource = await client.createResource(
+        // Act
+        const document = await client.createDocument(
             parentUrl,
             null,
             [
-                ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
+                RDFResourceProperty.type(null, IRI('foaf:Person')),
             ],
         );
 
-        expect(resource.url).toEqual(resourceUrl);
+        // Assert
+        expect(document.url).toEqual(documentUrl);
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
             parentUrl,
             {
                 method: 'POST',
                 headers: { 'Content-Type': 'text/turtle' },
-
-                // TODO test body using argument matcher
-                body: expect.anything(),
+                body: '<> a <http://xmlns.com/foaf/0.1/Person> .',
             },
         );
     });
 
-    it('creates containers', async () => {
+    it('creates container documents', async () => {
+        // Arrange
         const name = Faker.random.word();
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const containerUrl = Url.resolveDirectory(parentUrl, Str.slug(name));
@@ -93,22 +102,21 @@ describe('Solid', () => {
         StubFetcher.addFetchNotFoundResponse();
         StubFetcher.addFetchResponse();
 
-        const resource = await client.createResource(
+        // Act
+        const document = await client.createDocument(
             parentUrl,
             containerUrl,
             [
-                ResourceProperty.literal('http://xmlns.com/foaf/0.1/name', name),
-                ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-                ResourceProperty.type('http://www.w3.org/ns/ldp#Container'),
+                RDFResourceProperty.literal(containerUrl, IRI('foaf:name'), name),
+                RDFResourceProperty.type(containerUrl, IRI('ldp:Container')),
             ],
         );
 
-        expect(resource.url).toEqual(containerUrl);
-        expect(resource.name).toEqual(name);
-        expect(resource.types).toEqual([
-            'http://www.w3.org/ns/ldp#Resource',
-            'http://www.w3.org/ns/ldp#Container',
-        ]);
+        // Assert
+        expect(document.url).toEqual(containerUrl);
+        expect(document.rootResource.url).toEqual(containerUrl);
+        expect(document.rootResource.name).toEqual(name);
+        expect(document.rootResource.types).toEqual([IRI('ldp:Container')]);
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
             parentUrl,
@@ -119,29 +127,33 @@ describe('Solid', () => {
                     'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                     'Slug': Str.slug(name),
                 },
-
-                // TODO test body using argument matcher
-                body: expect.anything(),
+                body: [
+                    `<${containerUrl}> <http://xmlns.com/foaf/0.1/name> "${name}" .`,
+                    `<${containerUrl}> a <http://www.w3.org/ns/ldp#Container> .`,
+                ].join('\n'),
             },
         );
     });
 
-    it('creates containers without minted url', async () => {
+    it('creates container documents without minted url', async () => {
+        // Arrange
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const containerUrl = Url.resolveDirectory(parentUrl, Str.slug(name));
 
         StubFetcher.addFetchResponse('', { Location: containerUrl });
 
-        const resource = await client.createResource(
+        // Act
+        const document = await client.createDocument(
             parentUrl,
             null,
             [
-                ResourceProperty.type('http://www.w3.org/ns/ldp#Resource'),
-                ResourceProperty.type('http://www.w3.org/ns/ldp#Container'),
+                RDFResourceProperty.type(null, IRI('ldp:Container')),
             ],
         );
 
-        expect(resource.url).toEqual(containerUrl);
+        // Assert
+        expect(document.url).toEqual(containerUrl);
+        expect(document.rootResource.url).toEqual(containerUrl);
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
             parentUrl,
@@ -151,387 +163,435 @@ describe('Solid', () => {
                     'Content-Type': 'text/turtle',
                     'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                 },
-
-                // TODO test body using argument matcher
-                body: expect.anything(),
+                body: [
+                    `<> a <http://www.w3.org/ns/ldp#Container> .`,
+                ].join('\n'),
             },
         );
     });
 
-    it('gets one resource', async () => {
+    it('gets one document', async () => {
+        // Arrange
         const url = Faker.internet.url();
-        const data = `
-            <${url}>
-                a <http://www.w3.org/ns/ldp#Resource> ;
-                <http://xmlns.com/foaf/0.1/name> "Foo Bar" .
-        `;
+        const data = `<${url}> <http://xmlns.com/foaf/0.1/name> "Foo Bar" .`;
 
         StubFetcher.addFetchResponse(data);
 
-        const resource = await client.getResource(url) as Resource;
+        // Act
+        const document = await client.getDocument(url) as RDFDocument;
 
-        expect(resource).not.toBeNull();
-        expect(resource.name).toEqual('Foo Bar');
+        // Assert
+        expect(document).not.toBeNull();
+        expect(document.rootResource.name).toEqual('Foo Bar');
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(url, {
             headers: { 'Accept': 'text/turtle' },
         });
     });
 
-    it('getting non-existent resource returns null', async () => {
+    it('getting non-existent document returns null', async () => {
+        // Arrange
         StubFetcher.addFetchNotFoundResponse();
 
-        const resource = await client.getResource(Faker.internet.url());
+        // Act
+        const document = await client.getDocument(Faker.internet.url());
 
-        expect(resource).toBeNull();
+        // Assert
+        expect(document).toBeNull();
     });
 
-    it('gets resources using a trailing slash', async () => {
+    it('gets documents using a trailing slash', async () => {
+        // Arrange
         const containerUrl = Url.resolveDirectory(
             Faker.internet.url(),
             Str.slug(Faker.random.word()),
         );
         const data = `
             <foobar>
-                a <http://www.w3.org/ns/ldp#Resource> ;
+                a <http://xmlns.com/foaf/0.1/Person> ;
                 <http://xmlns.com/foaf/0.1/name> "Foo Bar" .
         `;
 
         StubFetcher.addFetchResponse(data);
 
-        const resources = await client.getResources(containerUrl);
+        // Act
+        const documents = await client.getDocuments(containerUrl);
 
-        expect(resources).toHaveLength(1);
+        // Assert
+        expect(documents).toHaveLength(1);
 
-        expect(resources[0].url).toEqual(containerUrl + 'foobar');
-        expect(resources[0].name).toEqual('Foo Bar');
-        expect(resources[0].types).toEqual(['http://www.w3.org/ns/ldp#Resource']);
+        expect(documents[0].url).toEqual(containerUrl + 'foobar');
+        expect(documents[0].rootResource.url).toEqual(containerUrl + 'foobar');
+        expect(documents[0].rootResource.name).toEqual('Foo Bar');
+        expect(documents[0].rootResource.types).toEqual([IRI('foaf:Person')]);
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl + '*', {
             headers: { 'Accept': 'text/turtle' },
         });
     });
 
-    it('gets embedded resources', async () => {
-        const url = Faker.internet.url();
-        const embeddedUrl = url + '#' + Faker.random.uuid();
+    it('getting documents with globbing does not mix document properties', async () => {
+        // Arrange
+        const containerUrl = Faker.internet.url();
         const data = `
-            <${url}>
-                a <http://www.w3.org/ns/ldp#Resource> ;
+            <${containerUrl}/foo>
+                a <http://xmlns.com/foaf/0.1/Person> ;
                 <http://xmlns.com/foaf/0.1/name> "Foo" .
-            <${embeddedUrl}>
+            <${containerUrl}/bar>
+                a <http://xmlns.com/foaf/0.1/Person> ;
                 <http://xmlns.com/foaf/0.1/name> "Bar" .
+            <${containerUrl}/bar#baz>
+                a <http://xmlns.com/foaf/0.1/Person> ;
+                <http://xmlns.com/foaf/0.1/name> "Baz" .
         `;
 
         StubFetcher.addFetchResponse(data);
 
-        const resource = await client.getResource(embeddedUrl) as Resource;
+        // Act
+        const documents = await client.getDocuments(containerUrl);
 
-        expect(resource).not.toBeNull();
-        expect(resource.name).toEqual('Bar');
+        // Assert
+        expect(documents).toHaveLength(2);
 
-        expect(StubFetcher.fetch).toHaveBeenCalledWith(embeddedUrl, {
-            headers: { 'Accept': 'text/turtle' },
-        });
-    });
-
-    it('getting resources ignores all documents that are not resources', async () => {
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const data = `
-            <foo> <http://xmlns.com/foaf/0.1/name> "Foo" .
-            <bar> a <http://www.w3.org/ns/ldp#Resource> .
-        `;
-
-        StubFetcher.addFetchResponse(data);
-
-        const resources = await client.getResources(containerUrl);
-
-        expect(resources).toHaveLength(1);
-        expect(resources[0].url).toEqual(Url.resolve(containerUrl, 'bar'));
-    });
-
-    it('getting resources they only contain their own properties', async () => {
-        const data = `
-            <foo>
-                a <http://www.w3.org/ns/ldp#Resource> ;
-                <http://xmlns.com/foaf/0.1/name> "Foo" .
-            <bar>
-                a <http://www.w3.org/ns/ldp#Resource> ;
-                <http://xmlns.com/foaf/0.1/name> "Bar" .
-        `;
-
-        StubFetcher.addFetchResponse(data);
-
-        const resources = await client.getResources(Faker.internet.url());
-
-        expect(resources).toHaveLength(2);
-
-        const fooProperties = resources[0].getProperties();
+        const fooProperties = documents[0].properties;
         expect(Object.values(fooProperties)).toHaveLength(2);
-        expect(fooProperties.find(property => property.isType('http://www.w3.org/ns/ldp#Resource')))
+        expect(
+            fooProperties.find(
+                property =>
+                    property.type === RDFResourcePropertyType.Type &&
+                    property.value === IRI('foaf:Person'),
+            ),
+        )
             .not.toBeUndefined();
-        expect(fooProperties.find(property => (
-            property.getPredicateIRI() === 'http://xmlns.com/foaf/0.1/name') &&
-            property.object === 'Foo'
-        ))
+        expect(
+            fooProperties.find(
+                property =>
+                    property.type === RDFResourcePropertyType.Literal &&
+                    property.name === IRI('foaf:name') &&
+                    property.value === 'Foo',
+            ),
+        )
             .not.toBeUndefined();
 
-        const barProperties = resources[1].getProperties();
-        expect(Object.values(barProperties)).toHaveLength(2);
-        expect(barProperties.find(property => property.isType('http://www.w3.org/ns/ldp#Resource')))
+        expect(documents[1].resources).toHaveLength(2);
+        expect(documents[1].rootResource.url).toEqual(`${containerUrl}/bar`);
+        expect(documents[1].resources[1].url).toEqual(`${containerUrl}/bar#baz`);
+
+        const barProperties = documents[1].properties;
+        expect(Object.values(barProperties)).toHaveLength(4);
+        expect(
+            barProperties.find(
+                property =>
+                    property.type === RDFResourcePropertyType.Type &&
+                    property.value === IRI('foaf:Person'),
+            ),
+        )
             .not.toBeUndefined();
-        expect(barProperties.find(property => (
-            property.getPredicateIRI() === 'http://xmlns.com/foaf/0.1/name') &&
-            property.object === 'Bar'
-        ))
+        expect(
+            barProperties.find(
+                property =>
+                    property.resourceUrl === `${containerUrl}/bar` &&
+                    property.type === RDFResourcePropertyType.Literal &&
+                    property.name === IRI('foaf:name') &&
+                    property.value === 'Bar',
+            ),
+        )
+            .not.toBeUndefined();
+        expect(
+            barProperties.find(
+                property =>
+                    property.resourceUrl === `${containerUrl}/bar#baz` &&
+                    property.type === RDFResourcePropertyType.Literal &&
+                    property.name === IRI('foaf:name') &&
+                    property.value === 'Baz',
+            ),
+        )
             .not.toBeUndefined();
     });
 
-    it('gets resources filtered by type', async () => {
-        const firstType = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const secondType = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
-
-        const data = `
-            <foo>
-                a <http://www.w3.org/ns/ldp#Resource> ;
-                a <${encodeURI(firstType)}> ;
-                <http://xmlns.com/foaf/0.1/name> "Foo" .
-            <bar>
-                a <http://www.w3.org/ns/ldp#Resource> ;
-                a <${encodeURI(secondType)}> ;
-                <http://xmlns.com/foaf/0.1/name> "Bar" .
-        `;
-
-        StubFetcher.addFetchResponse(data);
-
-        const resources = await client.getResources(Faker.internet.url(), [firstType]);
-
-        expect(resources).toHaveLength(1);
-        expect(resources[0].name).toEqual('Foo');
-    });
-
-    it('getting container resources does not use globbing', async () => {
+    it('getting container documents does not use globbing', async () => {
+        // Arrange
         const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const type = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
 
         StubFetcher.addFetchResponse(`
             <>
-                <http://www.w3.org/ns/ldp#contains> <foo>, <bar>, <baz> .
+                <http://www.w3.org/ns/ldp#contains> <foo>, <bar> .
             <foo>
-                a <http://www.w3.org/ns/ldp#Resource>, <http://www.w3.org/ns/ldp#Container> .
+                a <http://www.w3.org/ns/ldp#Container> .
             <bar>
-                a <http://www.w3.org/ns/ldp#Resource>, <http://www.w3.org/ns/ldp#Container> .
-            <baz>
-                a <http://www.w3.org/ns/ldp#Resource> .
+                a <http://www.w3.org/ns/ldp#Container> .
         `);
         StubFetcher.addFetchResponse(`
             <${containerUrl}foo>
-                a <http://www.w3.org/ns/ldp#Resource>, <http://www.w3.org/ns/ldp#Container>, <${type}> ;
+                a <http://www.w3.org/ns/ldp#Container>, <${type}> ;
                 <http://xmlns.com/foaf/0.1/name> "Foo" .
         `);
         StubFetcher.addFetchResponse(`
             <${containerUrl}bar>
-                a <http://www.w3.org/ns/ldp#Resource>, <http://www.w3.org/ns/ldp#Container> ;
+                a <http://www.w3.org/ns/ldp#Container> ;
                 <http://xmlns.com/foaf/0.1/name> "Bar" .
         `);
 
-        const resources = await client.getResources(containerUrl, [
-            'http://www.w3.org/ns/ldp#Container',
+        // Act
+        const documents = await client.getDocuments(containerUrl, true);
+
+        // Assert
+        expect(documents).toHaveLength(2);
+
+        expect(documents[0].url).toEqual(`${containerUrl}foo`);
+        expect(documents[0].rootResource.url).toEqual(`${containerUrl}foo`);
+        expect(documents[0].rootResource.name).toEqual('Foo');
+        expect(documents[0].rootResource.types).toEqual([
+            IRI('ldp:Container'),
             type,
         ]);
 
-        expect(resources).toHaveLength(1);
-
-        expect(resources[0].url).toEqual(containerUrl + 'foo');
-        expect(resources[0].name).toEqual('Foo');
-        expect(resources[0].types).toEqual([
-            'http://www.w3.org/ns/ldp#Resource',
-            'http://www.w3.org/ns/ldp#Container',
-            type,
-        ]);
+        expect(documents[1].url).toEqual(`${containerUrl}bar`);
+        expect(documents[1].rootResource.url).toEqual(`${containerUrl}bar`);
+        expect(documents[1].rootResource.name).toEqual('Bar');
+        expect(documents[1].rootResource.types).toEqual([IRI('ldp:Container')]);
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl, {
             headers: { 'Accept': 'text/turtle' },
         });
-        expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl + 'foo', {
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(`${containerUrl}foo`, {
             headers: { 'Accept': 'text/turtle' },
         });
-        expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl + 'bar', {
-            headers: { 'Accept': 'text/turtle' },
-        });
-        expect(StubFetcher.fetch).not.toHaveBeenCalledWith(containerUrl + 'baz', {
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(`${containerUrl}bar`, {
             headers: { 'Accept': 'text/turtle' },
         });
     });
 
-    it('updates resources', async () => {
+    it('updates documents', async () => {
+        // Arrange
         const url = Faker.internet.url();
         const data = `
             <${url}>
-                a <http://www.w3.org/ns/ldp#Resource> ;
-                a <Type> ;
-                <literalName> "" ;
-                <http://xmlns.com/foaf/0.1/deletedOne> "" ;
-                <http://xmlns.com/foaf/0.1/deletedTwo> "" .
+                <http://xmlns.com/foaf/0.1/name> "Johnathan" ;
+                <http://xmlns.com/foaf/0.1/surname> "Doe" ;
+                <http://xmlns.com/foaf/0.1/givenName> "John" .
         `;
         const updatedProperties = [
-            ResourceProperty.type('Type'),
-            ResourceProperty.literal('literalName', 'literalValue'),
+            RDFResourceProperty.literal(url, 'http://xmlns.com/foaf/0.1/name', 'John Doe'),
         ];
         const deletedProperties = [
-            'deletedOne',
-            'deletedTwo',
-        ];
+            [url, 'http://xmlns.com/foaf/0.1/surname'],
+            [url, 'http://xmlns.com/foaf/0.1/givenName'],
+        ] as [string, string][];
 
         StubFetcher.addFetchResponse(data);
         StubFetcher.addFetchResponse();
 
-        await client.updateResource(url, updatedProperties, deletedProperties);
+        // Act
+        await client.updateDocument(url, updatedProperties, deletedProperties);
 
+        // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
             url,
             {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'text/n3' },
-
-                // TODO test body using argument matcher
                 body: expect.anything(),
             }
         );
+
+        const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
+
+        await expect(body).toEqualTurtle(`
+            @prefix solid: <http://www.w3.org/ns/solid/terms#> .
+            <> solid:patches <${url}> ;
+                solid:inserts {
+                    <${url}> <http://xmlns.com/foaf/0.1/name> "John Doe" .
+                } ;
+                solid:where {
+                    <${url}> <http://xmlns.com/foaf/0.1/surname> ?d0 .
+                    <${url}> <http://xmlns.com/foaf/0.1/givenName> ?d1 .
+                    <${url}> <http://xmlns.com/foaf/0.1/name> ?d2 .
+                } ;
+                solid:deletes {
+                    <${url}> <http://xmlns.com/foaf/0.1/surname> ?d0 .
+                    <${url}> <http://xmlns.com/foaf/0.1/givenName> ?d1 .
+                    <${url}> <http://xmlns.com/foaf/0.1/name> ?d2 .
+                } .
+        `, { format: 'text/n3' });
     });
 
-    it.skip('updates embedded resources', () => {
-        // TODO
-    });
-
-    it('updates container resources', async () => {
+    it('updates container documents', async () => {
+        // Arrange
         const url = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
         const data = `
             <${url}>
-                a <http://www.w3.org/ns/ldp#Resource> ;
                 a <http://www.w3.org/ns/ldp#Container> ;
-                a <Type> ;
-                <literalName> "" ;
-                <http://xmlns.com/foaf/0.1/deletedOne> "" ;
-                <http://xmlns.com/foaf/0.1/deletedTwo> "" .
+                <http://xmlns.com/foaf/0.1/name> "Jonathan" ;
+                <http://xmlns.com/foaf/0.1/surname> "Doe" ;
+                <http://xmlns.com/foaf/0.1/givenName> "John" .
         `;
         const updatedProperties = [
-            ResourceProperty.type('Type'),
-            ResourceProperty.literal('literalName', 'literalValue'),
+            RDFResourceProperty.literal(url, 'http://xmlns.com/foaf/0.1/name', 'John Doe'),
         ];
         const deletedProperties = [
-            'deletedOne',
-            'deletedTwo',
-        ];
+            [url, 'http://xmlns.com/foaf/0.1/surname'],
+            [url, 'http://xmlns.com/foaf/0.1/givenName'],
+        ] as [string, string][];
 
         StubFetcher.addFetchResponse(data);
         StubFetcher.addFetchResponse('', {}, 201);
 
-        await client.updateResource(url, updatedProperties, deletedProperties);
+        // Act
+        await client.updateDocument(url, updatedProperties, deletedProperties);
 
+        // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
             url + '.meta',
             {
                 method: 'PUT',
                 headers: { 'Content-Type': 'text/turtle' },
-
-                // TODO test body using argument matcher
                 body: expect.anything(),
             }
         );
+
+        const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
+
+        await expect(body).toEqualTurtle(`
+            <${url}>
+                a <http://www.w3.org/ns/ldp#Container> ;
+                <http://xmlns.com/foaf/0.1/name> "John Doe" .
+        `);
     });
 
     it('adds new properties when updating', async () => {
+        // Arrange
         const url = Faker.internet.url();
-        const data = `<${url}> a <http://www.w3.org/ns/ldp#Resource> .`;
+        const data = `<${url}> a <http://xmlns.com/foaf/0.1/Person> .`;
         const updatedProperties = [
-            ResourceProperty.literal('literalName', 'literalValue'),
+            RDFResourceProperty.literal(url, 'http://xmlns.com/foaf/0.1/name', 'John Doe'),
         ];
 
         StubFetcher.addFetchResponse(data);
         StubFetcher.addFetchResponse();
 
-        await client.updateResource(url, updatedProperties, []);
+        // Act
+        await client.updateDocument(url, updatedProperties, []);
 
+        // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
             url,
             {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'text/n3' },
-
-                // TODO test body using argument matcher
                 body: expect.anything(),
             }
         );
+
+        const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
+
+        await expect(body).toEqualTurtle(`
+            @prefix solid: <http://www.w3.org/ns/solid/terms#> .
+            <> solid:patches <${url}> ;
+                solid:inserts {
+                    <${url}> <http://xmlns.com/foaf/0.1/name> "John Doe" .
+                } .
+        `, { format: 'text/n3' });
     });
 
-    it('fails updating non-existent resources', async () => {
+    it('fails updating non-existent documents', async () => {
+        // Arrange
         const url = Faker.internet.url();
-        const data = `<${url}> a <http://www.w3.org/ns/ldp#Resource> .`;
+        const data = `<${url}> a <http://xmlns.com/foaf/0.1/Person> .`;
 
         StubFetcher.addFetchResponse(data);
         StubFetcher.addFetchNotFoundResponse();
 
-        await expect(client.updateResource(url, [], ['foobar']))
+        // Act & Assert
+        await expect(client.updateDocument(url, [], [[url, 'foobar']]))
             .rejects
-            .toThrowError(`Error updating resource at ${url}, returned status code 404`);
+            .toThrowError(`Error updating document at ${url}, returned status code 404`);
     });
 
     it('ignores empty updates', async () => {
-        await client.updateResource(Faker.internet.url(), [], []);
+        await client.updateDocument(Faker.internet.url(), [], []);
 
         expect(StubFetcher.fetch).not.toHaveBeenCalled();
     });
 
-    it('deletes non-container resources', async () => {
+    it('deletes non-container documents', async () => {
+        // Arrange
         const url = Faker.internet.url();
         const data = `
             <${url}>
-                a <http://www.w3.org/ns/ldp#Resource> ;
+                a <http://xmlns.com/foaf/0.1/Person> ;
                 <http://xmlns.com/foaf/0.1/name> "Foo Bar" .
         `;
 
         StubFetcher.addFetchResponse(data);
         StubFetcher.addFetchResponse();
 
-        await client.deleteResource(url);
+        // Act
+        await client.deleteDocument(url);
 
+        // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledWith(url, { method: 'DELETE' });
     });
 
-    it.skip('deletes embedded resources', () => {
-        // TODO
-    });
-
-    it('deletes container resources', async () => {
-        const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const resourceUrl = Url.resolve(containerUrl, Faker.random.uuid());
+    it('deletes container documents', async () => {
+        // Arrange
+        const containerUrl = 'http://example.com/container/'; // Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const documentUrl = 'http://example.com/container/document'; // Url.resolve(containerUrl, Faker.random.uuid());
         const containerData = `
             <${containerUrl}>
-                a <http://www.w3.org/ns/ldp#Resource> ;
-                a <http://www.w3.org/ns/ldp#Container> .
+                a <http://www.w3.org/ns/ldp#Container> ;
+                <http://www.w3.org/ns/ldp#contains> <${documentUrl}> .
         `;
-        const resourceData = `
-            <${resourceUrl}>
-                a <http://www.w3.org/ns/ldp#Resource> .
+        const documentData = `
+            <${documentUrl}>
+                a <http://xmlns.com/foaf/0.1/Person> .
         `;
 
         StubFetcher.addFetchResponse(containerData);
         StubFetcher.addFetchResponse(containerData); // TODO this one is technically not necessary
-        StubFetcher.addFetchResponse(resourceData);
-        StubFetcher.addFetchResponse(resourceData); // TODO this one is technically not necessary
+        StubFetcher.addFetchResponse(documentData);
+        StubFetcher.addFetchResponse(documentData); // TODO this one is technically not necessary
         StubFetcher.addFetchResponse();
         StubFetcher.addFetchResponse();
 
-        await client.deleteResource(containerUrl);
+        // Act
+        await client.deleteDocument(containerUrl);
 
+        // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledTimes(6);
         expect(StubFetcher.fetch).toHaveBeenNthCalledWith(1, containerUrl, { headers: { 'Accept': 'text/turtle' } });
         expect(StubFetcher.fetch).toHaveBeenNthCalledWith(2, containerUrl, { headers: { 'Accept': 'text/turtle' } });
         expect(StubFetcher.fetch).toHaveBeenNthCalledWith(3, containerUrl + '*', { headers: { 'Accept': 'text/turtle' } });
-        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(4, resourceUrl, { headers: { 'Accept': 'text/turtle' } });
-        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(5, resourceUrl, { method: 'DELETE' });
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(4, documentUrl, { headers: { 'Accept': 'text/turtle' } });
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(5, documentUrl, { method: 'DELETE' });
         expect(StubFetcher.fetch).toHaveBeenNthCalledWith(6, containerUrl, { method: 'DELETE' });
+    });
+
+    it('checks if a document exists', async () => {
+        // Arrange
+        const url = Faker.internet.url();
+
+        StubFetcher.addFetchResponse(`<${url}> a <http://xmlns.com/foaf/0.1/Person> .`);
+
+        // Act
+        const exists = await client.documentExists(url);
+
+        // Assert
+        expect(exists).toBe(true);
+    });
+
+    it('checks if a document does not exist', async () => {
+        // Arrange
+        const url = Faker.internet.url();
+
+        StubFetcher.addFetchNotFoundResponse();
+
+        // Act
+        const exists = await client.documentExists(url);
+
+        // Assert
+        expect(exists).toBe(false);
     });
 
 });

@@ -2,11 +2,11 @@ import { FieldType } from 'soukai';
 
 import SolidModel from '@/models/SolidModel';
 
+import Movie from './Movie';
+
 export default class WatchAction extends SolidModel {
 
     public static timestamps = false;
-
-    public static ldpResource = false;
 
     public static rdfContexts = {
         'schema': 'https://schema.org/',
@@ -16,6 +16,11 @@ export default class WatchAction extends SolidModel {
 
     public static fields = {
         object: FieldType.Key,
+        startTime: FieldType.Date,
     };
+
+    movieRelationship() {
+        return this.belongsTo(Movie, 'object');
+    }
 
 }

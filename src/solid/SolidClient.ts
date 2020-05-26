@@ -1,5 +1,8 @@
+import { Quad } from 'rdf-js';
+
 import RDF, { IRI } from '@/solid/utils/RDF';
-import Resource, { ResourceProperty } from '@/solid/Resource';
+import RDFDocument from '@/solid/RDFDocument';
+import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 
 import Arr from '@/utils/Arr';
 import Url from '@/utils/Url';
@@ -20,25 +23,28 @@ export default class SolidClient {
         this.fetch = fetch;
     }
 
-    public async createResource(
+    public async createDocument(
         parentUrl: string,
         url: string | null = null,
-        properties: ResourceProperty[] = [],
-    ): Promise<Resource> {
+        properties: RDFResourceProperty[] = [],
+    ): Promise<RDFDocument> {
+        const ldpContainer = IRI('ldp:Container');
         const turtleData = properties
-            .map(property => property.toTurtle(url || '') + ' .')
+            .map(property => property.toTurtle() + ' .')
             .join("\n");
+        const isContainer = !!properties.find(
+            property =>
+                property.resourceUrl === url &&
+                property.type === RDFResourcePropertyType.Type &&
+                property.value === ldpContainer
+        );
 
-        if (this.containsType(properties, IRI('ldp:Container')))
-            return this.createLDPContainer(parentUrl, url, turtleData);
-
-        if (this.containsType(properties, IRI('ldp:Resource')))
-            return this.createLDPResource(parentUrl, url, turtleData);
-
-        return this.createEmbeddedResource(parentUrl, url, turtleData);
+        return isContainer
+            ? this.createContainerDocument(parentUrl, url, turtleData)
+            : this.createNonContainerDocument(parentUrl, url, turtleData);
     }
 
-    public async getResource(url: string): Promise<Resource | null> {
+    public async getDocument(url: string): Promise<RDFDocument | null> {
         const response = await this.fetch(url, {
             headers: { 'Accept': 'text/turtle' },
         });
@@ -49,25 +55,14 @@ export default class SolidClient {
 
         const data = await response.text();
 
-        return RDF.parseTurtle(url, data);
+        return RDF.parseTurtle(data, { baseUrl: url });
     }
 
-    public async getResources(containerUrl: string, types: string[] = []): Promise<Resource[]> {
+    public async getDocuments(containerUrl: string, onlyContainers: boolean = false): Promise<RDFDocument[]> {
         try {
-            const resources = await this.getResourcesFromParent(
-                containerUrl,
-                types.indexOf(IRI('ldp:Container')) !== -1,
-            );
-
-            return resources.filter(resource => {
-                for (const type of types) {
-                    if (!resource.is(type)) {
-                        return false;
-                    }
-                }
-
-                return true;
-            });
+            return onlyContainers
+                ? await this.getContainerDocuments(containerUrl)
+                : await this.getNonContainerDocumentsUsingGlobbing(containerUrl);
         } catch (e) {
             // Due to an existing bug, empty containers return 404
             // see: https://github.com/solid/node-solid-server/issues/900
@@ -77,127 +72,78 @@ export default class SolidClient {
         }
     }
 
-    public async updateResource(
+    public async updateDocument(
         url: string,
-        updatedProperties: ResourceProperty[],
-        removedProperties: string[],
+        updatedProperties: RDFResourceProperty[],
+        removedProperties: [string, string][],
     ): Promise<void> {
-        if (updatedProperties.length + removedProperties.length === 0) {
+        if (updatedProperties.length + removedProperties.length === 0)
             return;
-        }
 
-        const resource = await this.getResource(url);
+        const document = await this.getDocument(url);
 
-        if (resource === null) {
+        if (document === null)
             throw new Error(
-                `Error updating resource at ${url}, resource wasn't found`,
+                `Error updating document at ${url}, document wasn't found`,
             );
-        }
 
         // We need to remove the previous value of updated properties or else they'll be duplicated
         removedProperties.push(
             ...updatedProperties
-                .map(property => (property.predicate !== 'a') ? property.predicate.iri : null)
-                .filter(property => property !== null)
-                .filter((property: string) => resource.properties.indexOf(property) !== -1) as string[],
+                .filter(property => property.type !== RDFResourcePropertyType.Type)
+                .filter(property => document.hasProperty(property.resourceUrl, property.name))
+                .map(property => [property.resourceUrl, property.name] as [string, string]),
         );
 
-        if (resource.is(IRI('ldp:Container'))) {
-            await this.updateContainerResource(resource, updatedProperties, removedProperties);
-
-            return;
-        }
-
-        const where = removedProperties
-            .map((property, i) => `<${url}> <${property}> ?d${i} .`)
-            .join('\n');
-
-        const inserts = updatedProperties
-            .map(property => property.toTurtle(url) + ' .')
-            .join('\n');
-
-        const deletes = removedProperties
-            .map((property, i) => `<${url}> <${property}> ?d${i} .`)
-            .join('\n');
-
-        const operations = [
-            `solid:patches <${url}>`,
-            `solid:inserts { ${inserts} }`,
-            `solid:where { ${where} }`,
-            `solid:deletes { ${deletes} }`,
-        ]
-            .filter(part => part !== null)
-            .join(';');
-
-        const response = await this.fetch(
-            url,
-            {
-                method: 'PATCH',
-                body: `
-                    @prefix solid: <http://www.w3.org/ns/solid/terms#> .
-                    <> ${operations} .
-                `,
-                headers: {
-                    'Content-Type': 'text/n3',
-                },
-            },
-        );
-
-        if (response.status !== 200) {
-            throw new Error(
-                `Error updating resource at ${url}, returned status code ${response.status}`,
-            );
-        }
+        document.rootResource.isType(IRI('ldp:Container'))
+            ? await this.updateContainerDocument(document, updatedProperties, removedProperties)
+            : await this.updateNonContainerDocument(document, updatedProperties, removedProperties);
     }
 
-    public async deleteResource(url: string): Promise<void> {
-        const resource = await this.getResource(url);
+    public async deleteDocument(url: string): Promise<void> {
+        const document = await this.getDocument(url);
 
-        if (resource === null) {
+        if (document === null)
             return;
-        }
 
-        if (resource.is(IRI('ldp:Container'))) {
-            const resources = (await Promise.all([
-                this.getResources(url, [IRI('ldp:Container')]),
-                this.getResources(url),
-            ]))
-                .reduce((resources, allResources) => {
-                    allResources.push(...resources);
+        if (document.rootResource.isType(IRI('ldp:Container'))) {
+            const documents = await Promise.all([
+                this.getDocuments(url, true),
+                this.getDocuments(url),
+            ]);
 
-                    return allResources;
-                }, []);
-
-            await Promise.all(resources.map(resource => this.deleteResource(resource.url)));
+            await Promise.all(
+                Arr.flatten(documents).map(document => this.deleteDocument(document.url!)),
+            );
         }
 
         await this.fetch(url, { method: 'DELETE' });
     }
 
-    public async resourceExists(url: string): Promise<boolean> {
+    public async documentExists(url: string): Promise<boolean> {
         const response = await this.fetch(url, {
             headers: { 'Accept': 'text/turtle' },
         });
 
         if (response.status === 200) {
             const data = await response.text();
-            const resource = await RDF.parseTurtle(url, data);
+            const document = await RDF.parseTurtle(data, { baseUrl: url });
 
-            return !resource.isEmpty();
+            return !document.isEmpty();
         } else if (response.status === 404) {
             return false;
         } else {
             throw new Error(
-                `Couldn't determine if resource at ${url} exists, got ${response.status} response`
+                `Couldn't determine if document at ${url} exists, got ${response.status} response`
             );
         }
     }
 
-    private async createLDPContainer(
+    private async createContainerDocument(
         parentUrl: string,
         url: string | null,
         data: string,
-    ): Promise<Resource> {
+    ): Promise<RDFDocument> {
         if (!url) {
             const response = await this.fetch(
                 parentUrl,
@@ -211,11 +157,14 @@ export default class SolidClient {
                 },
             );
 
-            return RDF.parseTurtle(Url.resolve(parentUrl, response.headers.get('Location') || ''), data);
+            return RDF.parseTurtle(
+                data,
+                { baseUrl: Url.resolve(parentUrl, response.headers.get('Location') || '') },
+            );
         }
 
         if (!url.startsWith(parentUrl))
-            throw new Error('Explicit resource url should start with the parent url');
+            throw new Error('Explicit document url should start with the parent url');
 
         if (!url.endsWith('/'))
             throw new Error(`Container urls must end with a trailing slash, given ${url}`);
@@ -233,14 +182,14 @@ export default class SolidClient {
             },
         );
 
-        return RDF.parseTurtle(url, data);
+        return RDF.parseTurtle(data, { baseUrl: url });
     }
 
-    private async createLDPResource(
+    private async createNonContainerDocument(
         parentUrl: string,
         url: string | null,
         data: string,
-    ): Promise<Resource> {
+    ): Promise<RDFDocument> {
         if (!url) {
             const response = await this.fetch(parentUrl, {
                 headers: { 'Content-Type': 'text/turtle' },
@@ -248,11 +197,14 @@ export default class SolidClient {
                 body: data,
             });
 
-            return RDF.parseTurtle(Url.resolve(parentUrl, response.headers.get('Location') || ''), data);
+            return RDF.parseTurtle(
+                data,
+                { baseUrl: Url.resolve(parentUrl, response.headers.get('Location') || '') },
+            );
         }
 
         if (!url.startsWith(parentUrl))
-            throw new Error('Explicit resource url should start with the parent url');
+            throw new Error('A minted document url should start with the parent url');
 
         await this.fetch(url, {
             headers: { 'Content-Type': 'text/turtle' },
@@ -260,119 +212,67 @@ export default class SolidClient {
             body: data,
         });
 
-        return RDF.parseTurtle(url, data);
+        return RDF.parseTurtle(data, { baseUrl: url });
     }
 
-    private async createEmbeddedResource(
-        parentUrl: string,
-        url: string | null,
-        data: string,
-    ): Promise<Resource> {
-        if (!url || !url.startsWith(parentUrl))
-            throw new Error('Embedded resources require an explicit url starting with the parent url');
-
-        if (!await this.resourceExists(parentUrl))
-            throw new Error(`Cannot create a embedded resource at ${parentUrl} because it doesn't exist`);
-
-        await this.fetch(
-            parentUrl,
-            {
-                method: 'PATCH',
-                body: `
-                    @prefix solid: <http://www.w3.org/ns/solid/terms#> .
-                    <>
-                        solid:patches <${parentUrl}> ;
-                        solid:inserts { ${data} } .
-                `,
-                headers: {
-                    'Content-Type': 'text/n3',
-                },
-            },
-        );
-
-        return RDF.parseTurtle(url, data);
-    }
-
-    private async getResourcesFromParent(containerUrl: string, includeChildContainers: boolean): Promise<Resource[]> {
-        if (!containerUrl.endsWith('/'))
-            return this.getEmbeddedResources(containerUrl);
-
-        // Globbing only returns non-container resources
-        if (!includeChildContainers)
-            return this.getLDPResourcesUsingGlobbing(containerUrl);
-
-        return this.getLDPContainers(containerUrl, true);
-    }
-
-    private async getEmbeddedResources(containerUrl: string): Promise<Resource[]> {
-        const data = await this
-            .fetch(containerUrl, { headers: { 'Accept': 'text/turtle' } })
-            .then(res => res.text());
-
-        const containerResource = await RDF.parseTurtle(containerUrl, data);
-
-        return Arr
-            .unique(containerResource.sourceStatements.map(statement => statement.subject.value))
-            .map(url => new Resource(url, containerResource.sourceStatements));
-    }
-
-    private async getLDPContainers(containerUrl: string, onlyContainers: boolean): Promise<Resource[]> {
-        const containerResource =
+    private async getContainerDocuments(containerUrl: string): Promise<RDFDocument[]> {
+        const containerDocument =
             await this
                 .fetch(containerUrl, { headers: { 'Accept': 'text/turtle' } })
                 .then(res => res.text())
-                .then(data => RDF.parseTurtle(containerUrl, data));
+                .then(data => RDF.parseTurtle(data, { baseUrl: containerUrl }));
 
-        const urls = containerResource.getPropertyValue('ldp:contains') || [];
-
-        const resources = await Promise.all(
-            Arr
-                .create(urls as string)
-                .map(async url => {
-                    const resource = new Resource(url, containerResource.sourceStatements);
-
-                    // Requests only return ldp types for unexpanded resources, so we can only filter
-                    // by containers or plain resources
-                    if (onlyContainers && !resource.is(IRI('ldp:Container'))) {
-                        return null;
-                    }
-
-                    return await this.getResource(resource.url);
-                }),
+        return await Promise.all(
+            containerDocument.rootResource
+                .getPropertyValues('ldp:contains')
+                .map((url: string) => containerDocument.resourcesIndex[url])
+                .filter(resource => resource && resource.isType('ldp:Container'))
+                .map(resource => this.getDocument(resource.url!) as Promise<RDFDocument>),
         );
-
-        return resources.filter(resource => resource !== null) as Resource[];
     }
 
-    private async getLDPResourcesUsingGlobbing(containerUrl: string): Promise<Resource[]> {
+    private async getNonContainerDocumentsUsingGlobbing(containerUrl: string): Promise<RDFDocument[]> {
         const data = await this
             .fetch(containerUrl + '*', { headers: { 'Accept': 'text/turtle' } })
             .then(res => res.text());
 
-        const containerResource = await RDF.parseTurtle(containerUrl, data);
+        const globbingDocument = await RDF.parseTurtle(data, { baseUrl: containerUrl });
+        const statementsByUrl = globbingDocument.statements.reduce(
+            (statementsByUrl, statement) => {
+                const baseUrl = Url.clean(statement.subject.value, { fragment: false });
 
-        return containerResource.sourceStatements
-            .filter(statement => statement.predicate.value === IRI('rdf:type') && statement.object.value === IRI('ldp:Resource'))
-            .map(statement => new Resource(statement.subject.value, containerResource.sourceStatements));
+                if (!(baseUrl in statementsByUrl))
+                    statementsByUrl[baseUrl] = [];
+
+                statementsByUrl[baseUrl].push(statement);
+
+                return statementsByUrl;
+            },
+            {} as MapObject<Quad[]>,
+        );
+
+        return Object.entries(statementsByUrl)
+            .map(([url, statements]) => new RDFDocument(url, statements));
     }
 
-    private async updateContainerResource(
-        resource: Resource,
-        updatedProperties: ResourceProperty[],
-        removedProperties: string[],
+    private async updateContainerDocument(
+        document: RDFDocument,
+        updatedProperties: RDFResourceProperty[],
+        removedProperties: [string, string][],
     ): Promise<void> {
         // TODO this may change in future versions of node-solid-server
         // https://github.com/solid/node-solid-server/issues/1040
-        const url = resource.url;
-        const properties = resource.getProperties()
-            .filter(property => {
-                const predicate = property.getPredicateIRI();
-
-                return predicate !== RDF.resolveIRI('ldp:contains')
-                    && predicate !== 'http://www.w3.org/ns/posix/stat#mtime'
-                    && predicate !== 'http://www.w3.org/ns/posix/stat#size'
-                    && !removedProperties.find(removedProperty => removedProperty === predicate);
-            });
+        const url = document.url;
+        const properties = document.properties.filter(property => {
+            return property.name !== IRI('ldp:contains')
+                && property.name !== 'http://www.w3.org/ns/posix/stat#mtime'
+                && property.name !== 'http://www.w3.org/ns/posix/stat#size'
+                && !removedProperties.find(
+                    ([removedPropertyResourceUrl, removedPropertyName]) =>
+                        removedPropertyResourceUrl === property.resourceUrl &&
+                        removedPropertyName === property.name,
+                );
+        });
 
         properties.push(...updatedProperties);
 
@@ -381,7 +281,7 @@ export default class SolidClient {
             {
                 method: 'PUT',
                 body: properties
-                    .map(property => property.toTurtle(url || '') + ' .')
+                    .map(property => property.toTurtle() + ' .')
                     .join("\n"),
                 headers: {
                     'Content-Type': 'text/turtle',
@@ -391,13 +291,55 @@ export default class SolidClient {
 
         if (response.status !== 201) {
             throw new Error(
-                `Error updating container resource at ${resource.url}, returned status code ${response.status}`,
+                `Error updating container document at ${document.url}, returned status code ${response.status}`,
             );
         }
     }
 
-    private containsType(properties: ResourceProperty[], type: string): boolean {
-        return !!properties.find(property => property.isType(type));
+    private async updateNonContainerDocument(
+        document: RDFDocument,
+        updatedProperties: RDFResourceProperty[],
+        removedProperties: [string, string][],
+    ): Promise<void> {
+        const where = removedProperties
+            .map(([resourceUrl, property], i) => `<${resourceUrl}> <${property}> ?d${i} .`)
+            .join('\n');
+
+        const inserts = updatedProperties
+            .map(property => property.toTurtle() + ' .')
+            .join('\n');
+
+        const deletes = removedProperties
+            .map(([resourceUrl, property], i) => `<${resourceUrl}> <${property}> ?d${i} .`)
+            .join('\n');
+
+        const operations = [
+            `solid:patches <${document.url}>`,
+            inserts.length > 0 ? `solid:inserts { ${inserts} }` : null,
+            where.length > 0 ? `solid:where { ${where} }` : null,
+            deletes.length > 0 ? `solid:deletes { ${deletes} }` : null,
+        ]
+            .filter(part => part !== null)
+            .join(';');
+
+        const response = await this.fetch(
+            document.url!,
+            {
+                method: 'PATCH',
+                body: `
+                    @prefix solid: <http://www.w3.org/ns/solid/terms#> .
+                    <> ${operations} .
+                `,
+                headers: {
+                    'Content-Type': 'text/n3',
+                },
+            },
+        );
+
+        if (response.status !== 200)
+            throw new Error(
+                `Error updating document at ${document.url}, returned status code ${response.status}`,
+            );
     }
 
 }
