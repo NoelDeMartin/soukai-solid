@@ -37,8 +37,6 @@ export class SolidModel extends Model {
 
     public static fields: SolidFieldsDefinition | any;
 
-    public static ldpContainer: boolean;
-
     public static rdfContexts: { [alias: string]: string };
 
     public static rdfsClasses: string[] | Set<string>;
@@ -81,8 +79,6 @@ export class SolidModel extends Model {
 
     protected belongsToMany(relatedClass: typeof SolidModel, foreignKeyField?: string, localKeyField?: string): MultiModelRelation;
 
-    protected contains(model: typeof SolidModel): MultiModelRelation;
-
     protected isContainedBy(model: typeof SolidModel): SingleModelRelation;
 
     protected getDefaultRdfContext(): string;
@@ -90,6 +86,20 @@ export class SolidModel extends Model {
     protected newUrl(documentUrl?: string): string;
 
     protected guessCollection(): string | undefined;
+
+}
+
+export class SolidDocument extends SolidModel {}
+
+export class SolidContainerModel extends SolidModel {
+
+    resourceUrls: string[];
+    documents: SolidDocument[];
+    relatedDocuments: MultiModelRelation<SolidContainerModel, SolidDocument, typeof SolidDocument>;
+
+    public documentsRelationship(): MultiModelRelation;
+
+    protected contains(model: typeof SolidModel, useCache?: boolean): MultiModelRelation;
 
 }
 
@@ -103,7 +113,6 @@ export type Fetch = (url: string, options?: RequestOptions) => Promise<Response>
 
 export interface SolidEngineConfig {
     globbingBatchSize: number | null;
-    useCache: boolean;
 }
 
 export class SolidEngine implements Engine {
@@ -121,3 +130,5 @@ export class SolidEngine implements Engine {
     delete(collection: string, id: string): Promise<void>;
 
 }
+
+export function clearCache(): Promise<void>;

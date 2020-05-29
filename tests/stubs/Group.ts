@@ -1,14 +1,12 @@
 import { FieldType, MultiModelRelation } from 'soukai';
 
-import SolidModel from '@/models/SolidModel';
+import SolidContainerModel from '@/models/SolidContainerModel';
 
 import Person from '@tests/stubs/Person';
 
-export default class Group extends SolidModel {
+export default class Group extends SolidContainerModel {
 
     public static timestamps = false;
-
-    public static ldpContainer = true;
 
     public static rdfContexts = {
         'foaf': 'http://xmlns.com/foaf/0.1/',
@@ -19,6 +17,8 @@ export default class Group extends SolidModel {
     public static fields = {
         name: FieldType.String,
     };
+
+    members?: Person[];
 
     public membersRelationship(): MultiModelRelation {
         return this.contains(Person);

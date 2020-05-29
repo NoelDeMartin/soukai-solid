@@ -74,48 +74,6 @@ describe('SolidModel', () => {
         });
     });
 
-    it('adds ldp:Container to container models', () => {
-        class StubModel extends SolidModel {
-
-            public static ldpContainer = true;
-
-        }
-
-        Soukai.loadModels({ StubModel });
-
-        expect(StubModel.rdfsClasses).toEqual(new Set([
-            'http://www.w3.org/ns/ldp#Container',
-        ]));
-    });
-
-    it('adds resourceUrls to container models', () => {
-        class StubModel extends SolidModel {
-
-            public static timestamps = false;
-
-            public static ldpContainer = true;
-
-        }
-
-        Soukai.loadModels({ StubModel });
-
-        expect(StubModel.fields).toEqual({
-            url: {
-                type: FieldType.Key,
-                required: false,
-                rdfProperty: null,
-            },
-            resourceUrls: {
-                type: FieldType.Array,
-                required: false,
-                rdfProperty: 'http://www.w3.org/ns/ldp#contains',
-                items: {
-                    type: FieldType.Key,
-                },
-            },
-        });
-    });
-
     it('defaults to first context if rdfProperty is missing', () => {
         class StubModel extends SolidModel {
 
@@ -423,38 +381,6 @@ describe('SolidModel', () => {
         );
     });
 
-    it('uses name for minting url for new containers', async () => {
-        class StubModel extends SolidModel {
-            public static ldpContainer = true;
-
-            public static rdfContexts = {
-                'foaf': 'http://xmlns.com/foaf/0.1/',
-            };
-
-            public static fields = {
-                name: FieldType.String,
-            };
-        }
-
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const name = Faker.random.word();
-
-        jest.spyOn(engine, 'create');
-
-        Soukai.loadModels({ StubModel });
-
-        const model = await StubModel.at(containerUrl).create({ name });
-
-        expect(typeof model.url).toEqual('string');
-        expect(model.url).toEqual(Url.resolveDirectory(containerUrl, Str.slug(name)));
-
-        expect(engine.create).toHaveBeenCalledWith(
-            containerUrl,
-            expect.anything(),
-            model.url,
-        );
-    });
-
     it('uses hash fragment for minting model urls in the same document', async () => {
         // Arrange
         const movieUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
@@ -602,65 +528,6 @@ describe('SolidModel', () => {
             {
                 $in: [
                     'https://example.org/bob',
-                ],
-                '@graph': {
-                    $contains: {
-                        '@type': {
-                            $or: [
-                                { $contains: ['Person'] },
-                                { $contains: ['http://xmlns.com/foaf/0.1/Person'] },
-                                { $eq: 'Person' },
-                                { $eq: 'http://xmlns.com/foaf/0.1/Person' },
-                            ],
-                        },
-                    },
-                },
-            },
-        );
-    });
-
-    it('implements contains relationship', async () => {
-        // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const musashiUrl = Url.resolve(containerUrl, 'musashi');
-        const kojiroUrl = Url.resolve(containerUrl, 'kojiro');
-
-        const group = new Group({
-            url: containerUrl,
-            resourceUrls: [
-                musashiUrl,
-                kojiroUrl,
-            ],
-        });
-
-        jest.spyOn(engine, 'readMany');
-
-        engine.setMany(containerUrl, {
-            [musashiUrl]: stubPersonJsonLD(musashiUrl, 'Musashi'),
-            [kojiroUrl]: stubPersonJsonLD(kojiroUrl, 'Kojiro'),
-        });
-
-        expect(group.members).toBeUndefined();
-
-        // Act
-        await group.loadRelation('members');
-
-        // Assert
-        expect(group.members).toHaveLength(2);
-        expect(group.members[0]).toBeInstanceOf(Person);
-        expect(group.members[0].url).toBe(musashiUrl);
-        expect(group.members[0].name).toBe('Musashi');
-        expect(group.members[1]).toBeInstanceOf(Person);
-        expect(group.members[1].url).toBe(kojiroUrl);
-        expect(group.members[1].name).toBe('Kojiro');
-
-        expect(engine.readMany).toHaveBeenCalledTimes(1);
-        expect(engine.readMany).toHaveBeenCalledWith(
-            containerUrl,
-            {
-                $in: [
-                    musashiUrl,
-                    kojiroUrl,
                 ],
                 '@graph': {
                     $contains: {

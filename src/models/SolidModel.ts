@@ -16,7 +16,6 @@ import {
 import { IRI } from '@/solid/utils/RDF';
 
 import { useMixins } from '@/utils/mixins';
-import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 import UUID from '@/utils/UUID';
 
@@ -38,8 +37,6 @@ class SolidModel extends Model {
     public static primaryKey: string = 'url';
 
     public static fields: SolidFieldsDefinition | any;
-
-    public static ldpContainer: boolean;
 
     public static rdfContexts: { [alias: string]: string } = {};
 
@@ -90,22 +87,6 @@ class SolidModel extends Model {
         }
 
         this.rdfsClasses = new Set([...this.rdfsClasses].map(name => IRI(name, this.rdfContexts)));
-
-        this.ldpContainer = !!this.ldpContainer;
-
-        if (this.ldpContainer) {
-            if (!this.rdfsClasses.has(IRI('ldp:Container')))
-                this.rdfsClasses.add(IRI('ldp:Container'));
-
-            this.fields['resourceUrls'] = {
-                type: FieldType.Array,
-                required: false,
-                rdfProperty: 'http://www.w3.org/ns/ldp#contains',
-                items: {
-                    type: FieldType.Key,
-                },
-            };
-        }
 
         for (const field in this.fields) {
             this.fields[field].rdfProperty = IRI(
@@ -247,10 +228,6 @@ class SolidModel extends Model {
         return new SolidBelongsToManyRelation(this, relatedClass, foreignKeyField, localKeyField);
     }
 
-    protected contains(model: typeof SolidModel): MultiModelRelation {
-        return this.belongsToMany(model, 'resourceUrls');
-    }
-
     protected isContainedBy(model: typeof SolidModel): SingleModelRelation {
         return new SolidIsContainedByRelation(this, model);
     }
@@ -298,14 +275,6 @@ class SolidModel extends Model {
     }
 
     protected newUrl(documentUrl?: string): string {
-        if (this.classDef.ldpContainer)
-            return Url.resolveDirectory(
-                this.classDef.collection,
-                this.hasAttribute('name')
-                    ? Str.slug(this.getAttribute('name'))
-                    : UUID.generate(),
-            );
-
         if (documentUrl)
             return documentUrl + '#' + UUID.generate();
 

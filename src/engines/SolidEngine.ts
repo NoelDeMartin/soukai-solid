@@ -21,28 +21,21 @@ import Arr from '@/utils/Arr';
 import Obj from '@/utils/Obj';
 import Url from '@/utils/Url';
 
-import SolidDocumentsCache from './SolidDocumentsCache';
-
 export interface SolidEngineConfig {
     globbingBatchSize: number | null;
-    useCache: boolean;
 }
 
 export default class SolidEngine implements Engine {
 
     private config: SolidEngineConfig;
-    private cache: SolidDocumentsCache;
     private helper: EngineHelper;
     private client: SolidClient;
 
     public constructor(fetch: Fetch, config: Partial<SolidEngineConfig> = {}) {
-        this.cache = new SolidDocumentsCache();
-
         this.helper = new EngineHelper();
         this.client = new SolidClient(fetch);
         this.config = {
             globbingBatchSize: 5,
-            useCache: false,
             ...config,
         };
     }
@@ -67,21 +60,11 @@ export default class SolidEngine implements Engine {
 
         const document = this.convertToEngineDocument(rdfDocument);
 
-        if (this.config.useCache)
-            await this.cache.add(id, document);
-
         return document;
     }
 
     public async readMany(collection: string, filters: EngineFilters = {}): Promise<EngineDocumentsCollection> {
         const documents = await this.getDocumentsForFilters(collection, filters);
-
-        if (this.config.useCache)
-            await Promise.all(
-                Object
-                    .entries(documents)
-                    .map(([id, document]) => this.cache.add(id, document)),
-            );
 
         return this.helper.filterDocuments(documents, filters);
     }
@@ -91,9 +74,6 @@ export default class SolidEngine implements Engine {
 
         try {
             await this.client.updateDocument(id, updatedProperties, removedProperties);
-
-            if (this.config.useCache)
-                await this.cache.forget(id);
         } catch (error) {
             // TODO this may fail for reasons other than document not found
             throw new DocumentNotFound(id);
@@ -102,58 +82,22 @@ export default class SolidEngine implements Engine {
 
     public async delete(collection: string, id: string): Promise<void> {
         await this.client.deleteDocument(id);
-
-        if (this.config.useCache)
-            await this.cache.forget(id);
     }
 
     private async getDocumentsForFilters(collection: string, filters: EngineFilters): Promise<EngineDocumentsCollection> {
-        const cachedDocuments = this.config.useCache
-            ? await this.getCachedDocuments(filters.$in || [])
-            : {};
-        const documents = await this.getDocumentsForFiltersWithoutCache(
-            collection,
-            Obj.withoutEmpty({
-                ...filters,
-                $in: filters.$in
-                    ? Arr.without(filters.$in, Object.keys(cachedDocuments))
-                    : undefined,
-            }) as EngineFilters,
-        );
-
-        return documents.reduce((documents, document) => ({
-            ...documents,
-            [document.url!]: this.convertToEngineDocument(document),
-        }), cachedDocuments);
-    }
-
-    private async getCachedDocuments(ids: string[]): Promise<EngineDocumentsCollection> {
-        const documentIdPairs = await Promise.all(
-            ids.map(
-                async url => {
-                    const document = await this.cache.get(url);
-
-                    return [url, document];
-                },
-            ),
-        );
-
-        return documentIdPairs
-            .filter(([_, document]) => document !== null)
-            .reduce((documents, [id, document]) => ({
-                ...documents,
-                [id as string]: document,
-            }), {});
-    }
-
-    private getDocumentsForFiltersWithoutCache(collection: string, filters: EngineFilters): Promise<RDFDocument[]> {
         const rdfsClasses = this.extractJsonLDGraphTypes(filters);
 
         // TODO use filters for SPARQL when supported
         // See https://github.com/solid/node-solid-server/issues/962
-        return filters.$in
-            ? this.getDocumentsFromUrls(collection, rdfsClasses, filters.$in)
-            : this.getContainerDocuments(collection, rdfsClasses);
+        const documentsArray = filters.$in
+            ? await this.getDocumentsFromUrls(collection, rdfsClasses, filters.$in)
+            : await this.getContainerDocuments(collection, rdfsClasses);
+
+        return documentsArray.reduce((documents, document) => {
+            documents[document.url] = this.convertToEngineDocument(document);
+
+            return documents;
+        }, {});
     }
 
     private async getDocumentsFromUrls(collection: string, rdfsClasses: string[], urls: string[]): Promise<RDFDocument[]> {
