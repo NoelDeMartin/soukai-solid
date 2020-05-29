@@ -7,20 +7,21 @@ import {
     EngineUpdates,
     FieldDefinition,
     FieldsDefinition,
+    HasManyRelation,
     Model,
     MultiModelRelation,
     SingleModelRelation,
 } from 'soukai';
 
-export interface SolidEmbedsRelation<
-    P extends SolidModel = SolidModel,
-    R extends SolidModel = SolidModel,
-    RC extends typeof SolidModel = typeof SolidModel,
-> extends MultiModelRelation<P, R, RC> {
+export class SolidHasManyRelation<
+    Parent extends SolidModel = SolidModel,
+    Related extends SolidModel = SolidModel,
+    RelatedClass extends typeof SolidModel = typeof SolidModel,
+> extends HasManyRelation<Parent, Related, RelatedClass> {
 
-    save(model: R): Promise<R>;
+    public create(attributes?: Attributes, useSameDocument?: boolean): Promise<Related>;
 
-    create(attributes: Attributes): Promise<R>;
+    public loadDocumentModels(document: EngineDocument): Promise<void>;
 
 }
 
