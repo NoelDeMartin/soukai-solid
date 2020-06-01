@@ -86,7 +86,12 @@ class SolidModel extends Model {
             this.fields['updatedAt'].rdfProperty = IRI('purl:modified');
         }
 
-        this.rdfsClasses = new Set([...this.rdfsClasses].map(name => IRI(name, this.rdfContexts)));
+        this.rdfsClasses = new Set(
+            [...this.rdfsClasses].map(
+                name =>
+                    name.indexOf(':') === -1 ? (defaultRdfContext + name) : IRI(name, this.rdfContexts),
+            ),
+        );
 
         for (const field in this.fields) {
             this.fields[field].rdfProperty = IRI(

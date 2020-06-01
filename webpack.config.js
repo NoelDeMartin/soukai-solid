@@ -32,7 +32,6 @@ module.exports = {
     output,
 
     externals: [
-        'idb-keyval',
         'jsonld-streaming-parser',
         'jsonld-streaming-serializer',
         'n3',

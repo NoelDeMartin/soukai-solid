@@ -99,7 +99,7 @@ export class SolidContainerModel extends SolidModel {
 
     public documentsRelationship(): MultiModelRelation;
 
-    protected contains(model: typeof SolidModel, useCache?: boolean): MultiModelRelation;
+    protected contains(model: typeof SolidModel): MultiModelRelation;
 
 }
 
@@ -130,5 +130,3 @@ export class SolidEngine implements Engine {
     delete(collection: string, id: string): Promise<void>;
 
 }
-
-export function clearCache(): Promise<void>;

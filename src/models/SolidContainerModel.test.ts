@@ -1,5 +1,3 @@
-import 'fake-indexeddb/auto';
-
 import Faker from 'faker';
 import Soukai, { FieldType } from 'soukai';
 

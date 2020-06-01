@@ -39,8 +39,8 @@ export default class SolidContainerModel extends SolidModel {
         return this.hasMany(SolidDocument, 'object');
     }
 
-    protected contains(model: typeof SolidModel, useCache: boolean = true): MultiModelRelation {
-        return new SolidContainsRelation(this, model, useCache);
+    protected contains(model: typeof SolidModel): MultiModelRelation {
+        return new SolidContainsRelation(this, model);
     }
 
     protected initializeRelations() {
