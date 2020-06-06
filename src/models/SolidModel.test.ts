@@ -386,6 +386,8 @@ describe('SolidModel', () => {
         const movieUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
         const movie = new Movie({ url: movieUrl }, true);
 
+        jest.spyOn(engine, 'update');
+
         // Act
         const action = await movie.relatedActions.create({}, true);
 
@@ -393,6 +395,16 @@ describe('SolidModel', () => {
         expect(typeof action.url).toEqual('string');
         expect(action.url.startsWith(movieUrl + '#')).toBe(true);
         expect(action.exists()).toBe(true);
+
+        expect(engine.update).toHaveBeenCalledWith(
+            expect.anything(),
+            movieUrl,
+            {
+                '@graph': {
+                    $push: action.toJsonLD(),
+                },
+            },
+        );
     });
 
     it('uses model url container on find', async () => {

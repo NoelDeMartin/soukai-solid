@@ -1,4 +1,4 @@
-import {
+import Soukai, {
     Attributes,
     DocumentAlreadyExists,
     EngineDocument,
@@ -216,13 +216,37 @@ class SolidModel extends Model {
         const model = await super.createFromEngineDocument<SolidModel>(id, document);
 
         for (const relation of Object.values(model._relations)) {
-            if (!(relation instanceof SolidHasManyRelation))
+            if (!(relation instanceof SolidHasManyRelation) && !(relation instanceof SolidBelongsToManyRelation))
                 continue;
 
             await relation.loadDocumentModels(document);
         }
 
         return model as any as T;
+    }
+
+    protected async syncDirty(): Promise<string> {
+        if (!this.url || this.isDocumentRoot())
+            return super.syncDirty();
+
+        // TODO this assumes that the document already exists
+
+        const engine = Soukai.requireEngine();
+        const id = this.getSerializedPrimaryKey()!;
+        const documentId = this.getDocumentUrl()!;
+        const updateOperation = this._exists
+            ? engine.update(this.classDef.collection, documentId, this.getDirtyEngineDocumentUpdates())
+            : engine.update(
+                this.classDef.collection,
+                documentId,
+                {
+                    '@graph': { $push: this.serializeToJsonLD(false) as EngineDocument },
+                },
+            );
+
+        await updateOperation;
+
+        return id;
     }
 
     protected hasMany(relatedClass: typeof SolidModel, foreignKeyField?: string, localKeyField?: string): MultiModelRelation {

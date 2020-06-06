@@ -70,7 +70,11 @@ describe('SolidContainerModel', () => {
 
         engine.setOne({
             '@graph': [
-                stubGroupJsonLD(containerUrl, Faker.lorem.word())['@graph'][0],
+                stubGroupJsonLD(
+                    containerUrl,
+                    Faker.lorem.word(),
+                    [firstDocumentUrl, secondDocumentUrl],
+                )['@graph'][0],
                 stubSolidDocumentJsonLD(firstDocumentUrl, '1997-07-21T23:42:00.000Z')['@graph'][0],
                 stubSolidDocumentJsonLD(secondDocumentUrl, '2010-02-15T23:42:00.000Z')['@graph'][0],
             ],

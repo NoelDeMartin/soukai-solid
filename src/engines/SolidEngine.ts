@@ -18,7 +18,6 @@ import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourc
 import SolidClient, { Fetch } from '@/solid/SolidClient';
 
 import Arr from '@/utils/Arr';
-import Obj from '@/utils/Obj';
 import Url from '@/utils/Url';
 
 export interface SolidEngineConfig {
@@ -70,7 +69,7 @@ export default class SolidEngine implements Engine {
     }
 
     public async update(collection: string, id: string, updates: EngineUpdates): Promise<void> {
-        const [updatedProperties, removedProperties] = this.extractJsonLDGraphUpdate(updates);
+        const [updatedProperties, removedProperties] = await this.extractJsonLDGraphUpdate(updates);
 
         try {
             await this.client.updateDocument(id, updatedProperties, removedProperties);
@@ -90,7 +89,7 @@ export default class SolidEngine implements Engine {
         // TODO use filters for SPARQL when supported
         // See https://github.com/solid/node-solid-server/issues/962
         const documentsArray = filters.$in
-            ? await this.getDocumentsFromUrls(collection, rdfsClasses, filters.$in)
+            ? await this.getDocumentsFromUrls(rdfsClasses, filters.$in)
             : await this.getContainerDocuments(collection, rdfsClasses);
 
         return documentsArray.reduce((documents, document) => {
@@ -100,13 +99,10 @@ export default class SolidEngine implements Engine {
         }, {});
     }
 
-    private async getDocumentsFromUrls(collection: string, rdfsClasses: string[], urls: string[]): Promise<RDFDocument[]> {
+    private async getDocumentsFromUrls(rdfsClasses: string[], urls: string[]): Promise<RDFDocument[]> {
         const containerDocumentUrlsMap = urls
             .reduce((containerDocumentUrlsMap, documentUrl) => {
                 const containerUrl = Url.parentDirectory(documentUrl);
-
-                if (!containerUrl.startsWith(collection))
-                    return containerDocumentUrlsMap;
 
                 return {
                     ...containerDocumentUrlsMap,
@@ -198,17 +194,41 @@ export default class SolidEngine implements Engine {
             );
     }
 
-    private extractJsonLDGraphUpdate(updates: EngineUpdates): [RDFResourceProperty[], [string, string][]] {
-        if (!this.isJsonLDGraphUpdate(updates))
+    private async extractJsonLDGraphUpdate(updates: EngineUpdates): Promise<[RDFResourceProperty[], [string, string][]]> {
+        if (!this.isJsonLDGraphUpdate(updates)) {
+            console.log('bad updates', updates);
+
             throw new SoukaiError(
                 'Invalid JSON-LD graph updates provided for SolidEngine. ' +
                 "Are you using a model that isn't a SolidModel?",
             );
+        }
 
         const updatedProperties: RDFResourceProperty[] = [];
         const removedProperties: [string, string][] = [];
 
-        for (const { $where, $update } of updates['@graph'].$updateItems) {
+        if (updates['@graph'].$updateItems)
+            this.extractJsonLDGraphItemsUpdate(
+                updatedProperties,
+                removedProperties,
+                updates['@graph'].$updateItems,
+            );
+
+        if (updates['@graph'].$push)
+            await this.extractJsonLDGraphItemPush(
+                updatedProperties,
+                updates['@graph'].$push,
+            );
+
+        return [updatedProperties, removedProperties];
+    }
+
+    private extractJsonLDGraphItemsUpdate(
+        updatedProperties: RDFResourceProperty[],
+        removedProperties: [string, string][],
+        itemUpdates: EngineUpdateItemsOperatorData[],
+    ): void {
+        for (const { $where, $update } of itemUpdates) {
             if (!$where || !('@id' in $where))
                 throw new SoukaiError(
                     'Invalid JSON-LD graph updates provided for SolidEngine. ' +
@@ -231,8 +251,15 @@ export default class SolidEngine implements Engine {
                 updatedProperties.push(RDFResourceProperty.literal(resourceUrl, attribute, value));
             }
         }
+    }
 
-        return [updatedProperties, removedProperties];
+    private async extractJsonLDGraphItemPush(
+        updatedProperties: RDFResourceProperty[],
+        item: EngineDocument,
+    ): Promise<void> {
+        const itemProperties = await this.getJsonLDGraphProperties(item);
+
+        updatedProperties.push(...itemProperties);
     }
 
     private extractJsonLDGraphTypes(filters: EngineFilters): string[] {
@@ -263,10 +290,16 @@ export default class SolidEngine implements Engine {
     }
 
     private isJsonLDGraphUpdate(updates: any): updates is {
-        '@graph': { $updateItems: EngineUpdateItemsOperatorData[] };
+        '@graph': {
+            $updateItems?: EngineUpdateItemsOperatorData[];
+            $push?: EngineDocument;
+        };
     } {
         return typeof updates['@graph'] === 'object'
-            && Array.isArray(updates['@graph'].$updateItems);
+            && (
+                Array.isArray(updates['@graph'].$updateItems) ||
+                typeof updates['@graph'].$push === 'object'
+            );
     }
 
     private isJsonLDGraphFilter(filters: any): filters is {

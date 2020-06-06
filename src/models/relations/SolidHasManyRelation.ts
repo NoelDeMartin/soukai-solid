@@ -16,6 +16,27 @@ export default class SolidHasManyRelation<
     RelatedClass extends typeof SolidModel = typeof SolidModel,
 > extends HasManyRelation<Parent, Related, RelatedClass> {
 
+    modelsInSameDocument?: Related[];
+    modelsInOtherDocumentIds?: string[];
+
+    public async resolve(): Promise<Related[]> {
+        if (!this.modelsInSameDocument || !this.modelsInOtherDocumentIds)
+            // Solid hasMany relation only finds related models that have been
+            // declared in the same document.
+            return [];
+
+        const modelsInOtherDocuments = await this.relatedClass.all<Related>({
+            $in: this.modelsInOtherDocumentIds,
+        });
+
+        this.related = [
+            ...this.modelsInSameDocument,
+            ...modelsInOtherDocuments,
+        ];
+
+        return this.related;
+    }
+
     public async create(attributes: Attributes = {}, useSameDocument: boolean = false): Promise<Related> {
         const model = new this.relatedClass(attributes) as Related;
 
@@ -35,18 +56,23 @@ export default class SolidHasManyRelation<
     }
 
     public async loadDocumentModels(document: EngineDocument): Promise<void> {
-        // TODO filter using foreignKey: parentUrl
-
         const helper = new EngineHelper();
+        const foreignProperty = this.relatedClass.fields[this.foreignKeyName]?.rdfProperty;
         const filters = this.relatedClass.prepareEngineFilters();
-        const documents = (document['@graph'] as any[]).reduce((documents, resource) => {
-            documents[resource['@id']] = { '@graph': [resource] };
+        const documents = (document['@graph'] as any[])
+            .filter(resource => {
+                return foreignProperty in resource
+                    && typeof resource[foreignProperty] === 'object'
+                    && '@id' in resource[foreignProperty]
+                    && resource[foreignProperty]['@id'] === this.parent.url;
+            })
+            .reduce((documents, resource) => {
+                documents[resource['@id']] = { '@graph': [resource] };
 
-            return documents;
-        }, {} as EngineDocumentsCollection);
+                return documents;
+            }, {} as EngineDocumentsCollection);
 
-        // TODO mark as partially loaded if there are any resources outside of this document
-        this.related = await Promise.all(
+        this.modelsInSameDocument = await Promise.all(
             Object
                 .entries(helper.filterDocuments(documents, filters))
                 .map(
@@ -54,6 +80,15 @@ export default class SolidHasManyRelation<
                         this.relatedClass.createFromEngineDocument(id, document) as Promise<Related>,
                 ),
         );
+
+        this.modelsInOtherDocumentIds = Object.keys(documents).filter(
+            resourceId => !this.modelsInSameDocument!.find(model => model.url === resourceId),
+        );
+
+        if (this.modelsInOtherDocumentIds.length > 0)
+            return;
+
+        this.related = this.modelsInSameDocument;
     }
 
     protected inititalizeInverseRelations(model: Related): void {

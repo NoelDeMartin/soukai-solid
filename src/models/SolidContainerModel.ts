@@ -36,7 +36,7 @@ export default class SolidContainerModel extends SolidModel {
     relatedDocuments: MultiModelRelation<SolidContainerModel, SolidDocument, typeof SolidDocument>;
 
     public documentsRelationship(): MultiModelRelation {
-        return this.hasMany(SolidDocument, 'object');
+        return this.belongsToMany(SolidDocument, 'resourceUrls');
     }
 
     protected contains(model: typeof SolidModel): MultiModelRelation {
