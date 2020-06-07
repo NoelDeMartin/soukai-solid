@@ -94,7 +94,7 @@ class RDF {
         property = IRI(property);
 
         if (property in json)
-            return json[property];
+            return this.getJsonLDPropertyValue(json[property]);
 
         if (!('@context' in json))
             return;
@@ -108,8 +108,16 @@ class RDF {
             return;
 
         const propertyPrefix = (contextProperty[0] === '@vocab' ? '' : `${contextProperty[0]}:`);
+        const propertyValue = json[propertyPrefix + property.substr(contextProperty[1].length)];
 
-        return json[propertyPrefix + property.substr(contextProperty[1].length)];
+        return this.getJsonLDPropertyValue(propertyValue);
+    }
+
+    private getJsonLDPropertyValue(value: any): any {
+        if (value === undefined)
+            return;
+
+        return (Array.isArray(value) && value.length === 1) ? value[0] : value;
     }
 
 }

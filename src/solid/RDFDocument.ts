@@ -10,34 +10,34 @@ export default class RDFDocument {
     public readonly statements: Quad[];
     public readonly resourcesIndex: MapObject<RDFResource>;
 
+    public readonly properties: RDFResourceProperty[];
+    public readonly resources: RDFResource[];
+    public readonly rootResource: RDFResource;
+
     constructor(url: string, statements: Quad[]) {
         this.url = url;
         this.statements = statements;
-        this.resourcesIndex = {};
 
-        for (const statement of statements) {
+        this.resourcesIndex = this.statements.reduce((resourcesIndex, statement) => {
             const resourceUrl = statement.subject.value;
 
-            if (!(resourceUrl in this.resourcesIndex))
-                this.resourcesIndex[resourceUrl] = new RDFResource(resourceUrl);
+            if (!(resourceUrl in resourcesIndex))
+                resourcesIndex[resourceUrl] = new RDFResource(resourceUrl);
 
-            this.resourcesIndex[resourceUrl].addStatement(statement);
-        }
-    }
+            resourcesIndex[resourceUrl].addStatement(statement);
 
-    public get properties(): RDFResourceProperty[] {
-        return this.resources.reduce(
+            return resourcesIndex;
+        }, {});
+
+        this.resources = Object.values(this.resourcesIndex);
+
+        this.properties = this.resources.reduce(
             (properties, resource) => [...properties, ...resource.properties],
             [],
         );
-    }
 
-    public get resources(): RDFResource[] {
-        return Object.values(this.resourcesIndex);
-    }
-
-    public get rootResource(): RDFResource {
-        return this.resources[0];
+        this.rootResource = this.resources.find(resource => resource.url === this.url)
+            || this.resources[0];
     }
 
     public isEmpty(): boolean {

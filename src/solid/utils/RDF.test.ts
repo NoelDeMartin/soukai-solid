@@ -104,6 +104,18 @@ describe('RDF helper', () => {
                 },
                 'schema:name': 'Jackpot',
             },
+            {
+                '@context': {
+                    'schema': 'https://schema.org/',
+                },
+                'schema:name': ['Jackpot'],
+            },
+            {
+                '@context': {
+                    'schema': 'https://schema.org/',
+                },
+                'https://schema.org/name': ['Jackpot'],
+            },
         ];
 
         // Act

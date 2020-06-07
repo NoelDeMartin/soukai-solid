@@ -13,7 +13,7 @@ import Soukai, {
     SoukaiError,
 } from 'soukai';
 
-import { IRI } from '@/solid/utils/RDF';
+import RDF, { IRI } from '@/solid/utils/RDF';
 
 import { useMixins } from '@/utils/mixins';
 import Url from '@/utils/Url';
@@ -103,8 +103,10 @@ class SolidModel extends Model {
         this.fields[this.primaryKey].rdfProperty = null;
     }
 
-    public static createFromJsonLD<T extends SolidModel>(jsonld: object): Promise<T> {
-        return this.instance.createFromEngineDocument(jsonld['@id'], { '@graph': [jsonld] } as EngineDocument);
+    public static async createFromJsonLD<T extends SolidModel>(jsonld: object): Promise<T> {
+        const flatJsonLD = await RDF.flattenJsonLD(jsonld) as EngineDocument;
+
+        return this.instance.createFromEngineDocument(jsonld['@id'], flatJsonLD);
     }
 
     public static find<T extends Model, Key = string>(id: Key): Promise<T | null> {
