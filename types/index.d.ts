@@ -47,11 +47,11 @@ export class SolidModel extends Model {
 
     public static from(containerUrl: string): typeof SolidModel;
 
-    public static createFromJsonLD<T extends SolidModel>(json: object): Promise<T>;
-
     public static at(containerUrl: string): typeof SolidModel;
 
     public static prepareEngineFilters(filters?: EngineFilters): EngineFilters;
+
+    public static newFromJsonLD<T extends SolidModel>(json: object): Promise<T>;
 
     protected static withCollection<Result>(collection?: string | (() => Result), operation?: () => Result): Result;
 
@@ -72,8 +72,6 @@ export class SolidModel extends Model {
     protected getDocumentUrl(): string | null;
 
     protected getDocumentModels(): SolidModel[];
-
-    protected createFromEngineDocument<T extends Model>(id: any, document: EngineDocument): Promise<T>;
 
     protected hasMany(relatedClass: typeof SolidModel, foreignKeyField?: string, localKeyField?: string): MultiModelRelation;
 

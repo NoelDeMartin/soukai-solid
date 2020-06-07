@@ -103,12 +103,6 @@ class SolidModel extends Model {
         this.fields[this.primaryKey].rdfProperty = null;
     }
 
-    public static async createFromJsonLD<T extends SolidModel>(jsonld: object): Promise<T> {
-        const flatJsonLD = await RDF.flattenJsonLD(jsonld) as EngineDocument;
-
-        return this.instance.createFromEngineDocument(jsonld['@id'], flatJsonLD);
-    }
-
     public static find<T extends Model, Key = string>(id: Key): Promise<T | null> {
         return this.withCollection(Url.parentDirectory(id as any), () => super.find(id));
     }
@@ -121,6 +115,13 @@ class SolidModel extends Model {
 
     public static prepareEngineFilters(filters: EngineFilters = {}): EngineFilters {
         return this.instance.convertEngineFiltersToJsonLD(filters);
+    }
+
+    public static async newFromJsonLD<T extends SolidModel>(jsonld: object): Promise<T> {
+        const flatJsonLD = await RDF.flattenJsonLD(jsonld) as EngineDocument;
+        const attributes = await this.instance.parseEngineDocumentAttributes(jsonld['@id'], flatJsonLD);
+
+        return new (this as any)(attributes);
     }
 
     protected static withCollection<Result>(collection: string | (() => Result) = '', operation?: () => Result): Result {

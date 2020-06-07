@@ -693,7 +693,7 @@ describe('SolidModel', () => {
         ];
 
         // Act
-        const person = await Person.createFromJsonLD({
+        const person = await Person.newFromJsonLD({
             '@context': { '@vocab': 'http://xmlns.com/foaf/0.1/' },
             '@id': url,
             '@type': [
@@ -708,6 +708,7 @@ describe('SolidModel', () => {
         });
 
         // Assert
+        expect(person.exists()).toEqual(false);
         expect(person.name).toEqual(name);
         expect(person.url).toEqual(url);
         expect(person.friendUrls).toEqual(friendUrls);
