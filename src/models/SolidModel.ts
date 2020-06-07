@@ -120,8 +120,11 @@ class SolidModel extends Model {
     public static async newFromJsonLD<T extends SolidModel>(jsonld: object): Promise<T> {
         const flatJsonLD = await RDF.flattenJsonLD(jsonld) as EngineDocument;
         const attributes = await this.instance.parseEngineDocumentAttributes(jsonld['@id'], flatJsonLD);
+        const model = new (this as any)(attributes);
 
-        return new (this as any)(attributes);
+        await model.loadDocumentModels(flatJsonLD);
+
+        return model;
     }
 
     protected static withCollection<Result>(collection: string | (() => Result) = '', operation?: () => Result): Result {
@@ -218,14 +221,21 @@ class SolidModel extends Model {
     protected async createFromEngineDocument<T extends Model>(id: any, document: EngineDocument): Promise<T> {
         const model = await super.createFromEngineDocument<SolidModel>(id, document);
 
-        for (const relation of Object.values(model._relations)) {
-            if (!(relation instanceof SolidHasManyRelation) && !(relation instanceof SolidBelongsToManyRelation))
-                continue;
-
-            await relation.loadDocumentModels(document);
-        }
+        await model.loadDocumentModels(document);
 
         return model as any as T;
+    }
+
+    protected async loadDocumentModels(document: EngineDocument): Promise<void> {
+        const relations = Object
+            .values(this._relations)
+            .filter(
+                relation =>
+                    relation instanceof SolidHasManyRelation ||
+                    relation instanceof SolidBelongsToManyRelation,
+            ) as (SolidHasManyRelation | SolidBelongsToManyRelation)[];
+
+        await Promise.all(relations.map(relation => relation.loadDocumentModels(document)));
     }
 
     protected async syncDirty(): Promise<string> {
