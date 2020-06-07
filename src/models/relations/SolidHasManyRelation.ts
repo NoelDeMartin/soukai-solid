@@ -10,6 +10,8 @@ import {
 
 import SolidModel from '@/models/SolidModel';
 
+import RDF from '@/solid/utils/RDF';
+
 export default class SolidHasManyRelation<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
@@ -61,10 +63,11 @@ export default class SolidHasManyRelation<
         const filters = this.relatedClass.prepareEngineFilters();
         const documents = (document['@graph'] as any[])
             .filter(resource => {
-                return foreignProperty in resource
-                    && typeof resource[foreignProperty] === 'object'
-                    && '@id' in resource[foreignProperty]
-                    && resource[foreignProperty]['@id'] === this.parent.url;
+                const property = RDF.getJsonLDProperty(resource, foreignProperty);
+
+                return typeof property === 'object'
+                    && '@id' in property
+                    && property['@id'] === this.parent.url;
             })
             .reduce((documents, resource) => {
                 documents[resource['@id']] = { '@graph': [resource] };

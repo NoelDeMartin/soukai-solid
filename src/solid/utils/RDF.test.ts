@@ -84,6 +84,33 @@ describe('RDF helper', () => {
 
         const watchAction = flattened['@graph'].find(jsonld => jsonld['@id'] === watchActionUrl);
         expect(watchAction).not.toBeNull();
-    })
+    });
+
+    it('Gets jsonld properties', () => {
+        // Arrange
+        const jsonlds = [
+            {
+                'https://schema.org/name': 'Jackpot',
+            },
+            {
+                '@context': {
+                    '@vocab': 'https://schema.org/',
+                },
+                'name': 'Jackpot',
+            },
+            {
+                '@context': {
+                    'schema': 'https://schema.org/',
+                },
+                'schema:name': 'Jackpot',
+            },
+        ];
+
+        // Act
+        const results = jsonlds.map(jsonld => RDF.getJsonLDProperty(jsonld, 'https://schema.org/name'));
+
+        // Assert
+        results.forEach(result => expect(result).toEqual('Jackpot'));
+    });
 
 });

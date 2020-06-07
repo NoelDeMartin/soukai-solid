@@ -196,8 +196,6 @@ export default class SolidEngine implements Engine {
 
     private async extractJsonLDGraphUpdate(updates: EngineUpdates): Promise<[RDFResourceProperty[], [string, string][]]> {
         if (!this.isJsonLDGraphUpdate(updates)) {
-            console.log('bad updates', updates);
-
             throw new SoukaiError(
                 'Invalid JSON-LD graph updates provided for SolidEngine. ' +
                 "Are you using a model that isn't a SolidModel?",

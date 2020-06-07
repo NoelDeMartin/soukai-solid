@@ -90,6 +90,28 @@ class RDF {
         return document.toJsonLD();
     }
 
+    public getJsonLDProperty(json: object, property: string): any {
+        property = IRI(property);
+
+        if (property in json)
+            return json[property];
+
+        if (!('@context' in json))
+            return;
+
+        const context = json['@context'] as MapObject<string>;
+        const contextProperty = Object
+            .entries(context)
+            .find(([name, url]) => property.startsWith(url));
+
+        if (!contextProperty)
+            return;
+
+        const propertyPrefix = (contextProperty[0] === '@vocab' ? '' : `${contextProperty[0]}:`);
+
+        return json[propertyPrefix + property.substr(contextProperty[1].length)];
+    }
+
 }
 
 export function IRI(value: string, namespaces: IRINamespacesMap = {}): string {
