@@ -19,6 +19,8 @@ export class SolidHasManyRelation<
     RelatedClass extends typeof SolidModel = typeof SolidModel,
 > extends HasManyRelation<Parent, Related, RelatedClass> {
 
+    public addModelToStoreInSameDocument(related: Related): void;
+
     public create(attributes?: Attributes, useSameDocument?: boolean): Promise<Related>;
 
     public loadDocumentModels(document: EngineDocument): Promise<void>;
@@ -73,13 +75,17 @@ export class SolidModel extends Model {
 
     protected getDocumentModels(): SolidModel[];
 
+    protected getRelatedModels(): SolidModel[];
+
+    protected getDefaultRdfContext(): string;
+
+    protected getDirtyEngineDocumentUpdates(includeRelations?: boolean): EngineUpdates;
+
     protected hasMany(relatedClass: typeof SolidModel, foreignKeyField?: string, localKeyField?: string): MultiModelRelation;
 
     protected belongsToMany(relatedClass: typeof SolidModel, foreignKeyField?: string, localKeyField?: string): MultiModelRelation;
 
     protected isContainedBy(model: typeof SolidModel): SingleModelRelation;
-
-    protected getDefaultRdfContext(): string;
 
     protected newUrl(documentUrl?: string): string;
 

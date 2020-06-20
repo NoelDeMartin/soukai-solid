@@ -21,7 +21,11 @@ export default class SolidHasManyRelation<
     modelsInSameDocument?: Related[];
     modelsInOtherDocumentIds?: string[];
 
-    pendingModelsInSameDocument: Related[] = [];
+    modelsToStoreInSameDocument: Related[] = [];
+
+    public addModelToStoreInSameDocument(related: Related): void {
+        this.modelsToStoreInSameDocument.push(related);
+    }
 
     public async resolve(): Promise<Related[]> {
         if (!this.modelsInSameDocument || !this.modelsInOtherDocumentIds)
@@ -59,7 +63,7 @@ export default class SolidHasManyRelation<
         if (!useSameDocument)
             return model.save();
 
-        this.pendingModelsInSameDocument.push(model);
+        this.modelsToStoreInSameDocument.push(model);
 
         if (this.parent.exists())
             await this.parent.save();

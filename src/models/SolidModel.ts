@@ -204,7 +204,7 @@ class SolidModel extends Model {
         return !!Object
             .values(this._relations)
             .filter(relation => relation instanceof SolidHasManyRelation)
-            .find((relation: SolidHasManyRelation) => relation.pendingModelsInSameDocument.length > 0);
+            .find((relation: SolidHasManyRelation) => relation.modelsToStoreInSameDocument.length > 0);
     }
 
     protected isDocumentRoot(): boolean {
@@ -226,7 +226,14 @@ class SolidModel extends Model {
 
         const documentUrl = this.getDocumentUrl();
 
-        return Object.values(this._relations)
+        return this
+            .getRelatedModels()
+            .filter(model => model.getDocumentUrl() === documentUrl);
+    }
+
+    protected getRelatedModels(): SolidModel[] {
+        return Object
+            .values(this._relations)
             .filter(relation => relation.loaded)
             .map(relation => {
                 if (relation instanceof MultiModelRelation)
@@ -234,39 +241,7 @@ class SolidModel extends Model {
 
                 return [relation.related!];
             })
-            .reduce((documentModels, relationModels) => [...documentModels, ...relationModels], [])
-            .filter(model => model.getDocumentUrl() === documentUrl);
-    }
-
-    protected preparePendingDocumentModels(): SolidModel[] {
-        const hasManyRelations = Object
-            .values(this._relations)
-            .filter(relation => relation instanceof SolidHasManyRelation)
-            .filter(
-                (relation: SolidHasManyRelation) => relation.pendingModelsInSameDocument.length > 0,
-            ) as SolidHasManyRelation[];
-
-        if (hasManyRelations.length === 0)
-            return [];
-
-        if (!this.url)
-            this.mintUrl();
-
-        const pendingDocumentModels: SolidModel[] = [];
-        const documentUrl = this.getDocumentUrl()!;
-
-        for (const relation of hasManyRelations) {
-            for (const relatedModel of relation.pendingModelsInSameDocument) {
-                if (!relatedModel.url)
-                    relatedModel.mintUrl(documentUrl);
-
-                relatedModel.setAttribute(relation.foreignKeyName, this.url);
-
-                pendingDocumentModels.push(relatedModel);
-            }
-        }
-
-        return pendingDocumentModels;
+            .reduce((documentModels, relationModels) => [...documentModels, ...relationModels], []);
     }
 
     protected async createFromEngineDocument<T extends Model>(id: any, document: EngineDocument): Promise<T> {
@@ -327,8 +302,8 @@ class SolidModel extends Model {
             .filter(relation => relation instanceof SolidHasManyRelation)
             .forEach((relation: SolidHasManyRelation) => {
                 relation.modelsInSameDocument = relation.modelsInSameDocument || [];
-                relation.modelsInSameDocument.push(...relation.pendingModelsInSameDocument);
-                relation.pendingModelsInSameDocument = [];
+                relation.modelsInSameDocument.push(...relation.modelsToStoreInSameDocument);
+                relation.modelsToStoreInSameDocument = [];
             });
     }
 
@@ -349,7 +324,7 @@ class SolidModel extends Model {
     }
 
     protected toEngineDocument(): EngineDocument {
-        this.preparePendingDocumentModels();
+        this.prepareNewDocumentModels();
 
         return {
             '@graph': [
@@ -361,13 +336,13 @@ class SolidModel extends Model {
 
     protected getDirtyEngineDocumentUpdates(includeRelations: boolean = true): EngineUpdates {
         const graphUpdates: EngineAttributeUpdateOperation[] = [];
-        const pendingDocumentModels = this.preparePendingDocumentModels();
+        const newDocumentModels = this.prepareNewDocumentModels();
 
         if (includeRelations) {
             // TODO handle updates for related models in the same document
 
             graphUpdates.push(
-                ...pendingDocumentModels.map(model => ({
+                ...newDocumentModels.map(model => ({
                     $push: model.serializeToJsonLD(false) as EngineAttributeValue,
                 })),
             );
@@ -415,6 +390,37 @@ class SolidModel extends Model {
             return;
 
         return Url.parentDirectory(this.url);
+    }
+
+    private prepareNewDocumentModels(): SolidModel[] {
+        const hasManyRelations = Object
+            .values(this._relations)
+            .filter(relation => relation instanceof SolidHasManyRelation)
+            .filter(
+                (relation: SolidHasManyRelation) => relation.modelsToStoreInSameDocument.length > 0,
+            ) as SolidHasManyRelation[];
+
+        if (hasManyRelations.length === 0)
+            return [];
+
+        if (!this.url)
+            this.mintUrl();
+
+        const pendingDocumentModels: SolidModel[] = [];
+        const documentUrl = this.getDocumentUrl()!;
+
+        for (const relation of hasManyRelations) {
+            for (const relatedModel of relation.modelsToStoreInSameDocument) {
+                if (!relatedModel.url)
+                    relatedModel.mintUrl(documentUrl);
+
+                relatedModel.setAttribute(relation.foreignKeyName, this.url);
+
+                pendingDocumentModels.push(relatedModel);
+            }
+        }
+
+        return pendingDocumentModels;
     }
 
 }
