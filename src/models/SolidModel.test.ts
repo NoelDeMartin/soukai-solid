@@ -166,8 +166,46 @@ describe('SolidModel', () => {
         });
 
         expect(movie.exists()).toBe(true);
+        expect(typeof movie.actions![0].url).toEqual('string');
         expect(movie.actions![0].exists()).toBe(true);
+        expect(movie.actions![0].url.startsWith(`${movieUrl}#`)).toBe(true);
         expect(movie.actions![0].object).toEqual(movieUrl);
+    });
+
+    it('sends JSON-LD with related models in the same document without minted url', async () => {
+        // Arrange
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const movieName = Faker.name.title();
+        const movie = new Movie({ name: movieName });
+        const action = await movie.relatedActions.create({ startTime: new Date('1997-07-21T23:42:00Z') }, true);
+
+        jest.spyOn(engine, 'create');
+
+        // Act
+        await movie.save(containerUrl);
+
+        // Assert
+        expect(engine.create).toHaveBeenCalledWith(
+            containerUrl,
+            expect.anything(),
+            expect.anything(),
+        );
+
+        const document = (engine.create as any).mock.calls[0][1];
+        await expect(document).toEqualJsonLD({
+            '@graph': [
+                ...stubMovieJsonLD(movie.url, movieName)['@graph'],
+                ...stubWatchActionJsonLD(action.url, movie.url, '1997-07-21T23:42:00.000Z')['@graph'],
+            ],
+        });
+
+        expect((engine.create as any).mock.calls[0][2]).toEqual(movie.url);
+
+        expect(movie.exists()).toBe(true);
+        expect(movie.url.startsWith(containerUrl)).toBe(true);
+        expect(movie.actions![0].exists()).toBe(true);
+        expect(movie.actions![0].url.startsWith(`${movie.url}#`)).toBe(true);
+        expect(movie.actions![0].object).toEqual(movie.url);
     });
 
     it('converts filters to JSON-LD', async () => {
@@ -402,6 +440,58 @@ describe('SolidModel', () => {
             {
                 '@graph': {
                     $push: action.toJsonLD(),
+                },
+            },
+        );
+    });
+
+    it('creates models that are not document roots', async () => {
+        // Arrange
+        const documentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const movieUrl = documentUrl + '#' + Faker.random.uuid();
+        const movie = new Movie({ url: movieUrl });
+
+        jest.spyOn(engine, 'update');
+
+        // Act
+        await movie.save();
+
+        // Assert
+        expect(engine.update).toHaveBeenCalledWith(
+            expect.anything(),
+            documentUrl,
+            {
+                '@graph': {
+                    $push: movie.toJsonLD(),
+                },
+            },
+        );
+    });
+
+    it('updates models that are not document roots', async () => {
+        // Arrange
+        const documentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const movieName = Faker.name.title();
+        const movieUrl = documentUrl + '#' + Faker.random.uuid();
+        const movie = new Movie({ url: movieUrl }, true);
+
+        movie.title = movieName;
+
+        jest.spyOn(engine, 'update');
+
+        // Act
+        await movie.save();
+
+        // Assert
+        expect(engine.update).toHaveBeenCalledWith(
+            expect.anything(),
+            documentUrl,
+            {
+                '@graph': {
+                    $updateItems: {
+                        $where: { '@id': movieUrl },
+                        $update: { [IRI('schema:title')]: movieName },
+                    },
                 },
             },
         );

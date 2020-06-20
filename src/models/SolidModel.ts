@@ -1,6 +1,8 @@
 import Soukai, {
     Attributes,
     DocumentAlreadyExists,
+    EngineAttributeUpdateOperation,
+    EngineAttributeValue,
     EngineDocument,
     EngineFilters,
     EngineUpdates,
@@ -165,8 +167,6 @@ class SolidModel extends Model {
                 await super.save();
             }
 
-            this.getDocumentModels().map(model => model.cleanDirty());
-
             return this as any as T;
         });
     }
@@ -185,6 +185,26 @@ class SolidModel extends Model {
 
     public getIdAttribute(): string {
         return this.getAttribute('url');
+    }
+
+    public isDirty(field?: string): boolean {
+        if (field)
+            return super.isDirty(field);
+
+        if (super.isDirty())
+            return true;
+
+        // TODO this is not 100% right. Related documents are different entities,
+        // even if they are stored in the same document. For now, this is a workaround
+        // so that every time a model's save method is called, related models in the same
+        // document are saved. This is at least consistent with the rest of the methods
+        // handling dirty attributes, but it should be refactored at some point.
+        // The only problem for now is that calling isDirty will yield false positives
+        // in some situations.
+        return !!Object
+            .values(this._relations)
+            .filter(relation => relation instanceof SolidHasManyRelation)
+            .find((relation: SolidHasManyRelation) => relation.pendingModelsInSameDocument.length > 0);
     }
 
     protected isDocumentRoot(): boolean {
@@ -218,6 +238,37 @@ class SolidModel extends Model {
             .filter(model => model.getDocumentUrl() === documentUrl);
     }
 
+    protected preparePendingDocumentModels(): SolidModel[] {
+        const hasManyRelations = Object
+            .values(this._relations)
+            .filter(relation => relation instanceof SolidHasManyRelation)
+            .filter(
+                (relation: SolidHasManyRelation) => relation.pendingModelsInSameDocument.length > 0,
+            ) as SolidHasManyRelation[];
+
+        if (hasManyRelations.length === 0)
+            return [];
+
+        if (!this.url)
+            this.mintUrl();
+
+        const pendingDocumentModels: SolidModel[] = [];
+        const documentUrl = this.getDocumentUrl()!;
+
+        for (const relation of hasManyRelations) {
+            for (const relatedModel of relation.pendingModelsInSameDocument) {
+                if (!relatedModel.url)
+                    relatedModel.mintUrl(documentUrl);
+
+                relatedModel.setAttribute(relation.foreignKeyName, this.url);
+
+                pendingDocumentModels.push(relatedModel);
+            }
+        }
+
+        return pendingDocumentModels;
+    }
+
     protected async createFromEngineDocument<T extends Model>(id: any, document: EngineDocument): Promise<T> {
         const model = await super.createFromEngineDocument<SolidModel>(id, document);
 
@@ -248,7 +299,11 @@ class SolidModel extends Model {
         const id = this.getSerializedPrimaryKey()!;
         const documentId = this.getDocumentUrl()!;
         const updateOperation = this._exists
-            ? engine.update(this.classDef.collection, documentId, this.getDirtyEngineDocumentUpdates())
+            ? engine.update(
+                this.classDef.collection,
+                documentId,
+                this.getDirtyEngineDocumentUpdates(false),
+            )
             : engine.update(
                 this.classDef.collection,
                 documentId,
@@ -260,6 +315,21 @@ class SolidModel extends Model {
         await updateOperation;
 
         return id;
+    }
+
+    protected cleanDirty(): void {
+        super.cleanDirty();
+
+        this.getDocumentModels().map(model => model.cleanDirty());
+
+        Object
+            .values(this._relations)
+            .filter(relation => relation instanceof SolidHasManyRelation)
+            .forEach((relation: SolidHasManyRelation) => {
+                relation.modelsInSameDocument = relation.modelsInSameDocument || [];
+                relation.modelsInSameDocument.push(...relation.pendingModelsInSameDocument);
+                relation.pendingModelsInSameDocument = [];
+            });
     }
 
     protected hasMany(relatedClass: typeof SolidModel, foreignKeyField?: string, localKeyField?: string): MultiModelRelation {
@@ -279,6 +349,8 @@ class SolidModel extends Model {
     }
 
     protected toEngineDocument(): EngineDocument {
+        this.preparePendingDocumentModels();
+
         return {
             '@graph': [
                 this.serializeToJsonLD(false),
@@ -287,19 +359,34 @@ class SolidModel extends Model {
         } as EngineDocument;
     }
 
-    protected getDirtyEngineDocumentUpdates(): EngineUpdates {
-        const updates = super.getDirtyEngineDocumentUpdates();
+    protected getDirtyEngineDocumentUpdates(includeRelations: boolean = true): EngineUpdates {
+        const graphUpdates: EngineAttributeUpdateOperation[] = [];
+        const pendingDocumentModels = this.preparePendingDocumentModels();
 
-        // TODO handle updates for related models in the same document
+        if (includeRelations) {
+            // TODO handle updates for related models in the same document
 
-        return {
-            '@graph': {
+            graphUpdates.push(
+                ...pendingDocumentModels.map(model => ({
+                    $push: model.serializeToJsonLD(false) as EngineAttributeValue,
+                })),
+            );
+        }
+
+        if (super.isDirty()) {
+            const modelUpdates = super.getDirtyEngineDocumentUpdates();
+
+            graphUpdates.push({
                 $updateItems: {
                     $where: { '@id': this.url },
-                    $update: this.convertEngineUpdatesToJsonLD(updates),
+                    $update: this.convertEngineUpdatesToJsonLD(modelUpdates),
                 },
-            },
-        };
+            });
+        }
+
+        return graphUpdates.length === 1
+            ? { '@graph': graphUpdates[0] }
+            : { '@graph': { $apply: graphUpdates } };
     }
 
     protected async parseEngineDocumentAttributes(id: any, document: EngineDocument): Promise<Attributes> {
