@@ -1,5 +1,6 @@
 import {
     Attributes,
+    BelongsToManyRelation,
     Engine,
     EngineDocument,
     EngineDocumentsCollection,
@@ -13,6 +14,18 @@ import {
     SingleModelRelation,
 } from 'soukai';
 
+export class SolidContainsRelation<
+    Parent extends SolidContainerModel = SolidContainerModel,
+    Related extends SolidModel = SolidModel,
+    RelatedClass extends typeof SolidModel = typeof SolidModel,
+> extends BelongsToManyRelation<Parent, Related, RelatedClass> {
+
+    public create(attributes?: Attributes): Promise<Related>;
+
+    public save(model: Related): Promise<void>;
+
+}
+
 export class SolidHasManyRelation<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
@@ -22,6 +35,8 @@ export class SolidHasManyRelation<
     public addModelToStoreInSameDocument(related: Related): void;
 
     public create(attributes?: Attributes, useSameDocument?: boolean): Promise<Related>;
+
+    public save(model: Related, useSameDocument?: boolean): Promise<void>;
 
     public loadDocumentModels(document: EngineDocument): Promise<void>;
 

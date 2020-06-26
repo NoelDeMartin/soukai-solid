@@ -46,10 +46,7 @@ export default class SolidHasManyRelation<
     }
 
     /**
-     * This method will create an instance of the related model and bind up all the
-     * relevant data (foreignKey, inverse relations, etc.). If the parent model does not
-     * exist and the same document is intended to be used, the returned model won't exist either
-     * until the parent is saved.
+     * This method will create an instance of the related model and call the [[save]] method.
      *
      * @param attributes Attributes to create the related instance.
      * @param useSameDocument Whether to use the same document to store the related model or not.
@@ -57,18 +54,32 @@ export default class SolidHasManyRelation<
     public async create(attributes: Attributes = {}, useSameDocument: boolean = false): Promise<Related> {
         const model = new this.relatedClass(attributes) as Related;
 
+        await this.save(model, useSameDocument);
+
+        return model;
+    }
+
+    /**
+     * This method will bind up all the relevant data (foreignKey, inverse relations, etc.) and save the model.
+     * If the parent model does not exist and both models will be stored in the same document, the model will
+     * be saved when the parent model is saved instead.
+     *
+     * @param model Related model instance to save.
+     * @param useSameDocument Whether to use the same document to store the related model or not.
+     */
+    public async save(model: Related, useSameDocument: boolean = false): Promise<void> {
         this.inititalizeInverseRelations(model);
         this.related = [...(this.related || []), model];
 
         if (!useSameDocument)
-            return model.save();
+            await model.save();
 
         this.modelsToStoreInSameDocument.push(model);
 
-        if (this.parent.exists())
-            await this.parent.save();
+        if (!this.parent.exists())
+            return;
 
-        return model;
+        await this.parent.save();
     }
 
     public async loadDocumentModels(document: EngineDocument): Promise<void> {
