@@ -4,9 +4,13 @@ import SolidModel from '@/models/SolidModel';
 
 import SolidEngine from '@/engines/SolidEngine';
 
+import SoukaiSolid from './SoukaiSolid';
+
 export {
     SolidContainerModel,
     SolidDocument,
     SolidEngine,
     SolidModel,
 };
+
+export default SoukaiSolid;
