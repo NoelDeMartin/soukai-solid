@@ -74,7 +74,7 @@ export class SolidModel extends Model {
 
     protected static pureInstance: SolidModel;
 
-    protected classDef: typeof SolidModel;
+    public modelClass: typeof SolidModel;
 
     public save<T extends Model>(containerUrl?: string): Promise<T>;
 

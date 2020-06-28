@@ -51,7 +51,7 @@ export default class SolidContainerModel extends SolidModel {
 
     protected newUrl(): string {
         return Url.resolveDirectory(
-            this.classDef.collection,
+            this.modelClass.collection,
             this.hasAttribute('name')
                 ? Str.slug(this.getAttribute('name'))
                 : UUID.generate(),

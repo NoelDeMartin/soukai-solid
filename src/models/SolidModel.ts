@@ -149,11 +149,11 @@ class SolidModel extends Model {
         return result;
     }
 
-    protected classDef: typeof SolidModel;
+    public modelClass: typeof SolidModel;
 
     public save<T extends Model>(collection?: string): Promise<T> {
-        return this.classDef.withCollection(collection || this.guessCollection(), async () => {
-            if (!this.url && this.classDef.mintsUrls)
+        return this.modelClass.withCollection(collection || this.guessCollection(), async () => {
+            if (!this.url && this.modelClass.mintsUrls)
                 this.mintUrl();
 
             try {
@@ -172,11 +172,11 @@ class SolidModel extends Model {
     }
 
     public delete<T extends Model>(): Promise<T> {
-        return this.classDef.withCollection(this.guessCollection() || '', () => super.delete());
+        return this.modelClass.withCollection(this.guessCollection() || '', () => super.delete());
     }
 
     public mintUrl(documentUrl?: string): void {
-        this.setAttribute(this.classDef.primaryKey, this.newUrl(documentUrl));
+        this.setAttribute(this.modelClass.primaryKey, this.newUrl(documentUrl));
     }
 
     public toJsonLD(): object {
@@ -275,12 +275,12 @@ class SolidModel extends Model {
         const documentId = this.getDocumentUrl()!;
         const updateOperation = this._exists
             ? engine.update(
-                this.classDef.collection,
+                this.modelClass.collection,
                 documentId,
                 this.getDirtyEngineDocumentUpdates(false),
             )
             : engine.update(
-                this.classDef.collection,
+                this.modelClass.collection,
                 documentId,
                 {
                     '@graph': { $push: this.serializeToJsonLD(false) as EngineDocument },
@@ -320,7 +320,7 @@ class SolidModel extends Model {
     }
 
     protected getDefaultRdfContext(): string {
-        return Object.values(this.classDef.rdfContexts).shift() || '';
+        return Object.values(this.modelClass.rdfContexts).shift() || '';
     }
 
     protected toEngineDocument(): EngineDocument {
@@ -382,7 +382,7 @@ class SolidModel extends Model {
         if (documentUrl)
             return documentUrl + '#' + UUID.generate();
 
-        return Url.resolve(this.classDef.collection, UUID.generate());
+        return Url.resolve(this.modelClass.collection, UUID.generate());
     }
 
     protected guessCollection(): string | undefined {
