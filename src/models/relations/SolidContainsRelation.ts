@@ -27,7 +27,7 @@ export default class SolidContainsRelation<
     }
 
     public async create(attributes: Attributes = {}): Promise<Related> {
-        const model = new this.relatedClass(attributes) as Related;
+        const model = this.relatedClass.newInstance<Related>(attributes);
 
         await this.save(model);
 

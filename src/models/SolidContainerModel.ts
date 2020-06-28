@@ -11,7 +11,7 @@ import SolidContainsRelation from './relations/SolidContainsRelation';
 import SolidDocument from './SolidDocument';
 import SolidModel from './SolidModel';
 
-export default class SolidContainerModel extends SolidModel {
+export default abstract class SolidContainerModel extends SolidModel {
 
     public static boot(name: string): void {
         super.boot(name);

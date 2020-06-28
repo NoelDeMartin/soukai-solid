@@ -50,7 +50,7 @@ export interface SolidFieldDefinition extends FieldDefinition {
     rdfProperty: string;
 }
 
-export class SolidModel extends Model {
+export abstract class SolidModel extends Model {
 
     public static fields: SolidFieldsDefinition | any;
 
@@ -67,6 +67,8 @@ export class SolidModel extends Model {
     public static at(containerUrl: string): typeof SolidModel;
 
     public static prepareEngineFilters(filters?: EngineFilters): EngineFilters;
+
+    public static newInstance<M extends SolidModel>(attributes: Attributes, exists?: boolean): M;
 
     public static newFromJsonLD<T extends SolidModel>(json: object): Promise<T>;
 
@@ -110,7 +112,7 @@ export class SolidModel extends Model {
 
 export class SolidDocument extends SolidModel {}
 
-export class SolidContainerModel extends SolidModel {
+export abstract class SolidContainerModel extends SolidModel {
 
     resourceUrls: string[];
     documents: SolidDocument[];
@@ -149,3 +151,11 @@ export class SolidEngine implements Engine {
     delete(collection: string, id: string): Promise<void>;
 
 }
+
+interface SoukaiSolid {
+    loadSolidModels(): void;
+}
+
+declare const SoukaiSolid: SoukaiSolid;
+
+export default SoukaiSolid;

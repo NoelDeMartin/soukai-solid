@@ -34,7 +34,7 @@ export interface SolidFieldDefinition extends FieldDefinition {
     rdfProperty: string;
 }
 
-class SolidModel extends Model {
+abstract class SolidModel extends Model {
 
     public static primaryKey: string = 'url';
 
@@ -117,6 +117,10 @@ class SolidModel extends Model {
 
     public static prepareEngineFilters(filters: EngineFilters = {}): EngineFilters {
         return this.instance.convertEngineFiltersToJsonLD(filters);
+    }
+
+    public static newInstance<M extends SolidModel>(attributes: Attributes, exists: boolean = false): M {
+        return new (this as any)(attributes, exists);
     }
 
     public static async newFromJsonLD<T extends SolidModel>(jsonld: object): Promise<T> {

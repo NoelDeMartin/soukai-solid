@@ -52,7 +52,7 @@ export default class SolidHasManyRelation<
      * @param useSameDocument Whether to use the same document to store the related model or not.
      */
     public async create(attributes: Attributes = {}, useSameDocument: boolean = false): Promise<Related> {
-        const model = new this.relatedClass(attributes) as Related;
+        const model = this.relatedClass.newInstance<Related>(attributes);
 
         await this.save(model, useSameDocument);
 
