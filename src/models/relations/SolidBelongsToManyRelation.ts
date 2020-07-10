@@ -10,18 +10,18 @@ export default class SolidBelongsToManyRelation<
     RelatedClass extends typeof SolidModel = typeof SolidModel,
 > extends BelongsToManyRelation<Parent, Related, RelatedClass> {
 
-    modelsInSameDocument?: Related[];
-    modelsInOtherDocumentIds?: string[];
+    __modelsInSameDocument?: Related[];
+    __modelsInOtherDocumentIds?: string[];
 
     public async resolve(): Promise<Related[]> {
-        if (!this.modelsInSameDocument || !this.modelsInOtherDocumentIds) {
-            this.modelsInSameDocument = [];
-            this.modelsInOtherDocumentIds = this.parent.getAttribute(this.foreignKeyName);
+        if (!this.__modelsInSameDocument || !this.__modelsInOtherDocumentIds) {
+            this.__modelsInSameDocument = [];
+            this.__modelsInOtherDocumentIds = this.parent.getAttribute(this.foreignKeyName);
         }
 
         const idsByContainerUrl = {};
 
-        for (const id of this.modelsInOtherDocumentIds!) {
+        for (const id of this.__modelsInOtherDocumentIds!) {
             const containerUrl = Url.parentDirectory(id);
 
             if (!(containerUrl in idsByContainerUrl)) {
@@ -49,14 +49,14 @@ export default class SolidBelongsToManyRelation<
         );
 
         this.related = [
-            ...this.modelsInSameDocument,
+            ...this.__modelsInSameDocument,
             ...modelsInOtherDocuments,
         ];
 
         return this.related;
     }
 
-    public async loadDocumentModels(document: EngineDocument): Promise<void> {
+    public async __loadDocumentModels(document: EngineDocument): Promise<void> {
         const helper = new EngineHelper();
         const modelIds = this.parent.getAttribute(this.foreignKeyName) as string[];
         const filters = this.relatedClass.prepareEngineFilters();
@@ -68,7 +68,7 @@ export default class SolidBelongsToManyRelation<
                 return documents;
             }, {} as EngineDocumentsCollection);
 
-        this.modelsInSameDocument = await Promise.all(
+        this.__modelsInSameDocument = await Promise.all(
             Object
                 .entries(helper.filterDocuments(documents, filters))
                 .map(
@@ -77,14 +77,14 @@ export default class SolidBelongsToManyRelation<
                 ),
         );
 
-        this.modelsInOtherDocumentIds = modelIds.filter(
-            resourceId => !this.modelsInSameDocument!.find(model => model.url === resourceId),
+        this.__modelsInOtherDocumentIds = modelIds.filter(
+            resourceId => !this.__modelsInSameDocument!.find(model => model.url === resourceId),
         );
 
-        if (this.modelsInOtherDocumentIds.length > 0)
+        if (this.__modelsInOtherDocumentIds.length > 0)
             return;
 
-        this.related = this.modelsInSameDocument;
+        this.related = this.__modelsInSameDocument;
     }
 
 }

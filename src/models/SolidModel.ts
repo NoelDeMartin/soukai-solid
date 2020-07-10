@@ -208,7 +208,7 @@ abstract class SolidModel extends Model {
         return !!Object
             .values(this._relations)
             .filter(relation => relation instanceof SolidHasManyRelation)
-            .find((relation: SolidHasManyRelation) => relation.modelsToStoreInSameDocument.length > 0);
+            .find((relation: SolidHasManyRelation) => relation.__modelsToStoreInSameDocument.length > 0);
     }
 
     protected isDocumentRoot(): boolean {
@@ -265,7 +265,7 @@ abstract class SolidModel extends Model {
                     relation instanceof SolidBelongsToManyRelation,
             ) as (SolidHasManyRelation | SolidBelongsToManyRelation)[];
 
-        await Promise.all(relations.map(relation => relation.loadDocumentModels(document)));
+        await Promise.all(relations.map(relation => relation.__loadDocumentModels(document)));
     }
 
     protected async syncDirty(): Promise<string> {
@@ -305,9 +305,9 @@ abstract class SolidModel extends Model {
             .values(this._relations)
             .filter(relation => relation instanceof SolidHasManyRelation)
             .forEach((relation: SolidHasManyRelation) => {
-                relation.modelsInSameDocument = relation.modelsInSameDocument || [];
-                relation.modelsInSameDocument.push(...relation.modelsToStoreInSameDocument);
-                relation.modelsToStoreInSameDocument = [];
+                relation.__modelsInSameDocument = relation.__modelsInSameDocument || [];
+                relation.__modelsInSameDocument.push(...relation.__modelsToStoreInSameDocument);
+                relation.__modelsToStoreInSameDocument = [];
             });
     }
 
@@ -401,7 +401,7 @@ abstract class SolidModel extends Model {
             .values(this._relations)
             .filter(relation => relation instanceof SolidHasManyRelation)
             .filter(
-                (relation: SolidHasManyRelation) => relation.modelsToStoreInSameDocument.length > 0,
+                (relation: SolidHasManyRelation) => relation.__modelsToStoreInSameDocument.length > 0,
             ) as SolidHasManyRelation[];
 
         if (hasManyRelations.length === 0)
@@ -414,7 +414,7 @@ abstract class SolidModel extends Model {
         const documentUrl = this.getDocumentUrl()!;
 
         for (const relation of hasManyRelations) {
-            for (const relatedModel of relation.modelsToStoreInSameDocument) {
+            for (const relatedModel of relation.__modelsToStoreInSameDocument) {
                 if (!relatedModel.url)
                     relatedModel.mintUrl(documentUrl);
 

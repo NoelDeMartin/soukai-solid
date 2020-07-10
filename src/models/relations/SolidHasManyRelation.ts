@@ -18,27 +18,26 @@ export default class SolidHasManyRelation<
     RelatedClass extends typeof SolidModel = typeof SolidModel,
 > extends HasManyRelation<Parent, Related, RelatedClass> {
 
-    modelsInSameDocument?: Related[];
-    modelsInOtherDocumentIds?: string[];
-
-    modelsToStoreInSameDocument: Related[] = [];
+    __modelsToStoreInSameDocument: Related[] = [];
+    __modelsInSameDocument?: Related[];
+    __modelsInOtherDocumentIds?: string[];
 
     public addModelToStoreInSameDocument(related: Related): void {
-        this.modelsToStoreInSameDocument.push(related);
+        this.__modelsToStoreInSameDocument.push(related);
     }
 
     public async resolve(): Promise<Related[]> {
-        if (!this.modelsInSameDocument || !this.modelsInOtherDocumentIds)
+        if (!this.__modelsInSameDocument || !this.__modelsInOtherDocumentIds)
             // Solid hasMany relation only finds related models that have been
             // declared in the same document.
             return [];
 
         const modelsInOtherDocuments = await this.relatedClass.all<Related>({
-            $in: this.modelsInOtherDocumentIds,
+            $in: this.__modelsInOtherDocumentIds,
         });
 
         this.related = [
-            ...this.modelsInSameDocument,
+            ...this.__modelsInSameDocument,
             ...modelsInOtherDocuments,
         ];
 
@@ -74,7 +73,7 @@ export default class SolidHasManyRelation<
         if (!useSameDocument)
             await model.save();
 
-        this.modelsToStoreInSameDocument.push(model);
+        this.__modelsToStoreInSameDocument.push(model);
 
         if (!this.parent.exists())
             return;
@@ -82,7 +81,7 @@ export default class SolidHasManyRelation<
         await this.parent.save();
     }
 
-    public async loadDocumentModels(document: EngineDocument): Promise<void> {
+    public async __loadDocumentModels(document: EngineDocument): Promise<void> {
         const helper = new EngineHelper();
         const foreignProperty = this.relatedClass.fields[this.foreignKeyName]?.rdfProperty;
         const filters = this.relatedClass.prepareEngineFilters();
@@ -100,7 +99,7 @@ export default class SolidHasManyRelation<
                 return documents;
             }, {} as EngineDocumentsCollection);
 
-        this.modelsInSameDocument = await Promise.all(
+        this.__modelsInSameDocument = await Promise.all(
             Object
                 .entries(helper.filterDocuments(documents, filters))
                 .map(
@@ -109,14 +108,14 @@ export default class SolidHasManyRelation<
                 ),
         );
 
-        this.modelsInOtherDocumentIds = Object.keys(documents).filter(
-            resourceId => !this.modelsInSameDocument!.find(model => model.url === resourceId),
+        this.__modelsInOtherDocumentIds = Object.keys(documents).filter(
+            resourceId => !this.__modelsInSameDocument!.find(model => model.url === resourceId),
         );
 
-        if (this.modelsInOtherDocumentIds.length > 0)
+        if (this.__modelsInOtherDocumentIds.length > 0)
             return;
 
-        this.related = this.modelsInSameDocument;
+        this.related = this.__modelsInSameDocument;
     }
 
     protected inititalizeInverseRelations(model: Related): void {

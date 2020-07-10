@@ -38,8 +38,6 @@ export class SolidHasManyRelation<
 
     public save(model: Related, useSameDocument?: boolean): Promise<void>;
 
-    public loadDocumentModels(document: EngineDocument): Promise<void>;
-
 }
 
 export interface SolidFieldsDefinition extends FieldsDefinition {
