@@ -1,6 +1,6 @@
 {
   "name": "soukai-solid",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "description": "Solid engine for Soukai ODM",
   "main": "dist/soukai-solid.common.js",
   "module": "dist/soukai-solid.esm.js",
@@ -30,7 +30,7 @@
     "jsonld-streaming-parser": "^2.0.1",
     "jsonld-streaming-serializer": "^1.1.0",
     "n3": "^1.3.6",
-    "soukai": "next"
+    "soukai": "^0.3.0"
   },
   "devDependencies": {
     "@types/faker": "^4.1.5",
