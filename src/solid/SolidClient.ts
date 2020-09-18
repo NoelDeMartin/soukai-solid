@@ -1,8 +1,10 @@
 import { Quad } from 'rdf-js';
 
-import RDF, { IRI } from '@/solid/utils/RDF';
+import RDF, { IRI, RDFParsingError } from '@/solid/utils/RDF';
 import RDFDocument from '@/solid/RDFDocument';
 import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
+
+import { DocumentFormat, MalformedDocumentError } from '@/errors/MalformedDocumentError';
 
 import Arr from '@/utils/Arr';
 import Url from '@/utils/Url';
@@ -55,7 +57,13 @@ export default class SolidClient {
 
         const data = await response.text();
 
-        return RDF.parseTurtle(data, { baseUrl: url });
+        try {
+            const document = await RDF.parseTurtle(data, { baseUrl: url });
+
+            return document;
+        } catch (error) {
+            throw new MalformedDocumentError(url, DocumentFormat.RDF, error.message);
+        }
     }
 
     public async getDocuments(containerUrl: string, onlyContainers: boolean = false): Promise<RDFDocument[]> {
@@ -63,10 +71,14 @@ export default class SolidClient {
             return onlyContainers
                 ? await this.getContainerDocuments(containerUrl)
                 : await this.getNonContainerDocumentsUsingGlobbing(containerUrl);
-        } catch (e) {
+        } catch (error) {
+            if (error instanceof RDFParsingError) {
+                throw new MalformedDocumentError(containerUrl, DocumentFormat.RDF, error.message);
+            }
+
             // Due to an existing bug, empty containers return 404
             // see: https://github.com/solid/node-solid-server/issues/900
-            console.error(e);
+            console.error(error);
 
             return [];
         }
@@ -127,9 +139,8 @@ export default class SolidClient {
 
         if (response.status === 200) {
             const data = await response.text();
-            const document = await RDF.parseTurtle(data, { baseUrl: url });
 
-            return !document.isEmpty();
+            return data.length > 0;
         } else if (response.status === 404) {
             return false;
         } else {

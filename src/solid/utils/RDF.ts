@@ -2,6 +2,7 @@ import { JsonLdParser as JsonLDParser } from 'jsonld-streaming-parser';
 import { JsonLdSerializer as JsonLDSerializer } from 'jsonld-streaming-serializer';
 import { Parser as TurtleParser } from 'n3';
 import { Quad } from 'rdf-js';
+import { SoukaiError } from 'soukai';
 
 import RDFDocument from '@/solid/RDFDocument';
 
@@ -24,6 +25,8 @@ export interface TurtleParsingOptions {
     format?: string,
 }
 
+export class RDFParsingError extends SoukaiError {}
+
 class RDF {
 
     public parseTurtle(turtle: string, options: TurtleParsingOptions = {}): Promise<RDFDocument> {
@@ -36,7 +39,7 @@ class RDF {
 
             parser.parse(turtle, (error, quad) => {
                 if (error) {
-                    reject(error);
+                    reject(new RDFParsingError(error.message));
                     return;
                 }
 

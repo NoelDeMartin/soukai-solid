@@ -1,5 +1,7 @@
 import Faker from 'faker';
 
+import { MalformedDocumentError } from '@/errors/MalformedDocumentError';
+
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 
@@ -592,6 +594,47 @@ describe('SolidClient', () => {
 
         // Assert
         expect(exists).toBe(false);
+    });
+
+    it('handles malformed document errors', async () => {
+        // Arrange
+        let error;
+        const url = Faker.internet.url();
+
+        StubFetcher.addFetchResponse('this is not turtle');
+
+        // Act
+        try {
+            await client.getDocument(url);
+        } catch (e) {
+            error = e;
+        }
+
+        // Assert
+        expect(error).toBeInstanceOf(MalformedDocumentError);
+        expect(error.message).toEqual(`Malformed RDF document found at ${url} - Unexpected "this" on line 1.`);
+    });
+
+    it('handles malformed document errors reading containers', async () => {
+        // Arrange
+        let error;
+        const containerUrl = Url.resolveDirectory(
+            Faker.internet.url(),
+            Str.slug(Faker.random.word()),
+        );
+
+        StubFetcher.addFetchResponse('this is not turtle');
+
+        // Act
+        try {
+            await client.getDocuments(containerUrl);
+        } catch (e) {
+            error = e;
+        }
+
+        // Assert
+        expect(error).toBeInstanceOf(MalformedDocumentError);
+        expect(error.message).toEqual(`Malformed RDF document found at ${containerUrl} - Unexpected "this" on line 1.`);
     });
 
 });
