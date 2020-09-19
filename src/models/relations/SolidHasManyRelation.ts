@@ -1,7 +1,7 @@
 import {
     Attributes,
     BelongsToManyRelation,
-    BelongsToRelation,
+    BelongsToOneRelation,
     EngineDocument,
     EngineDocumentsCollection,
     EngineHelper,
@@ -134,7 +134,7 @@ export default class SolidHasManyRelation<
                 continue;
             }
 
-            if (!(relationInstance instanceof BelongsToRelation))
+            if (!(relationInstance instanceof BelongsToOneRelation))
                 continue;
 
             model.setAttribute(relationInstance.foreignKeyName, this.parent.url);

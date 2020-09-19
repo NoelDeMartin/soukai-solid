@@ -6,8 +6,16 @@ export enum DocumentFormat {
 
 export class MalformedDocumentError extends SoukaiError {
 
-    constructor(url: string, format: DocumentFormat, message: string) {
-        super(`Malformed ${format} document found at ${url} - ${message}`);
+    public readonly documentUrl: string;
+    public readonly documentFormat: DocumentFormat;
+    public readonly malformationDetails: string;
+
+    constructor(documentUrl: string, documentFormat: DocumentFormat, malformationDetails: string) {
+        super(`Malformed ${documentFormat} document found at ${documentUrl} - ${malformationDetails}`);
+
+        this.documentUrl = documentUrl;
+        this.documentFormat = documentFormat;
+        this.malformationDetails = malformationDetails;
     }
 
 }

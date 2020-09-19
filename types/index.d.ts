@@ -12,6 +12,7 @@ import {
     Model,
     MultiModelRelation,
     SingleModelRelation,
+    SoukaiError,
 } from 'soukai';
 
 export class SolidContainsRelation<
@@ -147,6 +148,20 @@ export class SolidEngine implements Engine {
     update(collection: string, id: string, updates: EngineUpdates): Promise<void>;
 
     delete(collection: string, id: string): Promise<void>;
+
+}
+
+export enum DocumentFormat {
+    RDF = 'RDF',
+}
+
+export class MalformedDocumentError extends SoukaiError {
+
+    public readonly documentUrl: string;
+    public readonly documentFormat: DocumentFormat;
+    public readonly malformationDetails: string;
+
+    constructor(documentUrl: string, documentFormat: DocumentFormat, malformationDetails: string);
 
 }
 
