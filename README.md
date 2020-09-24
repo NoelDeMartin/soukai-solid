@@ -188,11 +188,7 @@ await person.save();
 
 A `SolidModel` is the Active Record representation of an RDF Resource. This means that multiple models can be stored in the same document.
 
-This is always infered from the `url` attribute, and there is a couple of helper methods such as `isDocumentRoot` and `getDocumentUrl`. When a model is a document root, it means its url matches the url of the document where it is stored.
-
 All of this will be transparent when using the library. But it is useful to be aware of this distinction. Internally, `SolidModel` is serialized to a JSON-LD graph and different models can modify the same EngineDocument. To improve network performance, this can be taken advantage of using relations as documented below.
-
-**Note:** At the moment, models that are not referenced by url won't be found by this library. For example, a model defined at `https://example.org/alice#it` won't be found using a model's `find` method. But it should work being resolved from relations. This is not a limitation of the design of the library, but it hasn't been implemented yet.
 
 ### Relations
 
@@ -202,7 +198,7 @@ In addition to the [relations included with the core library](https://soukai.js.
 
 This relation comes with some helper methods.
 
-`create` and `save` can be used to create and save related models. This is useful to set foreign keys automatically and work with models that are not stored in the document root. Models that are stored in the document of a related model will be saved automatically when the parent model is created if it didn't exist. This can also be set up calling the `addModelToStoreInSameDocument` method.
+`create` and `save` can be used to create and save related models. This is useful to set foreign keys automatically. Models that are stored in the document of a related model will be saved automatically when the parent model is created if it didn't exist. This can also be set up calling the `addModelToStoreInSameDocument` method.
 
 For example, let's say that we choose to use the `schema:MusicGroup` type to model a music band, and we want to store the members of the band in the same document.
 

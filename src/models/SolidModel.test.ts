@@ -10,6 +10,7 @@ import Url from '@/utils/Url';
 import { stubPersonJsonLD, stubGroupJsonLD, stubWatchActionJsonLD, stubMovieJsonLD } from '@tests/stubs/helpers';
 import Group from '@tests/stubs/Group';
 import Movie from '@tests/stubs/Movie';
+import MoviesCollection from '@tests/stubs/MoviesCollection';
 import Person from '@tests/stubs/Person';
 import StubEngine from '@tests/stubs/StubEngine';
 import WatchAction from '@tests/stubs/WatchAction';
@@ -23,8 +24,9 @@ describe('SolidModel', () => {
     beforeAll(() => {
         Soukai.loadModels({
             Group,
-            Person,
             Movie,
+            MoviesCollection,
+            Person,
             WatchAction,
         });
     });
@@ -188,23 +190,21 @@ describe('SolidModel', () => {
         expect(engine.create).toHaveBeenCalledWith(
             containerUrl,
             expect.anything(),
-            expect.anything(),
+            movie.getDocumentUrl(),
         );
-
-        const document = (engine.create as any).mock.calls[0][1];
-        await expect(document).toEqualJsonLD({
+        expect((engine.create as any).mock.calls[0][1]).toEqualJsonLD({
             '@graph': [
                 ...stubMovieJsonLD(movie.url, movieName)['@graph'],
                 ...stubWatchActionJsonLD(action.url, movie.url, '1997-07-21T23:42:00.000Z')['@graph'],
             ],
         });
 
-        expect((engine.create as any).mock.calls[0][2]).toEqual(movie.url);
-
         expect(movie.exists()).toBe(true);
+        expect(movie.documentExists()).toBe(true);
         expect(movie.url.startsWith(containerUrl)).toBe(true);
         expect(movie.actions![0].exists()).toBe(true);
-        expect(movie.actions![0].url.startsWith(`${movie.url}#`)).toBe(true);
+        expect(movie.actions![0].documentExists()).toBe(true);
+        expect(movie.actions![0].url.startsWith(`${movie.getDocumentUrl()}#`)).toBe(true);
         expect(movie.actions![0].object).toEqual(movie.url);
     });
 
@@ -275,7 +275,7 @@ describe('SolidModel', () => {
         // Assert.
         expect(engine.update).toHaveBeenCalledWith(
             containerUrl,
-            model.url,
+            model.getDocumentUrl(),
             {
                 '@graph': {
                     $updateItems: {
@@ -290,34 +290,52 @@ describe('SolidModel', () => {
         );
     });
 
-    it('reads many from a directory', async () => {
-        class StubModel extends SolidModel {
-        }
-
+    it('reads many from multiple documents with related models', async () => {
+        // Arrange
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const firstDocumentUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const secondDocumentUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const firstMovieUrl = `${firstDocumentUrl}#it`;
+        const secondMovieUrl = `${secondDocumentUrl}#it`;
+        const thirdMovieUrl = `${secondDocumentUrl}#${Faker.random.uuid()}`;
+        const firstWatchActionUrl = `${secondDocumentUrl}#${Faker.random.uuid()}`;
+        const secondWatchActionUrl = `${secondDocumentUrl}#${Faker.random.uuid()}`;
+        const firstMovieName = Faker.name.title();
+        const secondMovieName = Faker.name.title();
+        const thirdMovieName = Faker.name.title();
+        const collection = new MoviesCollection({ url: containerUrl }, true);
 
-        jest.spyOn(engine, 'readMany');
+        engine.setMany(containerUrl, {
+            [firstDocumentUrl]: stubMovieJsonLD(firstMovieUrl, firstMovieName),
+            [secondDocumentUrl]: {
+                '@graph': [
+                    stubMovieJsonLD(secondMovieUrl, secondMovieName)['@graph'][0],
+                    stubMovieJsonLD(thirdMovieUrl, thirdMovieName)['@graph'][0],
+                    stubWatchActionJsonLD(firstWatchActionUrl, secondMovieUrl)['@graph'][0],
+                    stubWatchActionJsonLD(secondWatchActionUrl, thirdMovieUrl)['@graph'][0],
+                ],
+            },
+        });
 
-        Soukai.loadModels({ StubModel });
+        // Act
+        await collection.loadRelation('movies');
 
-        await StubModel.at(containerUrl).all();
+        // Assert
+        expect(collection.movies).toHaveLength(3);
 
-        expect(engine.readMany).toHaveBeenCalledWith(containerUrl, expect.anything());
-    });
+        expect(collection.movies![0].url).toEqual(firstMovieUrl);
+        expect(collection.movies![0].name).toEqual(firstMovieName);
+        expect(collection.movies![0].actions).toHaveLength(0);
 
-    it('reads many from a document', async () => {
-        class StubModel extends SolidModel {
-        }
+        expect(collection.movies![1].url).toEqual(secondMovieUrl);
+        expect(collection.movies![1].name).toEqual(secondMovieName);
+        expect(collection.movies![1].actions).toHaveLength(1);
+        expect(collection.movies![1].actions![0].url).toEqual(firstWatchActionUrl);
 
-        const documentUrl = Url.resolve(Faker.internet.url(), Faker.random.word());
-
-        jest.spyOn(engine, 'readMany');
-
-        Soukai.loadModels({ StubModel });
-
-        await StubModel.at(documentUrl).all();
-
-        expect(engine.readMany).toHaveBeenCalledWith(documentUrl, expect.anything());
+        expect(collection.movies![2].url).toEqual(thirdMovieUrl);
+        expect(collection.movies![2].name).toEqual(thirdMovieName);
+        expect(collection.movies![2].actions).toHaveLength(1);
+        expect(collection.movies![2].actions![0].url).toEqual(secondWatchActionUrl);
     });
 
     it('mints url for new models', async () => {
@@ -338,7 +356,34 @@ describe('SolidModel', () => {
         expect(engine.create).toHaveBeenCalledWith(
             containerUrl,
             expect.anything(),
-            model.url,
+            model.getDocumentUrl(),
+        );
+    });
+
+    it('Uses default hash to mint urls for new models', async () => {
+        // Arrange
+        class StubModel extends SolidModel {
+            static defaultResourceHash = 'foobar';
+        }
+
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+
+        jest.spyOn(engine, 'create');
+
+        Soukai.loadModels({ StubModel });
+
+        // Act
+        const model = await StubModel.at(containerUrl).create();
+
+        // Assert
+        expect(typeof model.url).toEqual('string');
+        expect(model.url.startsWith(containerUrl)).toBe(true);
+        expect(model.url.endsWith('#foobar')).toBe(true);
+
+        expect(engine.create).toHaveBeenCalledWith(
+            containerUrl,
+            expect.anything(),
+            model.getDocumentUrl(),
         );
     });
 
@@ -415,7 +460,7 @@ describe('SolidModel', () => {
         expect(engine.create).toHaveBeenCalledWith(
             containerUrl,
             expect.anything(),
-            model.url,
+            model.getDocumentUrl(),
         );
     });
 
@@ -445,12 +490,13 @@ describe('SolidModel', () => {
         );
     });
 
-    it('creates models that are not document roots', async () => {
+    it('creates models in existing documents', async () => {
         // Arrange
         const documentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
         const movieUrl = documentUrl + '#' + Faker.random.uuid();
         const movie = new Movie({ url: movieUrl });
 
+        movie.setDocumentExists(true);
         jest.spyOn(engine, 'update');
 
         // Act
@@ -468,7 +514,7 @@ describe('SolidModel', () => {
         );
     });
 
-    it('updates models that are not document roots', async () => {
+    it('updates models', async () => {
         // Arrange
         const documentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
         const movieName = Faker.name.title();

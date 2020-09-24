@@ -45,9 +45,9 @@ describe('SolidClient', () => {
 
         // Assert
         expect(document.url).toEqual(documentUrl);
-        expect(document.rootResource.url).toEqual(documentUrl);
-        expect(document.rootResource.name).toEqual(name);
-        expect(document.rootResource.types).toEqual([
+        expect(document.resource(documentUrl)!.url).toEqual(documentUrl);
+        expect(document.resource(documentUrl)!.name).toEqual(name);
+        expect(document.resource(documentUrl)!.types).toEqual([
             firstType,
             secondType,
         ]);
@@ -116,9 +116,9 @@ describe('SolidClient', () => {
 
         // Assert
         expect(document.url).toEqual(containerUrl);
-        expect(document.rootResource.url).toEqual(containerUrl);
-        expect(document.rootResource.name).toEqual(name);
-        expect(document.rootResource.types).toEqual([IRI('ldp:Container')]);
+        expect(document.resource(containerUrl)!.url).toEqual(containerUrl);
+        expect(document.resource(containerUrl)!.name).toEqual(name);
+        expect(document.resource(containerUrl)!.types).toEqual([IRI('ldp:Container')]);
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
             parentUrl,
@@ -155,7 +155,7 @@ describe('SolidClient', () => {
 
         // Assert
         expect(document.url).toEqual(containerUrl);
-        expect(document.rootResource.url).toEqual(containerUrl);
+        expect(document.resource(containerUrl)!.url).toEqual(containerUrl);
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
             parentUrl,
@@ -184,7 +184,7 @@ describe('SolidClient', () => {
 
         // Assert
         expect(document).not.toBeNull();
-        expect(document.rootResource.name).toEqual('Foo Bar');
+        expect(document.resource(url)!.name).toEqual('Foo Bar');
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(url, {
             headers: { 'Accept': 'text/turtle' },
@@ -223,9 +223,9 @@ describe('SolidClient', () => {
         expect(documents).toHaveLength(1);
 
         expect(documents[0].url).toEqual(containerUrl + 'foobar');
-        expect(documents[0].rootResource.url).toEqual(containerUrl + 'foobar');
-        expect(documents[0].rootResource.name).toEqual('Foo Bar');
-        expect(documents[0].rootResource.types).toEqual([IRI('foaf:Person')]);
+        expect(documents[0].resource(containerUrl + 'foobar')!.url).toEqual(containerUrl + 'foobar');
+        expect(documents[0].resource(containerUrl + 'foobar')!.name).toEqual('Foo Bar');
+        expect(documents[0].resource(containerUrl + 'foobar')!.types).toEqual([IRI('foaf:Person')]);
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl + '*', {
             headers: { 'Accept': 'text/turtle' },
@@ -276,7 +276,7 @@ describe('SolidClient', () => {
             .not.toBeUndefined();
 
         expect(documents[1].resources).toHaveLength(2);
-        expect(documents[1].rootResource.url).toEqual(`${containerUrl}/bar`);
+        expect(documents[1].resource(`${containerUrl}/bar`)!.url).toEqual(`${containerUrl}/bar`);
         expect(documents[1].resources[1].url).toEqual(`${containerUrl}/bar#baz`);
 
         const barProperties = documents[1].properties;
@@ -342,17 +342,17 @@ describe('SolidClient', () => {
         expect(documents).toHaveLength(2);
 
         expect(documents[0].url).toEqual(`${containerUrl}foo`);
-        expect(documents[0].rootResource.url).toEqual(`${containerUrl}foo`);
-        expect(documents[0].rootResource.name).toEqual('Foo');
-        expect(documents[0].rootResource.types).toEqual([
+        expect(documents[0].resource(`${containerUrl}foo`)!.url).toEqual(`${containerUrl}foo`);
+        expect(documents[0].resource(`${containerUrl}foo`)!.name).toEqual('Foo');
+        expect(documents[0].resource(`${containerUrl}foo`)!.types).toEqual([
             IRI('ldp:Container'),
             type,
         ]);
 
         expect(documents[1].url).toEqual(`${containerUrl}bar`);
-        expect(documents[1].rootResource.url).toEqual(`${containerUrl}bar`);
-        expect(documents[1].rootResource.name).toEqual('Bar');
-        expect(documents[1].rootResource.types).toEqual([IRI('ldp:Container')]);
+        expect(documents[1].resource(`${containerUrl}bar`)!.url).toEqual(`${containerUrl}bar`);
+        expect(documents[1].resource(`${containerUrl}bar`)!.name).toEqual('Bar');
+        expect(documents[1].resource(`${containerUrl}bar`)!.types).toEqual([IRI('ldp:Container')]);
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl, {
             headers: { 'Accept': 'text/turtle' },
@@ -551,9 +551,9 @@ describe('SolidClient', () => {
         `;
 
         StubFetcher.addFetchResponse(containerData);
-        StubFetcher.addFetchResponse(containerData); // TODO this one is technically not necessary
+        StubFetcher.addFetchResponse(containerData); // TODO this one is not necessary, but the current implementation is not optimal
         StubFetcher.addFetchResponse(documentData);
-        StubFetcher.addFetchResponse(documentData); // TODO this one is technically not necessary
+        StubFetcher.addFetchResponse(documentData); // TODO this one is not necessary, but the current implementation is not optimal
         StubFetcher.addFetchResponse();
         StubFetcher.addFetchResponse();
 

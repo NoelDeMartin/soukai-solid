@@ -71,12 +71,7 @@ export default class SolidEngine implements Engine {
     public async update(collection: string, id: string, updates: EngineUpdates): Promise<void> {
         const [updatedProperties, removedProperties] = await this.extractJsonLDGraphUpdate(updates);
 
-        try {
-            await this.client.updateDocument(id, updatedProperties, removedProperties);
-        } catch (error) {
-            // TODO this may fail for reasons other than document not found
-            throw new DocumentNotFound(id);
-        }
+        await this.client.updateDocument(id, updatedProperties, removedProperties);
     }
 
     public async delete(collection: string, id: string): Promise<void> {
@@ -135,14 +130,7 @@ export default class SolidEngine implements Engine {
             types.indexOf(IRI('ldp:Container')) !== -1,
         );
 
-        return documents.filter(document => {
-            for (const type of types) {
-                if (!document.rootResource.isType(type))
-                    return false;
-            }
-
-            return true;
-        });
+        return documents;
     }
 
     private convertToEngineDocument(document: RDFDocument): EngineDocument {

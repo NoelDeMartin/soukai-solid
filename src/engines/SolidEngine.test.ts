@@ -4,7 +4,7 @@ import Faker from 'faker';
 
 import SolidEngine from '@/engines/SolidEngine';
 
-import RDF, { IRI } from '@/solid/utils/RDF';
+import { IRI } from '@/solid/utils/RDF';
 import RDFResourceProperty from '@/solid/RDFResourceProperty';
 
 import Str from '@/utils/Str';
@@ -114,9 +114,9 @@ describe('SolidEngine', () => {
         const document = await engine.readOne(Url.parentDirectory(documentUrl), documentUrl);
 
         // Assert
-        expect(document).toEqualJsonLD(stubGroupJsonLD(documentUrl, name));
-
         expect(SolidClientMock.getDocument).toHaveBeenCalledWith(documentUrl);
+
+        await expect(document).toEqualJsonLD(stubGroupJsonLD(documentUrl, name));
     });
 
     it("fails reading when document doesn't exist", async () => {
@@ -130,23 +130,31 @@ describe('SolidEngine', () => {
     it('gets many documents', async () => {
         // Arrange
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const firstUrl = Url.resolve(containerUrl, 'first');
-        const secondUrl = Url.resolve(containerUrl, 'second');
-        const thirdUrl = `${secondUrl}#${Faker.random.uuid()}`;
-        const firstName = Faker.name.firstName();
-        const secondName = Faker.name.firstName();
-        const thirdName = Faker.name.firstName();
+        const firstDocumentUrl = Url.resolve(containerUrl, 'first');
+        const secondDocumentUrl = Url.resolve(containerUrl, 'second');
+        const thirdDocumentUrl = Url.resolve(containerUrl, 'third');
+        const firstPersonUrl = `${firstDocumentUrl}#it`;
+        const secondPersonUrl = `${secondDocumentUrl}#it`;
+        const thirdPersonUrl = `${secondDocumentUrl}#${Faker.random.uuid()}`;
+        const groupUrl = `${thirdDocumentUrl}#it`;
+        const firstPersonName = Faker.name.firstName();
+        const secondPersonName = Faker.name.firstName();
+        const thirdPersonName = Faker.name.firstName();
 
-        await SolidClientMock.createDocument(containerUrl, firstUrl, [
-            RDFResourceProperty.type(firstUrl, IRI('foaf:Person')),
-            RDFResourceProperty.literal(firstUrl, IRI('foaf:name'), firstName),
+        await SolidClientMock.createDocument(containerUrl, firstPersonUrl, [
+            RDFResourceProperty.type(firstPersonUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(firstPersonUrl, IRI('foaf:name'), firstPersonName),
         ]);
 
-        await SolidClientMock.createDocument(containerUrl, secondUrl, [
-            RDFResourceProperty.type(secondUrl, IRI('foaf:Person')),
-            RDFResourceProperty.literal(secondUrl, IRI('foaf:name'), secondName),
-            RDFResourceProperty.type(thirdUrl, IRI('foaf:Person')),
-            RDFResourceProperty.literal(thirdUrl, IRI('foaf:name'), thirdName),
+        await SolidClientMock.createDocument(containerUrl, secondPersonUrl, [
+            RDFResourceProperty.type(secondPersonUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(secondPersonUrl, IRI('foaf:name'), secondPersonName),
+            RDFResourceProperty.type(thirdPersonUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(thirdPersonUrl, IRI('foaf:name'), thirdPersonName),
+        ]);
+
+        await SolidClientMock.createDocument(containerUrl, thirdPersonUrl, [
+            RDFResourceProperty.type(groupUrl, IRI('foaf:Group')),
         ]);
 
         // Act
@@ -154,19 +162,74 @@ describe('SolidEngine', () => {
 
         // Assert
         expect(Object.keys(documents)).toHaveLength(2);
+        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, false);
 
-        await expect(documents[firstUrl]).toEqualJsonLD(stubPersonJsonLD(firstUrl, firstName));
+        const secondPerson = stubPersonJsonLD(secondPersonUrl, secondPersonName);
+        const thirdPerson = stubPersonJsonLD(thirdPersonUrl, thirdPersonName);
 
-        const secondPerson = stubPersonJsonLD(secondUrl, secondName);
-        const thirdPerson = stubPersonJsonLD(thirdUrl, thirdName);
-        await expect(documents[secondUrl]).toEqualJsonLD({
+        await expect(documents[firstPersonUrl]).toEqualJsonLD(stubPersonJsonLD(firstPersonUrl, firstPersonName));
+        await expect(documents[secondPersonUrl]).toEqualJsonLD({
             '@graph': [
                 secondPerson['@graph'][0],
                 thirdPerson['@graph'][0],
             ],
         });
+    });
 
-        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, false);
+    it('gets many documents using $in filter', async () => {
+        // Arrange
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const missingDocumentUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const firstDocumentUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const secondDocumentUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const thirdDocumentUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const firstPersonName = Faker.name.firstName();
+        const secondPersonName = Faker.name.firstName();
+        const thirdPersonName = Faker.name.firstName();
+        const firstPersonUrl = `${firstDocumentUrl}#it`;
+        const secondPersonUrl = `${secondDocumentUrl}#it`;
+        const thirdPersonUrl = `${secondPersonUrl}#${Faker.random.uuid()}`;
+
+        await SolidClientMock.createDocument(containerUrl, firstDocumentUrl, [
+            RDFResourceProperty.type(firstPersonUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(firstPersonUrl, IRI('foaf:name'), firstPersonName),
+        ]);
+
+        await SolidClientMock.createDocument(containerUrl, secondDocumentUrl, [
+            RDFResourceProperty.type(secondPersonUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(secondPersonUrl, IRI('foaf:name'), secondPersonName),
+            RDFResourceProperty.type(thirdPersonUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(thirdPersonUrl, IRI('foaf:name'), thirdPersonName),
+        ]);
+
+        await SolidClientMock.createDocument(containerUrl, thirdDocumentUrl, [
+            RDFResourceProperty.type(`${thirdDocumentUrl}#it`, IRI('foaf:Group')),
+        ]);
+
+        // Act
+        const documents = await engine.readMany(containerUrl, {
+            $in: [missingDocumentUrl, firstDocumentUrl, secondDocumentUrl, thirdDocumentUrl],
+            ...modelFilters(['foaf:Person']),
+        });
+
+        // Assert
+        expect(Object.keys(documents)).toHaveLength(2);
+
+        expect(SolidClientMock.getDocument).toHaveBeenCalledWith(missingDocumentUrl);
+        expect(SolidClientMock.getDocument).toHaveBeenCalledWith(firstDocumentUrl);
+        expect(SolidClientMock.getDocument).toHaveBeenCalledWith(secondDocumentUrl);
+        expect(SolidClientMock.getDocument).toHaveBeenCalledWith(thirdDocumentUrl);
+
+        const secondPerson = stubPersonJsonLD(secondPersonUrl, secondPersonName);
+        const thirdPerson = stubPersonJsonLD(thirdPersonUrl, thirdPersonName);
+
+        await expect(documents[firstDocumentUrl]).toEqualJsonLD(stubPersonJsonLD(firstPersonUrl, firstPersonName));
+        await expect(documents[secondDocumentUrl]).toEqualJsonLD({
+            '@graph': [
+                secondPerson['@graph'][0],
+                thirdPerson['@graph'][0],
+            ],
+        });
     });
 
     it('gets many containers passing onlyContainers flag to client', async () => {
@@ -185,6 +248,7 @@ describe('SolidEngine', () => {
 
         // Assert
         expect(Object.keys(documents)).toHaveLength(1);
+        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(parentUrl, true);
 
         await expect(documents[containerUrl]).toEqualJsonLD({
             '@graph': [{
@@ -193,8 +257,6 @@ describe('SolidEngine', () => {
                 [IRI('rdfs:label')]: containerName,
             }],
         });
-
-        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(parentUrl, true);
     });
 
     it('gets many documents filtering by attributes', async () => {
@@ -222,39 +284,9 @@ describe('SolidEngine', () => {
 
         // Assert
         expect(Object.keys(documents)).toHaveLength(1);
-        expect(documents[firstUrl]).toEqualJsonLD(stubPersonJsonLD(firstUrl, name));
         expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, false);
-    });
 
-    it('gets many documents using $in filter', async () => {
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const brokenUrl = Url.resolve(containerUrl, Faker.random.uuid());
-        const firstName = Faker.name.firstName();
-        const firstUrl = Url.resolve(containerUrl, Faker.random.uuid());
-        const secondName = Faker.name.firstName();
-        const secondUrl = Url.resolve(containerUrl, Faker.random.uuid());
-
-        await SolidClientMock.createDocument(containerUrl, firstUrl, [
-            RDFResourceProperty.type(firstUrl, IRI('foaf:Person')),
-            RDFResourceProperty.literal(firstUrl, IRI('foaf:name'), firstName),
-        ]);
-
-        await SolidClientMock.createDocument(containerUrl, secondUrl, [
-            RDFResourceProperty.type(secondUrl, IRI('foaf:Person')),
-            RDFResourceProperty.literal(secondUrl, IRI('foaf:name'), secondName),
-        ]);
-
-        const documents = await engine.readMany(containerUrl, {
-            $in: [brokenUrl, firstUrl, secondUrl],
-            ...modelFilters(['foaf:Person']),
-        });
-
-        expect(Object.keys(documents)).toHaveLength(2);
-        expect(documents[firstUrl]).toEqualJsonLD(stubPersonJsonLD(firstUrl, firstName));
-        expect(documents[secondUrl]).toEqualJsonLD(stubPersonJsonLD(secondUrl, secondName));
-
-        expect(SolidClientMock.getDocument).toHaveBeenCalledWith(firstUrl);
-        expect(SolidClientMock.getDocument).toHaveBeenCalledWith(secondUrl);
+        await expect(documents[firstUrl]).toEqualJsonLD(stubPersonJsonLD(firstUrl, name));
     });
 
     it('gets many documents using globbing for $in filter', async () => {
@@ -285,12 +317,88 @@ describe('SolidEngine', () => {
 
         // Assert
         expect(Object.keys(documents)).toHaveLength(documentsCount);
+        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, false);
 
-        Arr.zip(urls, names).map(([url, name]) => {
-            expect(documents[url]).toEqualJsonLD(stubPersonJsonLD(url, name));
+        await Promise.all(
+            Arr
+                .zip(urls, names)
+                .map(([url, name]) => expect(documents[url]).toEqualJsonLD(stubPersonJsonLD(url, name))),
+        );
+    });
+
+    it('gets many documents with the legacy "document root" format', async () => {
+        // Arrange
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const firstUrl = Url.resolve(containerUrl, 'first');
+        const secondUrl = Url.resolve(containerUrl, 'second');
+        const thirdUrl = `${secondUrl}#${Faker.random.uuid()}`;
+        const firstName = Faker.name.firstName();
+        const secondName = Faker.name.firstName();
+        const thirdName = Faker.name.firstName();
+
+        await SolidClientMock.createDocument(containerUrl, firstUrl, [
+            RDFResourceProperty.type(firstUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(firstUrl, IRI('foaf:name'), firstName),
+        ]);
+
+        await SolidClientMock.createDocument(containerUrl, secondUrl, [
+            RDFResourceProperty.type(secondUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(secondUrl, IRI('foaf:name'), secondName),
+            RDFResourceProperty.type(thirdUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(thirdUrl, IRI('foaf:name'), thirdName),
+        ]);
+
+        // Act
+        const documents = await engine.readMany(containerUrl, modelFilters(['foaf:Person']));
+
+        // Assert
+        expect(Object.keys(documents)).toHaveLength(2);
+        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, false);
+
+        const secondPerson = stubPersonJsonLD(secondUrl, secondName);
+        const thirdPerson = stubPersonJsonLD(thirdUrl, thirdName);
+
+        await expect(documents[firstUrl]).toEqualJsonLD(stubPersonJsonLD(firstUrl, firstName));
+        await expect(documents[secondUrl]).toEqualJsonLD({
+            '@graph': [
+                secondPerson['@graph'][0],
+                thirdPerson['@graph'][0],
+            ],
+        });
+    });
+
+    it('gets many documents using $in filter with the legacy "document root" format', async () => {
+        // Arrange
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const brokenUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const firstName = Faker.name.firstName();
+        const firstUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const secondName = Faker.name.firstName();
+        const secondUrl = Url.resolve(containerUrl, Faker.random.uuid());
+
+        await SolidClientMock.createDocument(containerUrl, firstUrl, [
+            RDFResourceProperty.type(firstUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(firstUrl, IRI('foaf:name'), firstName),
+        ]);
+
+        await SolidClientMock.createDocument(containerUrl, secondUrl, [
+            RDFResourceProperty.type(secondUrl, IRI('foaf:Person')),
+            RDFResourceProperty.literal(secondUrl, IRI('foaf:name'), secondName),
+        ]);
+
+        // Act
+        const documents = await engine.readMany(containerUrl, {
+            $in: [brokenUrl, firstUrl, secondUrl],
+            ...modelFilters(['foaf:Person']),
         });
 
-        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, false);
+        // Assert
+        expect(Object.keys(documents)).toHaveLength(2);
+        expect(SolidClientMock.getDocument).toHaveBeenCalledWith(firstUrl);
+        expect(SolidClientMock.getDocument).toHaveBeenCalledWith(secondUrl);
+
+        await expect(documents[firstUrl]).toEqualJsonLD(stubPersonJsonLD(firstUrl, firstName));
+        await expect(documents[secondUrl]).toEqualJsonLD(stubPersonJsonLD(secondUrl, secondName));
     });
 
     it('updates document updated attributes', async () => {

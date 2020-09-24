@@ -16,8 +16,10 @@ import Soukai, {
 } from 'soukai';
 
 import RDF, { IRI } from '@/solid/utils/RDF';
+import RDFResource from '@/solid/RDFResource';
 
 import { useMixins } from '@/utils/mixins';
+import Arr from '@/utils/Arr';
 import Url from '@/utils/Url';
 import UUID from '@/utils/UUID';
 
@@ -43,6 +45,8 @@ abstract class SolidModel extends Model {
     public static rdfContexts: { [alias: string]: string } = {};
 
     public static rdfsClasses: string[] | Set<string> = [];
+
+    public static defaultResourceHash: string = 'it';
 
     public static mintsUrls: boolean = true;
 
@@ -155,6 +159,8 @@ abstract class SolidModel extends Model {
 
     public modelClass: typeof SolidModel;
 
+    protected _documentExists: boolean;
+
     public save<T extends Model>(collection?: string): Promise<T> {
         return this.modelClass.withCollection(collection || this.guessCollection(), async () => {
             if (!this.url && this.modelClass.mintsUrls)
@@ -176,11 +182,18 @@ abstract class SolidModel extends Model {
     }
 
     public delete<T extends Model>(): Promise<T> {
+        // TODO make sure that only the model resource is removed from a document instead of
+        // removing the entire document. Conversely, also make sure that the entire document is
+        // removed if the model resource was the only data in a document.
+
         return this.modelClass.withCollection(this.guessCollection() || '', () => super.delete());
     }
 
-    public mintUrl(documentUrl?: string): void {
-        this.setAttribute(this.modelClass.primaryKey, this.newUrl(documentUrl));
+    public mintUrl(documentUrl?: string, documentExists?: boolean, resourceHash?: string): void {
+        this.setAttribute(this.modelClass.primaryKey, this.newUrl(documentUrl, resourceHash));
+
+        if (documentUrl)
+            this._documentExists = documentExists ?? true;
     }
 
     public toJsonLD(): object {
@@ -189,6 +202,20 @@ abstract class SolidModel extends Model {
 
     public getIdAttribute(): string {
         return this.getAttribute('url');
+    }
+
+    public setExists(exists: boolean): void {
+        this._documentExists = exists && this._documentExists;
+
+        super.setExists(exists);
+    }
+
+    public documentExists(): boolean {
+        return this._documentExists;
+    }
+
+    public setDocumentExists(documentExists: boolean): void {
+        this._documentExists = documentExists;
     }
 
     public isDirty(field?: string): boolean {
@@ -211,11 +238,7 @@ abstract class SolidModel extends Model {
             .find((relation: SolidHasManyRelation) => relation.__modelsToStoreInSameDocument.length > 0);
     }
 
-    protected isDocumentRoot(): boolean {
-        return this.url && this.url.indexOf('#') === -1;
-    }
-
-    protected getDocumentUrl(): string | null {
+    public getDocumentUrl(): string | null {
         if (!this.url)
             return null;
 
@@ -224,15 +247,19 @@ abstract class SolidModel extends Model {
         return anchorIndex !== -1 ? this.url.substr(0, anchorIndex) : this.url;
     }
 
-    protected getDocumentModels(): SolidModel[] {
-        if (!this.isDocumentRoot())
-            return [];
+    protected initialize(attributes: Attributes, exists: boolean) {
+        super.initialize(attributes, exists);
 
-        const documentUrl = this.getDocumentUrl();
+        this._documentExists = exists;
+    }
 
-        return this
-            .getRelatedModels()
-            .filter(model => model.getDocumentUrl() === documentUrl);
+    protected getModelsToStoreInSameDocument(): SolidModel[] {
+        const models = Object
+            .values(this._relations)
+            .filter(relation => relation instanceof SolidHasManyRelation)
+            .map((relation: SolidHasManyRelation) => relation.__modelsToStoreInSameDocument);
+
+        return Arr.flatten(models);
     }
 
     protected getRelatedModels(): SolidModel[] {
@@ -256,6 +283,23 @@ abstract class SolidModel extends Model {
         return model as any as T;
     }
 
+    protected async createManyFromEngineDocuments<T extends Model>(documents: MapObject<EngineDocument>): Promise<T[]> {
+        const rdfsClasses = [...this.modelClass.rdfsClasses];
+        const isModelResource = (resource: RDFResource) => !rdfsClasses.some(rdfsClass => !resource.isType(rdfsClass));
+        const models = await Promise.all(Object.values(documents).map(async engineDocument => {
+            const rdfDocument = await RDF.parseJsonLD(engineDocument);
+
+            return Promise.all(
+                rdfDocument
+                    .resources
+                    .filter(isModelResource)
+                    .map(resource => this.createFromEngineDocument<T>(resource.url, engineDocument)),
+            );
+        }));
+
+        return Arr.flatten(models);
+    }
+
     protected async loadDocumentModels(document: EngineDocument): Promise<void> {
         const relations = Object
             .values(this._relations)
@@ -269,38 +313,43 @@ abstract class SolidModel extends Model {
     }
 
     protected async syncDirty(): Promise<string> {
-        if (!this.url || this.isDocumentRoot())
-            return super.syncDirty();
-
-        // TODO this assumes that the document already exists
-
         const engine = Soukai.requireEngine();
         const id = this.getSerializedPrimaryKey()!;
-        const documentId = this.getDocumentUrl()!;
-        const updateOperation = this._exists
-            ? engine.update(
-                this.modelClass.collection,
-                documentId,
-                this.getDirtyEngineDocumentUpdates(false),
-            )
-            : engine.update(
-                this.modelClass.collection,
-                documentId,
-                {
-                    '@graph': { $push: this.serializeToJsonLD(false) as EngineDocument },
-                },
-            );
+        const documentId = this.getDocumentUrl();
+        const updateDatabase = (): Promise<string | void> => {
+            if (!this._documentExists)
+                return engine.create(
+                    this.modelClass.collection,
+                    this.toEngineDocument(),
+                    documentId || undefined,
+                );
 
-        await updateOperation;
+            if (!this._exists)
+                return engine.update(
+                    this.modelClass.collection,
+                    documentId!,
+                    {
+                        '@graph': { $push: this.serializeToJsonLD(false) as EngineDocument },
+                    },
+                );
+
+            return engine.update(
+                this.modelClass.collection,
+                documentId!,
+                this.getDirtyEngineDocumentUpdates(),
+            );
+        };
+
+        await updateDatabase();
 
         return id;
     }
 
     protected cleanDirty(): void {
         super.cleanDirty();
+        this.getModelsToStoreInSameDocument().map(model => model.cleanDirty());
 
-        this.getDocumentModels().map(model => model.cleanDirty());
-
+        this._documentExists = true;
         Object
             .values(this._relations)
             .filter(relation => relation instanceof SolidHasManyRelation)
@@ -333,24 +382,23 @@ abstract class SolidModel extends Model {
         return {
             '@graph': [
                 this.serializeToJsonLD(false),
-                ...this.getDocumentModels().map(model => model.serializeToJsonLD(false)),
+                ...this.getModelsToStoreInSameDocument().map(model => model.serializeToJsonLD(false)),
             ],
         } as EngineDocument;
     }
 
-    protected getDirtyEngineDocumentUpdates(includeRelations: boolean = true): EngineUpdates {
+    protected getDirtyEngineDocumentUpdates(): EngineUpdates {
         const graphUpdates: EngineAttributeUpdateOperation[] = [];
         const newDocumentModels = this.prepareNewDocumentModels();
 
-        if (includeRelations) {
-            // TODO handle updates for related models in the same document
-
-            graphUpdates.push(
-                ...newDocumentModels.map(model => ({
-                    $push: model.serializeToJsonLD(false) as EngineAttributeValue,
-                })),
-            );
-        }
+        // TODO handle updates for related models in the same document,
+        // instead of only creating new ones.
+        // Related models entanglement needs to be reviewed.
+        graphUpdates.push(
+            ...newDocumentModels.map(model => ({
+                $push: model.serializeToJsonLD(false) as EngineAttributeValue,
+            })),
+        );
 
         if (super.isDirty()) {
             const modelUpdates = super.getDirtyEngineDocumentUpdates();
@@ -382,11 +430,11 @@ abstract class SolidModel extends Model {
         return super.castAttribute(value, definition);
     }
 
-    protected newUrl(documentUrl?: string): string {
-        if (documentUrl)
-            return documentUrl + '#' + UUID.generate();
+    protected newUrl(documentUrl?: string, resourceHash?: string): string {
+        documentUrl = documentUrl ?? Url.resolve(this.modelClass.collection, UUID.generate());
+        resourceHash = resourceHash ?? this.modelClass.defaultResourceHash;
 
-        return Url.resolve(this.modelClass.collection, UUID.generate());
+        return `${documentUrl}#${resourceHash}`;
     }
 
     protected guessCollection(): string | undefined {
@@ -410,21 +458,21 @@ abstract class SolidModel extends Model {
         if (!this.url)
             this.mintUrl();
 
-        const pendingDocumentModels: SolidModel[] = [];
+        const newDocumentModels: SolidModel[] = [];
         const documentUrl = this.getDocumentUrl()!;
 
         for (const relation of hasManyRelations) {
             for (const relatedModel of relation.__modelsToStoreInSameDocument) {
                 if (!relatedModel.url)
-                    relatedModel.mintUrl(documentUrl);
+                    relatedModel.mintUrl(documentUrl, this._documentExists, UUID.generate());
 
                 relatedModel.setAttribute(relation.foreignKeyName, this.url);
 
-                pendingDocumentModels.push(relatedModel);
+                newDocumentModels.push(relatedModel);
             }
         }
 
-        return pendingDocumentModels;
+        return newDocumentModels;
     }
 
 }

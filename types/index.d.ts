@@ -57,6 +57,8 @@ export abstract class SolidModel extends Model {
 
     public static rdfsClasses: string[] | Set<string>;
 
+    public static defaultResourceHash: string;
+
     public static mintsUrls: boolean;
 
     public static instance: SolidModel;
@@ -77,25 +79,29 @@ export abstract class SolidModel extends Model {
 
     public modelClass: typeof SolidModel;
 
+    protected _documentExists: boolean;
+
     public save<T extends Model>(containerUrl?: string): Promise<T>;
 
-    public mintUrl(documentUrl?: string): void;
+    public mintUrl(documentUrl?: string, documentExists?: boolean, resourceHash?: string): void;
 
     public toJsonLD(): object;
 
     public getIdAttribute(): string;
 
-    protected isDocumentRoot(): boolean;
+    public documentExists(): boolean;
 
-    protected getDocumentUrl(): string | null;
+    public setDocumentExists(documentExists: boolean): void;
 
-    protected getDocumentModels(): SolidModel[];
+    public getDocumentUrl(): string | null;
+
+    protected getModelsToStoreInSameDocument(): SolidModel[];
 
     protected getRelatedModels(): SolidModel[];
 
     protected getDefaultRdfContext(): string;
 
-    protected getDirtyEngineDocumentUpdates(includeRelations?: boolean): EngineUpdates;
+    protected getDirtyEngineDocumentUpdates(): EngineUpdates;
 
     protected hasMany(relatedClass: typeof SolidModel, foreignKeyField?: string, localKeyField?: string): MultiModelRelation;
 
@@ -103,7 +109,7 @@ export abstract class SolidModel extends Model {
 
     protected isContainedBy(model: typeof SolidModel): SingleModelRelation;
 
-    protected newUrl(documentUrl?: string): string;
+    protected newUrl(documentUrl?: string, resourceHash?: string): string;
 
     protected guessCollection(): string | undefined;
 

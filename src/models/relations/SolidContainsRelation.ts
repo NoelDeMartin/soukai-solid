@@ -16,9 +16,6 @@ export default class SolidContainsRelation<
     }
 
     public async resolve(): Promise<Related[]> {
-        // TODO this will only find models that have the same url as the document,
-        // so things like https://example.org/my-document#it won't work
-
         this.related = await this.relatedClass.from(this.parent.url).all<Related>({
             $in: this.parent.resourceUrls,
         });

@@ -23,9 +23,9 @@ describe('RDF helper', () => {
         // Assert
         expect(document.statements).toHaveLength(2);
         expect(document.url).toEqual(url);
-        expect(document.rootResource.url).toEqual(url);
-        expect(document.rootResource.isType('foaf:Person')).toBe(true);
-        expect(document.rootResource.getPropertyValue('foaf:name')).toEqual(name);
+        expect(document.resource(url)!.url).toEqual(url);
+        expect(document.resource(url)!.isType('foaf:Person')).toBe(true);
+        expect(document.resource(url)!.getPropertyValue('foaf:name')).toEqual(name);
     });
 
     it('parses JSON-LD', async () => {
@@ -44,9 +44,9 @@ describe('RDF helper', () => {
         // Assert
         expect(document.statements).toHaveLength(2);
         expect(document.url).toEqual(url);
-        expect(document.rootResource.url).toEqual(url);
-        expect(document.rootResource.isType('foaf:Person')).toBe(true);
-        expect(document.rootResource.getPropertyValue('foaf:name')).toEqual(name);
+        expect(document.resource(url)!.url).toEqual(url);
+        expect(document.resource(url)!.isType('foaf:Person')).toBe(true);
+        expect(document.resource(url)!.getPropertyValue('foaf:name')).toEqual(name);
     });
 
     it('flattens JSON-LD', async () => {

@@ -1,7 +1,9 @@
+import { DocumentNotFound, SoukaiError } from 'soukai';
 import { Quad } from 'rdf-js';
 
 import RDF, { IRI, RDFParsingError } from '@/solid/utils/RDF';
 import RDFDocument from '@/solid/RDFDocument';
+import RDFResource from '@/solid/RDFResource';
 import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 
 import { DocumentFormat, MalformedDocumentError } from '@/errors/MalformedDocumentError';
@@ -95,9 +97,7 @@ export default class SolidClient {
         const document = await this.getDocument(url);
 
         if (document === null)
-            throw new Error(
-                `Error updating document at ${url}, document wasn't found`,
-            );
+            throw new DocumentNotFound(url);
 
         // We need to remove the previous value of updated properties or else they'll be duplicated
         removedProperties.push(
@@ -107,7 +107,7 @@ export default class SolidClient {
                 .map(property => [property.resourceUrl, property.name] as [string, string]),
         );
 
-        document.rootResource.isType(IRI('ldp:Container'))
+        document.resource(url)!.isType(IRI('ldp:Container'))
             ? await this.updateContainerDocument(document, updatedProperties, removedProperties)
             : await this.updateNonContainerDocument(document, updatedProperties, removedProperties);
     }
@@ -118,7 +118,7 @@ export default class SolidClient {
         if (document === null)
             return;
 
-        if (document.rootResource.isType(IRI('ldp:Container'))) {
+        if (document.resource(url)!.isType(IRI('ldp:Container'))) {
             const documents = await Promise.all([
                 this.getDocuments(url, true),
                 this.getDocuments(url),
@@ -144,7 +144,7 @@ export default class SolidClient {
         } else if (response.status === 404) {
             return false;
         } else {
-            throw new Error(
+            throw new SoukaiError(
                 `Couldn't determine if document at ${url} exists, got ${response.status} response`
             );
         }
@@ -175,10 +175,10 @@ export default class SolidClient {
         }
 
         if (!url.startsWith(parentUrl))
-            throw new Error('Explicit document url should start with the parent url');
+            throw new SoukaiError('Explicit document url should start with the parent url');
 
         if (!url.endsWith('/'))
-            throw new Error(`Container urls must end with a trailing slash, given ${url}`);
+            throw new SoukaiError(`Container urls must end with a trailing slash, given ${url}`);
 
         await this.fetch(
             parentUrl,
@@ -215,7 +215,7 @@ export default class SolidClient {
         }
 
         if (!url.startsWith(parentUrl))
-            throw new Error('A minted document url should start with the parent url');
+            throw new SoukaiError('A minted document url should start with the parent url');
 
         await this.fetch(url, {
             headers: { 'Content-Type': 'text/turtle' },
@@ -234,11 +234,12 @@ export default class SolidClient {
                 .then(data => RDF.parseTurtle(data, { baseUrl: containerUrl }));
 
         return await Promise.all(
-            containerDocument.rootResource
+            containerDocument
+                .resource(containerUrl)!
                 .getPropertyValues('ldp:contains')
-                .map((url: string) => containerDocument.resourcesIndex[url])
-                .filter(resource => resource && resource.isType('ldp:Container'))
-                .map(resource => this.getDocument(resource.url!) as Promise<RDFDocument>),
+                .map((url: string) => containerDocument.resource(url))
+                .filter(resource => resource !== null && resource.isType('ldp:Container'))
+                .map((resource: RDFResource) => this.getDocument(resource.url!) as Promise<RDFDocument>),
         );
     }
 
@@ -301,7 +302,7 @@ export default class SolidClient {
         );
 
         if (response.status !== 201) {
-            throw new Error(
+            throw new SoukaiError(
                 `Error updating container document at ${document.url}, returned status code ${response.status}`,
             );
         }
@@ -348,7 +349,7 @@ export default class SolidClient {
         );
 
         if (response.status !== 200)
-            throw new Error(
+            throw new SoukaiError(
                 `Error updating document at ${document.url}, returned status code ${response.status}`,
             );
     }
