@@ -6,6 +6,7 @@ import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 import UUID from '@/utils/UUID';
 
+import SolidContainerDocumentsRelation from './relations/SolidContainerDocumentsRelation';
 import SolidContainsRelation from './relations/SolidContainsRelation';
 
 import SolidDocument from './SolidDocument';
@@ -36,26 +37,17 @@ export default abstract class SolidContainerModel extends SolidModel {
     relatedDocuments: MultiModelRelation<SolidContainerModel, SolidDocument, typeof SolidDocument>;
 
     public documentsRelationship(): MultiModelRelation {
-        return this.belongsToMany(SolidDocument, 'resourceUrls');
+        return new SolidContainerDocumentsRelation(this);
     }
 
     protected contains(model: typeof SolidModel): MultiModelRelation {
         return new SolidContainsRelation(this, model);
     }
 
-    protected initializeRelations() {
-        super.initializeRelations();
-
-        this._relations['documents'].related = [];
-    }
-
     protected newUrl(): string {
-        return Url.resolveDirectory(
-            this.modelClass.collection,
-            this.hasAttribute('name')
-                ? Str.slug(this.getAttribute('name'))
-                : UUID.generate(),
-        );
+        const slug = this.hasAttribute('name') ? Str.slug(this.getAttribute('name')) : UUID.generate();
+
+        return Url.resolveDirectory(this.modelClass.collection, slug);
     }
 
 }

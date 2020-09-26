@@ -97,8 +97,6 @@ export abstract class SolidModel extends Model {
 
     protected getModelsToStoreInSameDocument(): SolidModel[];
 
-    protected getRelatedModels(): SolidModel[];
-
     protected getDefaultRdfContext(): string;
 
     protected getDirtyEngineDocumentUpdates(): EngineUpdates;

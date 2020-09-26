@@ -583,25 +583,22 @@ describe('SolidModel', () => {
     });
 
     it('uses model url container on delete', async () => {
+        // Arrange
         class StubModel extends SolidModel {
         }
-
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        Soukai.loadModels({ StubModel });
 
         jest.spyOn(engine, 'delete');
 
-        Soukai.loadModels({ StubModel });
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const url = Url.resolve(containerUrl, Faker.random.uuid());
+        const model = new StubModel({ url }, true);
 
-        const model = new StubModel(
-            { url: Url.resolve(containerUrl, Faker.random.uuid()) },
-            true,
-        );
-
+        // Act
         await model.delete();
 
-        const collection = (engine.delete as any).mock.calls[0][0];
-
-        expect(collection).toEqual(containerUrl);
+        // Assert
+        expect(engine.delete).toHaveBeenCalledWith(containerUrl, url);
     });
 
     it('aliases url attribute as id', async () => {

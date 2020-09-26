@@ -39,7 +39,7 @@ export default class SolidContainsRelation<
 
         if (!(Soukai.engine instanceof SolidEngine))
             await this.parent.update({
-                resourceUrls: [...this.parent.resourceUrls, model.url],
+                resourceUrls: [...this.parent.resourceUrls, model.getDocumentUrl()],
             });
 
         if (this.loaded)

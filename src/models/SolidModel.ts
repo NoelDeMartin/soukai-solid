@@ -262,19 +262,6 @@ abstract class SolidModel extends Model {
         return Arr.flatten(models);
     }
 
-    protected getRelatedModels(): SolidModel[] {
-        return Object
-            .values(this._relations)
-            .filter(relation => relation.loaded)
-            .map(relation => {
-                if (relation instanceof MultiModelRelation)
-                    return relation.related!;
-
-                return [relation.related!];
-            })
-            .reduce((documentModels, relationModels) => [...documentModels, ...relationModels], []);
-    }
-
     protected async createFromEngineDocument<T extends Model>(id: any, document: EngineDocument): Promise<T> {
         const model = await super.createFromEngineDocument<SolidModel>(id, document);
 
@@ -316,28 +303,31 @@ abstract class SolidModel extends Model {
         const engine = Soukai.requireEngine();
         const id = this.getSerializedPrimaryKey()!;
         const documentId = this.getDocumentUrl();
-        const updateDatabase = (): Promise<string | void> => {
+        const createDocument = () => engine.create(
+            this.modelClass.collection,
+            this.toEngineDocument(),
+            documentId || undefined,
+        );
+        const addToDocument = () => engine.update(
+            this.modelClass.collection,
+            documentId!,
+            {
+                '@graph': { $push: this.serializeToJsonLD(false) as EngineDocument },
+            },
+        );
+        const updateDocument = () => engine.update(
+            this.modelClass.collection,
+            documentId!,
+            this.getDirtyEngineDocumentUpdates(),
+        );
+        const updateDatabase = () => {
             if (!this._documentExists)
-                return engine.create(
-                    this.modelClass.collection,
-                    this.toEngineDocument(),
-                    documentId || undefined,
-                );
+                return createDocument();
 
             if (!this._exists)
-                return engine.update(
-                    this.modelClass.collection,
-                    documentId!,
-                    {
-                        '@graph': { $push: this.serializeToJsonLD(false) as EngineDocument },
-                    },
-                );
+                return addToDocument();
 
-            return engine.update(
-                this.modelClass.collection,
-                documentId!,
-                this.getDirtyEngineDocumentUpdates(),
-            );
+            return updateDocument();
         };
 
         await updateDatabase();
