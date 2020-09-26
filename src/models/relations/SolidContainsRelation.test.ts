@@ -32,7 +32,7 @@ describe('SolidHasManyRelation', () => {
         // Assert
         expect(group.resourceUrls).toHaveLength(1);
         expect(group.members).toHaveLength(1);
-        expect(group.resourceUrls[0]).toEqual(person.url);
+        expect(group.resourceUrls[0]).toEqual(person.getDocumentUrl());
         expect(group.members![0]).toEqual(person);
         expect(person.exists()).toBe(true);
         expect(person.url.startsWith(group.url)).toBe(true);
