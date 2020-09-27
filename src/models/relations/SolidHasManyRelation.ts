@@ -109,7 +109,7 @@ export default class SolidHasManyRelation<
         );
 
         this.__modelsInOtherDocumentIds = Object.keys(documents).filter(
-            resourceId => !this.__modelsInSameDocument!.find(model => model.url === resourceId),
+            resourceId => !this.__modelsInSameDocument!.some(model => model.url === resourceId),
         );
 
         if (this.__modelsInOtherDocumentIds.length > 0)

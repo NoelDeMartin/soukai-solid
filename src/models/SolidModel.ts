@@ -182,10 +182,6 @@ abstract class SolidModel extends Model {
     }
 
     public delete<T extends Model>(): Promise<T> {
-        // TODO make sure that only the model resource is removed from a document instead of
-        // removing the entire document. Conversely, also make sure that the entire document is
-        // removed if the model resource was the only data in a document.
-
         return this.modelClass.withCollection(this.guessCollection() || '', () => super.delete());
     }
 
@@ -232,10 +228,10 @@ abstract class SolidModel extends Model {
         // handling dirty attributes, but it should be refactored at some point.
         // The only problem for now is that calling isDirty will yield false positives
         // in some situations.
-        return !!Object
+        return Object
             .values(this._relations)
             .filter(relation => relation instanceof SolidHasManyRelation)
-            .find((relation: SolidHasManyRelation) => relation.__modelsToStoreInSameDocument.length > 0);
+            .some((relation: SolidHasManyRelation) => relation.__modelsToStoreInSameDocument.length > 0);
     }
 
     public getDocumentUrl(): string | null {
@@ -348,6 +344,31 @@ abstract class SolidModel extends Model {
                 relation.__modelsInSameDocument.push(...relation.__modelsToStoreInSameDocument);
                 relation.__modelsToStoreInSameDocument = [];
             });
+    }
+
+    protected async deleteFromDatabase(): Promise<void> {
+        type ResourcesGraph = { '@graph': { '@id': string }[] };
+
+        const engine = Soukai.requireEngine();
+        const collection = this.modelClass.collection;
+        const documentUrl = this.getDocumentUrl()!;
+        const { '@graph': resources } =
+            await engine.readOne(collection, this.getDocumentUrl()!) as ResourcesGraph;
+
+        if (!resources.some(doc => doc['@id'] !== this.url)) {
+            await engine.delete(collection, documentUrl);
+
+            return;
+        }
+
+        await engine.update(collection, documentUrl, {
+            '@graph': {
+                $updateItems: {
+                    $where: { '@id': this.url },
+                    $unset: true,
+                },
+            },
+        });
     }
 
     protected hasMany(relatedClass: typeof SolidModel, foreignKeyField?: string, localKeyField?: string): MultiModelRelation {

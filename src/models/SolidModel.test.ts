@@ -582,23 +582,60 @@ describe('SolidModel', () => {
         expect(collection).toEqual(containerUrl);
     });
 
-    it('uses model url container on delete', async () => {
+    it('deletes the entire document if the model is the only resource on it', async () => {
         // Arrange
         class StubModel extends SolidModel {
         }
         Soukai.loadModels({ StubModel });
-
         jest.spyOn(engine, 'delete');
 
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const url = Url.resolve(containerUrl, Faker.random.uuid());
         const model = new StubModel({ url }, true);
 
+        engine.setOne({ '@graph': [] });
+
         // Act
         await model.delete();
 
         // Assert
         expect(engine.delete).toHaveBeenCalledWith(containerUrl, url);
+    });
+
+    it('deletes only model properties if the document has other resources', async () => {
+        // Arrange
+        class StubModel extends SolidModel {
+        }
+        Soukai.loadModels({ StubModel });
+        jest.spyOn(engine, 'update');
+
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const documentUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const url = `${documentUrl}#it`;
+        const model = new StubModel({ url, name: Faker.name.firstName() }, true);
+
+        engine.setOne({
+            '@graph': [
+                { '@id': `${documentUrl}#something-else` },
+            ],
+        });
+
+        // Act
+        await model.delete();
+
+        // Assert
+        expect(engine.update).toHaveBeenCalledWith(
+            containerUrl,
+            documentUrl,
+            {
+                '@graph': {
+                    $updateItems: {
+                        $where: { '@id': url },
+                        $unset: true,
+                    },
+                },
+            },
+        );
     });
 
     it('aliases url attribute as id', async () => {

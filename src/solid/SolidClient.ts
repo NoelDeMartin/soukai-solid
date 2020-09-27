@@ -36,7 +36,7 @@ export default class SolidClient {
         const turtleData = properties
             .map(property => property.toTurtle() + ' .')
             .join("\n");
-        const isContainer = !!properties.find(
+        const isContainer = properties.some(
             property =>
                 property.resourceUrl === url &&
                 property.type === RDFResourcePropertyType.Type &&
@@ -89,7 +89,7 @@ export default class SolidClient {
     public async updateDocument(
         url: string,
         updatedProperties: RDFResourceProperty[],
-        removedProperties: [string, string][],
+        removedProperties: [string, string?][],
     ): Promise<void> {
         if (updatedProperties.length + removedProperties.length === 0)
             return;
@@ -270,7 +270,7 @@ export default class SolidClient {
     private async updateContainerDocument(
         document: RDFDocument,
         updatedProperties: RDFResourceProperty[],
-        removedProperties: [string, string][],
+        removedProperties: [string, string?][],
     ): Promise<void> {
         // TODO this may change in future versions of node-solid-server
         // https://github.com/solid/node-solid-server/issues/1040
@@ -279,10 +279,10 @@ export default class SolidClient {
             return property.name !== IRI('ldp:contains')
                 && property.name !== 'http://www.w3.org/ns/posix/stat#mtime'
                 && property.name !== 'http://www.w3.org/ns/posix/stat#size'
-                && !removedProperties.find(
-                    ([removedPropertyResourceUrl, removedPropertyName]) =>
-                        removedPropertyResourceUrl === property.resourceUrl &&
-                        removedPropertyName === property.name,
+                && !removedProperties.some(
+                    ([resourceUrl, name]) =>
+                        resourceUrl === property.resourceUrl &&
+                        (!name || name === property.name),
                 );
         });
 
@@ -311,24 +311,23 @@ export default class SolidClient {
     private async updateNonContainerDocument(
         document: RDFDocument,
         updatedProperties: RDFResourceProperty[],
-        removedProperties: [string, string][],
+        removedProperties: [string, string?][],
     ): Promise<void> {
-        const where = removedProperties
-            .map(([resourceUrl, property], i) => `<${resourceUrl}> <${property}> ?d${i} .`)
-            .join('\n');
-
         const inserts = updatedProperties
             .map(property => property.toTurtle() + ' .')
             .join('\n');
 
-        const deletes = removedProperties
-            .map(([resourceUrl, property], i) => `<${resourceUrl}> <${property}> ?d${i} .`)
+        const deletes = document.properties
+            .filter(property => removedProperties.some(([resourceUrl, name]) => {
+                return resourceUrl === property.resourceUrl
+                    && (!name || name === property.name);
+            }))
+            .map(property => property.toTurtle() + ' .')
             .join('\n');
 
         const operations = [
             `solid:patches <${document.url}>`,
             inserts.length > 0 ? `solid:inserts { ${inserts} }` : null,
-            where.length > 0 ? `solid:where { ${where} }` : null,
             deletes.length > 0 ? `solid:deletes { ${deletes} }` : null,
         ]
             .filter(part => part !== null)

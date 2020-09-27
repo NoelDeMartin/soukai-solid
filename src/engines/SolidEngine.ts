@@ -182,7 +182,7 @@ export default class SolidEngine implements Engine {
             );
     }
 
-    private async extractJsonLDGraphUpdate(updates: EngineUpdates): Promise<[RDFResourceProperty[], [string, string][]]> {
+    private async extractJsonLDGraphUpdate(updates: EngineUpdates): Promise<[RDFResourceProperty[], [string, string?][]]> {
         if (!this.isJsonLDGraphUpdate(updates)) {
             throw new SoukaiError(
                 'Invalid JSON-LD graph updates provided for SolidEngine. ' +
@@ -191,7 +191,7 @@ export default class SolidEngine implements Engine {
         }
 
         const updatedProperties: RDFResourceProperty[] = [];
-        const removedProperties: [string, string][] = [];
+        const removedProperties: [string, string?][] = [];
 
         if (updates['@graph'].$updateItems)
             this.extractJsonLDGraphItemsUpdate(
@@ -211,10 +211,10 @@ export default class SolidEngine implements Engine {
 
     private extractJsonLDGraphItemsUpdate(
         updatedProperties: RDFResourceProperty[],
-        removedProperties: [string, string][],
+        removedProperties: [string, string?][],
         itemUpdates: EngineUpdateItemsOperatorData[],
     ): void {
-        for (const { $where, $update } of itemUpdates) {
+        for (const { $where, $update, $unset } of itemUpdates) {
             if (!$where || !('@id' in $where))
                 throw new SoukaiError(
                     'Invalid JSON-LD graph updates provided for SolidEngine. ' +
@@ -222,6 +222,13 @@ export default class SolidEngine implements Engine {
                 );
 
             const resourceUrl = $where!['@id'] as string;
+
+            if ($unset) {
+                removedProperties.push([resourceUrl]);
+
+                continue;
+            }
+
             const updates = $update;
 
             for (const [attribute, value] of Object.entries(updates as MapObject<EngineAttributeLeafValue>)) {

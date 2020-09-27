@@ -406,15 +406,10 @@ describe('SolidClient', () => {
                 solid:inserts {
                     <${url}> <http://xmlns.com/foaf/0.1/name> "John Doe" .
                 } ;
-                solid:where {
-                    <${url}> <http://xmlns.com/foaf/0.1/surname> ?d0 .
-                    <${url}> <http://xmlns.com/foaf/0.1/givenName> ?d1 .
-                    <${url}> <http://xmlns.com/foaf/0.1/name> ?d2 .
-                } ;
                 solid:deletes {
-                    <${url}> <http://xmlns.com/foaf/0.1/surname> ?d0 .
-                    <${url}> <http://xmlns.com/foaf/0.1/givenName> ?d1 .
-                    <${url}> <http://xmlns.com/foaf/0.1/name> ?d2 .
+                    <${url}> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
+                    <${url}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                    <${url}> <http://xmlns.com/foaf/0.1/givenName> "John" .
                 } .
         `, { format: 'text/n3' });
     });
@@ -495,6 +490,82 @@ describe('SolidClient', () => {
                     <${url}> <http://xmlns.com/foaf/0.1/name> "John Doe" .
                 } .
         `, { format: 'text/n3' });
+    });
+
+    it('deletes all properties from a resource within a document', async () => {
+        // Arrange
+        const documentUrl = Faker.internet.url();
+        const url = `${documentUrl}#it`;
+        const data = `
+            <${documentUrl}>
+                a <http://www.w3.org/ns/ldp#Resource> .
+            <${url}>
+                <http://xmlns.com/foaf/0.1/name> "Johnathan" ;
+                <http://xmlns.com/foaf/0.1/surname> "Doe" ;
+                <http://xmlns.com/foaf/0.1/givenName> "John" .
+        `;
+
+        StubFetcher.addFetchResponse(data);
+        StubFetcher.addFetchResponse();
+
+        // Act
+        await client.updateDocument(documentUrl, [], [[url]]);
+
+        // Assert
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(
+            documentUrl,
+            {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'text/n3' },
+                body: expect.anything(),
+            }
+        );
+
+        const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
+
+        await expect(body).toEqualTurtle(`
+            @prefix solid: <http://www.w3.org/ns/solid/terms#> .
+            <> solid:patches <${documentUrl}> ;
+                solid:deletes {
+                    <${url}> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
+                    <${url}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                    <${url}> <http://xmlns.com/foaf/0.1/givenName> "John" .
+                } .
+        `, { format: 'text/n3' });
+    });
+
+    it('deletes all properties from a resource within a container document', async () => {
+        // Arrange
+        const documentUrl = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const url = `${documentUrl}#it`;
+        const data = `
+            <${documentUrl}>
+                a <http://www.w3.org/ns/ldp#Container> .
+            <${url}>
+                <http://xmlns.com/foaf/0.1/name> "Jonathan" ;
+                <http://xmlns.com/foaf/0.1/surname> "Doe" ;
+                <http://xmlns.com/foaf/0.1/givenName> "John" .
+        `;
+
+        StubFetcher.addFetchResponse(data);
+        StubFetcher.addFetchResponse('', {}, 201);
+
+        // Act
+        await client.updateDocument(documentUrl, [], [[url]]);
+
+        // Assert
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(
+            documentUrl + '.meta',
+            {
+                method: 'PUT',
+                headers: { 'Content-Type': 'text/turtle' },
+                body: expect.anything(),
+            }
+        );
+
+        const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
+
+        await expect(body).toEqualTurtle(`<${documentUrl}> a <http://www.w3.org/ns/ldp#Container> .`);
     });
 
     it('fails updating non-existent documents', async () => {

@@ -73,7 +73,7 @@ export class SolidClientMock {
     }
 
     public async documentExists(url: string): Promise<boolean> {
-        return !!Object.keys(this.documents).find(documentUrl => {
+        return Object.keys(this.documents).some(documentUrl => {
             if (!url.startsWith(documentUrl))
                 return false;
 

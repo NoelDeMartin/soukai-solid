@@ -467,6 +467,36 @@ describe('SolidEngine', () => {
         );
     });
 
+    it('updates document removing resources', async () => {
+        // Arrange
+        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const resourceUrl = `${documentUrl}#it`;
+
+        await SolidClientMock.createDocument(parentUrl, documentUrl);
+
+        // Act
+        await engine.update(
+            parentUrl,
+            documentUrl,
+            {
+                '@graph': {
+                    $updateItems: [{
+                        $where: { '@id': resourceUrl },
+                        $unset: true,
+                    }],
+                },
+            },
+        );
+
+        // Assert
+        expect(SolidClientMock.updateDocument).toHaveBeenCalledWith(
+            documentUrl,
+            [],
+            [[resourceUrl]],
+        );
+    });
+
     it("fails updating when document doesn't exist", async () => {
         const documentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
 
