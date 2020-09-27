@@ -298,22 +298,22 @@ abstract class SolidModel extends Model {
     protected async syncDirty(): Promise<string> {
         const engine = Soukai.requireEngine();
         const id = this.getSerializedPrimaryKey()!;
-        const documentId = this.getDocumentUrl();
+        const documentUrl = this.getDocumentUrl();
         const createDocument = () => engine.create(
             this.modelClass.collection,
             this.toEngineDocument(),
-            documentId || undefined,
+            documentUrl || undefined,
         );
         const addToDocument = () => engine.update(
             this.modelClass.collection,
-            documentId!,
+            documentUrl!,
             {
                 '@graph': { $push: this.serializeToJsonLD(false) as EngineDocument },
             },
         );
         const updateDocument = () => engine.update(
             this.modelClass.collection,
-            documentId!,
+            documentUrl!,
             this.getDirtyEngineDocumentUpdates(),
         );
         const updateDatabase = () => {
@@ -352,8 +352,7 @@ abstract class SolidModel extends Model {
         const engine = Soukai.requireEngine();
         const collection = this.modelClass.collection;
         const documentUrl = this.getDocumentUrl()!;
-        const { '@graph': resources } =
-            await engine.readOne(collection, this.getDocumentUrl()!) as ResourcesGraph;
+        const { '@graph': resources } = await engine.readOne(collection, documentUrl) as ResourcesGraph;
 
         if (!resources.some(doc => doc['@id'] !== this.url)) {
             await engine.delete(collection, documentUrl);

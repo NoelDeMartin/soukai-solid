@@ -107,7 +107,7 @@ export default class SolidClient {
                 .map(property => [property.resourceUrl, property.name] as [string, string]),
         );
 
-        document.resource(url)!.isType(IRI('ldp:Container'))
+        document.resource(url)?.isType(IRI('ldp:Container'))
             ? await this.updateContainerDocument(document, updatedProperties, removedProperties)
             : await this.updateNonContainerDocument(document, updatedProperties, removedProperties);
     }
@@ -118,7 +118,7 @@ export default class SolidClient {
         if (document === null)
             return;
 
-        if (document.resource(url)!.isType(IRI('ldp:Container'))) {
+        if (document.resource(url)?.isType(IRI('ldp:Container'))) {
             const documents = await Promise.all([
                 this.getDocuments(url, true),
                 this.getDocuments(url),
@@ -235,11 +235,11 @@ export default class SolidClient {
 
         return await Promise.all(
             containerDocument
-                .resource(containerUrl)!
-                .getPropertyValues('ldp:contains')
+                .resource(containerUrl)?.getPropertyValues('ldp:contains')
                 .map((url: string) => containerDocument.resource(url))
                 .filter(resource => resource !== null && resource.isType('ldp:Container'))
-                .map((resource: RDFResource) => this.getDocument(resource.url!) as Promise<RDFDocument>),
+                .map((resource: RDFResource) => this.getDocument(resource.url!) as Promise<RDFDocument>)
+            || [],
         );
     }
 

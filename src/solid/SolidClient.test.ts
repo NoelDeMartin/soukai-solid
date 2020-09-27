@@ -367,7 +367,8 @@ describe('SolidClient', () => {
 
     it('updates documents', async () => {
         // Arrange
-        const url = Faker.internet.url();
+        const documentUrl = Faker.internet.url();
+        const url = `${documentUrl}#it`;
         const data = `
             <${url}>
                 <http://xmlns.com/foaf/0.1/name> "Johnathan" ;
@@ -386,11 +387,11 @@ describe('SolidClient', () => {
         StubFetcher.addFetchResponse();
 
         // Act
-        await client.updateDocument(url, updatedProperties, deletedProperties);
+        await client.updateDocument(documentUrl, updatedProperties, deletedProperties);
 
         // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
-            url,
+            documentUrl,
             {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'text/n3' },
@@ -402,7 +403,7 @@ describe('SolidClient', () => {
 
         await expect(body).toEqualTurtle(`
             @prefix solid: <http://www.w3.org/ns/solid/terms#> .
-            <> solid:patches <${url}> ;
+            <> solid:patches <${documentUrl}> ;
                 solid:inserts {
                     <${url}> <http://xmlns.com/foaf/0.1/name> "John Doe" .
                 } ;

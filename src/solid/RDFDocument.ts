@@ -48,7 +48,7 @@ export default class RDFDocument {
     }
 
     public resource(url: string): RDFResource | null {
-        return this.resourcesIndex[url] || null;
+        return this.resourcesIndex[url] ?? null;
     }
 
 }
