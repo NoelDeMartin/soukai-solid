@@ -415,14 +415,10 @@ describe('SolidEngine', () => {
             documentUrl,
             {
                 '@graph': {
-                    $updateItems: [{
-                        $where: {
-                            '@id': documentUrl,
-                        },
-                        $update: {
-                            [IRI('foaf:name')]: name,
-                        },
-                    }],
+                    $updateItems: {
+                        $where: { '@id': documentUrl },
+                        $update: { [IRI('foaf:name')]: name },
+                    },
                 },
             },
         );
@@ -448,14 +444,10 @@ describe('SolidEngine', () => {
             documentUrl,
             {
                 '@graph': {
-                    $updateItems: [{
-                        $where: {
-                            '@id': documentUrl,
-                        },
-                        $update: {
-                            [IRI('foaf:name')]: { $unset: true },
-                        },
-                    }],
+                    $updateItems: {
+                        $where: { '@id': documentUrl },
+                        $update: { [IRI('foaf:name')]: { $unset: true } },
+                    },
                 },
             },
         );
@@ -481,10 +473,10 @@ describe('SolidEngine', () => {
             documentUrl,
             {
                 '@graph': {
-                    $updateItems: [{
+                    $updateItems: {
                         $where: { '@id': resourceUrl },
                         $unset: true,
-                    }],
+                    },
                 },
             },
         );
