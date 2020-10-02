@@ -145,7 +145,7 @@ describe('SolidModel', () => {
         const movieName = Faker.name.title();
         const movieUrl = Url.resolve(containerUrl, Str.slug(movieName));
         const movie = new Movie({ url: movieUrl, name: movieName });
-        const action = await movie.relatedActions.create({ startTime: new Date('1997-07-21T23:42:00Z') }, true);
+        const action = await movie.relatedActions.create({ startTime: new Date('1997-07-21T23:42:00Z') });
 
         jest.spyOn(engine, 'create');
 
@@ -179,7 +179,7 @@ describe('SolidModel', () => {
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const movieName = Faker.name.title();
         const movie = new Movie({ name: movieName });
-        const action = await movie.relatedActions.create({ startTime: new Date('1997-07-21T23:42:00Z') }, true);
+        const action = await movie.relatedActions.create({ startTime: new Date('1997-07-21T23:42:00Z') });
 
         jest.spyOn(engine, 'create');
 
@@ -469,10 +469,12 @@ describe('SolidModel', () => {
         const movieUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
         const movie = new Movie({ url: movieUrl }, true);
 
+        movie.setRelationModels('actions', []);
+
         jest.spyOn(engine, 'update');
 
         // Act
-        const action = await movie.relatedActions.create({}, true);
+        const action = await movie.relatedActions.create({});
 
         // Assert
         expect(typeof action.url).toEqual('string');
@@ -582,24 +584,33 @@ describe('SolidModel', () => {
         expect(collection).toEqual(containerUrl);
     });
 
-    it('deletes the entire document if the model is the only resource on it', async () => {
+    it('deletes the entire document if all stored resources are deleted', async () => {
         // Arrange
-        class StubModel extends SolidModel {
-        }
-        Soukai.loadModels({ StubModel });
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const documentUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const movieUrl = `${documentUrl}#it`;
+        const actionUrl = `${documentUrl}#action`;
+        const movie = new Movie({ url: movieUrl }, true);
+
+        movie.setRelationModels('actions', [new WatchAction({ url: actionUrl }, true)]);
+
+        engine.setMany(containerUrl, {
+            [documentUrl]: {
+                '@graph': [
+                    { '@id': movieUrl },
+                    { '@id': actionUrl },
+                ],
+            },
+        });
+
         jest.spyOn(engine, 'delete');
 
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const url = Url.resolve(containerUrl, Faker.random.uuid());
-        const model = new StubModel({ url }, true);
-
-        engine.setOne({ '@graph': [] });
-
         // Act
-        await model.delete();
+        await movie.delete();
 
         // Assert
-        expect(engine.delete).toHaveBeenCalledWith(containerUrl, url);
+        expect(engine.delete).toHaveBeenCalledTimes(1);
+        expect(engine.delete).toHaveBeenCalledWith(containerUrl, documentUrl);
     });
 
     it('deletes only model properties if the document has other resources', async () => {
@@ -614,28 +625,99 @@ describe('SolidModel', () => {
         const url = `${documentUrl}#it`;
         const model = new StubModel({ url, name: Faker.name.firstName() }, true);
 
-        engine.setOne({
-            '@graph': [
-                { '@id': `${documentUrl}#something-else` },
-            ],
+        engine.setMany(containerUrl, {
+            [documentUrl]: {
+                '@graph': [
+                    { '@id': `${documentUrl}#something-else` },
+                ],
+            },
         });
 
         // Act
         await model.delete();
 
         // Assert
+        expect(engine.update).toHaveBeenCalledTimes(1);
         expect(engine.update).toHaveBeenCalledWith(
             containerUrl,
             documentUrl,
             {
                 '@graph': {
                     $updateItems: {
-                        $where: { '@id': url },
+                        $where: { '@id': { $in: [url] } },
                         $unset: true,
                     },
                 },
             },
         );
+    });
+
+    it('deletes complex document structures properly', async () => {
+        // Arrange - create models & urls
+        const firstContainerUrl = Url.resolveDirectory(Faker.internet.url());
+        const secondContainerUrl = Url.resolveDirectory(Faker.internet.url());
+        const firstDocumentUrl = Url.resolve(firstContainerUrl, Faker.random.uuid());
+        const secondDocumentUrl = Url.resolve(firstContainerUrl, Faker.random.uuid());
+        const thirdDocumentUrl = Url.resolve(secondContainerUrl, Faker.random.uuid());
+        const movieUrl = `${firstDocumentUrl}#it`;
+        const firstActionUrl = `${firstDocumentUrl}#action`;
+        const secondActionUrl = `${secondDocumentUrl}#it`;
+        const thirdActionUrl = `${thirdDocumentUrl}#action-1`;
+        const fourthActionUrl = `${thirdDocumentUrl}#action-2`;
+        const movie = new Movie({ url: movieUrl }, true);
+
+        movie.setRelationModels('actions', [
+            new WatchAction({ url: firstActionUrl }, true),
+            new WatchAction({ url: secondActionUrl }, true),
+            new WatchAction({ url: thirdActionUrl }, true),
+            new WatchAction({ url: fourthActionUrl }, true),
+        ]);
+
+        // Arrange - set up engine
+        engine.setMany(firstContainerUrl, {
+            [firstDocumentUrl]: {
+                '@graph': [
+                    { '@id': movieUrl },
+                    { '@id': firstActionUrl },
+                ],
+            },
+            [secondDocumentUrl]: {
+                '@graph': [
+                    { '@id': secondActionUrl },
+                ],
+            }
+        });
+
+        engine.setMany(secondContainerUrl, {
+            [thirdDocumentUrl]: {
+                '@graph': [
+                    { '@id': thirdActionUrl },
+                    { '@id': fourthActionUrl },
+                    { '@id': `${thirdDocumentUrl}#somethingelse` },
+                ],
+            },
+        });
+
+        jest.spyOn(engine, 'update');
+        jest.spyOn(engine, 'delete');
+
+        // Act
+        await movie.delete();
+
+        // Assert
+        expect(engine.delete).toHaveBeenCalledTimes(2);
+        expect(engine.delete).toHaveBeenCalledWith(firstContainerUrl, firstDocumentUrl);
+        expect(engine.delete).toHaveBeenCalledWith(firstContainerUrl, secondDocumentUrl);
+
+        expect(engine.update).toHaveBeenCalledTimes(1);
+        expect(engine.update).toHaveBeenCalledWith(secondContainerUrl, thirdDocumentUrl, {
+            '@graph': {
+                $updateItems: {
+                    $where: { '@id': { $in: [thirdActionUrl, fourthActionUrl] } },
+                    $unset: true,
+                },
+            },
+        });
     });
 
     it('aliases url attribute as id', async () => {

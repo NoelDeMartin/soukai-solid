@@ -23,6 +23,7 @@ import Arr from '@/utils/Arr';
 import Url from '@/utils/Url';
 import UUID from '@/utils/UUID';
 
+import DeletesModels from './mixins/DeletesModels';
 import SerializesToJsonLD from './mixins/SerializesToJsonLD';
 import SolidBelongsToManyRelation from './relations/SolidBelongsToManyRelation';
 import SolidHasManyRelation from './relations/SolidHasManyRelation';
@@ -221,17 +222,7 @@ abstract class SolidModel extends Model {
         if (super.isDirty())
             return true;
 
-        // TODO this is not 100% right. Related documents are different entities,
-        // even if they are stored in the same document. For now, this is a workaround
-        // so that every time a model's save method is called, related models in the same
-        // document are saved. This is at least consistent with the rest of the methods
-        // handling dirty attributes, but it should be refactored at some point.
-        // The only problem for now is that calling isDirty will yield false positives
-        // in some situations.
-        return Object
-            .values(this._relations)
-            .filter(relation => relation instanceof SolidHasManyRelation)
-            .some((relation: SolidHasManyRelation) => relation.__modelsToStoreInSameDocument.length > 0);
+        return this.getDirtyDocumentModels().length > 0;
     }
 
     public getDocumentUrl(): string | null {
@@ -247,15 +238,6 @@ abstract class SolidModel extends Model {
         super.initialize(attributes, exists);
 
         this._documentExists = exists;
-    }
-
-    protected getModelsToStoreInSameDocument(): SolidModel[] {
-        const models = Object
-            .values(this._relations)
-            .filter(relation => relation instanceof SolidHasManyRelation)
-            .map((relation: SolidHasManyRelation) => relation.__modelsToStoreInSameDocument);
-
-        return Arr.flatten(models);
     }
 
     protected async createFromEngineDocument<T extends Model>(id: any, document: EngineDocument): Promise<T> {
@@ -333,44 +315,26 @@ abstract class SolidModel extends Model {
 
     protected cleanDirty(): void {
         super.cleanDirty();
-        this.getModelsToStoreInSameDocument().map(model => model.cleanDirty());
+        this.getDirtyDocumentModels().map(model => model.cleanDirty());
 
         this._documentExists = true;
-        Object
+
+        const sameDocumentRelations = Object
             .values(this._relations)
-            .filter(relation => relation instanceof SolidHasManyRelation)
-            .forEach((relation: SolidHasManyRelation) => {
-                relation.__modelsInSameDocument = relation.__modelsInSameDocument || [];
-                relation.__modelsInSameDocument.push(...relation.__modelsToStoreInSameDocument);
-                relation.__modelsToStoreInSameDocument = [];
-            });
+            .filter(relation => relation instanceof SolidHasManyRelation && relation.useSameDocument) as SolidHasManyRelation[];
+
+        for (const relation of sameDocumentRelations) {
+            relation.__modelsInSameDocument = relation.__modelsInSameDocument || [];
+            relation.__modelsInSameDocument.push(...relation.__newModels);
+            relation.__newModels = [];
+        };
     }
 
-    protected async deleteFromDatabase(): Promise<void> {
-        type ResourcesGraph = { '@graph': { '@id': string }[] };
-
-        const engine = Soukai.requireEngine();
-        const collection = this.modelClass.collection;
-        const documentUrl = this.getDocumentUrl()!;
-        const { '@graph': resources } = await engine.readOne(collection, documentUrl) as ResourcesGraph;
-
-        if (!resources.some(doc => doc['@id'] !== this.url)) {
-            await engine.delete(collection, documentUrl);
-
-            return;
-        }
-
-        await engine.update(collection, documentUrl, {
-            '@graph': {
-                $updateItems: {
-                    $where: { '@id': this.url },
-                    $unset: true,
-                },
-            },
-        });
+    protected async deleteModelsFromEngine(models: SolidModel[]): Promise<void> {
+        await this.deleteModels(models);
     }
 
-    protected hasMany(relatedClass: typeof SolidModel, foreignKeyField?: string, localKeyField?: string): MultiModelRelation {
+    protected hasMany(relatedClass: typeof SolidModel, foreignKeyField?: string, localKeyField?: string): SolidHasManyRelation {
         return new SolidHasManyRelation(this, relatedClass, foreignKeyField, localKeyField);
     }
 
@@ -387,25 +351,19 @@ abstract class SolidModel extends Model {
     }
 
     protected toEngineDocument(): EngineDocument {
-        this.prepareNewDocumentModels();
-
         return {
             '@graph': [
                 this.serializeToJsonLD(false),
-                ...this.getModelsToStoreInSameDocument().map(model => model.serializeToJsonLD(false)),
+                ...this.prepareDirtyDocumentModels().map(model => model.serializeToJsonLD(false)),
             ],
         } as EngineDocument;
     }
 
     protected getDirtyEngineDocumentUpdates(): EngineUpdates {
         const graphUpdates: EngineAttributeUpdateOperation[] = [];
-        const newDocumentModels = this.prepareNewDocumentModels();
 
-        // TODO handle updates for related models in the same document,
-        // instead of only creating new ones.
-        // Related models entanglement needs to be reviewed.
         graphUpdates.push(
-            ...newDocumentModels.map(model => ({
+            ...this.prepareDirtyDocumentModels().map(model => ({
                 $push: model.serializeToJsonLD(false) as EngineAttributeValue,
             })),
         );
@@ -454,41 +412,53 @@ abstract class SolidModel extends Model {
         return Url.parentDirectory(this.url);
     }
 
-    private prepareNewDocumentModels(): SolidModel[] {
-        const hasManyRelations = Object
-            .values(this._relations)
-            .filter(relation => relation instanceof SolidHasManyRelation)
-            .filter(
-                (relation: SolidHasManyRelation) => relation.__modelsToStoreInSameDocument.length > 0,
-            ) as SolidHasManyRelation[];
+    private getDirtyDocumentModels(): SolidModel[] {
+        const documentUrl = this.getDocumentUrl();
+        const dirtyModels = Arr.flatten(
+            Object
+                .values(this._relations)
+                .filter(
+                    relation =>
+                        relation.loaded &&
+                        relation instanceof SolidHasManyRelation &&
+                        relation.useSameDocument
+                )
+                .map((relation: SolidHasManyRelation) => {
+                    const models = [
+                        ...relation.__newModels,
+                        ...relation.related!.filter(model => model.isDirty() && model.getDocumentUrl() === documentUrl),
+                    ];
 
-        if (hasManyRelations.length === 0)
+                    models.forEach(model => model.setAttribute(relation.foreignKeyName, this.url));
+
+                    return models;
+                }),
+        );
+
+        return dirtyModels;
+    }
+
+    private prepareDirtyDocumentModels(): SolidModel[] {
+        const dirtyModels = this.getDirtyDocumentModels();
+
+        if (dirtyModels.length === 0)
             return [];
 
         if (!this.url)
             this.mintUrl();
 
-        const newDocumentModels: SolidModel[] = [];
         const documentUrl = this.getDocumentUrl()!;
 
-        for (const relation of hasManyRelations) {
-            for (const relatedModel of relation.__modelsToStoreInSameDocument) {
-                if (!relatedModel.url)
-                    relatedModel.mintUrl(documentUrl, this._documentExists, UUID.generate());
+        dirtyModels.forEach(model => !model.url && model.mintUrl(documentUrl, this._documentExists, UUID.generate()));
 
-                relatedModel.setAttribute(relation.foreignKeyName, this.url);
-
-                newDocumentModels.push(relatedModel);
-            }
-        }
-
-        return newDocumentModels;
+        return dirtyModels;
     }
 
 }
 
+interface SolidModel extends DeletesModels {}
 interface SolidModel extends SerializesToJsonLD {}
 
-useMixins(SolidModel, [SerializesToJsonLD]);
+useMixins(SolidModel, [DeletesModels, SerializesToJsonLD]);
 
 export default SolidModel;

@@ -463,7 +463,8 @@ describe('SolidEngine', () => {
         // Arrange
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
-        const resourceUrl = `${documentUrl}#it`;
+        const firstResourceUrl = `${documentUrl}#one`;
+        const secondResourceUrl = `${documentUrl}#two`;
 
         await SolidClientMock.createDocument(parentUrl, documentUrl);
 
@@ -474,7 +475,7 @@ describe('SolidEngine', () => {
             {
                 '@graph': {
                     $updateItems: {
-                        $where: { '@id': resourceUrl },
+                        $where: { '@id': { $in: [firstResourceUrl, secondResourceUrl] } },
                         $unset: true,
                     },
                 },
@@ -485,7 +486,7 @@ describe('SolidEngine', () => {
         expect(SolidClientMock.updateDocument).toHaveBeenCalledWith(
             documentUrl,
             [],
-            [[resourceUrl]],
+            [[firstResourceUrl], [secondResourceUrl]],
         );
     });
 

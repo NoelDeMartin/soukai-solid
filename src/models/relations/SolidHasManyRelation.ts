@@ -6,6 +6,7 @@ import {
     EngineDocumentsCollection,
     EngineHelper,
     HasManyRelation,
+    SoukaiError,
 } from 'soukai';
 
 import SolidModel from '@/models/SolidModel';
@@ -18,13 +19,11 @@ export default class SolidHasManyRelation<
     RelatedClass extends typeof SolidModel = typeof SolidModel,
 > extends HasManyRelation<Parent, Related, RelatedClass> {
 
-    __modelsToStoreInSameDocument: Related[] = [];
+    __newModels: Related[] = [];
     __modelsInSameDocument?: Related[];
     __modelsInOtherDocumentIds?: string[];
 
-    public addModelToStoreInSameDocument(related: Related): void {
-        this.__modelsToStoreInSameDocument.push(related);
-    }
+    public useSameDocument: boolean = false;
 
     public async resolve(): Promise<Related[]> {
         if (!this.__modelsInSameDocument || !this.__modelsInOtherDocumentIds)
@@ -48,12 +47,13 @@ export default class SolidHasManyRelation<
      * This method will create an instance of the related model and call the [[save]] method.
      *
      * @param attributes Attributes to create the related instance.
-     * @param useSameDocument Whether to use the same document to store the related model or not.
      */
-    public async create(attributes: Attributes = {}, useSameDocument: boolean = false): Promise<Related> {
+    public async create(attributes: Attributes = {}): Promise<Related> {
+        this.assertLoaded('create');
+
         const model = this.relatedClass.newInstance<Related>(attributes);
 
-        await this.save(model, useSameDocument);
+        await this.save(model);
 
         return model;
     }
@@ -64,21 +64,31 @@ export default class SolidHasManyRelation<
      * be saved when the parent model is saved instead.
      *
      * @param model Related model instance to save.
-     * @param useSameDocument Whether to use the same document to store the related model or not.
      */
-    public async save(model: Related, useSameDocument: boolean = false): Promise<void> {
-        this.inititalizeInverseRelations(model);
-        this.related = [...(this.related || []), model];
+    public async save(model: Related): Promise<void> {
+        this.assertLoaded('save');
+        this.add(model);
 
-        if (!useSameDocument)
+        if (!this.useSameDocument)
             await model.save();
+        else if (this.parent.exists())
+            await this.parent.save()
+    }
 
-        this.__modelsToStoreInSameDocument.push(model);
+    public add(model: Related): void {
+        this.assertLoaded('add');
+        this.inititalizeInverseRelations(model);
 
-        if (!this.parent.exists())
-            return;
+        if (!model.exists())
+            this.__newModels.push(model);
 
-        await this.parent.save();
+        this.related!.push(model);
+    }
+
+    public usingSameDocument(useSameDocument: boolean): this {
+        this.useSameDocument = useSameDocument;
+
+        return this;
     }
 
     public async __loadDocumentModels(document: EngineDocument): Promise<void> {
@@ -118,7 +128,7 @@ export default class SolidHasManyRelation<
         this.related = this.__modelsInSameDocument;
     }
 
-    protected inititalizeInverseRelations(model: Related): void {
+    private inititalizeInverseRelations(model: Related): void {
         const parentClass = this.parent.constructor;
 
         for (const relationName of this.relatedClass.relations) {
@@ -140,6 +150,19 @@ export default class SolidHasManyRelation<
             model.setAttribute(relationInstance.foreignKeyName, this.parent.url);
             relationInstance.related = this.parent;
         }
+    }
+
+    private assertLoaded(method: string): void {
+        if (this.loaded)
+            return;
+
+        if (!this.parent.exists()) {
+            this.related = [];
+
+            return;
+        }
+
+        throw new SoukaiError(`The "${method}" method cannot be called before loading the relationship`);
     }
 
 }

@@ -219,14 +219,13 @@ export default class SolidEngine implements Engine {
                 "Are you using a model that isn't a SolidModel?",
             );
 
-        const resourceUrl = $where!['@id'] as string;
-
         if ($unset) {
-            removedProperties.push([resourceUrl]);
+            removedProperties.push(...$where['@id']!['$in'].map(url => [url]));
 
             return;
         }
 
+        const resourceUrl = $where['@id'] as string;
         const updates = $update;
 
         for (const [attribute, value] of Object.entries(updates as MapObject<EngineAttributeLeafValue>)) {

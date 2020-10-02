@@ -23,7 +23,10 @@ export default class Movie extends SolidModel {
     public relatedActions: SolidHasManyRelation<Movie, WatchAction, typeof WatchAction>;
 
     public actionsRelationship(): Relation {
-        return this.hasMany(WatchAction, 'object');
+        return this
+            .hasMany(WatchAction, 'object')
+            .usingSameDocument(true)
+            .onDelete('cascade');
     }
 
 }

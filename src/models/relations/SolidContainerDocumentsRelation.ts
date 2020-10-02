@@ -30,6 +30,9 @@ export default class SolidContainerDocumentsRelation extends SolidBelongsToManyR
         if (Soukai.engine instanceof SolidEngine)
             return super.resolve();
 
+        // TODO this implementation can have serious performance issues for some engines.
+        // Right now, there are only local engines other than Solid being used with Soukai,
+        // so the problem is not as severe.
         const documents = await Soukai.engine.readMany(this.container.getDocumentUrl()!);
 
         this.related = Object.entries(documents).map(([url, document]) => new SolidDocument({
