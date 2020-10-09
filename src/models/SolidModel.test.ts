@@ -937,7 +937,6 @@ describe('SolidModel', () => {
         // Arrange
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const name = Faker.random.word();
-        const url = Url.resolve(containerUrl, Faker.random.uuid());
         const friendUrls = [
             Url.resolve(containerUrl, Faker.random.uuid()),
             Url.resolve(containerUrl, Faker.random.uuid()),
@@ -947,7 +946,7 @@ describe('SolidModel', () => {
         // Act
         const person = await Person.newFromJsonLD({
             '@context': { '@vocab': 'http://xmlns.com/foaf/0.1/' },
-            '@id': url,
+            '@id': Url.resolve(containerUrl, Faker.random.uuid()),
             '@type': [
                 'http://xmlns.com/foaf/0.1/Person',
             ],
@@ -962,10 +961,48 @@ describe('SolidModel', () => {
         // Assert
         expect(person.exists()).toEqual(false);
         expect(person.name).toEqual(name);
-        expect(person.url).toEqual(url);
+        expect(person.url).toBeUndefined();
         expect(person.friendUrls).toEqual(friendUrls);
         expect(person.createdAt).toBeInstanceOf(Date);
         expect(person.createdAt.toISOString()).toEqual('1997-07-21T23:42:00.000Z');
+    });
+
+    it('parses JSON-LD with related models', async () => {
+        // Arrange
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const name = Faker.random.word();
+        const documentUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const url = `${documentUrl}#it`;
+
+        // Act
+        const movie = await Movie.newFromJsonLD<Movie>({
+            '@context': {
+                '@vocab': 'https://schema.org/',
+                'actions': { '@reverse': 'object' },
+            },
+            '@id': url,
+            '@type': 'Movie',
+            'name': name,
+            'actions': [
+                {
+                    '@id': `${documentUrl}#action`,
+                    '@type': 'WatchAction',
+                },
+            ],
+        });
+
+        // Assert
+        expect(movie.exists()).toBe(false);
+        expect(movie.name).toEqual(name);
+        expect(movie.url).toBeUndefined();
+        expect(movie.actions).toHaveLength(1);
+        expect(movie.actions![0]).toBeInstanceOf(WatchAction);
+        expect(movie.actions![0].exists()).toBe(false);
+        expect(movie.actions![0].url).toBeUndefined();
+        expect(movie.actions![0].object).toBeUndefined();
+
+        expect(movie.relatedActions.__newModels).toHaveLength(1);
+        expect(movie.relatedActions.__newModels[0]).toBe(movie.actions![0]);
     });
 
 });

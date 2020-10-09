@@ -131,9 +131,11 @@ abstract class SolidModel extends Model {
     public static async newFromJsonLD<T extends SolidModel>(jsonld: object): Promise<T> {
         const flatJsonLD = await RDF.flattenJsonLD(jsonld) as EngineDocument;
         const attributes = await this.instance.parseEngineDocumentAttributes(jsonld['@id'], flatJsonLD);
-        const model = new (this as any)(attributes);
+        const model = new (this as any)(attributes) as T;
 
         await model.loadDocumentModels(flatJsonLD);
+
+        model.resetEngineData();
 
         return model;
     }
@@ -330,6 +332,25 @@ abstract class SolidModel extends Model {
         };
     }
 
+    protected resetEngineData(): void {
+        super.resetEngineData();
+
+        // TODO this should be recursive to take care of 2nd degree relations and more.
+        for (const relationName of this.modelClass.relations) {
+            const relation = this._relations[relationName];
+            const models = relation.getLoadedModels() as SolidModel[];
+
+            models.forEach(model => model.resetEngineData());
+
+            if (relation instanceof SolidHasManyRelation) {
+                models.forEach(model => {
+                    delete model[relation.foreignKeyName];
+                    relation.__newModels.push(model);
+                });
+            }
+        }
+    }
+
     protected async deleteModelsFromEngine(models: SolidModel[]): Promise<void> {
         await this.deleteModels(models);
     }
@@ -413,6 +434,7 @@ abstract class SolidModel extends Model {
     }
 
     private getDirtyDocumentModels(): SolidModel[] {
+        // TODO this should be recursive to take care of 2nd degree relations and more.
         const documentUrl = this.getDocumentUrl();
         const dirtyModels = Arr.flatten(
             Object
@@ -424,10 +446,18 @@ abstract class SolidModel extends Model {
                         relation.useSameDocument
                 )
                 .map((relation: SolidHasManyRelation) => {
-                    const models = [
-                        ...relation.__newModels,
-                        ...relation.related!.filter(model => model.isDirty() && model.getDocumentUrl() === documentUrl),
-                    ];
+                    const models = [...relation.__newModels];
+
+                    for (const relatedModel of relation.getLoadedModels()) {
+                        if (
+                            !relatedModel.isDirty() ||
+                            relatedModel.getDocumentUrl() !== documentUrl ||
+                            models.some(model => model === relatedModel)
+                        )
+                            continue;
+
+                        models.push(relatedModel);
+                    }
 
                     models.forEach(model => model.setAttribute(relation.foreignKeyName, this.url));
 
