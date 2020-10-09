@@ -43,7 +43,7 @@ export class SolidHasManyRelation<
 
     public add(model: Related): void;
 
-    public usingSameDocument(useSameDocument: boolean): this;
+    public usingSameDocument(useSameDocument?: boolean): this;
 
 }
 

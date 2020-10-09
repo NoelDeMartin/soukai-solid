@@ -25,7 +25,7 @@ export default class Movie extends SolidModel {
     public actionsRelationship(): Relation {
         return this
             .hasMany(WatchAction, 'object')
-            .usingSameDocument(true)
+            .usingSameDocument()
             .onDelete('cascade');
     }
 

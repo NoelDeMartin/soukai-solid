@@ -77,7 +77,9 @@ export default class SolidHasManyRelation<
 
     public add(model: Related): void {
         this.assertLoaded('add');
-        this.inititalizeInverseRelations(model);
+
+        if (this.parent.exists())
+            this.initializeInverseRelations(model);
 
         if (!model.exists())
             this.__newModels.push(model);
@@ -85,7 +87,7 @@ export default class SolidHasManyRelation<
         this.related!.push(model);
     }
 
-    public usingSameDocument(useSameDocument: boolean): this {
+    public usingSameDocument(useSameDocument: boolean = true): this {
         this.useSameDocument = useSameDocument;
 
         return this;
@@ -128,7 +130,7 @@ export default class SolidHasManyRelation<
         this.related = this.__modelsInSameDocument;
     }
 
-    private inititalizeInverseRelations(model: Related): void {
+    private initializeInverseRelations(model: Related): void {
         const parentClass = this.parent.constructor;
 
         for (const relationName of this.relatedClass.relations) {
