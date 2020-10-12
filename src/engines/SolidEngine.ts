@@ -84,7 +84,7 @@ export default class SolidEngine implements Engine {
         // TODO use filters for SPARQL when supported
         // See https://github.com/solid/node-solid-server/issues/962
         const documentsArray = filters.$in
-            ? await this.getDocumentsFromUrls(rdfsClasses, filters.$in)
+            ? await this.getDocumentsFromUrls(filters.$in, rdfsClasses)
             : await this.getContainerDocuments(collection, rdfsClasses);
 
         return documentsArray.reduce((documents, document) => {
@@ -94,7 +94,7 @@ export default class SolidEngine implements Engine {
         }, {});
     }
 
-    private async getDocumentsFromUrls(rdfsClasses: string[], urls: string[]): Promise<RDFDocument[]> {
+    private async getDocumentsFromUrls(urls: string[], rdfsClasses: string[]): Promise<RDFDocument[]> {
         const containerDocumentUrlsMap = urls
             .reduce((containerDocumentUrlsMap, documentUrl) => {
                 const containerUrl = Url.parentDirectory(documentUrl);
@@ -252,11 +252,8 @@ export default class SolidEngine implements Engine {
     }
 
     private extractJsonLDGraphTypes(filters: EngineFilters): string[] {
-        if (!this.isJsonLDGraphFilter(filters))
-            throw new SoukaiError(
-                'Invalid JSON-LD graph filters provided for SolidEngine. ' +
-                "Are you using a model that isn't a SolidModel?",
-            );
+        if (!this.isJsonLDGraphTypesFilter(filters))
+            return [];
 
         const typeFilters = filters['@graph'].$contains['@type'].$or;
         const types = typeFilters.reduce((types, typeFilter) => {
@@ -291,7 +288,7 @@ export default class SolidEngine implements Engine {
             );
     }
 
-    private isJsonLDGraphFilter(filters: any): filters is {
+    private isJsonLDGraphTypesFilter(filters: any): filters is {
         '@graph': {
             $contains: {
                 '@type': {
