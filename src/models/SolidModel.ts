@@ -137,6 +137,21 @@ abstract class SolidModel extends Model {
 
         model.resetEngineData();
 
+        // TODO this should be recursive to take care of 2nd degree relations and more.
+        for (const relationName of this.relations) {
+            const relation = model._relations[relationName];
+            const models = relation.getLoadedModels() as SolidModel[];
+
+            models.forEach(model => model.resetEngineData());
+
+            if (relation instanceof SolidHasManyRelation) {
+                models.forEach(model => {
+                    delete model[relation.foreignKeyName];
+                    relation.__newModels.push(model);
+                });
+            }
+        }
+
         return model;
     }
 
@@ -330,25 +345,6 @@ abstract class SolidModel extends Model {
             relation.__modelsInSameDocument.push(...relation.__newModels);
             relation.__newModels = [];
         };
-    }
-
-    protected resetEngineData(): void {
-        super.resetEngineData();
-
-        // TODO this should be recursive to take care of 2nd degree relations and more.
-        for (const relationName of this.modelClass.relations) {
-            const relation = this._relations[relationName];
-            const models = relation.getLoadedModels() as SolidModel[];
-
-            models.forEach(model => model.resetEngineData());
-
-            if (relation instanceof SolidHasManyRelation) {
-                models.forEach(model => {
-                    delete model[relation.foreignKeyName];
-                    relation.__newModels.push(model);
-                });
-            }
-        }
     }
 
     protected async deleteModelsFromEngine(models: SolidModel[]): Promise<void> {
