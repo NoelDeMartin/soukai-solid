@@ -5,6 +5,9 @@ import RDF, { IRI, RDFParsingError } from '@/solid/utils/RDF';
 import RDFDocument from '@/solid/RDFDocument';
 import RDFResource from '@/solid/RDFResource';
 import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
+import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
+import UpdateOperation, { decantUpdateOperationsData, OperationType } from '@/solid/operations/Operation';
+import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
 
 import { DocumentFormat, MalformedDocumentError } from '@/errors/MalformedDocumentError';
 
@@ -86,12 +89,8 @@ export default class SolidClient {
         }
     }
 
-    public async updateDocument(
-        url: string,
-        updatedProperties: RDFResourceProperty[],
-        removedProperties: [string, string?][],
-    ): Promise<void> {
-        if (updatedProperties.length + removedProperties.length === 0)
+    public async updateDocument(url: string, operations: UpdateOperation[]): Promise<void> {
+        if (operations.length === 0)
             return;
 
         const document = await this.getDocument(url);
@@ -100,16 +99,23 @@ export default class SolidClient {
             throw new DocumentNotFound(url);
 
         // We need to remove the previous value of updated properties or else they'll be duplicated
-        removedProperties.push(
-            ...updatedProperties
-                .filter(property => property.type !== RDFResourcePropertyType.Type)
-                .filter(property => document.hasProperty(property.resourceUrl!, property.name))
-                .map(property => [property.resourceUrl, property.name] as [string, string]),
+        operations.push(
+            ...operations
+                .filter(
+                    operation =>
+                        operation.type === OperationType.UpdateProperty &&
+                        operation.property.type !== RDFResourcePropertyType.Type &&
+                        document.hasProperty(operation.property.resourceUrl!, operation.property.name)
+                )
+                .map(
+                    ({ property }: UpdatePropertyOperation) =>
+                        new RemovePropertyOperation(property.resourceUrl!, property.name),
+                ),
         );
 
         document.resource(url)?.isType(IRI('ldp:Container'))
-            ? await this.updateContainerDocument(document, updatedProperties, removedProperties)
-            : await this.updateNonContainerDocument(document, updatedProperties, removedProperties);
+            ? await this.updateContainerDocument(document, operations)
+            : await this.updateNonContainerDocument(document, operations);
     }
 
     public async deleteDocument(url: string): Promise<void> {
@@ -267,14 +273,11 @@ export default class SolidClient {
             .map(([url, statements]) => new RDFDocument(url, statements));
     }
 
-    private async updateContainerDocument(
-        document: RDFDocument,
-        updatedProperties: RDFResourceProperty[],
-        removedProperties: [string, string?][],
-    ): Promise<void> {
+    private async updateContainerDocument(document: RDFDocument, operations: UpdateOperation[]): Promise<void> {
         // TODO this may change in future versions of node-solid-server
         // https://github.com/solid/node-solid-server/issues/1040
         const url = document.url;
+        const [updatedProperties, removedProperties] = decantUpdateOperationsData(operations);
         const properties = document.properties.filter(property => {
             return property.name !== IRI('ldp:contains')
                 && property.name !== 'http://www.w3.org/ns/posix/stat#mtime'
@@ -308,11 +311,9 @@ export default class SolidClient {
         }
     }
 
-    private async updateNonContainerDocument(
-        document: RDFDocument,
-        updatedProperties: RDFResourceProperty[],
-        removedProperties: [string, string?][],
-    ): Promise<void> {
+    private async updateNonContainerDocument(document: RDFDocument, operations: UpdateOperation[]): Promise<void> {
+        const [updatedProperties, removedProperties] = decantUpdateOperationsData(operations);
+
         const inserts = updatedProperties
             .map(property => property.toTurtle() + ' .')
             .join('\n');
@@ -325,7 +326,7 @@ export default class SolidClient {
             .map(property => property.toTurtle() + ' .')
             .join('\n');
 
-        const operations = [
+        const solidOperations = [
             `solid:patches <${document.url}>`,
             inserts.length > 0 ? `solid:inserts { ${inserts} }` : null,
             deletes.length > 0 ? `solid:deletes { ${deletes} }` : null,
@@ -339,7 +340,7 @@ export default class SolidClient {
                 method: 'PATCH',
                 body: `
                     @prefix solid: <http://www.w3.org/ns/solid/terms#> .
-                    <> ${operations} .
+                    <> ${solidOperations} .
                 `,
                 headers: {
                     'Content-Type': 'text/n3',

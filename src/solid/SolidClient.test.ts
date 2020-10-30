@@ -8,7 +8,9 @@ import Url from '@/utils/Url';
 import { IRI } from '@/solid/utils/RDF';
 import RDFDocument from '@/solid/RDFDocument';
 import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
+import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import SolidClient from '@/solid/SolidClient';
+import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
 
 import StubFetcher from '@tests/stubs/StubFetcher';
 
@@ -375,19 +377,17 @@ describe('SolidClient', () => {
                 <http://xmlns.com/foaf/0.1/surname> "Doe" ;
                 <http://xmlns.com/foaf/0.1/givenName> "John" .
         `;
-        const updatedProperties = [
-            RDFResourceProperty.literal(url, 'http://xmlns.com/foaf/0.1/name', 'John Doe'),
+        const operations = [
+            new UpdatePropertyOperation(RDFResourceProperty.literal(url, 'http://xmlns.com/foaf/0.1/name', 'John Doe')),
+            new RemovePropertyOperation(url, 'http://xmlns.com/foaf/0.1/surname'),
+            new RemovePropertyOperation(url, 'http://xmlns.com/foaf/0.1/givenName'),
         ];
-        const deletedProperties = [
-            [url, 'http://xmlns.com/foaf/0.1/surname'],
-            [url, 'http://xmlns.com/foaf/0.1/givenName'],
-        ] as [string, string][];
 
         StubFetcher.addFetchResponse(data);
         StubFetcher.addFetchResponse();
 
         // Act
-        await client.updateDocument(documentUrl, updatedProperties, deletedProperties);
+        await client.updateDocument(documentUrl, operations);
 
         // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
@@ -425,19 +425,17 @@ describe('SolidClient', () => {
                 <http://xmlns.com/foaf/0.1/surname> "Doe" ;
                 <http://xmlns.com/foaf/0.1/givenName> "John" .
         `;
-        const updatedProperties = [
-            RDFResourceProperty.literal(url, 'http://xmlns.com/foaf/0.1/name', 'John Doe'),
+        const operations = [
+            new UpdatePropertyOperation(RDFResourceProperty.literal(url, 'http://xmlns.com/foaf/0.1/name', 'John Doe')),
+            new RemovePropertyOperation(url, 'http://xmlns.com/foaf/0.1/surname'),
+            new RemovePropertyOperation(url, 'http://xmlns.com/foaf/0.1/givenName'),
         ];
-        const deletedProperties = [
-            [url, 'http://xmlns.com/foaf/0.1/surname'],
-            [url, 'http://xmlns.com/foaf/0.1/givenName'],
-        ] as [string, string][];
 
         StubFetcher.addFetchResponse(data);
         StubFetcher.addFetchResponse('', {}, 201);
 
         // Act
-        await client.updateDocument(url, updatedProperties, deletedProperties);
+        await client.updateDocument(url, operations);
 
         // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
@@ -462,15 +460,15 @@ describe('SolidClient', () => {
         // Arrange
         const url = Faker.internet.url();
         const data = `<${url}> a <http://xmlns.com/foaf/0.1/Person> .`;
-        const updatedProperties = [
-            RDFResourceProperty.literal(url, 'http://xmlns.com/foaf/0.1/name', 'John Doe'),
+        const operations = [
+            new UpdatePropertyOperation(RDFResourceProperty.literal(url, 'http://xmlns.com/foaf/0.1/name', 'John Doe')),
         ];
 
         StubFetcher.addFetchResponse(data);
         StubFetcher.addFetchResponse();
 
         // Act
-        await client.updateDocument(url, updatedProperties, []);
+        await client.updateDocument(url, operations);
 
         // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
@@ -510,7 +508,7 @@ describe('SolidClient', () => {
         StubFetcher.addFetchResponse();
 
         // Act
-        await client.updateDocument(documentUrl, [], [[url]]);
+        await client.updateDocument(documentUrl, [new RemovePropertyOperation(url)]);
 
         // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
@@ -552,7 +550,7 @@ describe('SolidClient', () => {
         StubFetcher.addFetchResponse('', {}, 201);
 
         // Act
-        await client.updateDocument(documentUrl, [], [[url]]);
+        await client.updateDocument(documentUrl, [new RemovePropertyOperation(url)]);
 
         // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
@@ -578,13 +576,13 @@ describe('SolidClient', () => {
         StubFetcher.addFetchNotFoundResponse();
 
         // Act & Assert
-        await expect(client.updateDocument(url, [], [[url, 'foobar']]))
+        await expect(client.updateDocument(url, [new RemovePropertyOperation(url, 'foobar')]))
             .rejects
             .toThrowError(`Error updating document at ${url}, returned status code 404`);
     });
 
     it('ignores empty updates', async () => {
-        await client.updateDocument(Faker.internet.url(), [], []);
+        await client.updateDocument(Faker.internet.url(), []);
 
         expect(StubFetcher.fetch).not.toHaveBeenCalled();
     });

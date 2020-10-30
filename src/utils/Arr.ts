@@ -8,6 +8,10 @@ class Arr {
         return items.indexOf(item) !== -1;
     }
 
+    public filter<T>(items: T[]): T[] {
+        return items.filter(value => !!value);
+    }
+
     public flatten<T>(items: T[][]): T[] {
         return items.reduce((flattenedItems, nestedItems) => [...flattenedItems, ...nestedItems], []);
     }

@@ -6,6 +6,8 @@ import SolidEngine from '@/engines/SolidEngine';
 
 import { IRI } from '@/solid/utils/RDF';
 import RDFResourceProperty from '@/solid/RDFResourceProperty';
+import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
+import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
 
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
@@ -426,10 +428,7 @@ describe('SolidEngine', () => {
         // Assert
         expect(SolidClientMock.updateDocument).toHaveBeenCalledWith(
             documentUrl,
-            [
-                RDFResourceProperty.literal(documentUrl, IRI('foaf:name'), name),
-            ],
-            [],
+            [new UpdatePropertyOperation(RDFResourceProperty.literal(documentUrl, IRI('foaf:name'), name))],
         );
     });
 
@@ -454,8 +453,7 @@ describe('SolidEngine', () => {
 
         expect(SolidClientMock.updateDocument).toHaveBeenCalledWith(
             documentUrl,
-            [],
-            [[documentUrl, IRI('foaf:name')]],
+            [new RemovePropertyOperation(documentUrl, IRI('foaf:name'))],
         );
     });
 
@@ -485,8 +483,10 @@ describe('SolidEngine', () => {
         // Assert
         expect(SolidClientMock.updateDocument).toHaveBeenCalledWith(
             documentUrl,
-            [],
-            [[firstResourceUrl], [secondResourceUrl]],
+            [
+                new RemovePropertyOperation(firstResourceUrl),
+                new RemovePropertyOperation(secondResourceUrl),
+            ],
         );
     });
 
