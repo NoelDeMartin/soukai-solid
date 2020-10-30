@@ -27,11 +27,16 @@ export interface SolidEngineConfig {
     globbingBatchSize: number | null;
 }
 
+export interface SolidEngineListener {
+    onRDFDocumentLoaded?(url: string, metadata: RDFDocumentMetadata): void;
+}
+
 export default class SolidEngine implements Engine {
 
     private config: SolidEngineConfig;
     private helper: EngineHelper;
     private client: SolidClient;
+    private listeners: SolidEngineListener[] = [];
 
     public constructor(fetch: Fetch, config: Partial<SolidEngineConfig> = {}) {
         this.helper = new EngineHelper();
@@ -62,11 +67,20 @@ export default class SolidEngine implements Engine {
 
         const document = this.convertToEngineDocument(rdfDocument);
 
+        this.emit('onRDFDocumentLoaded', rdfDocument.url, rdfDocument.metadata);
+
         return document;
     }
 
     public async readMany(collection: string, filters: EngineFilters = {}): Promise<EngineDocumentsCollection> {
-        const documents = await this.getDocumentsForFilters(collection, filters);
+        const documentsArray = await this.getDocumentsForFilters(collection, filters);
+        const documents = documentsArray.reduce((documents, document) => {
+            documents[document.url] = this.convertToEngineDocument(document);
+
+            this.emit('onRDFDocumentLoaded', document.url, document.metadata);
+
+            return documents;
+        }, {});
 
         return this.helper.filterDocuments(documents, filters);
     }
@@ -81,20 +95,31 @@ export default class SolidEngine implements Engine {
         await this.client.deleteDocument(id);
     }
 
-    private async getDocumentsForFilters(collection: string, filters: EngineFilters): Promise<EngineDocumentsCollection> {
+    public addListener(listener: SolidEngineListener): void {
+        this.listeners.push(listener);
+    }
+
+    public removeListener(listener: SolidEngineListener): void {
+        const index = this.listeners.indexOf(listener);
+
+        if (index === -1)
+            return;
+
+        this.listeners.splice(index, 1);
+    }
+
+    private emit<Event extends keyof SolidEngineListener>(event: Event, ...params: Parameters<Exclude<SolidEngineListener[Event], undefined>>): void {
+        this.listeners.forEach(listener => listener[event]?.call(listener, ...params));
+    }
+
+    private async getDocumentsForFilters(collection: string, filters: EngineFilters): Promise<RDFDocument[]> {
         const rdfsClasses = this.extractJsonLDGraphTypes(filters);
 
         // TODO use filters for SPARQL when supported
         // See https://github.com/solid/node-solid-server/issues/962
-        const documentsArray = filters.$in
+        return filters.$in
             ? await this.getDocumentsFromUrls(filters.$in, rdfsClasses)
             : await this.getContainerDocuments(collection, rdfsClasses);
-
-        return documentsArray.reduce((documents, document) => {
-            documents[document.url] = this.convertToEngineDocument(document);
-
-            return documents;
-        }, {});
     }
 
     private async getDocumentsFromUrls(urls: string[], rdfsClasses: string[]): Promise<RDFDocument[]> {

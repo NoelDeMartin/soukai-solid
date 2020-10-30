@@ -4,7 +4,7 @@ import { Parser as TurtleParser } from 'n3';
 import { Quad } from 'rdf-js';
 import { SoukaiError } from 'soukai';
 
-import RDFDocument from '@/solid/RDFDocument';
+import RDFDocument, { RDFDocumentMetadata } from '@/solid/RDFDocument';
 
 type IRINamespacesMap = { [prefix: string]: string };
 
@@ -36,6 +36,15 @@ class RDF {
                 baseIRI: options.baseUrl || '',
                 format: options.format || 'text/turtle',
             });
+            const metadata: RDFDocumentMetadata = { containsRelativeIRIs: false };
+            const resolveRelativeIRI = parser._resolveRelativeIRI;
+
+            parser._resolveRelativeIRI = (...args) => {
+                metadata.containsRelativeIRIs = true;
+                parser._resolveRelativeIRI = resolveRelativeIRI;
+
+                return parser._resolveRelativeIRI(...args);
+            };
 
             parser.parse(turtle, (error, quad) => {
                 if (error) {
@@ -44,7 +53,7 @@ class RDF {
                 }
 
                 if (!quad) {
-                    resolve(new RDFDocument(options.baseUrl || '', quads));
+                    resolve(new RDFDocument(options.baseUrl || '', quads, metadata));
                     return;
                 }
 

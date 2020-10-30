@@ -178,6 +178,7 @@ abstract class SolidModel extends Model {
     public modelClass: typeof SolidModel;
 
     protected _documentExists: boolean;
+    protected _originalDocumentUrl: string | null = null;
 
     public save<T extends Model>(collection?: string): Promise<T> {
         return this.modelClass.withCollection(collection || this.guessCollection(), async () => {
@@ -251,6 +252,22 @@ abstract class SolidModel extends Model {
         return anchorIndex !== -1 ? this.url.substr(0, anchorIndex) : this.url;
     }
 
+    public getOriginalDocumentUrl(): string | null {
+        return this._originalDocumentUrl || null;
+    }
+
+    public getContainerUrl(): string | null {
+        const documentUrl = this.getDocumentUrl();
+
+        return documentUrl ? Url.parentDirectory(documentUrl) : null;
+    }
+
+    public getOriginalContainerUrl(): string | null {
+        const documentUrl = this.getOriginalDocumentUrl();
+
+        return documentUrl ? Url.parentDirectory(documentUrl) : null;
+    }
+
     protected initialize(attributes: Attributes, exists: boolean) {
         super.initialize(attributes, exists);
 
@@ -262,20 +279,28 @@ abstract class SolidModel extends Model {
 
         await model.loadDocumentModels(document);
 
-        return model as any as T;
+        model._originalDocumentUrl = id;
+
+        return model as unknown as T;
     }
 
     protected async createManyFromEngineDocuments<T extends Model>(documents: MapObject<EngineDocument>): Promise<T[]> {
         const rdfsClasses = [...this.modelClass.rdfsClasses];
         const isModelResource = (resource: RDFResource) => !rdfsClasses.some(rdfsClass => !resource.isType(rdfsClass));
-        const models = await Promise.all(Object.values(documents).map(async engineDocument => {
+        const models = await Promise.all(Object.entries(documents).map(async ([documentUrl, engineDocument]) => {
             const rdfDocument = await RDF.parseJsonLD(engineDocument);
 
             return Promise.all(
                 rdfDocument
                     .resources
                     .filter(isModelResource)
-                    .map(resource => this.createFromEngineDocument<T>(resource.url, engineDocument)),
+                    .map(async resource => {
+                        const model = await this.createFromEngineDocument<SolidModel>(resource.url, engineDocument);
+
+                        model._originalDocumentUrl = documentUrl;
+
+                        return model as unknown as T;
+                    }),
             );
         }));
 

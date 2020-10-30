@@ -86,6 +86,7 @@ export abstract class SolidModel extends Model {
     public modelClass: typeof SolidModel;
 
     protected _documentExists: boolean;
+    protected _originalDocumentUrl: string | null;
 
     public save<T extends Model>(containerUrl?: string): Promise<T>;
 
@@ -100,6 +101,12 @@ export abstract class SolidModel extends Model {
     public setDocumentExists(documentExists: boolean): void;
 
     public getDocumentUrl(): string | null;
+
+    public getOriginalDocumentUrl(): string | null;
+
+    public getContainerUrl(): string | null;
+
+    public getOriginalContainerUrl(): string | null;
 
     protected getDefaultRdfContext(): string;
 
@@ -143,6 +150,10 @@ export interface SolidEngineConfig {
     globbingBatchSize: number | null;
 }
 
+export interface SolidEngineListener {
+    onRDFDocumentLoaded?(url: string, metadata: RDFDocumentMetadata): void;
+}
+
 export class SolidEngine implements Engine {
 
     constructor(fetch: Fetch, config?: Partial<SolidEngineConfig>);
@@ -157,6 +168,14 @@ export class SolidEngine implements Engine {
 
     delete(collection: string, id: string): Promise<void>;
 
+    addListener(listener: SolidEngineListener): void;
+
+    removeListener(listener: SolidEngineListener): void;
+
+}
+
+export interface RDFDocumentMetadata {
+    containsRelativeIRIs?: boolean;
 }
 
 export enum DocumentFormat {

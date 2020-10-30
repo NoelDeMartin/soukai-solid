@@ -4,17 +4,23 @@ import RDF from '@/solid/utils/RDF';
 import RDFResource from '@/solid/RDFResource';
 import RDFResourceProperty from '@/solid/RDFResourceProperty';
 
+export interface RDFDocumentMetadata {
+    containsRelativeIRIs?: boolean;
+}
+
 export default class RDFDocument {
 
     public readonly url: string;
     public readonly statements: Quad[];
+    public readonly metadata: RDFDocumentMetadata;
     public readonly resourcesIndex: MapObject<RDFResource>;
     public readonly properties: RDFResourceProperty[];
     public readonly resources: RDFResource[];
 
-    constructor(url: string, statements: Quad[]) {
+    constructor(url: string, statements: Quad[], metadata: RDFDocumentMetadata = {}) {
         this.url = url;
         this.statements = statements;
+        this.metadata = metadata;
 
         this.resourcesIndex = this.statements.reduce((resourcesIndex, statement) => {
             const resourceUrl = statement.subject.value;
