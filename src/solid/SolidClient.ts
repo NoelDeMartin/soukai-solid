@@ -9,7 +9,8 @@ import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation'
 import UpdateOperation, { decantUpdateOperationsData, OperationType } from '@/solid/operations/Operation';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
 
-import { DocumentFormat, MalformedDocumentError } from '@/errors/MalformedDocumentError';
+import MalformedDocumentError, { DocumentFormat } from '@/errors/MalformedDocumentError';
+import NetworkError from '@/errors/NetworkError';
 
 import Arr from '@/utils/Arr';
 import Url from '@/utils/Url';
@@ -27,7 +28,15 @@ export default class SolidClient {
     private fetch: Fetch;
 
     constructor(fetch: Fetch) {
-        this.fetch = fetch;
+        this.fetch = async (url, options) => {
+            try {
+                const response = await fetch(url, options);
+
+                return response;
+            } catch (error) {
+                throw new NetworkError(`Error fetching ${url}`, error);
+            }
+        };
     }
 
     public async createDocument(

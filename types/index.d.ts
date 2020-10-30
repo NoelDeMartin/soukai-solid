@@ -173,6 +173,14 @@ export class MalformedDocumentError extends SoukaiError {
 
 }
 
+export class NetworkError extends SoukaiError {
+
+    public readonly original: Error;
+
+    constructor(message: string, error: Error);
+
+}
+
 interface SoukaiSolid {
     loadSolidModels(): void;
 }

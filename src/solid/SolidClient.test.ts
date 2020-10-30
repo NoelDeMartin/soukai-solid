@@ -1,6 +1,6 @@
 import Faker from 'faker';
 
-import { MalformedDocumentError } from '@/errors/MalformedDocumentError';
+import MalformedDocumentError from '@/errors/MalformedDocumentError';
 
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';

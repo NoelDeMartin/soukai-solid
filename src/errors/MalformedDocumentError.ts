@@ -4,7 +4,7 @@ export enum DocumentFormat {
     RDF = 'RDF',
 };
 
-export class MalformedDocumentError extends SoukaiError {
+export default class MalformedDocumentError extends SoukaiError {
 
     public readonly documentUrl: string;
     public readonly documentFormat: DocumentFormat;
