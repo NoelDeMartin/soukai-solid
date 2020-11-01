@@ -1,8 +1,8 @@
 import RDFResourceProperty from '@/solid/RDFResourceProperty';
 
-import { OperationType, IOperation } from './Operation';
+import Operation, { OperationType } from './Operation';
 
-export default class UpdatePropertyOperation implements IOperation {
+export default class UpdatePropertyOperation implements Operation {
 
     type: OperationType.UpdateProperty = OperationType.UpdateProperty;
 

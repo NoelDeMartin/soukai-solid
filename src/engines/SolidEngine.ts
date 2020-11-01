@@ -12,12 +12,13 @@ import {
     SoukaiError,
 } from 'soukai';
 
+import { UpdateOperation } from '@/solid/operations/Operation';
+import ChangeUrlOperation from '@/solid/operations/ChangeUrlOperation';
 import RDF, { IRI } from '@/solid/utils/RDF';
 import RDFDocument, { RDFDocumentMetadata } from '@/solid/RDFDocument';
 import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
-import SolidClient, { Fetch } from '@/solid/SolidClient';
-import UpdateOperation from '@/solid/operations/Operation';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
+import SolidClient, { Fetch } from '@/solid/SolidClient';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
 
 import Arr from '@/utils/Arr';
@@ -220,7 +221,12 @@ export default class SolidEngine implements Engine {
         const operations: UpdateOperation[] = [];
 
         if (updates['@graph'].$updateItems)
-            operations.push(...this.extractJsonLDGraphItemsUpdate(updates['@graph'].$updateItems));
+            operations.push(
+                ...Arr.flatten(
+                    Arr.create(updates['@graph'].$updateItems)
+                        .map(update => this.extractJsonLDGraphItemsUpdate(update)),
+                ),
+            );
 
         if (updates['@graph'].$push) {
             const updateOperations = await this.extractJsonLDGraphItemPush(updates['@graph'].$push);
@@ -247,12 +253,26 @@ export default class SolidEngine implements Engine {
         const operations: UpdateOperation[] = [];
 
         for (const [attribute, value] of Object.entries(updates as MapObject<EngineAttributeLeafValue>)) {
-            if (value === null) {
+            if (value === null)
                 throw new SoukaiError("SolidEngine doesn't support setting properties to null, delete");
-            }
 
             if (typeof value === 'object' && '$unset' in value) {
                 operations.push(new RemovePropertyOperation(resourceUrl, attribute));
+                continue;
+            }
+
+            if (typeof value === 'object' && '@id' in value) {
+                operations.push(new UpdatePropertyOperation(RDFResourceProperty.reference(resourceUrl, attribute, value['@id'])));
+                continue;
+            }
+
+            if (attribute === '@id') {
+                operations.push(new ChangeUrlOperation(resourceUrl, value as string));
+                continue;
+            }
+
+            if (attribute === '@type') {
+                operations.push(new UpdatePropertyOperation(RDFResourceProperty.type(resourceUrl, value as string)));
                 continue;
             }
 

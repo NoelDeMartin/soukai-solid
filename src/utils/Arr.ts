@@ -1,5 +1,9 @@
 class Arr {
 
+    public create<T>(item: T | T[]): T[] {
+        return Array.isArray(item) ? item : [item];
+    }
+
     public clean<T>(items: (T | null)[]): T[] {
         return items.filter(item => !!item) as T[];
     }

@@ -1,12 +1,13 @@
 import { DocumentNotFound, SoukaiError } from 'soukai';
 import { Quad } from 'rdf-js';
 
+import { decantUpdateOperations, decantUpdateOperationsData } from '@/solid/operations/utils';
+import { OperationType, UpdateOperation } from '@/solid/operations/Operation';
 import RDF, { IRI, RDFParsingError } from '@/solid/utils/RDF';
 import RDFDocument from '@/solid/RDFDocument';
 import RDFResource from '@/solid/RDFResource';
 import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
-import UpdateOperation, { decantUpdateOperationsData, OperationType } from '@/solid/operations/Operation';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
 
 import MalformedDocumentError, { DocumentFormat } from '@/errors/MalformedDocumentError';
@@ -107,20 +108,8 @@ export default class SolidClient {
         if (document === null)
             throw new DocumentNotFound(url);
 
-        // We need to remove the previous value of updated properties or else they'll be duplicated
-        operations.push(
-            ...operations
-                .filter(
-                    operation =>
-                        operation.type === OperationType.UpdateProperty &&
-                        operation.property.type !== RDFResourcePropertyType.Type &&
-                        document.hasProperty(operation.property.resourceUrl!, operation.property.name)
-                )
-                .map(
-                    ({ property }: UpdatePropertyOperation) =>
-                        new RemovePropertyOperation(property.resourceUrl!, property.name),
-                ),
-        );
+        this.processChangeUrlOperations(document, operations);
+        this.processUpdatePropertyOperations(document, operations);
 
         document.resource(url)?.isType(IRI('ldp:Container'))
             ? await this.updateContainerDocument(document, operations)
@@ -361,6 +350,53 @@ export default class SolidClient {
             throw new SoukaiError(
                 `Error updating document at ${document.url}, returned status code ${response.status}`,
             );
+    }
+
+    private processChangeUrlOperations(document: RDFDocument, operations: UpdateOperation[]): void {
+        const decantedOperations = decantUpdateOperations(operations);
+
+        for (const changeUrlOperation of decantedOperations[OperationType.ChangeUrl]) {
+            const resource = document.resource(changeUrlOperation.resourceUrl);
+
+            if (!resource) continue;
+
+            const updatePropertyOperations = decantedOperations[OperationType.UpdateProperty]
+                .filter(operation => operation.property.resourceUrl === changeUrlOperation.resourceUrl);
+
+            const removePropertyOperations = decantedOperations[OperationType.RemoveProperty]
+                .filter(operation => operation.resourceUrl === changeUrlOperation.resourceUrl);
+
+            updatePropertyOperations.forEach(
+                operation => operation.property = operation.property.clone(changeUrlOperation.newResourceUrl),
+            );
+            removePropertyOperations.forEach(operation => operation.resourceUrl = changeUrlOperation.newResourceUrl);
+
+            operations.push(new RemovePropertyOperation(changeUrlOperation.resourceUrl));
+            operations.push(
+                ...resource.properties
+                    .filter(property =>
+                        !updatePropertyOperations.some(operation => operation.property.name === property.name) &&
+                        !removePropertyOperations.some(operation => !operation.property || operation.property === property.name),
+                    )
+                    .map(property => new UpdatePropertyOperation(property.clone(changeUrlOperation.newResourceUrl))),
+            );
+
+            Arr.removeItem(operations, changeUrlOperation);
+        }
+    }
+
+    private processUpdatePropertyOperations(document: RDFDocument, operations: UpdateOperation[]): void {
+        // Properties that are going to be updated have to be deleted or they'll end up duplicated.
+        const updateOperations = operations.filter(
+            operation =>
+                operation.type === OperationType.UpdateProperty &&
+                operation.property.type !== RDFResourcePropertyType.Type &&
+                document.hasProperty(operation.property.resourceUrl!, operation.property.name)
+        ) as UpdatePropertyOperation[];
+
+        for (const { property } of updateOperations) {
+            operations.push(new RemovePropertyOperation(property.resourceUrl!, property.name));
+        }
     }
 
 }

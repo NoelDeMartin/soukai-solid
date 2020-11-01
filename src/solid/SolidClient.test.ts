@@ -6,6 +6,7 @@ import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 
 import { IRI } from '@/solid/utils/RDF';
+import ChangeUrlOperation from '@/solid/operations/ChangeUrlOperation';
 import RDFDocument from '@/solid/RDFDocument';
 import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
@@ -454,6 +455,74 @@ describe('SolidClient', () => {
                 a <http://www.w3.org/ns/ldp#Container> ;
                 <http://xmlns.com/foaf/0.1/name> "John Doe" .
         `);
+    });
+
+    it('changes resource urls', async () => {
+        // Arrange
+        const legacyParentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const legacyDocumentUrl = Url.resolve(legacyParentUrl, Faker.random.uuid());
+        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const firstResourceUrl = legacyDocumentUrl;
+        const secondResourceUrl = `${legacyDocumentUrl}#someone-else`;
+        const newFirstResourceUrl = `${documentUrl}#it`;
+        const newSecondResourceUrl = `${documentUrl}#someone-else`;
+        const data = `
+            <${firstResourceUrl}>
+                <http://xmlns.com/foaf/0.1/name> "Johnathan" ;
+                <http://xmlns.com/foaf/0.1/surname> "Doe" ;
+                <http://xmlns.com/foaf/0.1/givenName> "John" .
+            <${secondResourceUrl}>
+                <http://xmlns.com/foaf/0.1/name> "Amy" ;
+                <http://xmlns.com/foaf/0.1/surname> "Doe" ;
+                <http://xmlns.com/foaf/0.1/knows> <${firstResourceUrl}> .
+        `;
+        const operations = [
+            new ChangeUrlOperation(firstResourceUrl, newFirstResourceUrl),
+            new ChangeUrlOperation(secondResourceUrl, newSecondResourceUrl),
+            new UpdatePropertyOperation(
+                RDFResourceProperty.reference(secondResourceUrl, 'http://xmlns.com/foaf/0.1/knows', newFirstResourceUrl),
+            ),
+        ];
+
+        StubFetcher.addFetchResponse(data);
+        StubFetcher.addFetchResponse();
+
+        // Act
+        await client.updateDocument(documentUrl, operations);
+
+        // Assert
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(
+            documentUrl,
+            {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'text/n3' },
+                body: expect.anything(),
+            }
+        );
+
+        const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
+
+        await expect(body).toEqualTurtle(`
+            @prefix solid: <http://www.w3.org/ns/solid/terms#> .
+            <> solid:patches <${documentUrl}> ;
+                solid:inserts {
+                    <${newSecondResourceUrl}> <http://xmlns.com/foaf/0.1/knows> <${newFirstResourceUrl}> .
+                    <${newFirstResourceUrl}> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
+                    <${newFirstResourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                    <${newFirstResourceUrl}> <http://xmlns.com/foaf/0.1/givenName> "John" .
+                    <${newSecondResourceUrl}> <http://xmlns.com/foaf/0.1/name> "Amy" .
+                    <${newSecondResourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                } ;
+                solid:deletes {
+                    <${firstResourceUrl}> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
+                    <${firstResourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                    <${firstResourceUrl}> <http://xmlns.com/foaf/0.1/givenName> "John" .
+                    <${secondResourceUrl}> <http://xmlns.com/foaf/0.1/name> "Amy" .
+                    <${secondResourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                    <${secondResourceUrl}> <http://xmlns.com/foaf/0.1/knows> <${firstResourceUrl}> .
+                } .
+        `, { format: 'text/n3' });
     });
 
     it('adds new properties when updating', async () => {

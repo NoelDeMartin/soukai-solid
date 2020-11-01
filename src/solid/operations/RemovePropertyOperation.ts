@@ -1,6 +1,6 @@
-import { OperationType, IOperation } from './Operation';
+import Operation, { OperationType } from './Operation';
 
-export default class RemovePropertyOperation implements IOperation {
+export default class RemovePropertyOperation implements Operation {
 
     type: OperationType.RemoveProperty = OperationType.RemoveProperty;
 

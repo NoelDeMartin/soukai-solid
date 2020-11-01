@@ -5,6 +5,7 @@ import Faker from 'faker';
 import SolidEngine from '@/engines/SolidEngine';
 
 import { IRI } from '@/solid/utils/RDF';
+import ChangeUrlOperation from '@/solid/operations/ChangeUrlOperation';
 import RDFResourceProperty from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
@@ -486,6 +487,53 @@ describe('SolidEngine', () => {
             [
                 new RemovePropertyOperation(firstResourceUrl),
                 new RemovePropertyOperation(secondResourceUrl),
+            ],
+        );
+    });
+
+    it('updates document changing resource urls', async () => {
+        // Arrange
+        const legacyParentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const legacyDocumentUrl = Url.resolve(legacyParentUrl, Faker.random.uuid());
+        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const firstResourceUrl = legacyDocumentUrl;
+        const secondResourceUrl = `${legacyDocumentUrl}#something-else`;
+        const newFirstResourceUrl = `${documentUrl}#it`;
+        const newSecondResourceUrl = `${documentUrl}#something-else`;
+
+        await SolidClientMock.createDocument(parentUrl, documentUrl);
+
+        // Act
+        await engine.update(
+            parentUrl,
+            documentUrl,
+            {
+                '@graph': {
+                    $updateItems: [
+                        {
+                            $where: { '@id': firstResourceUrl },
+                            $update: { '@id': newFirstResourceUrl },
+                        },
+                        {
+                            $where: { '@id': secondResourceUrl },
+                            $update: {
+                                '@id': newSecondResourceUrl,
+                                'reference': { '@id': newFirstResourceUrl },
+                            },
+                        },
+                    ],
+                },
+            },
+        );
+
+        // Assert
+        expect(SolidClientMock.updateDocument).toHaveBeenCalledWith(
+            documentUrl,
+            [
+                new ChangeUrlOperation(firstResourceUrl, newFirstResourceUrl),
+                new ChangeUrlOperation(secondResourceUrl, newSecondResourceUrl),
+                new UpdatePropertyOperation(RDFResourceProperty.reference(secondResourceUrl, 'reference', newFirstResourceUrl)),
             ],
         );
     });

@@ -95,6 +95,19 @@ abstract class RDFResourceProperty {
         return `${subject} ${predicate} ${object}`;
     }
 
+    public clone(resourceUrl?: string | null): RDFResourceProperty {
+        resourceUrl = resourceUrl ?? this.resourceUrl;
+
+        switch (this.type) {
+            case RDFResourcePropertyType.Literal:
+                return RDFResourceProperty.literal(resourceUrl, this.name, this.value);
+            case RDFResourcePropertyType.Type:
+                return RDFResourceProperty.type(resourceUrl, this.value);
+            case RDFResourcePropertyType.Reference:
+                return RDFResourceProperty.reference(resourceUrl, this.name, this.value);
+        }
+    }
+
     protected getTurtlePredicate(): string {
         return `<${encodeURI(this.name)}>`;
     }
