@@ -28,6 +28,7 @@ describe('SolidClient', () => {
         // Arrange
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const resourceUrl = `${documentUrl}#it`;
         const name = Faker.random.word();
         const firstType = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
         const secondType = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
@@ -40,17 +41,19 @@ describe('SolidClient', () => {
             parentUrl,
             documentUrl,
             [
-                RDFResourceProperty.literal(documentUrl, IRI('foaf:name'), name),
-                RDFResourceProperty.type(documentUrl, firstType),
-                RDFResourceProperty.type(documentUrl, secondType),
+                RDFResourceProperty.type(documentUrl, IRI('ldp:Document')),
+                RDFResourceProperty.literal(resourceUrl, IRI('foaf:name'), name),
+                RDFResourceProperty.type(resourceUrl, firstType),
+                RDFResourceProperty.type(resourceUrl, secondType),
             ],
         );
 
         // Assert
         expect(document.url).toEqual(documentUrl);
-        expect(document.resource(documentUrl)!.url).toEqual(documentUrl);
-        expect(document.resource(documentUrl)!.name).toEqual(name);
-        expect(document.resource(documentUrl)!.types).toEqual([
+        expect(document.resource(documentUrl)!.types).toEqual([IRI('ldp:Document')]);
+        expect(document.resource(resourceUrl)!.url).toEqual(resourceUrl);
+        expect(document.resource(resourceUrl)!.name).toEqual(name);
+        expect(document.resource(resourceUrl)!.types).toEqual([
             firstType,
             secondType,
         ]);
@@ -61,9 +64,10 @@ describe('SolidClient', () => {
                 method: 'PUT',
                 headers: { 'Content-Type': 'text/turtle' },
                 body: [
-                    `<${documentUrl}> <http://xmlns.com/foaf/0.1/name> "${name}" .`,
-                    `<${documentUrl}> a <${firstType}> .`,
-                    `<${documentUrl}> a <${secondType}> .`,
+                    `<> a <http://www.w3.org/ns/ldp#Document> .`,
+                    `<#it> <http://xmlns.com/foaf/0.1/name> "${name}" .`,
+                    `<#it> a <${firstType}> .`,
+                    `<#it> a <${secondType}> .`,
                 ].join('\n'),
             },
         );
@@ -133,8 +137,8 @@ describe('SolidClient', () => {
                     'Slug': Str.slug(name),
                 },
                 body: [
-                    `<${containerUrl}> <http://xmlns.com/foaf/0.1/name> "${name}" .`,
-                    `<${containerUrl}> a <http://www.w3.org/ns/ldp#Container> .`,
+                    `<> <http://xmlns.com/foaf/0.1/name> "${name}" .`,
+                    `<> a <http://www.w3.org/ns/ldp#Container> .`,
                 ].join('\n'),
             },
         );

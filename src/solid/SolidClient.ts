@@ -47,7 +47,7 @@ export default class SolidClient {
     ): Promise<RDFDocument> {
         const ldpContainer = IRI('ldp:Container');
         const turtleData = properties
-            .map(property => property.toTurtle() + ' .')
+            .map(property => property.toTurtle(url) + ' .')
             .join("\n");
         const isContainer = properties.some(
             property =>

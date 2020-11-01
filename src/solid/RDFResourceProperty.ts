@@ -87,8 +87,8 @@ abstract class RDFResourceProperty {
         this.value = value;
     }
 
-    public toTurtle(): string {
-        const subject = this.resourceUrl ? `<${encodeURI(this.resourceUrl)}>` : '<>';
+    public toTurtle(documentUrl: string | null = null): string {
+        const subject = this.getTurtleSubject(documentUrl);
         const predicate = this.getTurtlePredicate();
         const object = this.getTurtleObject();
 
@@ -106,6 +106,18 @@ abstract class RDFResourceProperty {
             case RDFResourcePropertyType.Reference:
                 return RDFResourceProperty.reference(resourceUrl, this.name, this.value);
         }
+    }
+
+    protected getTurtleSubject(documentUrl: string | null): string {
+        const hashIndex = this.resourceUrl?.indexOf('#');
+
+        if (!this.resourceUrl || hashIndex === -1)
+            return '<>';
+
+        if (documentUrl === null || !this.resourceUrl.startsWith(documentUrl))
+            return `<${encodeURI(this.resourceUrl)}>`;
+
+        return `<#${this.resourceUrl.substr(hashIndex! + 1)}>`;
     }
 
     protected getTurtlePredicate(): string {
