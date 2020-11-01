@@ -294,7 +294,7 @@ export default class SolidClient {
             {
                 method: 'PUT',
                 body: properties
-                    .map(property => property.toTurtle() + ' .')
+                    .map(property => property.toTurtle(url) + ' .')
                     .join("\n"),
                 headers: {
                     'Content-Type': 'text/turtle',

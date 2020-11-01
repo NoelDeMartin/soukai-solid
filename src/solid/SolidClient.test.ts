@@ -29,6 +29,7 @@ describe('SolidClient', () => {
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
         const resourceUrl = `${documentUrl}#it`;
+        const secondResourceUrl = `${documentUrl}#someone-else`;
         const name = Faker.random.word();
         const firstType = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
         const secondType = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
@@ -45,6 +46,7 @@ describe('SolidClient', () => {
                 RDFResourceProperty.literal(resourceUrl, IRI('foaf:name'), name),
                 RDFResourceProperty.type(resourceUrl, firstType),
                 RDFResourceProperty.type(resourceUrl, secondType),
+                RDFResourceProperty.reference(secondResourceUrl, IRI('foaf:knows'), resourceUrl),
             ],
         );
 
@@ -57,6 +59,8 @@ describe('SolidClient', () => {
             firstType,
             secondType,
         ]);
+        expect(document.resource(secondResourceUrl)!.url).toEqual(secondResourceUrl);
+        expect(document.resource(secondResourceUrl)!.getPropertyValue(IRI('foaf:knows'))).toEqual(resourceUrl);
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
             documentUrl,
@@ -68,6 +72,7 @@ describe('SolidClient', () => {
                     `<#it> <http://xmlns.com/foaf/0.1/name> "${name}" .`,
                     `<#it> a <${firstType}> .`,
                     `<#it> a <${secondType}> .`,
+                    `<#someone-else> <http://xmlns.com/foaf/0.1/knows> <#it> .`,
                 ].join('\n'),
             },
         );
@@ -455,7 +460,7 @@ describe('SolidClient', () => {
         const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
 
         await expect(body).toEqualTurtle(`
-            <${url}>
+            <>
                 a <http://www.w3.org/ns/ldp#Container> ;
                 <http://xmlns.com/foaf/0.1/name> "John Doe" .
         `);
@@ -637,7 +642,7 @@ describe('SolidClient', () => {
 
         const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
 
-        await expect(body).toEqualTurtle(`<${documentUrl}> a <http://www.w3.org/ns/ldp#Container> .`);
+        await expect(body).toEqualTurtle(`<> a <http://www.w3.org/ns/ldp#Container> .`);
     });
 
     it('fails updating non-existent documents', async () => {

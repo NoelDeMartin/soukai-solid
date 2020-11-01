@@ -90,7 +90,7 @@ abstract class RDFResourceProperty {
     public toTurtle(documentUrl: string | null = null): string {
         const subject = this.getTurtleSubject(documentUrl);
         const predicate = this.getTurtlePredicate();
-        const object = this.getTurtleObject();
+        const object = this.getTurtleObject(documentUrl);
 
         return `${subject} ${predicate} ${object}`;
     }
@@ -108,25 +108,27 @@ abstract class RDFResourceProperty {
         }
     }
 
-    protected getTurtleSubject(documentUrl: string | null): string {
-        const hashIndex = this.resourceUrl?.indexOf('#');
+    protected getTurtleReference(value: string | null, documentUrl: string | null): string {
+        const hashIndex = value?.indexOf('#');
 
-        if (!this.resourceUrl || hashIndex === -1)
+        if (!value || value === documentUrl)
             return '<>';
 
-        if (documentUrl === null || !this.resourceUrl.startsWith(documentUrl))
-            return `<${encodeURI(this.resourceUrl)}>`;
+        if (documentUrl === null || !value.startsWith(documentUrl) || hashIndex === -1)
+            return `<${encodeURI(value)}>`;
 
-        return `<#${this.resourceUrl.substr(hashIndex! + 1)}>`;
+        return `<#${value.substr(hashIndex! + 1)}>`;
+    }
+
+    protected getTurtleSubject(documentUrl: string | null): string {
+        return this.getTurtleReference(this.resourceUrl, documentUrl);
     }
 
     protected getTurtlePredicate(): string {
         return `<${encodeURI(this.name)}>`;
     }
 
-    protected getTurtleObject(): string {
-        return `<${encodeURI(this.value)}>`;
-    }
+    protected abstract getTurtleObject(documentUrl: string | null): string;
 
 }
 
@@ -166,14 +168,11 @@ class RDFResourceReferenceProperty extends RDFResourceProperty {
         super(resourceUrl, name, value);
     }
 
-    protected getTurtleObject(): string {
+    protected getTurtleObject(documentUrl: string | null): string {
         if (this.value instanceof RDFResourcePropertyVariable)
             return this.value.name;
 
-        if (this.value === null)
-            return '<>';
-
-        return `<${encodeURI(this.value)}>`;
+        return this.getTurtleReference(this.value, documentUrl);
     }
 
 }
@@ -189,6 +188,10 @@ class RDFResourceTypeProperty extends RDFResourceProperty {
 
     protected getTurtlePredicate(): string {
         return 'a';
+    }
+
+    protected getTurtleObject(): string {
+        return `<${encodeURI(this.value)}>`;
     }
 
 }
