@@ -1,4 +1,4 @@
-import { FieldType, MultiModelRelation } from 'soukai';
+import { Attributes, FieldType, MultiModelRelation } from 'soukai';
 
 import { IRI } from '@/solid/utils/RDF';
 
@@ -36,6 +36,8 @@ export default abstract class SolidContainerModel extends SolidModel {
     documents: SolidDocument[];
     relatedDocuments: MultiModelRelation<SolidContainerModel, SolidDocument, typeof SolidDocument>;
 
+    protected modificationDates: Date[] | null = null
+
     public documentsRelationship(): MultiModelRelation {
         return new SolidContainerDocumentsRelation(this);
     }
@@ -48,6 +50,22 @@ export default abstract class SolidContainerModel extends SolidModel {
         const slug = this.hasAttribute('name') ? Str.slug(this.getAttribute('name')) : UUID.generate();
 
         return Url.resolveDirectory(this.modelClass.collection, slug);
+    }
+
+    protected initializeAttributes(attributes: Attributes, exists: boolean): void {
+        // Container documents may have two updatedAt values, one returned from the LDP platform and one stored in
+        // the meta document. We'll use the latest date.
+        if (exists && 'updatedAt' in attributes && Array.isArray(attributes['updatedAt'])) {
+            this.modificationDates = attributes['updatedAt'];
+
+            attributes['updatedAt'] = attributes['updatedAt'].slice(1).reduce(
+                (latest, current) => latest > current ? latest : current,
+                attributes['updatedAt'][0],
+            );
+        }
+
+        super.initializeAttributes(attributes, exists);
+
     }
 
 }
