@@ -409,6 +409,7 @@ describe('SolidEngine', () => {
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
         const name = Faker.random.word();
+        const date = new Date();
 
         await SolidClientMock.createDocument(parentUrl, documentUrl);
 
@@ -420,7 +421,13 @@ describe('SolidEngine', () => {
                 '@graph': {
                     $updateItems: {
                         $where: { '@id': documentUrl },
-                        $update: { [IRI('foaf:name')]: name },
+                        $update: {
+                            [IRI('foaf:name')]: name,
+                            [IRI('purl:modified')]: {
+                                '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+                                '@value': date.toISOString(),
+                            }
+                        },
                     },
                 },
             },
@@ -429,7 +436,10 @@ describe('SolidEngine', () => {
         // Assert
         expect(SolidClientMock.updateDocument).toHaveBeenCalledWith(
             documentUrl,
-            [new UpdatePropertyOperation(RDFResourceProperty.literal(documentUrl, IRI('foaf:name'), name))],
+            [
+                new UpdatePropertyOperation(RDFResourceProperty.literal(documentUrl, IRI('foaf:name'), name)),
+                new UpdatePropertyOperation(RDFResourceProperty.literal(documentUrl, IRI('purl:modified'), date)),
+            ],
         );
     });
 

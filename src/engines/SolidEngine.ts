@@ -238,6 +238,7 @@ export default class SolidEngine implements Engine {
     }
 
     private extractJsonLDGraphItemsUpdate({ $where, $update, $unset }: EngineUpdateItemsOperatorData): UpdateOperation[] {
+        // TODO use RDF libraries instead of implementing this conversion
         if (!$where || !('@id' in $where))
             throw new SoukaiError(
                 'Invalid JSON-LD graph updates provided for SolidEngine. ' +
@@ -263,6 +264,11 @@ export default class SolidEngine implements Engine {
 
             if (typeof value === 'object' && '@id' in value) {
                 operations.push(new UpdatePropertyOperation(RDFResourceProperty.reference(resourceUrl, attribute, value['@id'])));
+                continue;
+            }
+
+            if (typeof value === 'object' && '@type' in value && value['@type'] === 'http://www.w3.org/2001/XMLSchema#dateTime') {
+                operations.push(new UpdatePropertyOperation(RDFResourceProperty.literal(resourceUrl, attribute, new Date(value['@value']))));
                 continue;
             }
 
