@@ -4,6 +4,8 @@ import { Parser as TurtleParser } from 'n3';
 import { Quad } from 'rdf-js';
 import { SoukaiError } from 'soukai';
 
+import Url from '@/utils/Url';
+
 import RDFDocument, { RDFDocumentMetadata } from '@/solid/RDFDocument';
 
 type IRINamespacesMap = { [prefix: string]: string };
@@ -23,6 +25,7 @@ const KNOWN_NAMESPACES: IRINamespacesMap = {
 export interface TurtleParsingOptions {
     baseUrl?: string,
     format?: string,
+    headers?: Headers,
 }
 
 export class RDFParsingError extends SoukaiError {}
@@ -36,7 +39,10 @@ class RDF {
                 baseIRI: options.baseUrl || '',
                 format: options.format || 'text/turtle',
             });
-            const metadata: RDFDocumentMetadata = { containsRelativeIRIs: false };
+            const metadata: RDFDocumentMetadata = {
+                containsRelativeIRIs: false,
+                describedBy: this.getDescribedBy(options),
+            };
             const resolveRelativeIRI = parser._resolveRelativeIRI;
 
             parser._resolveRelativeIRI = (...args) => {
@@ -130,6 +136,18 @@ class RDF {
             return;
 
         return (Array.isArray(value) && value.length === 1) ? value[0] : value;
+    }
+
+    private getDescribedBy(options: TurtleParsingOptions): string | undefined {
+        if (!options.headers?.has('Link'))
+            return undefined;
+
+        const matches = options.headers.get('Link')?.match(/<([^>]+)>; rel="describedBy"/i);
+
+        if (!matches)
+            return undefined;
+
+        return Url.resolve(options.baseUrl || '', matches[1]);
     }
 
 }

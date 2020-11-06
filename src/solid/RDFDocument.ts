@@ -6,6 +6,7 @@ import RDFResourceProperty from '@/solid/RDFResourceProperty';
 
 export interface RDFDocumentMetadata {
     containsRelativeIRIs?: boolean;
+    describedBy?: string;
 }
 
 export default class RDFDocument {

@@ -73,7 +73,10 @@ export default class SolidClient {
         const data = await response.text();
 
         try {
-            const document = await RDF.parseTurtle(data, { baseUrl: url });
+            const document = await RDF.parseTurtle(data, {
+                headers: response.headers,
+                baseUrl: url,
+            });
 
             return document;
         } catch (error) {
@@ -290,15 +293,13 @@ export default class SolidClient {
         properties.push(...updatedProperties);
 
         const response = await this.fetch(
-            url + '.meta',
+            document.metadata.describedBy || (url + '.meta'),
             {
                 method: 'PUT',
+                headers: { 'Content-Type': 'text/turtle' },
                 body: properties
                     .map(property => property.toTurtle(url) + ' .')
                     .join("\n"),
-                headers: {
-                    'Content-Type': 'text/turtle',
-                },
             }
         );
 

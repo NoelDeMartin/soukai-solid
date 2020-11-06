@@ -149,7 +149,7 @@ describe('SolidClient', () => {
         );
     });
 
-    it('creates container documents without minted url', async () => {
+    it('creates container documents without a minted url', async () => {
         // Arrange
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const containerUrl = Url.resolveDirectory(parentUrl, Str.slug(name));
@@ -427,7 +427,8 @@ describe('SolidClient', () => {
 
     it('updates container documents', async () => {
         // Arrange
-        const url = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const url = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const metaDocumentName = '.' + Str.slug(Faker.random.word());
         const data = `
             <${url}>
                 a <http://www.w3.org/ns/ldp#Container> ;
@@ -441,7 +442,7 @@ describe('SolidClient', () => {
             new RemovePropertyOperation(url, 'http://xmlns.com/foaf/0.1/givenName'),
         ];
 
-        StubFetcher.addFetchResponse(data);
+        StubFetcher.addFetchResponse(data, { 'Link': `<${metaDocumentName}>; rel="describedBy"` });
         StubFetcher.addFetchResponse('', {}, 201);
 
         // Act
@@ -449,7 +450,7 @@ describe('SolidClient', () => {
 
         // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
-            url + '.meta',
+            url + metaDocumentName,
             {
                 method: 'PUT',
                 headers: { 'Content-Type': 'text/turtle' },

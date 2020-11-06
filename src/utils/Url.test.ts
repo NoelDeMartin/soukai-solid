@@ -3,7 +3,7 @@ import Url from '@/utils/Url';
 describe('Url helper', () => {
 
     it('uses root when resolving absolute paths', () => {
-        expect(Url.resolve('http://example.com/somethingelse', '/foobar'))
+        expect(Url.resolve('http://example.com/something/else', '/foobar'))
             .toEqual('http://example.com/foobar');
     });
 
