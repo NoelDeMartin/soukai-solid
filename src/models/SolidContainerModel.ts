@@ -2,6 +2,7 @@ import { Attributes, FieldType, MultiModelRelation } from 'soukai';
 
 import { IRI } from '@/solid/utils/RDF';
 
+import Arr from '@/utils/Arr';
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 import UUID from '@/utils/UUID';
@@ -55,12 +56,12 @@ export default abstract class SolidContainerModel extends SolidModel {
     protected initializeAttributes(attributes: Attributes, exists: boolean): void {
         // Container documents may have two updatedAt values, one returned from the LDP platform and one stored in
         // the meta document. We'll use the latest date.
-        if (exists && 'updatedAt' in attributes && Array.isArray(attributes['updatedAt'])) {
-            this.modificationDates = attributes['updatedAt'];
+        if (exists && 'updatedAt' in attributes) {
+            this.modificationDates = Arr.create(attributes['updatedAt']);
 
-            attributes['updatedAt'] = attributes['updatedAt'].slice(1).reduce(
+            attributes['updatedAt'] = this.modificationDates.slice(1).reduce(
                 (latest, current) => latest > current ? latest : current,
-                attributes['updatedAt'][0],
+                this.modificationDates[0],
             );
         }
 
