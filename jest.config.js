@@ -1,10 +1,14 @@
 module.exports = {
-    transform: {
-        '^.+\\.ts$': 'ts-jest'
-    },
     testRegex: '\\.test\\.ts$',
+    transform: {
+        '^.+\\.ts$': 'ts-jest',
+    },
+    collectCoverageFrom: [
+        '<rootDir>/src/**/*',
+    ],
     coveragePathIgnorePatterns: [
-        '<rootDir>/tests',
+        '<rootDir>/src/types/',
+        '<rootDir>/src/index\.ts',
     ],
     moduleNameMapper: {
         '^@/(.*)$': '<rootDir>/src/$1',
