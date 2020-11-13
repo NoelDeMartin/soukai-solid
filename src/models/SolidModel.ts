@@ -20,6 +20,7 @@ import RDFResource from '@/solid/RDFResource';
 
 import { useMixins } from '@/utils/mixins';
 import Arr from '@/utils/Arr';
+import Fluent from '@/utils/Fluent';
 import Url from '@/utils/Url';
 import UUID from '@/utils/UUID';
 
@@ -110,8 +111,30 @@ abstract class SolidModel extends Model {
         this.fields[this.primaryKey].rdfProperty = null;
     }
 
-    public static find<T extends Model, Key = string>(id: Key): Promise<T | null> {
-        return this.withCollection(Url.parentDirectory(id as any), () => super.find(id));
+    public static createFromEngineDocument<T extends Model, Key = any>(
+        id: Key,
+        document: EngineDocument,
+        resourceId?: string,
+    ): Promise<T> {
+        return this.instance.createFromEngineDocument(id, document, resourceId);
+    }
+
+    public static async find<T extends Model, Key = string>(id: Key): Promise<T | null> {
+        const resourceUrl = this.instance.serializeKey(id);
+        const documentUrl = Url.route(resourceUrl);
+        const containerUrl = Url.parentDirectory(documentUrl);
+
+        this.ensureBooted();
+
+        try {
+            const document = await Soukai
+                .requireEngine()
+                .readOne(containerUrl, documentUrl);
+
+            return this.instance.createFromEngineDocument<T>(documentUrl, document, resourceUrl);
+        } catch (error) {
+            return null;
+        }
     }
 
     public static all<T extends Model>(filters: EngineFilters = {}): Promise<T[]> {
@@ -128,12 +151,13 @@ abstract class SolidModel extends Model {
         return new (this as any)(attributes, exists);
     }
 
-    public static async newFromJsonLD<T extends SolidModel>(jsonld: object): Promise<T> {
+    public static async newFromJsonLD<T extends SolidModel>(jsonld: object, baseUrl?: string): Promise<T> {
         const flatJsonLD = await RDF.flattenJsonLD(jsonld) as EngineDocument;
-        const attributes = await this.instance.parseEngineDocumentAttributes(jsonld['@id'], flatJsonLD);
+        const documentUrl = baseUrl || Url.route(jsonld['@id']);
+        const attributes = await this.instance.parseEngineDocumentAttributes(documentUrl, flatJsonLD, jsonld['@id']);
         const model = new (this as any)(attributes) as T;
 
-        await model.loadDocumentModels(flatJsonLD);
+        await model.loadDocumentModels(documentUrl, flatJsonLD);
 
         model.resetEngineData();
 
@@ -247,13 +271,11 @@ abstract class SolidModel extends Model {
         if (!this.url)
             return null;
 
-        const anchorIndex = this.url.indexOf('#');
-
-        return anchorIndex !== -1 ? this.url.substr(0, anchorIndex) : this.url;
+        return Url.route(this.url);
     }
 
     public getOriginalDocumentUrl(): string | null {
-        return this._originalDocumentUrl || null;
+        return this._originalDocumentUrl;
     }
 
     public getContainerUrl(): string | null {
@@ -274,14 +296,20 @@ abstract class SolidModel extends Model {
         this._documentExists = exists;
     }
 
-    protected async createFromEngineDocument<T extends Model>(id: any, document: EngineDocument): Promise<T> {
-        const model = await super.createFromEngineDocument<SolidModel>(id, document);
+    protected async createFromEngineDocument<T extends Model>(id: any, document: EngineDocument, resourceId?: string): Promise<T> {
+        const createModel = async () => {
+            const attributes = await this.parseEngineDocumentAttributes(id, document, resourceId);
 
-        await model.loadDocumentModels(document);
+            attributes[this.modelClass.primaryKey] = resourceId || id;
 
-        model._originalDocumentUrl = id;
+            return new (this.modelClass as any)(attributes, true);
+        };
 
-        return model as unknown as T;
+        const model = await createModel();
+
+        await model.loadDocumentModels(id, document);
+
+        return Fluent.tap(model, m => m._originalDocumentUrl = id);
     }
 
     protected async createManyFromEngineDocuments<T extends Model>(documents: MapObject<EngineDocument>): Promise<T[]> {
@@ -294,20 +322,14 @@ abstract class SolidModel extends Model {
                 rdfDocument
                     .resources
                     .filter(isModelResource)
-                    .map(async resource => {
-                        const model = await this.createFromEngineDocument<SolidModel>(resource.url, engineDocument);
-
-                        model._originalDocumentUrl = documentUrl;
-
-                        return model as unknown as T;
-                    }),
+                    .map(async resource => this.createFromEngineDocument<T>(documentUrl, engineDocument, resource.url!)),
             );
         }));
 
         return Arr.flatten(models);
     }
 
-    protected async loadDocumentModels(document: EngineDocument): Promise<void> {
+    protected async loadDocumentModels(documentUrl: string, document: EngineDocument): Promise<void> {
         const relations = Object
             .values(this._relations)
             .filter(
@@ -316,7 +338,7 @@ abstract class SolidModel extends Model {
                     relation instanceof SolidBelongsToManyRelation,
             ) as (SolidHasManyRelation | SolidBelongsToManyRelation)[];
 
-        await Promise.all(relations.map(relation => relation.__loadDocumentModels(document)));
+        await Promise.all(relations.map(relation => relation.__loadDocumentModels(documentUrl, document)));
     }
 
     protected async syncDirty(): Promise<string> {
@@ -426,8 +448,14 @@ abstract class SolidModel extends Model {
             : { '@graph': { $apply: graphUpdates } };
     }
 
-    protected async parseEngineDocumentAttributes(id: any, document: EngineDocument): Promise<Attributes> {
-        const jsonld = (document['@graph'] as EngineDocument[]).find(entity => entity['@id'] === id);
+    protected async parseEngineDocumentAttributes(
+        id: any,
+        document: EngineDocument,
+        resourceId: string | null = null,
+    ): Promise<Attributes> {
+        resourceId = resourceId || id;
+
+        const jsonld = (document['@graph'] as EngineDocument[]).find(entity => entity['@id'] === resourceId);
 
         return this.convertJsonLDToAttributes(jsonld!);
     }

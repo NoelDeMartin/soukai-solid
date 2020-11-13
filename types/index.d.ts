@@ -77,7 +77,13 @@ export abstract class SolidModel extends Model {
 
     public static newInstance<M extends SolidModel>(attributes: Attributes, exists?: boolean): M;
 
-    public static newFromJsonLD<T extends SolidModel>(json: object): Promise<T>;
+    public static newFromJsonLD<T extends SolidModel>(json: object, baseUrl?: string): Promise<T>;
+
+    public static createFromEngineDocument<T extends Model, Key = any>(
+        id: Key,
+        document: EngineDocument,
+        resourceId?: string,
+    ): Promise<T>;
 
     protected static withCollection<Result>(collection?: string | (() => Result), operation?: () => Result): Result;
 
@@ -107,6 +113,12 @@ export abstract class SolidModel extends Model {
     public getContainerUrl(): string | null;
 
     public getOriginalContainerUrl(): string | null;
+
+    protected createFromEngineDocument<T extends Model, Key = any>(
+        id: Key,
+        document: EngineDocument,
+        resourceId?: string,
+    ): Promise<T>;
 
     protected getDefaultRdfContext(): string;
 

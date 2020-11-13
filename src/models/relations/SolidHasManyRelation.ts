@@ -93,7 +93,7 @@ export default class SolidHasManyRelation<
         return this;
     }
 
-    public async __loadDocumentModels(document: EngineDocument): Promise<void> {
+    public async __loadDocumentModels(documentUrl: string, document: EngineDocument): Promise<void> {
         const helper = new EngineHelper();
         const foreignProperty = this.relatedClass.fields[this.foreignKeyName]?.rdfProperty;
         const filters = this.relatedClass.prepareEngineFilters();
@@ -116,7 +116,7 @@ export default class SolidHasManyRelation<
                 .entries(helper.filterDocuments(documents, filters))
                 .map(
                     ([id, document]) =>
-                        this.relatedClass.createFromEngineDocument(id, document) as Promise<Related>,
+                        this.relatedClass.createFromEngineDocument(documentUrl, document, id) as Promise<Related>,
                 ),
         );
 

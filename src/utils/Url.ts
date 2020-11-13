@@ -99,6 +99,17 @@ class Url {
         ].join('');
     }
 
+    public route(url: string): string {
+        return this.clean(url, {
+            protocol: true,
+            domain: true,
+            port: true,
+            path: true,
+            query: false,
+            fragment: false,
+        });
+    }
+
 }
 
 export default new Url();

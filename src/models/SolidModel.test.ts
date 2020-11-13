@@ -331,11 +331,13 @@ describe('SolidModel', () => {
         expect(collection.movies![1].name).toEqual(secondMovieName);
         expect(collection.movies![1].actions).toHaveLength(1);
         expect(collection.movies![1].actions![0].url).toEqual(firstWatchActionUrl);
+        expect(collection.movies![1].actions![0].getOriginalDocumentUrl()).toEqual(secondDocumentUrl);
 
         expect(collection.movies![2].url).toEqual(thirdMovieUrl);
         expect(collection.movies![2].name).toEqual(thirdMovieName);
         expect(collection.movies![2].actions).toHaveLength(1);
         expect(collection.movies![2].actions![0].url).toEqual(secondWatchActionUrl);
+        expect(collection.movies![2].actions![0].getOriginalDocumentUrl()).toEqual(secondDocumentUrl);
     });
 
     it('mints url for new models', async () => {

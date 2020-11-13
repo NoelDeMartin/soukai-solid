@@ -56,7 +56,7 @@ export default class SolidBelongsToManyRelation<
         return this.related;
     }
 
-    public async __loadDocumentModels(document: EngineDocument): Promise<void> {
+    public async __loadDocumentModels(documentUrl: string, document: EngineDocument): Promise<void> {
         const helper = new EngineHelper();
         const modelIds = this.parent.getAttribute(this.foreignKeyName) as string[];
         const filters = this.relatedClass.prepareEngineFilters();
@@ -73,7 +73,7 @@ export default class SolidBelongsToManyRelation<
                 .entries(helper.filterDocuments(documents, filters))
                 .map(
                     ([id, document]) =>
-                        this.relatedClass.createFromEngineDocument(id, document) as Promise<Related>,
+                        this.relatedClass.createFromEngineDocument(documentUrl, document, id) as Promise<Related>,
                 ),
         );
 
