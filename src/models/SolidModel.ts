@@ -202,7 +202,7 @@ abstract class SolidModel extends Model {
     public modelClass: typeof SolidModel;
 
     protected _documentExists: boolean;
-    protected _originalDocumentUrl: string | null = null;
+    protected _sourceDocumentUrl: string | null = null;
 
     public save<T extends Model>(collection?: string): Promise<T> {
         return this.modelClass.withCollection(collection || this.guessCollection(), async () => {
@@ -274,8 +274,8 @@ abstract class SolidModel extends Model {
         return Url.route(this.url);
     }
 
-    public getOriginalDocumentUrl(): string | null {
-        return this._originalDocumentUrl;
+    public getSourceDocumentUrl(): string | null {
+        return this._sourceDocumentUrl;
     }
 
     public getContainerUrl(): string | null {
@@ -284,8 +284,8 @@ abstract class SolidModel extends Model {
         return documentUrl ? Url.parentDirectory(documentUrl) : null;
     }
 
-    public getOriginalContainerUrl(): string | null {
-        const documentUrl = this.getOriginalDocumentUrl();
+    public getSourceContainerUrl(): string | null {
+        const documentUrl = this.getSourceDocumentUrl();
 
         return documentUrl ? Url.parentDirectory(documentUrl) : null;
     }
@@ -309,7 +309,7 @@ abstract class SolidModel extends Model {
 
         await model.loadDocumentModels(id, document);
 
-        return Fluent.tap(model, m => m._originalDocumentUrl = id);
+        return Fluent.tap(model, m => m._sourceDocumentUrl = id);
     }
 
     protected async createManyFromEngineDocuments<T extends Model>(documents: MapObject<EngineDocument>): Promise<T[]> {

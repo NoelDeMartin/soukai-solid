@@ -92,7 +92,7 @@ export abstract class SolidModel extends Model {
     public modelClass: typeof SolidModel;
 
     protected _documentExists: boolean;
-    protected _originalDocumentUrl: string | null;
+    protected _sourceDocumentUrl: string | null;
 
     public save<T extends Model>(containerUrl?: string): Promise<T>;
 
@@ -108,11 +108,11 @@ export abstract class SolidModel extends Model {
 
     public getDocumentUrl(): string | null;
 
-    public getOriginalDocumentUrl(): string | null;
+    public getSourceDocumentUrl(): string | null;
 
     public getContainerUrl(): string | null;
 
-    public getOriginalContainerUrl(): string | null;
+    public getSourceContainerUrl(): string | null;
 
     protected createFromEngineDocument<T extends Model, Key = any>(
         id: Key,
