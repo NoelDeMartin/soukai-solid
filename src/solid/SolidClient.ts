@@ -46,9 +46,6 @@ export default class SolidClient {
         properties: RDFResourceProperty[] = [],
     ): Promise<RDFDocument> {
         const ldpContainer = IRI('ldp:Container');
-        const turtleData = properties
-            .map(property => property.toTurtle(url) + ' .')
-            .join("\n");
         const isContainer = properties.some(
             property =>
                 property.resourceUrl === url &&
@@ -57,8 +54,8 @@ export default class SolidClient {
         );
 
         return isContainer
-            ? this.createContainerDocument(parentUrl, url, turtleData)
-            : this.createNonContainerDocument(parentUrl, url, turtleData);
+            ? this.createContainerDocument(parentUrl, url, properties)
+            : this.createNonContainerDocument(parentUrl, url, properties);
     }
 
     public async getDocument(url: string): Promise<RDFDocument | null> {
@@ -160,8 +157,12 @@ export default class SolidClient {
     private async createContainerDocument(
         parentUrl: string,
         url: string | null,
-        data: string,
+        properties: RDFResourceProperty[],
     ): Promise<RDFDocument> {
+        const turtleData = properties
+            .map(property => property.toTurtle(url) + ' .')
+            .join('\n');
+
         if (!url) {
             const response = await this.fetch(
                 parentUrl,
@@ -171,12 +172,12 @@ export default class SolidClient {
                         'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                     },
                     method: 'POST',
-                    body: data,
+                    body: turtleData,
                 },
             );
 
             return RDF.parseTurtle(
-                data,
+                turtleData,
                 { baseUrl: Url.resolve(parentUrl, response.headers.get('Location') || '') },
             );
         }
@@ -191,7 +192,7 @@ export default class SolidClient {
             parentUrl,
             {
                 method: 'POST',
-                body: data,
+                body: turtleData,
                 headers: {
                     'Content-Type': 'text/turtle',
                     'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
@@ -200,23 +201,27 @@ export default class SolidClient {
             },
         );
 
-        return RDF.parseTurtle(data, { baseUrl: url });
+        return RDF.parseTurtle(turtleData, { baseUrl: url });
     }
 
     private async createNonContainerDocument(
         parentUrl: string,
         url: string | null,
-        data: string,
+        properties: RDFResourceProperty[],
     ): Promise<RDFDocument> {
         if (!url) {
+            const turtleData = properties
+                .map(property => property.toTurtle(url) + ' .')
+                .join('\n');
+
             const response = await this.fetch(parentUrl, {
                 headers: { 'Content-Type': 'text/turtle' },
                 method: 'POST',
-                body: data,
+                body: turtleData,
             });
 
             return RDF.parseTurtle(
-                data,
+                turtleData,
                 { baseUrl: Url.resolve(parentUrl, response.headers.get('Location') || '') },
             );
         }
@@ -224,13 +229,32 @@ export default class SolidClient {
         if (!url.startsWith(parentUrl))
             throw new SoukaiError('A minted document url should start with the parent url');
 
-        await this.fetch(url, {
-            headers: { 'Content-Type': 'text/turtle' },
-            method: 'PUT',
-            body: data,
+        const turtleData = properties
+            .map(property => property.toTurtle() + ' .')
+            .join('\n');
+
+        const response = await this.fetch(url, {
+            method: 'PATCH',
+            body: `
+                @prefix solid: <http://www.w3.org/ns/solid/terms#> .
+                <>
+                    solid:patches <${url}> ;
+                    solid:inserts {
+                        ${turtleData}
+                    } .
+            `,
+            headers: {
+                'Content-Type': 'text/n3',
+                'If-None-Match': '*',
+            },
         });
 
-        return RDF.parseTurtle(data, { baseUrl: url });
+        if (response.status !== 200)
+            throw new SoukaiError(
+                `Error creating document at ${url}, returned status code ${response.status}`,
+            );
+
+        return RDF.parseTurtle(turtleData, { baseUrl: url });
     }
 
     private async getContainerDocuments(containerUrl: string): Promise<RDFDocument[]> {
@@ -275,39 +299,14 @@ export default class SolidClient {
     }
 
     private async updateContainerDocument(document: RDFDocument, operations: UpdateOperation[]): Promise<void> {
-        // TODO this may change in future versions of node-solid-server
-        // https://github.com/solid/node-solid-server/issues/1040
-        const url = document.url;
-        const [updatedProperties, removedProperties] = decantUpdateOperationsData(operations);
-        const properties = document.properties.filter(property => {
-            return property.name !== IRI('ldp:contains')
-                && property.name !== 'http://www.w3.org/ns/posix/stat#mtime'
-                && property.name !== 'http://www.w3.org/ns/posix/stat#size'
-                && !removedProperties.some(
-                    ([resourceUrl, name]) =>
-                        resourceUrl === property.resourceUrl &&
-                        (!name || name === property.name),
-                );
-        });
+        operations.push(new RemovePropertyOperation(document.url, IRI('ldp:contains')));
+        operations.push(new RemovePropertyOperation(document.url, IRI('posix:mtime')));
+        operations.push(new RemovePropertyOperation(document.url, IRI('posix:size')));
 
-        properties.push(...updatedProperties);
-
-        const response = await this.fetch(
-            document.metadata.describedBy || (url + '.meta'),
-            {
-                method: 'PUT',
-                headers: { 'Content-Type': 'text/turtle' },
-                body: properties
-                    .map(property => property.toTurtle(url) + ' .')
-                    .join("\n"),
-            }
+        await this.updateNonContainerDocument(
+            document.clone(document.metadata.describedBy || `${document.url}.meta`),
+            operations,
         );
-
-        if (response.status !== 201) {
-            throw new SoukaiError(
-                `Error updating container document at ${document.url}, returned status code ${response.status}`,
-            );
-        }
     }
 
     private async updateNonContainerDocument(document: RDFDocument, operations: UpdateOperation[]): Promise<void> {
@@ -341,9 +340,7 @@ export default class SolidClient {
                     @prefix solid: <http://www.w3.org/ns/solid/terms#> .
                     <> ${solidOperations} .
                 `,
-                headers: {
-                    'Content-Type': 'text/n3',
-                },
+                headers: { 'Content-Type': 'text/n3' },
             },
         );
 

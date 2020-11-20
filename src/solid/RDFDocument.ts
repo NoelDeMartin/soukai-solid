@@ -4,6 +4,8 @@ import RDF from '@/solid/utils/RDF';
 import RDFResource from '@/solid/RDFResource';
 import RDFResourceProperty from '@/solid/RDFResourceProperty';
 
+import Arr from '@/utils/Arr';
+
 export interface RDFDocumentMetadata {
     containsRelativeIRIs?: boolean;
     describedBy?: string;
@@ -18,7 +20,7 @@ export default class RDFDocument {
     public readonly properties: RDFResourceProperty[];
     public readonly resources: RDFResource[];
 
-    constructor(url: string, statements: Quad[], metadata: RDFDocumentMetadata = {}) {
+    constructor(url: string, statements: Quad[] = [], metadata: RDFDocumentMetadata = {}) {
         this.url = url;
         this.statements = statements;
         this.metadata = metadata;
@@ -56,6 +58,22 @@ export default class RDFDocument {
 
     public resource(url: string): RDFResource | null {
         return this.resourcesIndex[url] ?? null;
+    }
+
+    public clone(url: string | null = null): RDFDocument {
+        const document = new RDFDocument(url || this.url);
+        const properties = Arr.without(Object.getOwnPropertyNames(this), ['url']);
+
+        Object.assign(
+            document,
+            properties.reduce((properties, property) => {
+                properties[property] = this[property];
+
+                return properties;
+            }, {}),
+        );
+
+        return document;
     }
 
 }

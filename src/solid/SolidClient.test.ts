@@ -34,7 +34,6 @@ describe('SolidClient', () => {
         const firstType = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
         const secondType = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
 
-        StubFetcher.addFetchNotFoundResponse();
         StubFetcher.addFetchResponse();
 
         // Act
@@ -62,20 +61,29 @@ describe('SolidClient', () => {
         expect(document.resource(secondResourceUrl)!.url).toEqual(secondResourceUrl);
         expect(document.resource(secondResourceUrl)!.getPropertyValue(IRI('foaf:knows'))).toEqual(resourceUrl);
 
-        expect(StubFetcher.fetch).toHaveBeenCalledWith(
-            documentUrl,
-            {
-                method: 'PUT',
-                headers: { 'Content-Type': 'text/turtle' },
-                body: [
-                    `<> a <http://www.w3.org/ns/ldp#Document> .`,
-                    `<#it> <http://xmlns.com/foaf/0.1/name> "${name}" .`,
-                    `<#it> a <${firstType}> .`,
-                    `<#it> a <${secondType}> .`,
-                    `<#someone-else> <http://xmlns.com/foaf/0.1/knows> <#it> .`,
-                ].join('\n'),
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(documentUrl, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'text/n3',
+                'If-None-Match': '*',
             },
-        );
+            body: expect.anything(),
+        });
+
+        const body = (StubFetcher.fetch as any).mock.calls[0][1].body;
+
+        await expect(body).toEqualTurtle(`
+            @prefix solid: <http://www.w3.org/ns/solid/terms#> .
+            <>
+                solid:patches <${documentUrl}> ;
+                solid:inserts {
+                    <${documentUrl}> a <http://www.w3.org/ns/ldp#Document> .
+                    <${documentUrl}#it> <http://xmlns.com/foaf/0.1/name> "${name}" .
+                    <${documentUrl}#it> a <${firstType}> .
+                    <${documentUrl}#it> a <${secondType}> .
+                    <${documentUrl}#someone-else> <http://xmlns.com/foaf/0.1/knows> <${documentUrl}#it> .
+                } .
+        `, { format: 'text/n3' });
     });
 
     it('creates documents without minted url', async () => {
@@ -427,33 +435,34 @@ describe('SolidClient', () => {
 
     it('updates container documents', async () => {
         // Arrange
-        const url = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const documentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const metaDocumentName = '.' + Str.slug(Faker.random.word());
+        const metaDocumentUrl = documentUrl + metaDocumentName;
         const data = `
-            <${url}>
+            <${documentUrl}>
                 a <http://www.w3.org/ns/ldp#Container> ;
                 <http://xmlns.com/foaf/0.1/name> "Jonathan" ;
                 <http://xmlns.com/foaf/0.1/surname> "Doe" ;
                 <http://xmlns.com/foaf/0.1/givenName> "John" .
         `;
         const operations = [
-            new UpdatePropertyOperation(RDFResourceProperty.literal(url, 'http://xmlns.com/foaf/0.1/name', 'John Doe')),
-            new RemovePropertyOperation(url, 'http://xmlns.com/foaf/0.1/surname'),
-            new RemovePropertyOperation(url, 'http://xmlns.com/foaf/0.1/givenName'),
+            new UpdatePropertyOperation(RDFResourceProperty.literal(documentUrl, 'http://xmlns.com/foaf/0.1/name', 'John Doe')),
+            new RemovePropertyOperation(documentUrl, 'http://xmlns.com/foaf/0.1/surname'),
+            new RemovePropertyOperation(documentUrl, 'http://xmlns.com/foaf/0.1/givenName'),
         ];
 
         StubFetcher.addFetchResponse(data, { 'Link': `<${metaDocumentName}>; rel="describedBy"` });
-        StubFetcher.addFetchResponse('', {}, 201);
+        StubFetcher.addFetchResponse();
 
         // Act
-        await client.updateDocument(url, operations);
+        await client.updateDocument(documentUrl, operations);
 
         // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
-            url + metaDocumentName,
+            metaDocumentUrl,
             {
-                method: 'PUT',
-                headers: { 'Content-Type': 'text/turtle' },
+                method: 'PATCH',
+                headers: { 'Content-Type': 'text/n3' },
                 body: expect.anything(),
             }
         );
@@ -461,10 +470,20 @@ describe('SolidClient', () => {
         const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
 
         await expect(body).toEqualTurtle(`
+            @prefix solid: <http://www.w3.org/ns/solid/terms#> .
             <>
-                a <http://www.w3.org/ns/ldp#Container> ;
-                <http://xmlns.com/foaf/0.1/name> "John Doe" .
-        `);
+                solid:patches <${metaDocumentUrl}> ;
+                solid:inserts {
+                    <${documentUrl}>
+                        <http://xmlns.com/foaf/0.1/name> "John Doe" .
+                } ;
+                solid:deletes {
+                    <${documentUrl}>
+                        <http://xmlns.com/foaf/0.1/name> "Jonathan" ;
+                        <http://xmlns.com/foaf/0.1/surname> "Doe" ;
+                        <http://xmlns.com/foaf/0.1/givenName> "John" .
+                } .
+        `, { format: 'text/n3' });
     });
 
     it('changes resource urls', async () => {
@@ -515,7 +534,8 @@ describe('SolidClient', () => {
 
         await expect(body).toEqualTurtle(`
             @prefix solid: <http://www.w3.org/ns/solid/terms#> .
-            <> solid:patches <${documentUrl}> ;
+            <>
+                solid:patches <${documentUrl}> ;
                 solid:inserts {
                     <${newSecondResourceUrl}> <http://xmlns.com/foaf/0.1/knows> <${newFirstResourceUrl}> .
                     <${newFirstResourceUrl}> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
@@ -615,35 +635,43 @@ describe('SolidClient', () => {
     it('deletes all properties from a resource within a container document', async () => {
         // Arrange
         const documentUrl = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const url = `${documentUrl}#it`;
+        const metaDocumentUrl = `${documentUrl}.meta`;
+        const resourceUrl = `${documentUrl}#it`;
         const data = `
             <${documentUrl}>
                 a <http://www.w3.org/ns/ldp#Container> .
-            <${url}>
+            <${resourceUrl}>
                 <http://xmlns.com/foaf/0.1/name> "Jonathan" ;
                 <http://xmlns.com/foaf/0.1/surname> "Doe" ;
                 <http://xmlns.com/foaf/0.1/givenName> "John" .
         `;
 
         StubFetcher.addFetchResponse(data);
-        StubFetcher.addFetchResponse('', {}, 201);
+        StubFetcher.addFetchResponse();
 
         // Act
-        await client.updateDocument(documentUrl, [new RemovePropertyOperation(url)]);
+        await client.updateDocument(documentUrl, [new RemovePropertyOperation(resourceUrl)]);
 
         // Assert
-        expect(StubFetcher.fetch).toHaveBeenCalledWith(
-            documentUrl + '.meta',
-            {
-                method: 'PUT',
-                headers: { 'Content-Type': 'text/turtle' },
-                body: expect.anything(),
-            }
-        );
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(metaDocumentUrl, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'text/n3' },
+            body: expect.anything(),
+        });
 
         const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
 
-        await expect(body).toEqualTurtle(`<> a <http://www.w3.org/ns/ldp#Container> .`);
+        await expect(body).toEqualTurtle(`
+            @prefix solid: <http://www.w3.org/ns/solid/terms#> .
+            <>
+                solid:patches <${metaDocumentUrl}> ;
+                solid:deletes {
+                    <${resourceUrl}>
+                        <http://xmlns.com/foaf/0.1/name> "Jonathan" ;
+                        <http://xmlns.com/foaf/0.1/surname> "Doe" ;
+                        <http://xmlns.com/foaf/0.1/givenName> "John" .
+                } .
+        `, { format: 'text/n3' });
     });
 
     it('fails updating non-existent documents', async () => {
