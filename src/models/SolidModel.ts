@@ -179,7 +179,10 @@ abstract class SolidModel extends Model {
         return model;
     }
 
-    protected static withCollection<Result>(collection: string | (() => Result) = '', operation?: () => Result): Result {
+    protected static withCollection<Result>(
+        collection: string | undefined | (() => Result) = '',
+        operation?: () => Result,
+    ): Result {
         const oldCollection = this.collection;
 
         if (typeof collection !== 'string') {

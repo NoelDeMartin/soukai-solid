@@ -35,8 +35,6 @@ export class SolidHasManyRelation<
 
     public useSameDocument: boolean;
 
-    public addModelToStoreInSameDocument(related: Related): void;
-
     public create(attributes?: Attributes): Promise<Related>;
 
     public save(model: Related): Promise<void>;
