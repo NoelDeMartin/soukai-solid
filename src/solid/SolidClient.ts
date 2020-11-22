@@ -400,7 +400,7 @@ export default class SolidClient {
         if (response.status === successStatus)
             return;
 
-        throw new SoukaiError(`${errorMessage}, returned status code ${response.status}`);
+        throw new SoukaiError(`${errorMessage}, returned ${response.status} status code`);
     }
 
 }

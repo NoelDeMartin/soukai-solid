@@ -186,6 +186,7 @@ export class SolidEngine implements Engine {
 
 export interface RDFDocumentMetadata {
     containsRelativeIRIs?: boolean;
+    describedBy?: string;
 }
 
 export enum DocumentFormat {

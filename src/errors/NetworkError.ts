@@ -5,7 +5,7 @@ export default class NetworkError extends SoukaiError {
     public readonly original: Error;
 
     constructor(message: string, original: Error) {
-        super(message);
+        super(`${message} (${original.message})`);
 
         this.original = original;
     }
