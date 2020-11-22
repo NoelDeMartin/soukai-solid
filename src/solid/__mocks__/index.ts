@@ -61,7 +61,7 @@ export class SolidClientMock {
     ): Promise<void> {
         if (!(url in this.documents))
             throw new Error(
-                `Error updating document at ${url}, returned status code 404`,
+                `Error updating document at ${url}, returned 404 status code`,
             );
     }
 
