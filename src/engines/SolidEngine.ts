@@ -55,9 +55,9 @@ export default class SolidEngine implements Engine {
             throw new DocumentAlreadyExists(id);
 
         const properties = await this.getJsonLDGraphProperties(document);
-        const { url } = await this.client.createDocument(collection, id, properties);
+        const url = await this.client.createDocument(collection, id, properties);
 
-        return url!;
+        return url;
     }
 
     public async readOne(_: string, id: string): Promise<EngineDocument> {

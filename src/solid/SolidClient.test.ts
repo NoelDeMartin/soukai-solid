@@ -37,7 +37,7 @@ describe('SolidClient', () => {
         StubFetcher.addFetchResponse();
 
         // Act
-        const document = await client.createDocument(
+        const url = await client.createDocument(
             parentUrl,
             documentUrl,
             [
@@ -50,17 +50,7 @@ describe('SolidClient', () => {
         );
 
         // Assert
-        expect(document.url).toEqual(documentUrl);
-        expect(document.resource(documentUrl)!.types).toEqual([IRI('ldp:Document')]);
-        expect(document.resource(resourceUrl)!.url).toEqual(resourceUrl);
-        expect(document.resource(resourceUrl)!.name).toEqual(name);
-        expect(document.resource(resourceUrl)!.types).toEqual([
-            firstType,
-            secondType,
-        ]);
-        expect(document.resource(secondResourceUrl)!.url).toEqual(secondResourceUrl);
-        expect(document.resource(secondResourceUrl)!.getPropertyValue(IRI('foaf:knows'))).toEqual(resourceUrl);
-
+        expect(url).toEqual(documentUrl);
         expect(StubFetcher.fetch).toHaveBeenCalledWith(documentUrl, {
             method: 'PATCH',
             headers: {
@@ -91,10 +81,10 @@ describe('SolidClient', () => {
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
 
-        StubFetcher.addFetchResponse('', { Location: documentUrl });
+        StubFetcher.addFetchResponse('', { Location: documentUrl }, 201);
 
         // Act
-        const document = await client.createDocument(
+        const url = await client.createDocument(
             parentUrl,
             null,
             [
@@ -103,58 +93,44 @@ describe('SolidClient', () => {
         );
 
         // Assert
-        expect(document.url).toEqual(documentUrl);
-
-        expect(StubFetcher.fetch).toHaveBeenCalledWith(
-            parentUrl,
-            {
-                method: 'POST',
-                headers: { 'Content-Type': 'text/turtle' },
-                body: '<> a <http://xmlns.com/foaf/0.1/Person> .',
-            },
-        );
+        expect(url).toEqual(documentUrl);
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(parentUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/turtle' },
+            body: '<> a <http://xmlns.com/foaf/0.1/Person> .',
+        });
     });
 
     it('creates container documents', async () => {
         // Arrange
-        const name = Faker.random.word();
+        const label = Faker.random.word();
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const containerUrl = Url.resolveDirectory(parentUrl, Str.slug(name));
+        const containerUrl = Url.resolveDirectory(parentUrl, Str.slug(label));
 
-        StubFetcher.addFetchNotFoundResponse();
-        StubFetcher.addFetchResponse();
+        StubFetcher.addFetchResponse('', {}, 201);
 
         // Act
-        const document = await client.createDocument(
+        const url = await client.createDocument(
             parentUrl,
             containerUrl,
             [
-                RDFResourceProperty.literal(containerUrl, IRI('foaf:name'), name),
+                RDFResourceProperty.literal(containerUrl, IRI('rdfs:label'), label),
+                RDFResourceProperty.literal(containerUrl, IRI('purl:modified'), new Date()),
                 RDFResourceProperty.type(containerUrl, IRI('ldp:Container')),
             ],
         );
 
         // Assert
-        expect(document.url).toEqual(containerUrl);
-        expect(document.resource(containerUrl)!.url).toEqual(containerUrl);
-        expect(document.resource(containerUrl)!.name).toEqual(name);
-        expect(document.resource(containerUrl)!.types).toEqual([IRI('ldp:Container')]);
-
-        expect(StubFetcher.fetch).toHaveBeenCalledWith(
-            parentUrl,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'text/turtle',
-                    'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
-                    'Slug': Str.slug(name),
-                },
-                body: [
-                    `<> <http://xmlns.com/foaf/0.1/name> "${name}" .`,
-                    `<> a <http://www.w3.org/ns/ldp#Container> .`,
-                ].join('\n'),
+        expect(url).toEqual(containerUrl);
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(parentUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/turtle',
+                'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
+                'Slug': Str.slug(label),
             },
-        );
+            body: `<> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" .`,
+        });
     });
 
     it('creates container documents without a minted url', async () => {
@@ -162,10 +138,10 @@ describe('SolidClient', () => {
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const containerUrl = Url.resolveDirectory(parentUrl, Str.slug(name));
 
-        StubFetcher.addFetchResponse('', { Location: containerUrl });
+        StubFetcher.addFetchResponse('', { Location: containerUrl }, 201);
 
         // Act
-        const document = await client.createDocument(
+        const url = await client.createDocument(
             parentUrl,
             null,
             [
@@ -174,22 +150,15 @@ describe('SolidClient', () => {
         );
 
         // Assert
-        expect(document.url).toEqual(containerUrl);
-        expect(document.resource(containerUrl)!.url).toEqual(containerUrl);
-
-        expect(StubFetcher.fetch).toHaveBeenCalledWith(
-            parentUrl,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'text/turtle',
-                    'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
-                },
-                body: [
-                    `<> a <http://www.w3.org/ns/ldp#Container> .`,
-                ].join('\n'),
+        expect(url).toEqual(containerUrl);
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(parentUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/turtle',
+                'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
             },
-        );
+            body: '',
+        });
     });
 
     it('gets one document', async () => {
@@ -435,27 +404,27 @@ describe('SolidClient', () => {
 
     it('updates container documents', async () => {
         // Arrange
-        const documentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const metaDocumentName = '.' + Str.slug(Faker.random.word());
-        const metaDocumentUrl = documentUrl + metaDocumentName;
+        const metaDocumentUrl = containerUrl + metaDocumentName;
         const data = `
-            <${documentUrl}>
+            <${containerUrl}>
                 a <http://www.w3.org/ns/ldp#Container> ;
                 <http://xmlns.com/foaf/0.1/name> "Jonathan" ;
                 <http://xmlns.com/foaf/0.1/surname> "Doe" ;
                 <http://xmlns.com/foaf/0.1/givenName> "John" .
         `;
         const operations = [
-            new UpdatePropertyOperation(RDFResourceProperty.literal(documentUrl, 'http://xmlns.com/foaf/0.1/name', 'John Doe')),
-            new RemovePropertyOperation(documentUrl, 'http://xmlns.com/foaf/0.1/surname'),
-            new RemovePropertyOperation(documentUrl, 'http://xmlns.com/foaf/0.1/givenName'),
+            new UpdatePropertyOperation(RDFResourceProperty.literal(containerUrl, 'http://xmlns.com/foaf/0.1/name', 'John Doe')),
+            new RemovePropertyOperation(containerUrl, 'http://xmlns.com/foaf/0.1/surname'),
+            new RemovePropertyOperation(containerUrl, 'http://xmlns.com/foaf/0.1/givenName'),
         ];
 
         StubFetcher.addFetchResponse(data, { 'Link': `<${metaDocumentName}>; rel="describedBy"` });
         StubFetcher.addFetchResponse();
 
         // Act
-        await client.updateDocument(documentUrl, operations);
+        await client.updateDocument(containerUrl, operations);
 
         // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledWith(
@@ -474,11 +443,12 @@ describe('SolidClient', () => {
             <>
                 solid:patches <${metaDocumentUrl}> ;
                 solid:inserts {
-                    <${documentUrl}>
+                    <${containerUrl}>
                         <http://xmlns.com/foaf/0.1/name> "John Doe" .
                 } ;
                 solid:deletes {
-                    <${documentUrl}>
+                    <${containerUrl}>
+                        a <http://www.w3.org/ns/ldp#Container> ;
                         <http://xmlns.com/foaf/0.1/name> "Jonathan" ;
                         <http://xmlns.com/foaf/0.1/surname> "Doe" ;
                         <http://xmlns.com/foaf/0.1/givenName> "John" .
@@ -639,7 +609,9 @@ describe('SolidClient', () => {
         const resourceUrl = `${documentUrl}#it`;
         const data = `
             <${documentUrl}>
-                a <http://www.w3.org/ns/ldp#Container> .
+                a <http://www.w3.org/ns/ldp#Container>, <https://schema.org/Collection> ;
+                <http://www.w3.org/2000/01/rdf-schema#label> "Container name" ;
+                <http://purl.org/dc/terms/modified> "2020-03-08T14:33:09Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
             <${resourceUrl}>
                 <http://xmlns.com/foaf/0.1/name> "Jonathan" ;
                 <http://xmlns.com/foaf/0.1/surname> "Doe" ;
@@ -666,6 +638,9 @@ describe('SolidClient', () => {
             <>
                 solid:patches <${metaDocumentUrl}> ;
                 solid:deletes {
+                    <${documentUrl}>
+                        a <http://www.w3.org/ns/ldp#Container> ;
+                        <http://purl.org/dc/terms/modified> "2020-03-08T14:33:09Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
                     <${resourceUrl}>
                         <http://xmlns.com/foaf/0.1/name> "Jonathan" ;
                         <http://xmlns.com/foaf/0.1/surname> "Doe" ;

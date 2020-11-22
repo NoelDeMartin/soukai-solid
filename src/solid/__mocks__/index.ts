@@ -17,7 +17,7 @@ export class SolidClientMock {
         parentUrl: string,
         url: string | null = null,
         properties: RDFResourceProperty[] = [],
-    ): Promise<RDFDocument> {
+    ): Promise<string> {
         const turtleData = properties
             .map(property => property.toTurtle() + ' .')
             .join("\n");
@@ -32,7 +32,7 @@ export class SolidClientMock {
 
         this.documents[url] = [document];
 
-        return document;
+        return url;
     }
 
     public async getDocument(url: string): Promise<RDFDocument | null> {

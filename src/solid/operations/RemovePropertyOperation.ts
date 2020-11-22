@@ -4,6 +4,6 @@ export default class RemovePropertyOperation implements Operation {
 
     type: OperationType.RemoveProperty = OperationType.RemoveProperty;
 
-    constructor(public resourceUrl: string, public property?: string) {}
+    constructor(public resourceUrl: string, public property?: string, public value?: any) {}
 
 }

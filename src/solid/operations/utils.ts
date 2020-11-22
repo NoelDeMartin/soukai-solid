@@ -13,7 +13,7 @@ interface DecantedUpdateOperations {
     [OperationType.ChangeUrl]: ChangeUrlOperation[],
 }
 
-type DecantedUpdateOperationsData = [RDFResourceProperty[], [string, string?][]];
+type DecantedUpdateOperationsData = [RDFResourceProperty[], [string, string?, any?][]];
 
 export function decantUpdateOperations(operations: UpdateOperation[]): DecantedUpdateOperations {
     return operations.reduce(
@@ -38,7 +38,13 @@ export function decantUpdateOperationsData(operations: UpdateOperation[]): Decan
                     data[0].push(operation.property);
                     break;
                 case OperationType.RemoveProperty:
-                    data[1].push(Arr.filter([operation.resourceUrl, operation.property]) as [string, string?]);
+                    data[1].push(
+                        Arr.filter([
+                            operation.resourceUrl,
+                            operation.property,
+                            operation.value,
+                        ]) as [string, string?, any?],
+                    );
                     break;
             }
 

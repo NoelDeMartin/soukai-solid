@@ -141,7 +141,6 @@ export abstract class SolidContainerModel extends SolidModel {
     resourceUrls: string[];
     documents: SolidDocument[];
     relatedDocuments: MultiModelRelation<SolidContainerModel, SolidDocument, typeof SolidDocument>;
-    protected modificationDates: Date[] | null;
 
     public documentsRelationship(): MultiModelRelation;
 

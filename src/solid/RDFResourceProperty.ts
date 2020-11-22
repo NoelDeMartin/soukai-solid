@@ -81,6 +81,12 @@ abstract class RDFResourceProperty {
         return new RDFResourceTypeProperty(resourceUrl, type);
     }
 
+    public static toTurtle(properties: RDFResourceProperty[], documentUrl: string | null = null): string {
+        return properties
+            .map(property => property.toTurtle(documentUrl) + ' .')
+            .join('\n');
+    }
+
     protected constructor(resourceUrl: string | null, name: string, value: any) {
         this.resourceUrl = resourceUrl;
         this.name = name;

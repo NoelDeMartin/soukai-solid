@@ -1,7 +1,7 @@
 export type MapObject<T> = { [key: string] : T };
 
 type WithoutEmpty<T> = {
-    [k in keyof T]: T[k] extends undefined ? never : T[k];
+    [k in keyof T]: T[k] extends undefined | null ? never : T[k];
 }
 
 class Obj {

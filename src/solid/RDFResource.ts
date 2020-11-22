@@ -23,6 +23,10 @@ export default class RDFResource {
         return this.getPropertyValue(IRI('foaf:name')) as string | null;
     }
 
+    public get label(): string | null {
+        return this.getPropertyValue(IRI('rdfs:label')) as string | null;
+    }
+
     public isType(type: string): boolean {
         return this.types.indexOf(IRI(type)) !== -1;
     }
