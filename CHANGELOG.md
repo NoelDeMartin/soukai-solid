@@ -4,6 +4,21 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.4.0](https://github.com/NoelDeMartin/soukai-solid/releases/tag/v0.4.0) - 2020-11-27
+
+### Added
+
+- Improved error handling with new `MalformedDocumentError` and `NetworkError` classes.
+- `SolidEngine` now exposes metadata of the documents it reads through `SolidEngineListener`.
+- Added `usingSameDocument` method in `SolidHasManyRelation`.
+- Exposed model document info through `getDocumentUrl`, `getSourceDocumentUrl`, etc.
+
+### Changed
+
+- `soukai` dependency has been updated to 0.4.0.
+- Refactored the way to store multiple models in a single document. [Read the docs](https://github.com/NoelDeMartin/soukai-solid/tree/v0.4.0#hasmany).
+- Improved some internal interactions with the Solid server to use best practices (use describedBy header for containers, remove reserved container properties, and create documents with relative urls instead of absolute).
+
 ## [v0.3.0](https://github.com/NoelDeMartin/soukai-solid/releases/tag/v0.3.0) - 2020-07-17
 
 ### Added
