@@ -1,4 +1,4 @@
-import { TurtleParsingOptions } from '@/solid/utils/RDF';
+import '';
 
 declare global {
 
@@ -6,7 +6,7 @@ declare global {
 
         interface Matchers<R> {
             toEqualJsonLD(jsonld: object): R;
-            toEqualTurtle(turtle: string, options?: TurtleParsingOptions): R;
+            toEqualSPARQL(sparql: string): R;
         }
 
     }

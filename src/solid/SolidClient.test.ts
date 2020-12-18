@@ -54,7 +54,7 @@ describe('SolidClient', () => {
         expect(StubFetcher.fetch).toHaveBeenCalledWith(documentUrl, {
             method: 'PATCH',
             headers: {
-                'Content-Type': 'text/n3',
+                'Content-Type': 'application/sparql-update',
                 'If-None-Match': '*',
             },
             body: expect.anything(),
@@ -62,18 +62,15 @@ describe('SolidClient', () => {
 
         const body = (StubFetcher.fetch as any).mock.calls[0][1].body;
 
-        await expect(body).toEqualTurtle(`
-            @prefix solid: <http://www.w3.org/ns/solid/terms#> .
-            <>
-                solid:patches <${documentUrl}> ;
-                solid:inserts {
-                    <${documentUrl}> a <http://www.w3.org/ns/ldp#Document> .
-                    <${documentUrl}#it> <http://xmlns.com/foaf/0.1/name> "${name}" .
-                    <${documentUrl}#it> a <${firstType}> .
-                    <${documentUrl}#it> a <${secondType}> .
-                    <${documentUrl}#someone-else> <http://xmlns.com/foaf/0.1/knows> <${documentUrl}#it> .
-                } .
-        `, { format: 'text/n3' });
+        await expect(body).toEqualSPARQL(`
+            INSERT DATA {
+                <> a <http://www.w3.org/ns/ldp#Document> .
+                <#it> <http://xmlns.com/foaf/0.1/name> "${name}" .
+                <#it> a <${firstType}> .
+                <#it> a <${secondType}> .
+                <#someone-else> <http://xmlns.com/foaf/0.1/knows> <#it> .
+            }
+        `);
     });
 
     it('creates documents without minted url', async () => {
@@ -136,7 +133,7 @@ describe('SolidClient', () => {
     it('creates container documents without a minted url', async () => {
         // Arrange
         const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const containerUrl = Url.resolveDirectory(parentUrl, Str.slug(name));
+        const containerUrl = Url.resolveDirectory(parentUrl, Str.slug(Faker.random.word()));
 
         StubFetcher.addFetchResponse('', { Location: containerUrl }, 201);
 
@@ -381,25 +378,23 @@ describe('SolidClient', () => {
             documentUrl,
             {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'text/n3' },
+                headers: { 'Content-Type': 'application/sparql-update' },
                 body: expect.anything(),
             }
         );
 
         const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
 
-        await expect(body).toEqualTurtle(`
-            @prefix solid: <http://www.w3.org/ns/solid/terms#> .
-            <> solid:patches <${documentUrl}> ;
-                solid:inserts {
-                    <${url}> <http://xmlns.com/foaf/0.1/name> "John Doe" .
-                } ;
-                solid:deletes {
-                    <${url}> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
-                    <${url}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
-                    <${url}> <http://xmlns.com/foaf/0.1/givenName> "John" .
-                } .
-        `, { format: 'text/n3' });
+        await expect(body).toEqualSPARQL(`
+            DELETE DATA {
+                <#it> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
+                <#it> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                <#it> <http://xmlns.com/foaf/0.1/givenName> "John" .
+            } ;
+            INSERT DATA {
+                <#it> <http://xmlns.com/foaf/0.1/name> "John Doe" .
+            }
+        `);
     });
 
     it('updates container documents', async () => {
@@ -431,29 +426,24 @@ describe('SolidClient', () => {
             metaDocumentUrl,
             {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'text/n3' },
+                headers: { 'Content-Type': 'application/sparql-update' },
                 body: expect.anything(),
             }
         );
 
         const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
 
-        await expect(body).toEqualTurtle(`
-            @prefix solid: <http://www.w3.org/ns/solid/terms#> .
-            <>
-                solid:patches <${metaDocumentUrl}> ;
-                solid:inserts {
-                    <${containerUrl}>
-                        <http://xmlns.com/foaf/0.1/name> "John Doe" .
-                } ;
-                solid:deletes {
-                    <${containerUrl}>
-                        a <http://www.w3.org/ns/ldp#Container> ;
-                        <http://xmlns.com/foaf/0.1/name> "Jonathan" ;
-                        <http://xmlns.com/foaf/0.1/surname> "Doe" ;
-                        <http://xmlns.com/foaf/0.1/givenName> "John" .
-                } .
-        `, { format: 'text/n3' });
+        await expect(body).toEqualSPARQL(`
+            DELETE DATA {
+                <${containerUrl}> a <http://www.w3.org/ns/ldp#Container> .
+                <${containerUrl}> <http://xmlns.com/foaf/0.1/name> "Jonathan" .
+                <${containerUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                <${containerUrl}> <http://xmlns.com/foaf/0.1/givenName> "John" .
+            } ;
+            INSERT DATA {
+                <${containerUrl}> <http://xmlns.com/foaf/0.1/name> "John Doe" .
+            }
+        `);
     });
 
     it('changes resource urls', async () => {
@@ -495,34 +485,31 @@ describe('SolidClient', () => {
             documentUrl,
             {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'text/n3' },
+                headers: { 'Content-Type': 'application/sparql-update' },
                 body: expect.anything(),
             }
         );
 
         const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
 
-        await expect(body).toEqualTurtle(`
-            @prefix solid: <http://www.w3.org/ns/solid/terms#> .
-            <>
-                solid:patches <${documentUrl}> ;
-                solid:inserts {
-                    <${newSecondResourceUrl}> <http://xmlns.com/foaf/0.1/knows> <${newFirstResourceUrl}> .
-                    <${newFirstResourceUrl}> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
-                    <${newFirstResourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
-                    <${newFirstResourceUrl}> <http://xmlns.com/foaf/0.1/givenName> "John" .
-                    <${newSecondResourceUrl}> <http://xmlns.com/foaf/0.1/name> "Amy" .
-                    <${newSecondResourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
-                } ;
-                solid:deletes {
-                    <${firstResourceUrl}> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
-                    <${firstResourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
-                    <${firstResourceUrl}> <http://xmlns.com/foaf/0.1/givenName> "John" .
-                    <${secondResourceUrl}> <http://xmlns.com/foaf/0.1/name> "Amy" .
-                    <${secondResourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
-                    <${secondResourceUrl}> <http://xmlns.com/foaf/0.1/knows> <${firstResourceUrl}> .
-                } .
-        `, { format: 'text/n3' });
+        await expect(body).toEqualSPARQL(`
+            DELETE DATA {
+                <${firstResourceUrl}> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
+                <${firstResourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                <${firstResourceUrl}> <http://xmlns.com/foaf/0.1/givenName> "John" .
+                <${secondResourceUrl}> <http://xmlns.com/foaf/0.1/name> "Amy" .
+                <${secondResourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                <${secondResourceUrl}> <http://xmlns.com/foaf/0.1/knows> <${firstResourceUrl}> .
+            } ;
+            INSERT DATA {
+                <#someone-else> <http://xmlns.com/foaf/0.1/knows> <#it> .
+                <#it> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
+                <#it> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                <#it> <http://xmlns.com/foaf/0.1/givenName> "John" .
+                <#someone-else> <http://xmlns.com/foaf/0.1/name> "Amy" .
+                <#someone-else> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+            }
+        `);
     });
 
     it('adds new properties when updating', async () => {
@@ -544,20 +531,18 @@ describe('SolidClient', () => {
             url,
             {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'text/n3' },
+                headers: { 'Content-Type': 'application/sparql-update' },
                 body: expect.anything(),
             }
         );
 
         const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
 
-        await expect(body).toEqualTurtle(`
-            @prefix solid: <http://www.w3.org/ns/solid/terms#> .
-            <> solid:patches <${url}> ;
-                solid:inserts {
-                    <${url}> <http://xmlns.com/foaf/0.1/name> "John Doe" .
-                } .
-        `, { format: 'text/n3' });
+        await expect(body).toEqualSPARQL(`
+            INSERT DATA {
+                <> <http://xmlns.com/foaf/0.1/name> "John Doe" .
+            }
+        `);
     });
 
     it('deletes all properties from a resource within a document', async () => {
@@ -584,22 +569,20 @@ describe('SolidClient', () => {
             documentUrl,
             {
                 method: 'PATCH',
-                headers: { 'Content-Type': 'text/n3' },
+                headers: { 'Content-Type': 'application/sparql-update' },
                 body: expect.anything(),
             }
         );
 
         const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
 
-        await expect(body).toEqualTurtle(`
-            @prefix solid: <http://www.w3.org/ns/solid/terms#> .
-            <> solid:patches <${documentUrl}> ;
-                solid:deletes {
-                    <${url}> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
-                    <${url}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
-                    <${url}> <http://xmlns.com/foaf/0.1/givenName> "John" .
-                } .
-        `, { format: 'text/n3' });
+        await expect(body).toEqualSPARQL(`
+            DELETE DATA {
+                <#it> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
+                <#it> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                <#it> <http://xmlns.com/foaf/0.1/givenName> "John" .
+            }
+        `);
     });
 
     it('deletes all properties from a resource within a container document', async () => {
@@ -627,26 +610,21 @@ describe('SolidClient', () => {
         // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledWith(metaDocumentUrl, {
             method: 'PATCH',
-            headers: { 'Content-Type': 'text/n3' },
+            headers: { 'Content-Type': 'application/sparql-update' },
             body: expect.anything(),
         });
 
         const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
 
-        await expect(body).toEqualTurtle(`
-            @prefix solid: <http://www.w3.org/ns/solid/terms#> .
-            <>
-                solid:patches <${metaDocumentUrl}> ;
-                solid:deletes {
-                    <${documentUrl}>
-                        a <http://www.w3.org/ns/ldp#Container> ;
-                        <http://purl.org/dc/terms/modified> "2020-03-08T14:33:09Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
-                    <${resourceUrl}>
-                        <http://xmlns.com/foaf/0.1/name> "Jonathan" ;
-                        <http://xmlns.com/foaf/0.1/surname> "Doe" ;
-                        <http://xmlns.com/foaf/0.1/givenName> "John" .
-                } .
-        `, { format: 'text/n3' });
+        await expect(body).toEqualSPARQL(`
+            DELETE DATA {
+                <${documentUrl}> a <http://www.w3.org/ns/ldp#Container> .
+                <${documentUrl}> <http://purl.org/dc/terms/modified> "2020-03-08T14:33:09Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+                <${resourceUrl}> <http://xmlns.com/foaf/0.1/name> "Jonathan" .
+                <${resourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                <${resourceUrl}> <http://xmlns.com/foaf/0.1/givenName> "John" .
+            }
+        `);
     });
 
     it('fails updating non-existent documents', async () => {

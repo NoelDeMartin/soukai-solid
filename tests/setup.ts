@@ -39,20 +39,15 @@ expect.extend({
         };
     },
 
-    async toEqualTurtle(received, expected, options) {
+    async toEqualSPARQL(received, expected) {
         const diff = require('jest-diff');
-        const stringifyDocument =
-            (document) => document.properties.map(p => p.toTurtle()).join('\n');
-
-        const documents = await Promise.all([
-            RDF.parseTurtle(received, options),
-            RDF.parseTurtle(expected, options),
-        ]);
-        const [normalizedReceived, normalizedExpected] = documents.map(stringifyDocument);
+        const normalizeQuery = (query: string) => query.trim().replace(/\s+/g, ' ');
+        const normalizedReceived = normalizeQuery(received);
+        const normalizedExpected = normalizeQuery(expected);
         const pass = normalizedReceived === normalizedExpected;
         const message = pass
             ? () =>
-                this.utils.matcherHint('toEqualTurtle') +
+                this.utils.matcherHint('toEqualSPARQL') +
                     '\n\n' +
                     `Expected: not ${this.utils.printExpected(normalizedExpected)}\n` +
                     `Received: ${this.utils.printReceived(normalizedReceived)}`
@@ -61,7 +56,7 @@ expect.extend({
                     expand: this.expand,
                 });
                 return (
-                    this.utils.matcherHint('toEqualTurtle') +
+                    this.utils.matcherHint('toEqualSPARQL') +
                     '\n\n' +
                     (diffString && diffString.includes('- Expect')
                     ? `Difference:\n\n${diffString}`
@@ -71,7 +66,7 @@ expect.extend({
             };
 
         return {
-            actual: normalizedReceived,
+            actual: received,
             message,
             pass,
         };

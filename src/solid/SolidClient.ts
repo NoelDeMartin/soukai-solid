@@ -198,7 +198,7 @@ export default class SolidClient {
             },
         );
 
-        this.assertSuccessfulResponse(response, `Error creating container ${containerLocation}`, 201);
+        this.assertSuccessfulResponse(response, `Error creating container ${containerLocation}`);
 
         return url || Url.resolve(parentUrl, response.headers.get('Location') || '');
     }
@@ -215,7 +215,7 @@ export default class SolidClient {
                 body: RDFResourceProperty.toTurtle(properties, url),
             });
 
-            this.assertSuccessfulResponse(response, `Error creating document under ${parentUrl}`, 201);
+            this.assertSuccessfulResponse(response, `Error creating document under ${parentUrl}`);
 
             return Url.resolve(parentUrl, response.headers.get('Location') || '');
         }
@@ -225,16 +225,11 @@ export default class SolidClient {
 
         const response = await this.fetch(url, {
             method: 'PATCH',
-            body: `
-                @prefix solid: <http://www.w3.org/ns/solid/terms#> .
-                <>
-                    solid:patches <${url}> ;
-                    solid:inserts { ${RDFResourceProperty.toTurtle(properties)} } .
-            `,
             headers: {
-                'Content-Type': 'text/n3',
+                'Content-Type': 'application/sparql-update',
                 'If-None-Match': '*',
             },
+            body: `INSERT DATA { ${RDFResourceProperty.toTurtle(properties, url)} }`,
         });
 
         this.assertSuccessfulResponse(response, `Error creating document at ${url}`);
@@ -303,8 +298,7 @@ export default class SolidClient {
 
     private async updateNonContainerDocument(document: RDFDocument, operations: UpdateOperation[]): Promise<void> {
         const [updatedProperties, removedProperties] = decantUpdateOperationsData(operations);
-
-        const inserts = RDFResourceProperty.toTurtle(updatedProperties);
+        const inserts = RDFResourceProperty.toTurtle(updatedProperties, document.url);
         const deletes = RDFResourceProperty.toTurtle(
             document.properties.filter(
                 property =>
@@ -314,20 +308,16 @@ export default class SolidClient {
                             (!value || value === property.value),
                     )
                 ),
+                document.url,
         );
-        const solidOperations = Arr.filter([
-            `solid:patches <${document.url}>`,
-            inserts.length > 0 && `solid:inserts { ${inserts} }`,
-            deletes.length > 0 && `solid:deletes { ${deletes} }`,
-        ]).join(';');
 
         const response = await this.fetch(document.url, {
             method: 'PATCH',
-            body: `
-                @prefix solid: <http://www.w3.org/ns/solid/terms#> .
-                <> ${solidOperations} .
-            `,
-            headers: { 'Content-Type': 'text/n3' },
+            headers: { 'Content-Type': 'application/sparql-update' },
+            body: Arr.filter([
+                deletes.length > 0 && `DELETE DATA { ${deletes} }`,
+                inserts.length > 0 && `INSERT DATA { ${inserts} }`,
+            ]).join(' ; '),
         });
 
         this.assertSuccessfulResponse(response, `Error updating document at ${document.url}`);
@@ -396,8 +386,8 @@ export default class SolidClient {
         }
     }
 
-    private assertSuccessfulResponse(response: Response, errorMessage: string, successStatus: number = 200): void {
-        if (response.status === successStatus)
+    private assertSuccessfulResponse(response: Response, errorMessage: string): void {
+        if (Math.floor(response.status / 100) === 2)
             return;
 
         throw new SoukaiError(`${errorMessage}, returned ${response.status} status code`);
