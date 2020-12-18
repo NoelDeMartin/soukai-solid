@@ -7,6 +7,8 @@ import NetworkError from '@/errors/NetworkError';
 
 import SolidEngine from '@/engines/SolidEngine';
 
+import { RequestOptions } from '@/solid/SolidClient';
+
 import SoukaiSolid from './SoukaiSolid';
 
 export {
@@ -17,6 +19,7 @@ export {
     SolidDocument,
     SolidEngine,
     SolidModel,
+    RequestOptions,
 };
 
 export default SoukaiSolid;

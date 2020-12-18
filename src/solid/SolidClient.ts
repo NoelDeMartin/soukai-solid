@@ -17,7 +17,7 @@ import Arr from '@/utils/Arr';
 import Obj from '@/utils/Obj';
 import Url from '@/utils/Url';
 
-interface RequestOptions {
+export interface RequestOptions {
     headers?: object;
     method?: string;
     body?: string;

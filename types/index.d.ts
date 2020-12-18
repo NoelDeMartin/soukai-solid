@@ -148,7 +148,7 @@ export abstract class SolidContainerModel extends SolidModel {
 
 }
 
-interface RequestOptions {
+export interface RequestOptions {
     headers?: object;
     method?: string;
     body?: string;
