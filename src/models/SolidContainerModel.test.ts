@@ -190,4 +190,47 @@ describe('SolidContainerModel', () => {
         );
     });
 
+    it('mints unique urls when urls are already in use', async () => {
+        class StubModel extends SolidContainerModel {
+            public static rdfContexts = {
+                'foaf': 'http://xmlns.com/foaf/0.1/',
+            };
+
+            public static fields = {
+                name: FieldType.String,
+            };
+        }
+
+        const name = Faker.random.word();
+        const slug = Str.slug(name);
+        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const escapedContainerUrl = containerUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const resourceUrl = Url.resolveDirectory(containerUrl, slug);
+
+        engine.setOne({ url: resourceUrl });
+
+        jest.spyOn(engine, 'create');
+
+        Soukai.loadModels({ StubModel });
+
+        // Act
+        const model = await StubModel.at(containerUrl).create({ name });
+
+        // Assert
+        expect(typeof model.url).toEqual('string');
+        expect(model.url).not.toEqual(resourceUrl);
+        expect(model.url).toMatch(new RegExp(`^${escapedContainerUrl}${slug}-[\\d\\w-]+\/$`));
+
+        expect(engine.create).toHaveBeenCalledWith(
+            containerUrl,
+            expect.anything(),
+            resourceUrl,
+        );
+        expect(engine.create).toHaveBeenCalledWith(
+            containerUrl,
+            expect.anything(),
+            model.url,
+        );
+    });
+
 });

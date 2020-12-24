@@ -218,7 +218,7 @@ abstract class SolidModel extends Model {
                 if (!(error instanceof DocumentAlreadyExists))
                     throw error;
 
-                this.url += '-' + UUID.generate();
+                this.url = this.newUniqueUrl(this.url);
 
                 await super.save();
             }
@@ -476,6 +476,14 @@ abstract class SolidModel extends Model {
         resourceHash = resourceHash ?? this.modelClass.defaultResourceHash;
 
         return `${documentUrl}#${resourceHash}`;
+    }
+
+    protected newUniqueUrl(url?: string): string {
+        url = url ?? this.newUrl();
+
+        const uuid = UUID.generate();
+
+        return `${url}-${uuid}`;
     }
 
     protected guessCollection(): string | undefined {

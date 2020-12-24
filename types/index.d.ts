@@ -130,6 +130,8 @@ export abstract class SolidModel extends Model {
 
     protected newUrl(documentUrl?: string, resourceHash?: string): string;
 
+    protected newUniqueUrl(url?: string): string;
+
     protected guessCollection(): string | undefined;
 
 }

@@ -409,11 +409,12 @@ describe('SolidModel', () => {
         );
     });
 
-    it('adds url prefixes when urls are already in use', async () => {
+    it('mints unique urls when urls are already in use', async () => {
         class StubModel extends SolidModel {
         }
 
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const escapedContainerUrl = containerUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const resourceUrl = Url.resolve(containerUrl, Faker.random.word());
 
         engine.setOne({ url: resourceUrl });
@@ -428,6 +429,7 @@ describe('SolidModel', () => {
 
         expect(typeof model.url).toEqual('string');
         expect(model.url).not.toEqual(resourceUrl);
+        expect(model.url).toMatch(new RegExp(`^${escapedContainerUrl}[\\d\\w-]+$`))
         expect(model.url.startsWith(containerUrl)).toBe(true);
 
         expect(engine.create).toHaveBeenCalledWith(

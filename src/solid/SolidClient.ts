@@ -189,7 +189,7 @@ export default class SolidClient {
                 headers: Obj.withoutEmpty({
                     'Content-Type': 'text/turtle',
                     'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
-                    'Slug': url ? Url.filename(url.substr(0, url.length - 1)) : null,
+                    'Slug': url ? Url.parentDirectory(url) : null,
                 }),
                 body: RDFResourceProperty.toTurtle(
                     this.withoutReservedContainerProperties(url, properties),

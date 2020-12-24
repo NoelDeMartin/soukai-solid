@@ -54,10 +54,18 @@ class Url {
         return pathIndex !== -1 ? url.substr(0, pathIndex + 1) : url;
     }
 
-    public filename(url: string): string {
+    public fileName(url: string): string {
         const pathIndex = url.lastIndexOf('/');
 
         return pathIndex !== -1 ? url.substr(pathIndex + 1) : '';
+    }
+
+    public directoryName(url: string): string {
+        if (!url.endsWith('/')) {
+            url = this.parentDirectory(url);
+        }
+
+        return this.fileName(url.slice(0, -1));
     }
 
     public parse(url: string): UrlParts | null {

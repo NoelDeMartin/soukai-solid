@@ -49,4 +49,13 @@ export default abstract class SolidContainerModel extends SolidModel {
         return Url.resolveDirectory(this.modelClass.collection, slug);
     }
 
+    protected newUniqueUrl(url?: string): string {
+        url = url ?? this.newUrl();
+
+        const uuid = UUID.generate();
+        const directoryName = Url.directoryName(url);
+
+        return Url.resolveDirectory(Url.parentDirectory(url), `${directoryName}-${uuid}`);
+    }
+
 }

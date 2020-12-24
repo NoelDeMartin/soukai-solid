@@ -60,6 +60,11 @@ describe('Url helper', () => {
         });
     });
 
+    it('gets directory names', () => {
+        expect(Url.directoryName('https://example.com/path/to/directory/')).toEqual('directory');
+        expect(Url.directoryName('https://example.com/path/to/directory/file')).toEqual('directory');
+    });
+
     it ('cleans parts', () => {
         expect(
             Url.clean(
