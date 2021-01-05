@@ -23,7 +23,7 @@ This library allows you to store and read data from a [Solid POD](https://solidp
 There are two extensions to the core Soukai library, a Solid engine and a some Solid models (with their respective relationships). To get started, you can install both packages as npm dependencies:
 
 ```sh
-npm install soukai soukai-solid --save
+npm install soukai soukai-solid
 ```
 
 Managing the authentication is outside the scope of this package, so you'll need to provide a fetch method to perform network requests (if you want to learn more about authentication, you can check out this repository: [noeldemartin/ramen](https://github.com/noeldemartin/ramen)). In this example, we will use [solid-auth-client](https://github.com/solid/solid-auth-client).
