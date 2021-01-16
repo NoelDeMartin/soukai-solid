@@ -17,12 +17,6 @@ import Arr from '@/utils/Arr';
 import Obj from '@/utils/Obj';
 import Url from '@/utils/Url';
 
-export interface RequestOptions {
-    headers?: object;
-    method?: string;
-    body?: string;
-}
-
 const RESERVED_CONTAINER_PROPERTIES = [
     IRI('ldp:contains'),
     IRI('posix:mtime'),
@@ -35,19 +29,21 @@ const RESERVED_CONTAINER_TYPES = [
     IRI('ldp:BasicContainer'),
 ];
 
-export type Fetch = (url: string, options?: RequestOptions) => Promise<Response>;
+export type Fetch = (input: RequestInfo, options?: RequestInit) => Promise<Response>;
 
 export default class SolidClient {
 
     private fetch: Fetch;
 
     constructor(fetch: Fetch) {
-        this.fetch = async (url, options) => {
+        this.fetch = async (input, options) => {
             try {
-                const response = await fetch(url, options);
+                const response = await fetch(input, options);
 
                 return response;
             } catch (error) {
+                const url = typeof input === 'object' ? input.url : input;
+
                 throw new NetworkError(`Error fetching ${url}`, error);
             }
         };
@@ -190,7 +186,7 @@ export default class SolidClient {
                     'Content-Type': 'text/turtle',
                     'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                     'Slug': url ? Url.directoryName(url) : null,
-                }),
+                }) as Record<string, string>,
                 body: RDFResourceProperty.toTurtle(
                     this.withoutReservedContainerProperties(url, properties),
                     url,
