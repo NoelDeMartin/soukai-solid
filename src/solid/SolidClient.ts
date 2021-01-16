@@ -229,7 +229,7 @@ export default class SolidClient {
                 'Content-Type': 'application/sparql-update',
                 'If-None-Match': '*',
             },
-            body: `INSERT DATA { ${RDFResourceProperty.toTurtle(properties)} }`,
+            body: `INSERT DATA { ${RDFResourceProperty.toTurtle(properties, url)} }`,
         });
 
         this.assertSuccessfulResponse(response, `Error creating document at ${url}`);
@@ -298,17 +298,17 @@ export default class SolidClient {
 
     private async updateNonContainerDocument(document: RDFDocument, operations: UpdateOperation[]): Promise<void> {
         const [updatedProperties, removedProperties] = decantUpdateOperationsData(operations);
-        const inserts = RDFResourceProperty.toTurtle(updatedProperties);
+        const inserts = RDFResourceProperty.toTurtle(updatedProperties, document.url);
         const deletes = RDFResourceProperty.toTurtle(
             document.properties.filter(
                 property =>
-                    removedProperties.some(
-                        ([resourceUrl, name, value]) =>
+                    removedProperties.some(([resourceUrl, name, value]) =>
                             resourceUrl === property.resourceUrl &&
                             (!name || name === property.name) &&
                             (!value || value === property.value),
-                    ),
-            ),
+                    )
+                ),
+                document.url,
         );
 
         const response = await this.fetch(document.url, {

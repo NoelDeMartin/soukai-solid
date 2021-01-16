@@ -64,11 +64,11 @@ describe('SolidClient', () => {
 
         await expect(body).toEqualSPARQL(`
             INSERT DATA {
-                <${documentUrl}> a <http://www.w3.org/ns/ldp#Document> .
-                <${documentUrl}#it> <http://xmlns.com/foaf/0.1/name> "${name}" .
-                <${documentUrl}#it> a <${firstType}> .
-                <${documentUrl}#it> a <${secondType}> .
-                <${documentUrl}#someone-else> <http://xmlns.com/foaf/0.1/knows> <${documentUrl}#it> .
+                <> a <http://www.w3.org/ns/ldp#Document> .
+                <#it> <http://xmlns.com/foaf/0.1/name> "${name}" .
+                <#it> a <${firstType}> .
+                <#it> a <${secondType}> .
+                <#someone-else> <http://xmlns.com/foaf/0.1/knows> <#it> .
             }
         `);
     });
@@ -387,12 +387,12 @@ describe('SolidClient', () => {
 
         await expect(body).toEqualSPARQL(`
             DELETE DATA {
-                <${documentUrl}#it> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
-                <${documentUrl}#it> <http://xmlns.com/foaf/0.1/surname> "Doe" .
-                <${documentUrl}#it> <http://xmlns.com/foaf/0.1/givenName> "John" .
+                <#it> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
+                <#it> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                <#it> <http://xmlns.com/foaf/0.1/givenName> "John" .
             } ;
             INSERT DATA {
-                <${documentUrl}#it> <http://xmlns.com/foaf/0.1/name> "John Doe" .
+                <#it> <http://xmlns.com/foaf/0.1/name> "John Doe" .
             }
         `);
     });
@@ -502,12 +502,12 @@ describe('SolidClient', () => {
                 <${secondResourceUrl}> <http://xmlns.com/foaf/0.1/knows> <${firstResourceUrl}> .
             } ;
             INSERT DATA {
-                <${documentUrl}#someone-else> <http://xmlns.com/foaf/0.1/knows> <${documentUrl}#it> .
-                <${documentUrl}#it> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
-                <${documentUrl}#it> <http://xmlns.com/foaf/0.1/surname> "Doe" .
-                <${documentUrl}#it> <http://xmlns.com/foaf/0.1/givenName> "John" .
-                <${documentUrl}#someone-else> <http://xmlns.com/foaf/0.1/name> "Amy" .
-                <${documentUrl}#someone-else> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                <#someone-else> <http://xmlns.com/foaf/0.1/knows> <#it> .
+                <#it> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
+                <#it> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                <#it> <http://xmlns.com/foaf/0.1/givenName> "John" .
+                <#someone-else> <http://xmlns.com/foaf/0.1/name> "Amy" .
+                <#someone-else> <http://xmlns.com/foaf/0.1/surname> "Doe" .
             }
         `);
     });
@@ -540,7 +540,7 @@ describe('SolidClient', () => {
 
         await expect(body).toEqualSPARQL(`
             INSERT DATA {
-                <${url}> <http://xmlns.com/foaf/0.1/name> "John Doe" .
+                <> <http://xmlns.com/foaf/0.1/name> "John Doe" .
             }
         `);
     });
@@ -578,9 +578,9 @@ describe('SolidClient', () => {
 
         await expect(body).toEqualSPARQL(`
             DELETE DATA {
-                <${documentUrl}#it> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
-                <${documentUrl}#it> <http://xmlns.com/foaf/0.1/surname> "Doe" .
-                <${documentUrl}#it> <http://xmlns.com/foaf/0.1/givenName> "John" .
+                <#it> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
+                <#it> <http://xmlns.com/foaf/0.1/surname> "Doe" .
+                <#it> <http://xmlns.com/foaf/0.1/givenName> "John" .
             }
         `);
     });
