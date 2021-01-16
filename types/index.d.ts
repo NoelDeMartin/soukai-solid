@@ -150,13 +150,7 @@ export abstract class SolidContainerModel extends SolidModel {
 
 }
 
-export interface RequestOptions {
-    headers?: object;
-    method?: string;
-    body?: string;
-}
-
-export type Fetch = (url: string, options?: RequestOptions) => Promise<Response>;
+export type Fetch = (input: RequestInfo, options?: RequestInit) => Promise<Response>;
 
 export interface SolidEngineConfig {
     globbingBatchSize: number | null;
