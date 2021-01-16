@@ -415,7 +415,7 @@ describe('SolidModel', () => {
 
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const escapedContainerUrl = containerUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const resourceUrl = Url.resolve(containerUrl, Faker.random.word());
+        const resourceUrl = Url.resolve(containerUrl, Str.slug(Faker.random.word()));
 
         engine.setOne({ url: resourceUrl });
 
