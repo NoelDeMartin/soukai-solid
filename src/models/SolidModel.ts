@@ -179,10 +179,10 @@ abstract class SolidModel extends Model {
         return model;
     }
 
-    protected static withCollection<Result>(
-        collection: string | undefined | (() => Result) = '',
-        operation?: () => Result,
-    ): Result {
+    protected static async withCollection<Result>(
+        collection: string | undefined | (() => Result | Promise<Result>) = '',
+        operation?: () => Result | Promise<Result>,
+    ): Promise<Result> {
         const oldCollection = this.collection;
 
         if (typeof collection !== 'string') {
@@ -195,7 +195,7 @@ abstract class SolidModel extends Model {
 
         this.collection = collection || oldCollection;
 
-        const result = operation();
+        const result = await operation();
 
         this.collection = oldCollection;
 

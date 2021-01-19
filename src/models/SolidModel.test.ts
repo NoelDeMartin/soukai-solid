@@ -410,6 +410,7 @@ describe('SolidModel', () => {
     });
 
     it('mints unique urls when urls are already in use', async () => {
+        // Arrange
         class StubModel extends SolidModel {
         }
 
@@ -418,15 +419,16 @@ describe('SolidModel', () => {
         const resourceUrl = Url.resolve(containerUrl, Str.slug(Faker.random.word()));
 
         engine.setOne({ url: resourceUrl });
-
         jest.spyOn(engine, 'create');
 
         Soukai.loadModels({ StubModel });
 
-        const model = await StubModel.at(containerUrl).create({
-            url: resourceUrl,
-        });
+        // Act
+        const model = new StubModel({ url: resourceUrl });
 
+        await model.save(containerUrl);
+
+        // Assert
         expect(typeof model.url).toEqual('string');
         expect(model.url).not.toEqual(resourceUrl);
         expect(model.url).toMatch(new RegExp(`^${escapedContainerUrl}[\\d\\w-]+$`))
