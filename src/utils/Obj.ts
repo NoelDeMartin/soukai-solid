@@ -1,8 +1,36 @@
 export type MapObject<T> = { [key: string] : T };
 
-type WithoutEmpty<T> = {
-    [k in keyof T]: T[k] extends undefined | null ? never : T[k];
-}
+type Equal<X, Y> = (<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2) ? true : false;
+type ValueWithoutEmpty<T> = T extends null ? never : T;
+type ReplaceEmpty<T> = { [K in keyof T]: ValueWithoutEmpty<T[K]> };
+type GetRequiredKeysWithoutEmpty<T, U extends Record<keyof T, unknown> = ReplaceEmpty<T>> = {
+    [K in keyof T]:
+        {} extends Pick<T, K>
+            ? never
+            : (
+                U[K] extends never
+                    ? never
+                    : (Equal<T[K], U[K]> extends true ? K : never)
+            )
+}[keyof T];
+type GetOptionalKeysWithoutEmpty<T, U extends Record<keyof T, unknown> = ReplaceEmpty<T>> = {
+    [K in keyof T]:
+        {} extends Pick<T, K>
+            ? K
+            : (
+                U[K] extends never
+                ? never
+                : (Equal<T[K], U[K]> extends true ? never : K)
+            )
+}[keyof T];
+
+// Given an existing bug in TypeScript, it's not possible to define optional keys using type generics without having
+// them defined as `| undefined` as well. Until that is fixed, this may cause some problems for keys that can have
+// empty values but not always do.
+// See https://github.com/microsoft/TypeScript/issues/13195
+type ObjectWithoutEmpty<T> =
+    { [K in GetRequiredKeysWithoutEmpty<T>]: ValueWithoutEmpty<T[K]> } &
+    { [K in GetOptionalKeysWithoutEmpty<T>]?: ValueWithoutEmpty<T[K]> }
 
 class Obj {
 
@@ -46,7 +74,7 @@ class Obj {
         return true;
     }
 
-    withoutEmpty<T>(obj: T): WithoutEmpty<T> {
+    withoutEmpty<T>(obj: T): ObjectWithoutEmpty<T> {
         const cleanObj = {};
 
         for (const [key, value] of Object.entries(obj)) {
@@ -56,7 +84,7 @@ class Obj {
             cleanObj[key] = value;
         }
 
-        return cleanObj as WithoutEmpty<T>;
+        return cleanObj as ObjectWithoutEmpty<T>;
     }
 
 }
