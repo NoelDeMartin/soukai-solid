@@ -1,7 +1,7 @@
 export type MapObject<T> = { [key: string] : T };
 
 type Equal<X, Y> = (<T>() => T extends X ? 1 : 2) extends (<T>() => T extends Y ? 1 : 2) ? true : false;
-type ValueWithoutEmpty<T> = T extends null ? never : T;
+type ValueWithoutEmpty<T> = T extends null | undefined ? never : T;
 type ReplaceEmpty<T> = { [K in keyof T]: ValueWithoutEmpty<T[K]> };
 type GetRequiredKeysWithoutEmpty<T, U extends Record<keyof T, unknown> = ReplaceEmpty<T>> = {
     [K in keyof T]:

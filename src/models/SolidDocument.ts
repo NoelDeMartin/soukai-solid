@@ -8,6 +8,4 @@ export default class SolidDocument extends SolidModel {
         'iana': 'http://www.w3.org/ns/iana/media-types/text/turtle#',
     };
 
-    public static rdfsClasses = ['Resource'];
-
 }

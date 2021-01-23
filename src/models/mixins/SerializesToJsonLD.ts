@@ -1,5 +1,6 @@
 import {
     Attributes,
+    EngineAttributeFilter,
     EngineFilters,
     EngineRootFilter,
     EngineUpdates,
@@ -131,47 +132,40 @@ export default class SerializesToJsonLD {
     }
 
     protected convertEngineFiltersToJsonLD(filters: EngineFilters): EngineFilters {
-        const rootFilters: EngineRootFilter = {};
+        const jsonldFilters: EngineRootFilter = {};
+        const rdfContext = new RDFContext(this.modelClass.rdfContexts);
         const expandedTypes = [...this.modelClass.rdfsClasses];
-        const compactedTypes = this.getCompactedRdfsClasses();
+        const compactedTypes = expandedTypes.map(rdfClass => rdfContext.compactIRI(rdfClass));
+        const typeFilters: EngineAttributeFilter[] = [];
+
+        if (expandedTypes.length > 0) {
+            typeFilters.push({ $contains: compactedTypes });
+            typeFilters.push({ $contains: expandedTypes });
+        }
+
+        if (expandedTypes.length === 1) {
+            typeFilters.push({ $eq: compactedTypes[0] });
+            typeFilters.push({ $eq: expandedTypes[0] });
+        }
 
         if (filters.$in) {
-            rootFilters.$in = filters.$in;
+            jsonldFilters.$in = filters.$in;
             delete filters.$in;
         }
 
-        return {
-            ...rootFilters,
-            '@graph': {
-                $contains: {
-                    '@type': {
-                        $or: [
-                            { $contains: compactedTypes },
-                            { $contains: expandedTypes },
-                            ...(
-                                compactedTypes.length === 1
-                                    ? [
-                                        { $eq: compactedTypes[0] },
-                                        { $eq: expandedTypes[0] },
-                                    ]
-                                    : []
-                            ),
-                        ],
-                    },
-                    ...this.convertAttributeValuesToJsonLD(filters),
-                }
-            },
-        } as EngineFilters;
+        const graphContainsFilters = this.convertAttributeValuesToJsonLD(filters);
+
+        if (typeFilters.length > 0)
+            graphContainsFilters['@type'] = { $or: typeFilters };
+
+        if (Object.keys(graphContainsFilters).length > 0)
+            jsonldFilters['@graph'] = { $contains: graphContainsFilters };
+
+        return jsonldFilters as EngineFilters;
     }
 
     protected convertEngineUpdatesToJsonLD(updates: EngineUpdates): EngineUpdates {
         return this.convertAttributeValuesToJsonLD(updates);
-    }
-
-    protected getCompactedRdfsClasses(): string[] {
-        const rdfContext = new RDFContext(this.modelClass.rdfContexts);
-
-        return [...this.modelClass.rdfsClasses].map(rdfClass => rdfContext.compactIRI(rdfClass));
     }
 
     private setJsonLDField(jsonld: object, field: string, value: any, rdfContext: RDFContext): void {
@@ -233,7 +227,10 @@ export default class SerializesToJsonLD {
         const types = [...this.modelClass.rdfsClasses]
             .map(rdfsClass => rdfContext.compactIRI(rdfsClass));
 
-        jsonld['@type'] = types.length === 1 ? types[0] : types;
+        if (types.length === 1)
+            jsonld['@type'] = types[0];
+        else if (types.length > 0)
+            jsonld['@type'] = types;
     }
 
     private setJsonLDContexts(jsonld: object, rdfContext: RDFContext): void {
