@@ -233,4 +233,11 @@ describe('SolidContainerModel', () => {
         );
     });
 
+    it('empty documents relation gets initialized', async () => {
+        const group = await Group.create({}) as Group;
+
+        expect(group.isRelationLoaded('documents')).toBe(true);
+        expect(group.documents).toEqual([]);
+    });
+
 });

@@ -1,4 +1,4 @@
-import { FieldType, MultiModelRelation } from 'soukai';
+import { FieldType, Model, MultiModelRelation } from 'soukai';
 
 import { IRI } from '@/solid/utils/RDF';
 
@@ -37,6 +37,15 @@ export default abstract class SolidContainerModel extends SolidModel {
 
     public documentsRelationship(): MultiModelRelation {
         return new SolidContainerDocumentsRelation(this);
+    }
+
+    public async save<T extends Model>(collection?: string): Promise<T> {
+        await super.save(collection);
+
+        if (this.wasRecentlyCreated() && !this.isRelationLoaded('documents'))
+            this.setRelationModels('documents', []);
+
+        return this as unknown as T;
     }
 
     protected contains(model: typeof SolidModel): MultiModelRelation {
