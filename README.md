@@ -26,23 +26,23 @@ There are two extensions to the core Soukai library, a Solid engine and a some S
 npm install soukai soukai-solid
 ```
 
-Managing the authentication is outside the scope of this package, so you'll need to provide a fetch method to perform network requests (if you want to learn more about authentication, you can check out this repository: [noeldemartin/ramen](https://github.com/noeldemartin/ramen)). In this example, we will use [solid-auth-client](https://github.com/solid/solid-auth-client).
+Managing the authentication is outside the scope of this package, so you'll need to provide a fetch method to perform network requests (if you want to learn more about authentication, you can check out this repository: [noeldemartin/ramen](https://github.com/noeldemartin/ramen)).
 
 To get started, initialize the engine and make sure to call `loadSolidModels` to load models that are provided by this library. Please note that this is just an example to get up and running, but you should define some Solid specific properties in the model for a real application. Make sure to read on after this.
 
 ```js
 import SoukaiSolid, { SolidEngine, SolidModel } from 'soukai-solid';
-import SolidAuthClient from 'solid-auth-client';
 import Soukai from 'soukai';
 
 class Person extends SolidModel {}
 
 SoukaiSolid.loadSolidModels();
 Soukai.loadModels({ Person });
-Soukai.useEngine(new SolidEngine(SolidAuthClient.fetch.bind(SolidAuthClient)));
 
-// You would normally get the Solid POD url from solid-auth-client,
-// we're hard-coding it here as an example.
+// If you want to make authenticated requests, you should use the fetch method from an authentication library.
+Soukai.useEngine(new SolidEngine(window.fetch.bind(window)));
+
+// You would normally get the url dynamically, we're hard-coding it here as an example.
 Person.at('https://example.org/people/').create({ name: 'John Doe' });
 ```
 
