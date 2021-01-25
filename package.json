@@ -27,7 +27,7 @@
     "url": "https://github.com/NoelDeMartin/soukai-solid/issues"
   },
   "peerDependencies": {
-    "soukai": "^0.4.0"
+    "soukai": "^0.4.1"
   },
   "dependencies": {
     "jsonld-streaming-parser": "^2.0.1",
@@ -43,7 +43,7 @@
     "events": "^3.0.0",
     "faker": "^4.1.0",
     "jest": "^24.0.0",
-    "soukai": "^0.4.0",
+    "soukai": "^0.4.1",
     "terser-webpack-plugin": "^4.2.2",
     "ts-jest": "^25.4.0",
     "ts-loader": "^5.3.3",
