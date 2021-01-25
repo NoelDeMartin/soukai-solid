@@ -272,7 +272,7 @@ export default class SolidClient {
 
                 return statementsByUrl;
             },
-            {} as MapObject<Quad[]>,
+            {} as Record<string, Quad[]>,
         );
 
         return Object.entries(statementsByUrl)

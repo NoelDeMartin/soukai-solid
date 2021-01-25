@@ -7,7 +7,7 @@ import UUID from '@/utils/UUID';
 
 export class SolidClientMock {
 
-    private documents: MapObject<RDFDocument[]> = {};
+    private documents: Record<string, RDFDocument[]> = {};
 
     public reset(): void {
         this.documents = {};

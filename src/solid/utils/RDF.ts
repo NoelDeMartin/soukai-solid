@@ -118,7 +118,7 @@ class RDF {
         if (!('@context' in json))
             return;
 
-        const context = json['@context'] as MapObject<string>;
+        const context = json['@context'] as Record<string, string>;
         const contextProperty = Object
             .entries(context)
             .find(([name, url]) => property.startsWith(url));

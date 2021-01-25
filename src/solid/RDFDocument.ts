@@ -16,7 +16,7 @@ export default class RDFDocument {
     public readonly url: string;
     public readonly statements: Quad[];
     public readonly metadata: RDFDocumentMetadata;
-    public readonly resourcesIndex: MapObject<RDFResource>;
+    public readonly resourcesIndex: Record<string, RDFResource>;
     public readonly properties: RDFResourceProperty[];
     public readonly resources: RDFResource[];
 

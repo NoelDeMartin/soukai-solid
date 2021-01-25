@@ -315,7 +315,7 @@ abstract class SolidModel extends Model {
         return Fluent.tap(model, m => m._sourceDocumentUrl = id);
     }
 
-    protected async createManyFromEngineDocuments<T extends Model>(documents: MapObject<EngineDocument>): Promise<T[]> {
+    protected async createManyFromEngineDocuments<T extends Model>(documents: Record<string, EngineDocument>): Promise<T[]> {
         const rdfsClasses = [...this.modelClass.rdfsClasses];
         const isModelResource = (resource: RDFResource) => !rdfsClasses.some(rdfsClass => !resource.isType(rdfsClass));
         const models = await Promise.all(Object.entries(documents).map(async ([documentUrl, engineDocument]) => {

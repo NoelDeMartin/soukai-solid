@@ -6,8 +6,8 @@ import SolidModel from '@/models/SolidModel';
 
 type ResourcesGraph = { '@graph': { '@id': string }[] };
 type DocumentModels = { documentUrl: string, models: SolidModel[] };
-type DecantedDocumentModels = MapObject<SolidModel[]>;
-type DecantedContainerDocuments = MapObject<DocumentModels[]>;
+type DecantedDocumentModels = Record<string, SolidModel[]>;
+type DecantedContainerDocuments = Record<string, DocumentModels[]>;
 
 export default class DeletesModels {
 
@@ -59,7 +59,7 @@ export default class DeletesModels {
         const engineDocuments = await engine.readMany(
             containerUrl,
             { $in: documentsModels.map(({ documentUrl }) => documentUrl) },
-        ) as MapObject<ResourcesGraph>;
+        ) as Record<string, ResourcesGraph>;
 
         await Promise.all(
             documentsModels.map(
@@ -74,7 +74,7 @@ export default class DeletesModels {
     }
 
     private async deleteDocumentModels(
-        engineDocuments: MapObject<ResourcesGraph>,
+        engineDocuments: Record<string, ResourcesGraph>,
         containerUrl: string,
         documentUrl: string,
         models: SolidModel[],

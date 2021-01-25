@@ -135,7 +135,7 @@ export default class SolidEngine implements Engine {
                         documentUrl,
                     ],
                 };
-            }, {} as MapObject<string[]>);
+            }, {} as Record<string, string[]>);
 
         const containerDocumentPromises = Object.entries(containerDocumentUrlsMap)
             .map(async ([containerUrl, documentUrls]) => {
@@ -253,7 +253,7 @@ export default class SolidEngine implements Engine {
         const updates = $update;
         const operations: UpdateOperation[] = [];
 
-        for (const [attribute, value] of Object.entries(updates as MapObject<EngineAttributeLeafValue>)) {
+        for (const [attribute, value] of Object.entries(updates as Record<string, EngineAttributeLeafValue>)) {
             if (value === null)
                 throw new SoukaiError("SolidEngine doesn't support setting properties to null, delete");
 
