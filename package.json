@@ -40,7 +40,7 @@
     "@babel/plugin-proposal-class-properties": "^7.13.0",
     "@babel/plugin-transform-runtime": "^7.13.8",
     "@noeldemartin/eslint-config-typescript": "0.0.0-next.fa3c9edeea6e1526504797ddd3097cbd1f039287",
-    "@noeldemartin/scripts": "0.0.0-next.ed216684818d883665b33251d9d19114abe4e29b",
+    "@noeldemartin/scripts": "0.0.0-next.8c3720ca71c3cced5cb8673d0297646404773fca",
     "@types/faker": "^4.1.5",
     "@types/jest": "^24.0.0",
     "@types/n3": "^1.1.6",
