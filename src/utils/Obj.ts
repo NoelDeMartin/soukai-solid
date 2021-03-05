@@ -3,7 +3,7 @@ type ValueWithoutEmpty<T> = T extends null | undefined ? never : T;
 type ReplaceEmpty<T> = { [K in keyof T]: ValueWithoutEmpty<T[K]> };
 type GetRequiredKeysWithoutEmpty<T, U extends Record<keyof T, unknown> = ReplaceEmpty<T>> = {
     [K in keyof T]:
-        {} extends Pick<T, K>
+        Record<string, never> extends Pick<T, K>
             ? never
             : (
                 U[K] extends never
@@ -13,7 +13,7 @@ type GetRequiredKeysWithoutEmpty<T, U extends Record<keyof T, unknown> = Replace
 }[keyof T];
 type GetOptionalKeysWithoutEmpty<T, U extends Record<keyof T, unknown> = ReplaceEmpty<T>> = {
     [K in keyof T]:
-        {} extends Pick<T, K>
+        Record<string, never> extends Pick<T, K>
             ? K
             : (
                 U[K] extends never
@@ -28,15 +28,15 @@ type GetOptionalKeysWithoutEmpty<T, U extends Record<keyof T, unknown> = Replace
 // See https://github.com/microsoft/TypeScript/issues/13195
 type ObjectWithoutEmpty<T> =
     { [K in GetRequiredKeysWithoutEmpty<T>]: ValueWithoutEmpty<T[K]> } &
-    { [K in GetOptionalKeysWithoutEmpty<T>]?: ValueWithoutEmpty<T[K]> }
+    { [K in GetOptionalKeysWithoutEmpty<T>]?: ValueWithoutEmpty<T[K]> };
 
 class Obj {
 
-    createMap<T>(items: T[], key: string): Record<string, T> {
-        const map = {};
+    createMap<T extends Record<string, unknown>>(items: T[], key: keyof T): Record<string, T> {
+        const map = {} as Record<string, T>;
 
         for (const item of items)
-            map[item[key]] = item;
+            map[item[key] + ''] = item;
 
         return map;
     }
@@ -73,16 +73,16 @@ class Obj {
     }
 
     withoutEmpty<T>(obj: T): ObjectWithoutEmpty<T> {
-        const cleanObj = {};
+        const cleanObj = {} as ObjectWithoutEmpty<T>;
 
         for (const [key, value] of Object.entries(obj)) {
             if (value === null || value === undefined)
                 continue;
 
-            cleanObj[key] = value;
+            cleanObj[key as keyof ObjectWithoutEmpty<T>] = value;
         }
 
-        return cleanObj as ObjectWithoutEmpty<T>;
+        return cleanObj;
     }
 
 }

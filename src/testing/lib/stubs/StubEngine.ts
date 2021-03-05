@@ -1,10 +1,11 @@
 import {
     DocumentAlreadyExists,
     DocumentNotFound,
+} from 'soukai';
+import type {
     Engine,
     EngineDocument,
     EngineDocumentsCollection,
-    EngineUpdates,
 } from 'soukai';
 
 import UUID from '@/utils/UUID';
@@ -45,11 +46,11 @@ export default class StubEngine implements Engine {
         return this.many[collection] || {};
     }
 
-    public async update(collection: string, id: string, updates: EngineUpdates): Promise<void> {
+    public async update(): Promise<void> {
         //
     }
 
-    public async delete(collection: string, id: string): Promise<void> {
+    public async delete(): Promise<void> {
         //
     }
 

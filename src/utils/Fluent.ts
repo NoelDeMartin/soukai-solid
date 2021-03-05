@@ -1,8 +1,9 @@
+/* eslint-disable @typescript-eslint/ban-types */
 type Tapped<Target extends object> = {
     [prop in keyof Target]: Target[prop] extends (...params: infer Params) => any
         ? (...params: Params) => Tapped<Target>
         : Target[prop];
-}
+};
 
 class Fluent {
 

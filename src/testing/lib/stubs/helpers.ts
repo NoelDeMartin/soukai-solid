@@ -1,3 +1,5 @@
+import type { JsonLD } from '@/solid/utils/RDF';
+
 export function stubPersonJsonLD(url: string, name: string, birthdate?: string): any {
     const jsonld: any = {
         '@context': {
@@ -19,7 +21,7 @@ export function stubPersonJsonLD(url: string, name: string, birthdate?: string):
 }
 
 export function stubGroupJsonLD(url: string, name: string, contains: any[] = []): any {
-    const jsonld = {
+    const jsonld: JsonLD = {
         '@context': {
             '@vocab': 'http://xmlns.com/foaf/0.1/',
             'ldp': 'http://www.w3.org/ns/ldp#',
@@ -38,7 +40,7 @@ export function stubGroupJsonLD(url: string, name: string, contains: any[] = [])
     return jsonLDGraph(jsonld);
 }
 
-export function stubMovieJsonLD(url: string, name: string, actions: object[] = []): any {
+export function stubMovieJsonLD(url: string, name: string, actions: Record<string, unknown>[] = []): any {
     const jsonld: any = {
         '@context': {
             '@vocab': 'https://schema.org/',
@@ -86,8 +88,8 @@ export function stubSolidDocumentJsonLD(url: string, updatedAt: string): any {
         '@id': url,
         '@type': ['ldp:Resource', 'Resource'],
         'purl:modified': {
-          '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
-          '@value': updatedAt,
+            '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+            '@value': updatedAt,
         },
     });
 }

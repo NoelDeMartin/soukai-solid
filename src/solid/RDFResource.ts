@@ -1,7 +1,8 @@
-import { Quad } from 'rdf-js';
+import type { Quad } from 'rdf-js';
 
-import { IRI } from '@/solid/utils/RDF';
-import RDFResourceProperty, { LiteralValue, RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
+import IRI from '@/solid/utils/IRI';
+import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
+import type { LiteralValue } from '@/solid/RDFResourceProperty';
 
 export default class RDFResource {
 
@@ -37,13 +38,13 @@ export default class RDFResource {
     ): LiteralValue | null {
         const [resourceProperty] = this.propertiesIndex[IRI(property)] || [];
 
-        return resourceProperty ? resourceProperty.value : defaultValue;
+        return resourceProperty ? resourceProperty.value as LiteralValue : defaultValue;
     }
 
     public getPropertyValues(property: string): LiteralValue[] {
         const resourceProperties = this.propertiesIndex[IRI(property)] || [];
 
-        return resourceProperties.map(property => property.value);
+        return resourceProperties.map(property => property.value as LiteralValue);
     }
 
     public addStatement(statement: Quad): void {
@@ -53,7 +54,7 @@ export default class RDFResource {
         const property = RDFResourceProperty.fromStatement(statement);
 
         if (property.type === RDFResourcePropertyType.Type)
-            this.types.push(property.value);
+            this.types.push(property.value as string);
 
         this.statements.push(statement);
         this.properties.push(property);

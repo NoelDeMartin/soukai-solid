@@ -11,7 +11,7 @@ describe('Arr helper', () => {
     });
 
     it('zips arrays', () => {
-        expect(Arr.zip([1, 2, 3], [4, 5, 6])).toEqual([[1, 4], [2, 5], [3, 6]])
+        expect(Arr.zip([1, 2, 3], [4, 5, 6])).toEqual([[1, 4], [2, 5], [3, 6]]);
     });
 
 });

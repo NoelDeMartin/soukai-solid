@@ -1,14 +1,16 @@
-import Soukai, { BelongsToManyRelation, SoukaiError, Attributes } from 'soukai';
+import Soukai, { BelongsToManyRelation, SoukaiError } from 'soukai';
+import type { Attributes } from 'soukai';
 
-import SolidEngine from '@/engines/SolidEngine';
+import { SolidEngine } from '@/engines/SolidEngine';
 
-import SolidContainerModel from '@/models/SolidContainerModel';
-import SolidModel from '@/models/SolidModel';
+import type SolidContainerModel from '@/models/SolidContainerModel';
+import type { SolidModel } from '@/models/SolidModel';
+import type { SolidModelConstructor } from '@/models/inference';
 
 export default class SolidContainsRelation<
     Parent extends SolidContainerModel = SolidContainerModel,
     Related extends SolidModel = SolidModel,
-    RelatedClass extends typeof SolidModel = typeof SolidModel,
+    RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
 > extends BelongsToManyRelation<Parent, Related, RelatedClass> {
 
     public constructor(parent: Parent, relatedClass: RelatedClass) {
@@ -33,7 +35,7 @@ export default class SolidContainsRelation<
 
     public async save(model: Related): Promise<void> {
         if (!this.parent.exists())
-            throw new SoukaiError("Cannot save a model because the container doesn't exist");
+            throw new SoukaiError('Cannot save a model because the container doesn\'t exist');
 
         await model.save(this.parent.url);
 

@@ -1,6 +1,6 @@
-import { Quad, Literal } from 'rdf-js';
+import type { Literal, Quad } from 'rdf-js';
 
-import { IRI } from '@/solid/utils/RDF';
+import IRI from '@/solid/utils/IRI';
 
 export type LiteralValue = string | number | boolean | Date;
 
@@ -24,7 +24,7 @@ abstract class RDFResourceProperty {
 
     public readonly resourceUrl: string | null;
     public readonly name: string;
-    public readonly value: any;
+    public readonly value: unknown;
     public abstract readonly type: RDFResourcePropertyType;
 
     public static fromStatement(statement: Quad): RDFResourceProperty {
@@ -73,7 +73,7 @@ abstract class RDFResourceProperty {
         resourceUrl: string | null,
         name: string,
         url: string | RDFResourcePropertyVariable | null,
-    ) {
+    ): RDFResourceReferenceProperty {
         return new RDFResourceReferenceProperty(resourceUrl, name, url);
     }
 
@@ -87,7 +87,7 @@ abstract class RDFResourceProperty {
             .join('\n');
     }
 
-    protected constructor(resourceUrl: string | null, name: string, value: any) {
+    protected constructor(resourceUrl: string | null, name: string, value: unknown) {
         this.resourceUrl = resourceUrl;
         this.name = name;
         this.value = value;
@@ -106,16 +106,16 @@ abstract class RDFResourceProperty {
 
         switch (this.type) {
             case RDFResourcePropertyType.Literal:
-                return RDFResourceProperty.literal(resourceUrl, this.name, this.value);
+                return RDFResourceProperty.literal(resourceUrl, this.name, this.value as LiteralValue);
             case RDFResourcePropertyType.Type:
-                return RDFResourceProperty.type(resourceUrl, this.value);
+                return RDFResourceProperty.type(resourceUrl, this.value as string);
             case RDFResourcePropertyType.Reference:
-                return RDFResourceProperty.reference(resourceUrl, this.name, this.value);
+                return RDFResourceProperty.reference(resourceUrl, this.name, this.value as string);
         }
     }
 
     protected getTurtleReference(value: string | null, documentUrl: string | null): string {
-        const hashIndex = value?.indexOf('#');
+        const hashIndex = value?.indexOf('#') ?? -1;
 
         if (!value || value === documentUrl)
             return '<>';
@@ -123,7 +123,7 @@ abstract class RDFResourceProperty {
         if (documentUrl === null || !value.startsWith(documentUrl) || hashIndex === -1)
             return `<${encodeURI(value)}>`;
 
-        return `<#${value.substr(hashIndex! + 1)}>`;
+        return `<#${value.substr(hashIndex + 1)}>`;
     }
 
     protected getTurtleSubject(documentUrl: string | null): string {
@@ -140,7 +140,7 @@ abstract class RDFResourceProperty {
 
 class RDFResourceLiteralProperty extends RDFResourceProperty {
 
-    public readonly value: LiteralValue;
+    public readonly value!: LiteralValue;
     public readonly type = RDFResourcePropertyType.Literal;
 
     constructor(resourceUrl: string | null, name: string, value: LiteralValue) {
@@ -150,8 +150,16 @@ class RDFResourceLiteralProperty extends RDFResourceProperty {
     protected getTurtleObject(): string {
         if (this.value instanceof Date) {
             const digits = (...numbers: number[]) => numbers.map(number => number.toString().padStart(2, '0'));
-            const date = digits(this.value.getUTCFullYear(), this.value.getUTCMonth() + 1, this.value.getUTCDate()).join('-');
-            const time = digits(this.value.getUTCHours(), this.value.getUTCMinutes(), this.value.getUTCSeconds()).join(':');
+            const date = digits(
+                this.value.getUTCFullYear(),
+                this.value.getUTCMonth() + 1,
+                this.value.getUTCDate(),
+            ).join('-');
+            const time = digits(
+                this.value.getUTCHours(),
+                this.value.getUTCMinutes(),
+                this.value.getUTCSeconds(),
+            ).join(':');
 
             return `"${date}T${time}Z"^^<${IRI('xsd:dateTime')}>`;
         }
@@ -163,7 +171,7 @@ class RDFResourceLiteralProperty extends RDFResourceProperty {
 
 class RDFResourceReferenceProperty extends RDFResourceProperty {
 
-    public readonly value: string | RDFResourcePropertyVariable | null;
+    public readonly value!: string | RDFResourcePropertyVariable | null;
     public readonly type = RDFResourcePropertyType.Reference;
 
     constructor(
@@ -185,7 +193,7 @@ class RDFResourceReferenceProperty extends RDFResourceProperty {
 
 class RDFResourceTypeProperty extends RDFResourceProperty {
 
-    public readonly value: string;
+    public readonly value!: string;
     public readonly type = RDFResourcePropertyType.Type;
 
     constructor(resourceUrl: string | null, value: string) {

@@ -1,24 +1,28 @@
 import {
-    Attributes,
-    EngineAttributeFilter,
-    EngineFilters,
-    EngineRootFilter,
-    EngineUpdates,
-    FieldDefinition,
     FieldType,
     HasManyRelation,
     HasOneRelation,
-    Model,
+} from 'soukai';
+import type {
+    Attributes,
+    BootedArrayFieldDefinition,
+    BootedFieldDefinition,
+    EngineAttributeFilter,
+    EngineFilters,
+    EngineUpdates,
     Relation,
 } from 'soukai';
 
-import SolidModel, { SolidFieldDefinition, SolidFieldsDefinition } from '@/models/SolidModel';
+import type { SolidModel } from '@/models/SolidModel';
 
-import RDF, { IRI } from '@/solid/utils/RDF';
+import { isObject, toString } from '@/utils/helpers';
+import IRI from '@/solid/utils/IRI';
+import RDFDocument from '@/solid/RDFDocument';
+import type { JsonLD } from '@/solid/utils/RDF';
 
 class EmptyJsonLDValue {}
 
-class RDFContext {
+export class RDFContext {
 
     private vocabs: {
         name: string;
@@ -26,9 +30,10 @@ class RDFContext {
         iriPrefix: string;
         used: boolean;
     }[];
+
     public readonly compactIRIs: boolean;
 
-    private declarations: object = {};
+    private declarations: Record<string, unknown> = {};
 
     public constructor(vocabDefinitions: { [alias: string]: string }, compactIRIs: boolean = true) {
         this.vocabs = Object
@@ -59,11 +64,11 @@ class RDFContext {
         return property;
     }
 
-    public addDeclaration(name: string, value: object): void {
+    public addDeclaration(name: string, value: Record<string, unknown>): void {
         this.declarations[name] = value;
     }
 
-    public toJsonLD(): object {
+    public toJsonLD(): Record<string, unknown> {
         const vocabDeclarations = this.vocabs
             .filter(vocab => vocab.used)
             .reduce((context, vocab) => ({
@@ -81,18 +86,14 @@ class RDFContext {
 
 export default class SerializesToJsonLD {
 
-    public getPrimaryKey: () => any | null;
-    public getAttribute: (field: string) => any;
-    public getAttributes: (includeUndefined?: boolean) => Attributes;
-    public getRelation: (relation: string) => Relation | null;
-    public getRelationModels: (relation: string) => null | Model[] | Model;
-    public modelClass: typeof SolidModel;
-    protected getDefaultRdfContext: () => string;
+    protected serializeToJsonLD(
+        this: SolidModel,
+        includeRelations: boolean = true,
+        rdfContext?: RDFContext,
+    ): JsonLD {
+        rdfContext = rdfContext || new RDFContext(this.static('rdfContexts'));
 
-    protected serializeToJsonLD(includeRelations: boolean = true, rdfContext?: RDFContext): object {
-        rdfContext = rdfContext || new RDFContext(this.modelClass.rdfContexts);
-
-        const jsonld = { '@context': {}, '@type': null };
+        const jsonld: JsonLD = { '@context': {}, '@type': null };
 
         for (const [field, value] of Object.entries(this.getAttributes())) {
             this.setJsonLDField(jsonld, field, value, rdfContext);
@@ -107,17 +108,17 @@ export default class SerializesToJsonLD {
         return jsonld;
     }
 
-    protected async convertJsonLDToAttributes(jsonld: object): Promise<Attributes> {
+    protected async convertJsonLDToAttributes(this: SolidModel, jsonld: JsonLD): Promise<Attributes> {
         // TODO this is probably wasteful because we've already parsed this in createManyFromEngineDocuments method
-        const document = await RDF.parseJsonLD(jsonld);
-        const resource = document.resource(jsonld['@id'])!;
-        const fieldsDefinition = this.modelClass.fields as SolidFieldsDefinition;
+        const document = await RDFDocument.fromJsonLD(jsonld);
+        const resource = document.requireResource(jsonld['@id'] as string);
+        const fieldsDefinition = this.static('fields');
         const attributes: Attributes = {};
 
-        attributes[this.modelClass.primaryKey] = jsonld['@id'];
+        attributes[this.static('primaryKey')] = jsonld['@id'];
 
         for (const [fieldName, fieldDefinition] of Object.entries(fieldsDefinition)) {
-            if (fieldName === this.modelClass.primaryKey)
+            if (!fieldDefinition.rdfProperty)
                 continue;
 
             const [firstValue, ...otherValues] = resource.getPropertyValues(fieldDefinition.rdfProperty);
@@ -131,10 +132,13 @@ export default class SerializesToJsonLD {
         return attributes;
     }
 
-    protected convertEngineFiltersToJsonLD(filters: EngineFilters): EngineFilters {
-        const jsonldFilters: EngineRootFilter = {};
-        const rdfContext = new RDFContext(this.modelClass.rdfContexts);
-        const expandedTypes = [...this.modelClass.rdfsClasses];
+    protected convertEngineFiltersToJsonLD(
+        this: SolidModel,
+        filters: EngineFilters,
+    ): EngineFilters {
+        const jsonldFilters: EngineFilters = {};
+        const rdfContext = new RDFContext(this.static('rdfContexts'));
+        const expandedTypes = this.static('rdfsClasses');
         const compactedTypes = expandedTypes.map(rdfClass => rdfContext.compactIRI(rdfClass));
         const typeFilters: EngineAttributeFilter[] = [];
 
@@ -153,7 +157,7 @@ export default class SerializesToJsonLD {
             delete filters.$in;
         }
 
-        const graphContainsFilters = this.convertAttributeValuesToJsonLD(filters);
+        const graphContainsFilters = this.convertAttributeValuesToJsonLD(filters) as EngineFilters;
 
         if (typeFilters.length > 0)
             graphContainsFilters['@type'] = { $or: typeFilters };
@@ -161,22 +165,32 @@ export default class SerializesToJsonLD {
         if (Object.keys(graphContainsFilters).length > 0)
             jsonldFilters['@graph'] = { $contains: graphContainsFilters };
 
-        return jsonldFilters as EngineFilters;
+        return jsonldFilters;
     }
 
-    protected convertEngineUpdatesToJsonLD(updates: EngineUpdates): EngineUpdates {
-        return this.convertAttributeValuesToJsonLD(updates);
+    protected convertEngineUpdatesToJsonLD(this: SolidModel, updates: EngineUpdates): EngineUpdates {
+        return this.convertAttributeValuesToJsonLD(updates) as EngineUpdates;
     }
 
-    private setJsonLDField(jsonld: object, field: string, value: any, rdfContext: RDFContext): void {
-        if (field === this.modelClass.primaryKey) {
-            jsonld['@id'] = value.toString();
+    private setJsonLDField(
+        this: SolidModel,
+        jsonld: JsonLD,
+        field: string,
+        value: unknown,
+        rdfContext: RDFContext,
+    ): void {
+        if (field === this.static('primaryKey')) {
+            jsonld['@id'] = toString(value);
             return;
         }
 
-        const fieldDefinition = this.modelClass.fields[field] as SolidFieldDefinition;
+        const fieldDefinition = this.static('fields')[field];
+
+        if (fieldDefinition && !fieldDefinition.rdfProperty)
+            return;
+
         const propertyName = fieldDefinition
-            ? fieldDefinition.rdfProperty
+            ? fieldDefinition.rdfProperty as string
             : (this.getDefaultRdfContext() + field);
 
         this.setJsonLDProperty(
@@ -188,10 +202,13 @@ export default class SerializesToJsonLD {
     }
 
     private includeRelatedJsonLDInstances(
-        jsonld: object,
+        this: SolidModel,
+        jsonld: Record<string, unknown>,
         rdfContext: RDFContext,
     ): void {
-        const relations = this.modelClass.relations.map(name => [name, this.getRelation(name)!]) as [string, Relation][];
+        const relations = this
+            .static('relations')
+            .map(name => [name, this.requireRelation(name)]) as [string, Relation][];
 
         for (const [relationName, relationInstance] of relations) {
             if (
@@ -206,7 +223,7 @@ export default class SerializesToJsonLD {
                 relationInstance.foreignKeyName,
                 (relationInstance.relatedClass as typeof SolidModel).rdfContexts,
             );
-            const serializeRelatedModel = model => {
+            const serializeRelatedModel = (model: SolidModel) => {
                 const jsonld = model.serializeToJsonLD(false, rdfContext);
 
                 delete jsonld['@context'];
@@ -216,16 +233,15 @@ export default class SerializesToJsonLD {
             };
 
             jsonld[relationName] = relationInstance instanceof HasManyRelation
-                ? relationInstance.related!.map(model => serializeRelatedModel(model))
-                : serializeRelatedModel(relationInstance.related);
+                ? relationInstance.getLoadedModels().map(model => serializeRelatedModel(model as SolidModel))
+                : serializeRelatedModel(relationInstance.related as SolidModel);
 
             rdfContext.addDeclaration(relationName, { '@reverse': foreignPropertyName });
         }
     }
 
-    private setJsonLDTypes(jsonld: object, rdfContext: RDFContext): void {
-        const types = [...this.modelClass.rdfsClasses]
-            .map(rdfsClass => rdfContext.compactIRI(rdfsClass));
+    private setJsonLDTypes(this: SolidModel, jsonld: Record<string, unknown>, rdfContext: RDFContext): void {
+        const types = this.static('rdfsClasses').map(rdfsClass => rdfContext.compactIRI(rdfsClass));
 
         if (types.length === 1)
             jsonld['@type'] = types[0];
@@ -233,17 +249,17 @@ export default class SerializesToJsonLD {
             jsonld['@type'] = types;
     }
 
-    private setJsonLDContexts(jsonld: object, rdfContext: RDFContext): void {
+    private setJsonLDContexts(jsonld: Record<string, unknown>, rdfContext: RDFContext): void {
         jsonld['@context'] = rdfContext.toJsonLD();
     }
 
     private setJsonLDProperty(
-        jsonld: object,
+        jsonld: Record<string, unknown>,
         name: string,
-        value: any,
-        fieldDefinition: SolidFieldDefinition | null = null,
+        value: unknown,
+        fieldDefinition: BootedFieldDefinition | null = null,
     ): boolean {
-        if (typeof value !== 'object' || Object.keys(value).length !== 1 || Object.keys(value)[0].startsWith('$'))
+        if (!isObject(value) || Object.keys(value).length !== 1 || Object.keys(value)[0].startsWith('$'))
             value = this.castJsonLDValue(value, fieldDefinition);
 
         if (value instanceof EmptyJsonLDValue)
@@ -254,33 +270,38 @@ export default class SerializesToJsonLD {
         return true;
     }
 
-    private castJsonLDValue(value: any, fieldDefinition: FieldDefinition | null = null): any {
+    private castJsonLDValue(value: unknown, fieldDefinition: BootedFieldDefinition | null = null): unknown {
         switch (fieldDefinition && fieldDefinition.type || null) {
             case FieldType.Key:
-                return { '@id': value.toString() };
+                return { '@id': toString(value) };
             case FieldType.Date:
                 return {
                     '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
-                    '@value': (new Date(value)).toISOString(),
+                    '@value': (new Date(value as string)).toISOString(),
                 };
-            case FieldType.Array:
-                switch (value.length) {
+            case FieldType.Array: {
+                const arrayValue = value as unknown[];
+                const itemsFieldDefinition =
+                    (fieldDefinition as BootedArrayFieldDefinition).items as BootedFieldDefinition;
+
+                switch (arrayValue.length) {
                     case 0:
                         return new EmptyJsonLDValue();
                     case 1:
-                        return this.castJsonLDValue(value[0], fieldDefinition!.items!);
+                        return this.castJsonLDValue(arrayValue[0], itemsFieldDefinition);
                     default:
-                        return value.map(itemValue => this.castJsonLDValue(itemValue, fieldDefinition!.items!));
+                        return arrayValue.map(itemValue => this.castJsonLDValue(itemValue, itemsFieldDefinition));
                 }
+            }
             // TODO handle nested objects
             default:
                 return JSON.parse(JSON.stringify(value));
         }
     }
 
-    private convertAttributeValuesToJsonLD(attributes: Attributes) {
-        const rdfContext = new RDFContext(this.modelClass.rdfContexts, false);
-        const jsonld = {};
+    private convertAttributeValuesToJsonLD(this: SolidModel, attributes: Attributes): JsonLD {
+        const rdfContext = new RDFContext(this.static('rdfContexts'), false);
+        const jsonld: JsonLD = {};
 
         for (const [field, value] of Object.entries(attributes)) {
             this.setJsonLDField(jsonld, field, value, rdfContext);

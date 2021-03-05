@@ -1,15 +1,19 @@
+/* eslint-disable @typescript-eslint/no-var-requires */
+
+import flattenJsonLD from '@/solid/utils/flattenJsonLD';
 import Obj from '@/utils/Obj';
-import RDF from '@/solid/utils/RDF';
+import SoukaiSolid from '@/SoukaiSolid';
 
 beforeEach(() => jest.clearAllMocks());
+beforeEach(() => SoukaiSolid.loadSolidModels());
 
 expect.extend({
 
     async toEqualJsonLD(received, expected) {
         const diff = require('jest-diff');
         const [flatReceived, flatExpected] = await Promise.all([
-            RDF.flattenJsonLD(received),
-            RDF.flattenJsonLD(expected),
+            flattenJsonLD(received),
+            flattenJsonLD(expected),
         ]);
         const pass = Obj.deepEquals(flatReceived, flatExpected);
         const message = pass
@@ -26,8 +30,8 @@ expect.extend({
                     this.utils.matcherHint('toEqualJsonLD') +
                     '\n\n' +
                     (diffString && diffString.includes('- Expect')
-                    ? `Difference:\n\n${diffString}`
-                    : `Expected: ${this.utils.printExpected(flatExpected)}\n` +
+                        ? `Difference:\n\n${diffString}`
+                        : `Expected: ${this.utils.printExpected(flatExpected)}\n` +
                         `Received: ${this.utils.printReceived(flatReceived)}`)
                 );
             };
@@ -59,8 +63,8 @@ expect.extend({
                     this.utils.matcherHint('toEqualSPARQL') +
                     '\n\n' +
                     (diffString && diffString.includes('- Expect')
-                    ? `Difference:\n\n${diffString}`
-                    : `Expected: ${this.utils.printExpected(normalizedExpected)}\n` +
+                        ? `Difference:\n\n${diffString}`
+                        : `Expected: ${this.utils.printExpected(normalizedExpected)}\n` +
                         `Received: ${this.utils.printReceived(normalizedReceived)}`)
                 );
             };

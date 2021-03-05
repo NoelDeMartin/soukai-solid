@@ -1,15 +1,16 @@
-import { FieldType, Relation, SingleModelRelation } from 'soukai';
+import type { ModelInterface, Relation, SingleModelRelation } from 'soukai';
+import { FieldType, TimestampField } from 'soukai';
 
-import SolidModel from '@/models/SolidModel';
+import { SolidModel } from '@/models/SolidModel';
 
-import Group from '@tests/stubs/Group';
+import Group from '@/testing/lib/stubs/Group';
 
 export default class Person extends SolidModel {
 
-    public static timestamps = ['createdAt'];
+    public static timestamps = [TimestampField.CreatedAt];
 
     public static rdfContexts = {
-        'foaf': 'http://xmlns.com/foaf/0.1/',
+        foaf: 'http://xmlns.com/foaf/0.1/',
     };
 
     public static rdfsClasses = ['foaf:Person'];
@@ -20,9 +21,12 @@ export default class Person extends SolidModel {
         friendUrls: {
             type: FieldType.Array,
             rdfProperty: 'foaf:knows',
-            items: { type: FieldType.Key },
+            items: FieldType.Key,
         },
     };
+
+    friends?: Person[];
+    group?: Group;
 
     public friendsRelationship(): Relation {
         return this.belongsToMany(Person, 'friendUrls');
@@ -33,3 +37,5 @@ export default class Person extends SolidModel {
     }
 
 }
+
+export default interface Person extends ModelInterface<typeof Person> {}

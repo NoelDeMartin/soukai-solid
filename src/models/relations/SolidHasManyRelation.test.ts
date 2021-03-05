@@ -1,20 +1,20 @@
 import Faker from 'faker';
 import Soukai from 'soukai';
 
-import { IRI } from '@/solid/utils/RDF';
+import IRI from '@/solid/utils/IRI';
 
 import Url from '@/utils/Url';
 
-import { stubMovieJsonLD, stubWatchActionJsonLD } from '@tests/stubs/helpers';
-import Movie from '@tests/stubs/Movie';
-import WatchAction from '@tests/stubs/WatchAction';
-import StubEngine from '@tests/stubs/StubEngine';
+import { stubMovieJsonLD, stubWatchActionJsonLD } from '@/testing/lib/stubs/helpers';
+import Movie from '@/testing/lib/stubs/Movie';
+import WatchAction from '@/testing/lib/stubs/WatchAction';
+import StubEngine from '@/testing/lib/stubs/StubEngine';
 
 let engine: StubEngine;
 
 describe('SolidHasManyRelation', () => {
 
-    beforeAll(() => {Soukai.loadModels({ Movie, WatchAction })});
+    beforeAll(() => Soukai.loadModels({ Movie, WatchAction }));
 
     beforeEach(() => {
         engine = new StubEngine();
@@ -64,7 +64,7 @@ describe('SolidHasManyRelation', () => {
         expect(engine.readMany).toHaveBeenCalledWith(
             expect.anything(),
             {
-                $in: [
+                '$in': [
                     secondActionUrl,
                 ],
                 '@graph': {

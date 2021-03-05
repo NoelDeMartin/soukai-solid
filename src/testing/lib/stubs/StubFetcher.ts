@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events';
 
-import StubResponse from '@tests/stubs/StubResponse';
+import StubResponse from '@/testing/lib/stubs/StubResponse';
 
 class StubFetcher extends EventEmitter {
 
@@ -15,7 +15,7 @@ class StubFetcher extends EventEmitter {
         this.fetchResponses.push(StubResponse.notFound());
     }
 
-    public addFetchResponse(content: string = '', headers: object = {}, status: number = 200): void {
+    public addFetchResponse(content: string = '', headers: Record<string, string> = {}, status: number = 200): void {
         this.fetchResponses.push(StubResponse.make(content, headers, status));
     }
 

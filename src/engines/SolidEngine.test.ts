@@ -1,11 +1,12 @@
-import { DocumentNotFound, DocumentAlreadyExists, SoukaiError, EngineFilters } from 'soukai';
+import { DocumentAlreadyExists, DocumentNotFound, SoukaiError } from 'soukai';
+import type { EngineFilters } from 'soukai';
 
 import Faker from 'faker';
 
-import SolidEngine from '@/engines/SolidEngine';
+import { SolidEngine } from '@/engines/SolidEngine';
 
-import { IRI } from '@/solid/utils/RDF';
 import ChangeUrlOperation from '@/solid/operations/ChangeUrlOperation';
+import IRI from '@/solid/utils/IRI';
 import RDFResourceProperty from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
@@ -16,11 +17,11 @@ import Arr from '@/utils/Arr';
 
 import SolidClientMock from '@/solid/__mocks__';
 
-import { stubPersonJsonLD, stubGroupJsonLD, jsonLDGraph } from '@tests/stubs/helpers';
-
-let engine: SolidEngine;
+import { jsonLDGraph, stubGroupJsonLD, stubPersonJsonLD } from '@/testing/lib/stubs/helpers';
 
 describe('SolidEngine', () => {
+
+    let engine: SolidEngine;
 
     beforeEach(() => {
         SolidClientMock.reset();
@@ -122,7 +123,7 @@ describe('SolidEngine', () => {
         await expect(document).toEqualJsonLD(stubGroupJsonLD(documentUrl, name));
     });
 
-    it("fails reading when document doesn't exist", async () => {
+    it('fails reading when document doesn\'t exist', async () => {
         const documentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
 
         await expect(engine.readOne(Url.parentDirectory(documentUrl), documentUrl))
@@ -426,7 +427,7 @@ describe('SolidEngine', () => {
                             [IRI('purl:modified')]: {
                                 '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
                                 '@value': date.toISOString(),
-                            }
+                            },
                         },
                     },
                 },
@@ -543,12 +544,14 @@ describe('SolidEngine', () => {
             [
                 new ChangeUrlOperation(firstResourceUrl, newFirstResourceUrl),
                 new ChangeUrlOperation(secondResourceUrl, newSecondResourceUrl),
-                new UpdatePropertyOperation(RDFResourceProperty.reference(secondResourceUrl, 'reference', newFirstResourceUrl)),
+                new UpdatePropertyOperation(
+                    RDFResourceProperty.reference(secondResourceUrl, 'reference', newFirstResourceUrl),
+                ),
             ],
         );
     });
 
-    it("fails updating when document doesn't exist", async () => {
+    it('fails updating when document doesn\'t exist', async () => {
         const documentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
 
         await expect(engine.readOne(Url.parentDirectory(documentUrl), documentUrl))
@@ -563,7 +566,7 @@ describe('SolidEngine', () => {
 
 });
 
-function modelFilters(types: string[], extraFilters: object = {}): EngineFilters {
+function modelFilters(types: string[], extraFilters: Record<string, unknown> = {}): EngineFilters {
     const expandedTypes = types.map(type => IRI(type));
 
     return {

@@ -1,6 +1,6 @@
-import ChangeUrlOperation from './ChangeUrlOperation';
-import RemovePropertyOperation from './RemovePropertyOperation';
-import UpdatePropertyOperation from './UpdatePropertyOperation';
+import type ChangeUrlOperation from './ChangeUrlOperation';
+import type RemovePropertyOperation from './RemovePropertyOperation';
+import type UpdatePropertyOperation from './UpdatePropertyOperation';
 
 export type UpdateOperation = UpdatePropertyOperation | RemovePropertyOperation | ChangeUrlOperation;
 

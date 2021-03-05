@@ -1,4 +1,5 @@
-import Operation, { OperationType } from './Operation';
+import { OperationType } from './Operation';
+import type Operation from './Operation';
 
 export default class ChangeUrlOperation implements Operation {
 

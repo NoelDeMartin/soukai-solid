@@ -1,6 +1,5 @@
-import RDF from '@/solid/utils/RDF';
 import RDFDocument from '@/solid/RDFDocument';
-import RDFResourceProperty from '@/solid/RDFResourceProperty';
+import type RDFResourceProperty from '@/solid/RDFResourceProperty';
 
 import Url from '@/utils/Url';
 import UUID from '@/utils/UUID';
@@ -20,7 +19,7 @@ export class SolidClientMock {
     ): Promise<string> {
         const turtleData = properties
             .map(property => property.toTurtle() + ' .')
-            .join("\n");
+            .join('\n');
 
         if (url === null)
             url = Url.resolve(parentUrl, UUID.generate());
@@ -28,7 +27,7 @@ export class SolidClientMock {
         if (await this.documentExists(url))
             throw new Error(`Cannot create a document at ${url}, url already in use`);
 
-        const document = await RDF.parseTurtle(turtleData, { baseUrl: url });
+        const document = await RDFDocument.fromTurtle(turtleData, { baseUrl: url });
 
         this.documents[url] = [document];
 
@@ -39,7 +38,7 @@ export class SolidClientMock {
         return url in this.documents ? this.documents[url][0] : null;
     }
 
-    public async getDocuments(containerUrl: string, onlyContainer?: boolean): Promise<RDFDocument[]> {
+    public async getDocuments(containerUrl: string): Promise<RDFDocument[]> {
         const documents: RDFDocument[] = [];
 
         for (const containerDocuments of Object.values(this.documents)) {
@@ -54,11 +53,7 @@ export class SolidClientMock {
         return documents;
     }
 
-    public async updateDocument(
-        url: string,
-        updatedProperties: RDFResourceProperty[],
-        removedProperties: string[],
-    ): Promise<void> {
+    public async updateDocument(url: string): Promise<void> {
         if (!(url in this.documents))
             throw new Error(
                 `Error updating document at ${url}, returned 404 status code`,
@@ -85,6 +80,7 @@ export class SolidClientMock {
             return false;
         });
     }
+
 }
 
 const instance = new SolidClientMock();

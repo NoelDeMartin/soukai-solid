@@ -1,16 +1,17 @@
-import RDFResourceProperty from '@/solid/RDFResourceProperty';
+import type RDFResourceProperty from '@/solid/RDFResourceProperty';
 
 import Arr from '@/utils/Arr';
 
-import { OperationType, UpdateOperation } from './Operation';
-import ChangeUrlOperation from './ChangeUrlOperation';
-import RemovePropertyOperation from './RemovePropertyOperation';
-import UpdatePropertyOperation from './UpdatePropertyOperation';
+import { OperationType } from './Operation';
+import type { UpdateOperation } from './Operation';
+import type ChangeUrlOperation from './ChangeUrlOperation';
+import type RemovePropertyOperation from './RemovePropertyOperation';
+import type UpdatePropertyOperation from './UpdatePropertyOperation';
 
 interface DecantedUpdateOperations {
-    [OperationType.UpdateProperty]: UpdatePropertyOperation[],
-    [OperationType.RemoveProperty]: RemovePropertyOperation[],
-    [OperationType.ChangeUrl]: ChangeUrlOperation[],
+    [OperationType.UpdateProperty]: UpdatePropertyOperation[];
+    [OperationType.RemoveProperty]: RemovePropertyOperation[];
+    [OperationType.ChangeUrl]: ChangeUrlOperation[];
 }
 
 type DecantedUpdateOperationsData = [RDFResourceProperty[], [string, string?, any?][]];

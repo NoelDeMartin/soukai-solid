@@ -1,25 +1,31 @@
 import {
     DocumentAlreadyExists,
     DocumentNotFound,
+    EngineHelper,
+    SoukaiError,
+} from 'soukai';
+import type {
     Engine,
     EngineAttributeLeafValue,
     EngineDocument,
     EngineDocumentsCollection,
     EngineFilters,
-    EngineHelper,
+    EngineRootFilter,
     EngineUpdateItemsOperatorData,
     EngineUpdates,
-    SoukaiError,
 } from 'soukai';
 
-import { UpdateOperation } from '@/solid/operations/Operation';
 import ChangeUrlOperation from '@/solid/operations/ChangeUrlOperation';
-import RDF, { IRI } from '@/solid/utils/RDF';
-import RDFDocument, { RDFDocumentMetadata } from '@/solid/RDFDocument';
+import IRI from '@/solid/utils/IRI';
+import RDFDocument from '@/solid/RDFDocument';
 import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
-import SolidClient, { Fetch } from '@/solid/SolidClient';
+import SolidClient from '@/solid/SolidClient';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
+import type { UpdateOperation } from '@/solid/operations/Operation';
+import type { JsonLD } from '@/solid/utils/RDF';
+import type { RDFDocumentMetadata } from '@/solid/RDFDocument';
+import type { Fetch } from '@/solid/SolidClient';
 
 import Arr from '@/utils/Arr';
 import Url from '@/utils/Url';
@@ -32,7 +38,7 @@ export interface SolidEngineListener {
     onRDFDocumentLoaded?(url: string, metadata: RDFDocumentMetadata): void;
 }
 
-export default class SolidEngine implements Engine {
+export class SolidEngine implements Engine {
 
     private config: SolidEngineConfig;
     private helper: EngineHelper;
@@ -68,7 +74,7 @@ export default class SolidEngine implements Engine {
 
         const document = this.convertToEngineDocument(rdfDocument);
 
-        this.emit('onRDFDocumentLoaded', rdfDocument.url, rdfDocument.metadata);
+        this.emit('onRDFDocumentLoaded', rdfDocument.url as string, rdfDocument.metadata);
 
         return document;
     }
@@ -76,12 +82,12 @@ export default class SolidEngine implements Engine {
     public async readMany(collection: string, filters: EngineFilters = {}): Promise<EngineDocumentsCollection> {
         const documentsArray = await this.getDocumentsForFilters(collection, filters);
         const documents = documentsArray.reduce((documents, document) => {
-            documents[document.url] = this.convertToEngineDocument(document);
+            documents[document.url as string] = this.convertToEngineDocument(document);
 
-            this.emit('onRDFDocumentLoaded', document.url, document.metadata);
+            this.emit('onRDFDocumentLoaded', document.url as string, document.metadata);
 
             return documents;
-        }, {});
+        }, {} as EngineDocumentsCollection);
 
         return this.helper.filterDocuments(documents, filters);
     }
@@ -109,7 +115,10 @@ export default class SolidEngine implements Engine {
         this.listeners.splice(index, 1);
     }
 
-    private emit<Event extends keyof SolidEngineListener>(event: Event, ...params: Parameters<Exclude<SolidEngineListener[Event], undefined>>): void {
+    private emit<Event extends keyof SolidEngineListener>(
+        event: Event,
+        ...params: Parameters<Exclude<SolidEngineListener[Event], undefined>>
+    ): void {
         this.listeners.forEach(listener => listener[event]?.call(listener, ...params));
     }
 
@@ -187,7 +196,7 @@ export default class SolidEngine implements Engine {
                                     '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
                                     '@value': value.toISOString(),
                                 }
-                                : value
+                                : value;
                             break;
                     }
 
@@ -207,7 +216,7 @@ export default class SolidEngine implements Engine {
         if (!Array.isArray(document['@graph']))
             throw new SoukaiError(
                 'Invalid JSON-LD graph provided for SolidEngine. ' +
-                "Are you using a model that isn't a SolidModel?",
+                'Are you using a model that isn\'t a SolidModel?',
             );
     }
 
@@ -215,7 +224,7 @@ export default class SolidEngine implements Engine {
         if (!this.isJsonLDGraphUpdate(updates))
             throw new SoukaiError(
                 'Invalid JSON-LD graph updates provided for SolidEngine. ' +
-                "Are you using a model that isn't a SolidModel?",
+                'Are you using a model that isn\'t a SolidModel?',
             );
 
         const operations: UpdateOperation[] = [];
@@ -237,16 +246,21 @@ export default class SolidEngine implements Engine {
         return operations;
     }
 
-    private extractJsonLDGraphItemsUpdate({ $where, $update, $unset }: EngineUpdateItemsOperatorData): UpdateOperation[] {
+    private extractJsonLDGraphItemsUpdate(
+        { $where, $update, $unset }: EngineUpdateItemsOperatorData,
+    ): UpdateOperation[] {
         // TODO use RDF libraries instead of implementing this conversion
         if (!$where || !('@id' in $where))
             throw new SoukaiError(
                 'Invalid JSON-LD graph updates provided for SolidEngine. ' +
-                "Are you using a model that isn't a SolidModel?",
+                'Are you using a model that isn\'t a SolidModel?',
             );
 
         if ($unset) {
-            return $where['@id']!['$in'].map(url => new RemovePropertyOperation(url));
+            const filters = $where['@id'] as EngineRootFilter;
+            const ids = filters.$in as string[];
+
+            return ids.map(url => new RemovePropertyOperation(url));
         }
 
         const resourceUrl = $where['@id'] as string;
@@ -255,7 +269,7 @@ export default class SolidEngine implements Engine {
 
         for (const [attribute, value] of Object.entries(updates as Record<string, EngineAttributeLeafValue>)) {
             if (value === null)
-                throw new SoukaiError("SolidEngine doesn't support setting properties to null, delete");
+                throw new SoukaiError('SolidEngine doesn\'t support setting properties to null, delete');
 
             if (typeof value === 'object' && '$unset' in value) {
                 operations.push(new RemovePropertyOperation(resourceUrl, attribute));
@@ -263,12 +277,23 @@ export default class SolidEngine implements Engine {
             }
 
             if (typeof value === 'object' && '@id' in value) {
-                operations.push(new UpdatePropertyOperation(RDFResourceProperty.reference(resourceUrl, attribute, value['@id'])));
+                operations.push(
+                    new UpdatePropertyOperation(RDFResourceProperty.reference(resourceUrl, attribute, value['@id'])),
+                );
+
                 continue;
             }
 
-            if (typeof value === 'object' && '@type' in value && value['@type'] === 'http://www.w3.org/2001/XMLSchema#dateTime') {
-                operations.push(new UpdatePropertyOperation(RDFResourceProperty.literal(resourceUrl, attribute, new Date(value['@value']))));
+            if (
+                typeof value === 'object' &&
+                '@type' in value &&
+                value['@type'] === 'http://www.w3.org/2001/XMLSchema#dateTime'
+            ) {
+                operations.push(
+                    new UpdatePropertyOperation(
+                        RDFResourceProperty.literal(resourceUrl, attribute, new Date(value['@value'])),
+                    ),
+                );
                 continue;
             }
 
@@ -312,8 +337,8 @@ export default class SolidEngine implements Engine {
         return Arr.unique(types.filter(type => type.startsWith('http')));
     }
 
-    private async getJsonLDGraphProperties(jsonld: object): Promise<RDFResourceProperty[]> {
-        const document = await RDF.parseJsonLD(jsonld);
+    private async getJsonLDGraphProperties(jsonld: JsonLD): Promise<RDFResourceProperty[]> {
+        const document = await RDFDocument.fromJsonLD(jsonld);
 
         return document.properties;
     }

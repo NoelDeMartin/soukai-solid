@@ -1,22 +1,26 @@
 import {
-    Attributes,
     BelongsToManyRelation,
     BelongsToOneRelation,
-    EngineDocument,
-    EngineDocumentsCollection,
     EngineHelper,
     HasManyRelation,
     SoukaiError,
 } from 'soukai';
+import type {
+    Attributes,
+    EngineDocument,
+    EngineDocumentsCollection,
+} from 'soukai';
 
-import SolidModel from '@/models/SolidModel';
+import type { SolidModel } from '@/models/SolidModel';
 
 import RDF from '@/solid/utils/RDF';
+import type { SolidModelConstructor } from '@/models/inference';
+import type { SolidBootedFieldsDefinition } from '@/models/fields';
 
 export default class SolidHasManyRelation<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
-    RelatedClass extends typeof SolidModel = typeof SolidModel,
+    RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
 > extends HasManyRelation<Parent, Related, RelatedClass> {
 
     __newModels: Related[] = [];
@@ -72,7 +76,7 @@ export default class SolidHasManyRelation<
         if (!this.useSameDocument)
             await model.save();
         else if (this.parent.exists())
-            await this.parent.save()
+            await this.parent.save();
     }
 
     public add(model: Related): void {
@@ -95,15 +99,17 @@ export default class SolidHasManyRelation<
 
     public async __loadDocumentModels(documentUrl: string, document: EngineDocument): Promise<void> {
         const helper = new EngineHelper();
-        const foreignProperty = this.relatedClass.fields[this.foreignKeyName]?.rdfProperty;
+        const foreignFields = this.relatedClass.fields as SolidBootedFieldsDefinition;
+        const foreignProperty = foreignFields[this.foreignKeyName]?.rdfProperty as string;
         const filters = this.relatedClass.prepareEngineFilters();
         const documents = (document['@graph'] as any[])
             .filter(resource => {
                 const property = RDF.getJsonLDProperty(resource, foreignProperty);
 
                 return typeof property === 'object'
+                    && property !== null
                     && '@id' in property
-                    && property['@id'] === this.parent.url;
+                    && (property as { '@id': string })['@id'] === this.parent.url;
             })
             .reduce((documents, resource) => {
                 documents[resource['@id']] = { '@graph': [resource] };

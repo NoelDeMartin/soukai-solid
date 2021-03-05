@@ -1,6 +1,7 @@
-import RDFResourceProperty from '@/solid/RDFResourceProperty';
+import type RDFResourceProperty from '@/solid/RDFResourceProperty';
 
-import Operation, { OperationType } from './Operation';
+import { OperationType } from './Operation';
+import type Operation from './Operation';
 
 export default class UpdatePropertyOperation implements Operation {
 

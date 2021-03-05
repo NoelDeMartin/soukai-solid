@@ -1,9 +1,9 @@
 import Soukai from 'soukai';
 
+import { SolidEngine } from '@/engines/SolidEngine';
 import SolidBelongsToManyRelation from '@/models/relations/SolidBelongsToManyRelation';
-import SolidContainerModel from '@/models/SolidContainerModel';
 import SolidDocument from '@/models/SolidDocument';
-import SolidEngine from '@/engines/SolidEngine';
+import type SolidContainerModel from '@/models/SolidContainerModel';
 
 interface GraphDocument {
     'purl:modified'?: { '@value': string };
@@ -33,7 +33,7 @@ export default class SolidContainerDocumentsRelation extends SolidBelongsToManyR
         // TODO this implementation can have serious performance issues for some engines.
         // Right now, there are only local engines other than Solid being used with Soukai,
         // so the problem is not as severe.
-        const documents = await Soukai.engine.readMany(this.container.getDocumentUrl()!);
+        const documents = await Soukai.requireEngine().readMany(this.container.getDocumentUrl()!);
 
         this.related = Object.entries(documents).map(([url, document]) => new SolidDocument({
             url,

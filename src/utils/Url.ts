@@ -94,7 +94,7 @@ class Url {
             return url;
 
         for (const [part, value] of Object.entries(parts)) {
-            parts[part] = includedParts[part] !== false ? value || '' : '';
+            parts[part as keyof UrlParts] = includedParts[part as keyof UrlParts] !== false ? value || '' : '';
         }
 
         return [

@@ -1,8 +1,12 @@
-import StubHeaders from '@tests/stubs/StubHeaders';
+import StubHeaders from '@/testing/lib/stubs/StubHeaders';
 
 export default class StubResponse implements Response {
 
-    public static make(content: string = '', headers: object = {}, status: number = 200): StubResponse {
+    public static make(
+        content: string = '',
+        headers: Record<string, string> = {},
+        status: number = 200,
+    ): StubResponse {
         return new StubResponse(status, content, headers);
     }
 
@@ -12,18 +16,18 @@ export default class StubResponse implements Response {
 
     private content: string;
 
-    readonly body: ReadableStream<Uint8Array> | null;
-    readonly bodyUsed: boolean;
+    readonly body!: ReadableStream<Uint8Array> | null;
+    readonly bodyUsed!: boolean;
     readonly headers: StubHeaders;
-    readonly ok: boolean;
-    readonly redirected: boolean;
+    readonly ok!: boolean;
+    readonly redirected!: boolean;
     readonly status: number;
-    readonly statusText: string;
-    readonly trailer: Promise<Headers>;
-    readonly type: ResponseType;
-    readonly url: string;
+    readonly statusText!: string;
+    readonly trailer!: Promise<Headers>;
+    readonly type!: ResponseType;
+    readonly url!: string;
 
-    private constructor(status: number, content: string = '', headers: object = {}) {
+    private constructor(status: number, content: string = '', headers: Record<string, string> = {}) {
         this.status = status;
         this.content = content;
         this.headers = StubHeaders.make(headers);

@@ -65,7 +65,7 @@ describe('Url helper', () => {
         expect(Url.directoryName('https://example.com/path/to/directory/file')).toEqual('directory');
     });
 
-    it ('cleans parts', () => {
+    it('cleans parts', () => {
         expect(
             Url.clean(
                 'http://example.com/path/?query=search#myhash',

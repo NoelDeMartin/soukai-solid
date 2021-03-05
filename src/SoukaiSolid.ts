@@ -2,7 +2,7 @@ import Soukai from 'soukai';
 
 import SolidDocument from '@/models/SolidDocument';
 
-class SoukaiSolid {
+export class SoukaiSolid {
 
     loadSolidModels(): void {
         Soukai.loadModels({ SolidDocument });

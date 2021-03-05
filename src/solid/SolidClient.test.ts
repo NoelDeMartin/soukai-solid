@@ -5,15 +5,15 @@ import MalformedDocumentError from '@/errors/MalformedDocumentError';
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 
-import { IRI } from '@/solid/utils/RDF';
 import ChangeUrlOperation from '@/solid/operations/ChangeUrlOperation';
-import RDFDocument from '@/solid/RDFDocument';
+import IRI from '@/solid/utils/IRI';
 import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import SolidClient from '@/solid/SolidClient';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
+import type RDFDocument from '@/solid/RDFDocument';
 
-import StubFetcher from '@tests/stubs/StubFetcher';
+import StubFetcher from '@/testing/lib/stubs/StubFetcher';
 
 describe('SolidClient', () => {
 
@@ -173,7 +173,7 @@ describe('SolidClient', () => {
         expect(document.resource(url)!.name).toEqual('Foo Bar');
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(url, {
-            headers: { 'Accept': 'text/turtle' },
+            headers: { Accept: 'text/turtle' },
         });
     });
 
@@ -214,7 +214,7 @@ describe('SolidClient', () => {
         expect(documents[0].resource(containerUrl + 'foobar')!.types).toEqual([IRI('foaf:Person')]);
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl + '*', {
-            headers: { 'Accept': 'text/turtle' },
+            headers: { Accept: 'text/turtle' },
         });
     });
 
@@ -341,13 +341,13 @@ describe('SolidClient', () => {
         expect(documents[1].resource(`${containerUrl}bar`)!.types).toEqual([IRI('ldp:Container')]);
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl, {
-            headers: { 'Accept': 'text/turtle' },
+            headers: { Accept: 'text/turtle' },
         });
         expect(StubFetcher.fetch).toHaveBeenCalledWith(`${containerUrl}foo`, {
-            headers: { 'Accept': 'text/turtle' },
+            headers: { Accept: 'text/turtle' },
         });
         expect(StubFetcher.fetch).toHaveBeenCalledWith(`${containerUrl}bar`, {
-            headers: { 'Accept': 'text/turtle' },
+            headers: { Accept: 'text/turtle' },
         });
     });
 
@@ -380,7 +380,7 @@ describe('SolidClient', () => {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/sparql-update' },
                 body: expect.anything(),
-            }
+            },
         );
 
         const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
@@ -410,12 +410,14 @@ describe('SolidClient', () => {
                 <http://xmlns.com/foaf/0.1/givenName> "John" .
         `;
         const operations = [
-            new UpdatePropertyOperation(RDFResourceProperty.literal(containerUrl, 'http://xmlns.com/foaf/0.1/name', 'John Doe')),
+            new UpdatePropertyOperation(
+                RDFResourceProperty.literal(containerUrl, 'http://xmlns.com/foaf/0.1/name', 'John Doe'),
+            ),
             new RemovePropertyOperation(containerUrl, 'http://xmlns.com/foaf/0.1/surname'),
             new RemovePropertyOperation(containerUrl, 'http://xmlns.com/foaf/0.1/givenName'),
         ];
 
-        StubFetcher.addFetchResponse(data, { 'Link': `<${metaDocumentName}>; rel="describedBy"` });
+        StubFetcher.addFetchResponse(data, { Link: `<${metaDocumentName}>; rel="describedBy"` });
         StubFetcher.addFetchResponse();
 
         // Act
@@ -428,7 +430,7 @@ describe('SolidClient', () => {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/sparql-update' },
                 body: expect.anything(),
-            }
+            },
         );
 
         const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
@@ -470,7 +472,11 @@ describe('SolidClient', () => {
             new ChangeUrlOperation(firstResourceUrl, newFirstResourceUrl),
             new ChangeUrlOperation(secondResourceUrl, newSecondResourceUrl),
             new UpdatePropertyOperation(
-                RDFResourceProperty.reference(secondResourceUrl, 'http://xmlns.com/foaf/0.1/knows', newFirstResourceUrl),
+                RDFResourceProperty.reference(
+                    secondResourceUrl,
+                    'http://xmlns.com/foaf/0.1/knows',
+                    newFirstResourceUrl,
+                ),
             ),
         ];
 
@@ -487,7 +493,7 @@ describe('SolidClient', () => {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/sparql-update' },
                 body: expect.anything(),
-            }
+            },
         );
 
         const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
@@ -533,7 +539,7 @@ describe('SolidClient', () => {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/sparql-update' },
                 body: expect.anything(),
-            }
+            },
         );
 
         const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
@@ -571,7 +577,7 @@ describe('SolidClient', () => {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/sparql-update' },
                 body: expect.anything(),
-            }
+            },
         );
 
         const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
@@ -594,7 +600,8 @@ describe('SolidClient', () => {
             <${documentUrl}>
                 a <http://www.w3.org/ns/ldp#Container>, <https://schema.org/Collection> ;
                 <http://www.w3.org/2000/01/rdf-schema#label> "Container name" ;
-                <http://purl.org/dc/terms/modified> "2020-03-08T14:33:09Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+                <http://purl.org/dc/terms/modified>
+                    "2020-03-08T14:33:09Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
             <${resourceUrl}>
                 <http://xmlns.com/foaf/0.1/name> "Jonathan" ;
                 <http://xmlns.com/foaf/0.1/surname> "Doe" ;
@@ -619,7 +626,9 @@ describe('SolidClient', () => {
         await expect(body).toEqualSPARQL(`
             DELETE DATA {
                 <${documentUrl}> a <http://www.w3.org/ns/ldp#Container> .
-                <${documentUrl}> <http://purl.org/dc/terms/modified> "2020-03-08T14:33:09Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+                <${documentUrl}>
+                    <http://purl.org/dc/terms/modified>
+                    "2020-03-08T14:33:09Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
                 <${resourceUrl}> <http://xmlns.com/foaf/0.1/name> "Jonathan" .
                 <${resourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
                 <${resourceUrl}> <http://xmlns.com/foaf/0.1/givenName> "John" .
@@ -668,8 +677,8 @@ describe('SolidClient', () => {
 
     it('deletes container documents', async () => {
         // Arrange
-        const containerUrl = 'http://example.com/container/'; // Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const documentUrl = 'http://example.com/container/document'; // Url.resolve(containerUrl, Faker.random.uuid());
+        const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const documentUrl = Url.resolve(containerUrl, Faker.random.uuid());
         const containerData = `
             <${containerUrl}>
                 a <http://www.w3.org/ns/ldp#Container> ;
@@ -681,9 +690,15 @@ describe('SolidClient', () => {
         `;
 
         StubFetcher.addFetchResponse(containerData);
-        StubFetcher.addFetchResponse(containerData); // TODO this one is not necessary, but the current implementation is not optimal
+
+        // TODO this one is not necessary, but the current implementation is not optimal
+        StubFetcher.addFetchResponse(containerData);
+
         StubFetcher.addFetchResponse(documentData);
-        StubFetcher.addFetchResponse(documentData); // TODO this one is not necessary, but the current implementation is not optimal
+
+        // TODO this one is not necessary, but the current implementation is not optimal
+        StubFetcher.addFetchResponse(documentData);
+
         StubFetcher.addFetchResponse();
         StubFetcher.addFetchResponse();
 
@@ -692,10 +707,11 @@ describe('SolidClient', () => {
 
         // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledTimes(6);
-        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(1, containerUrl, { headers: { 'Accept': 'text/turtle' } });
-        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(2, containerUrl, { headers: { 'Accept': 'text/turtle' } });
-        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(3, containerUrl + '*', { headers: { 'Accept': 'text/turtle' } });
-        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(4, documentUrl, { headers: { 'Accept': 'text/turtle' } });
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(1, containerUrl, { headers: { Accept: 'text/turtle' } });
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(2, containerUrl, { headers: { Accept: 'text/turtle' } });
+        expect(StubFetcher.fetch)
+            .toHaveBeenNthCalledWith(3, containerUrl + '*', { headers: { Accept: 'text/turtle' } });
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(4, documentUrl, { headers: { Accept: 'text/turtle' } });
         expect(StubFetcher.fetch).toHaveBeenNthCalledWith(5, documentUrl, { method: 'DELETE' });
         expect(StubFetcher.fetch).toHaveBeenNthCalledWith(6, containerUrl, { method: 'DELETE' });
     });

@@ -1,6 +1,7 @@
 import { FieldType } from 'soukai';
+import type { ModelInterface, SingleModelRelation } from 'soukai';
 
-import SolidModel from '@/models/SolidModel';
+import { SolidModel } from '@/models/SolidModel';
 
 import Movie from './Movie';
 
@@ -9,7 +10,7 @@ export default class WatchAction extends SolidModel {
     public static timestamps = false;
 
     public static rdfContexts = {
-        'schema': 'https://schema.org/',
+        schema: 'https://schema.org/',
     };
 
     public static rdfsClasses = ['schema:WatchAction'];
@@ -19,8 +20,10 @@ export default class WatchAction extends SolidModel {
         startTime: FieldType.Date,
     };
 
-    movieRelationship() {
+    movieRelationship(): SingleModelRelation {
         return this.belongsToOne(Movie, 'object');
     }
 
 }
+
+export default interface WatchAction extends ModelInterface<typeof WatchAction> {}

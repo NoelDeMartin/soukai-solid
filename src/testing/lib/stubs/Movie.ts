@@ -1,16 +1,17 @@
-import { FieldType, Relation } from 'soukai';
+import type { ModelInterface, Relation } from 'soukai';
+import { FieldType } from 'soukai';
 
-import SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
-import SolidModel from '@/models/SolidModel';
+import { SolidModel } from '@/models/SolidModel';
+import type SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
 
-import WatchAction from '@tests/stubs/WatchAction';
+import WatchAction from '@/testing/lib/stubs/WatchAction';
 
 export default class Movie extends SolidModel {
 
     public static timestamps = false;
 
     public static rdfContexts = {
-        'schema': 'https://schema.org/',
+        schema: 'https://schema.org/',
     };
 
     public static rdfsClasses = ['schema:Movie'];
@@ -20,7 +21,7 @@ export default class Movie extends SolidModel {
     };
 
     public actions: WatchAction[] | undefined;
-    public relatedActions: SolidHasManyRelation<Movie, WatchAction, typeof WatchAction>;
+    public relatedActions!: SolidHasManyRelation<Movie, WatchAction, typeof WatchAction>;
 
     public actionsRelationship(): Relation {
         return this
@@ -30,3 +31,5 @@ export default class Movie extends SolidModel {
     }
 
 }
+
+export default interface Movie extends ModelInterface<typeof Movie> {}

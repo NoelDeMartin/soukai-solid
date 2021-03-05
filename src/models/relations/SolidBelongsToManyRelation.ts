@@ -1,13 +1,15 @@
-import { BelongsToManyRelation, EngineDocument, EngineHelper, EngineDocumentsCollection } from 'soukai';
+import { BelongsToManyRelation, EngineHelper } from 'soukai';
+import type { EngineDocument, EngineDocumentsCollection } from 'soukai';
 
-import SolidModel from '@/models/SolidModel';
+import type { SolidModel } from '@/models/SolidModel';
 
 import Url from '@/utils/Url';
+import type { SolidModelConstructor } from '@/models/inference';
 
 export default class SolidBelongsToManyRelation<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
-    RelatedClass extends typeof SolidModel = typeof SolidModel,
+    RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
 > extends BelongsToManyRelation<Parent, Related, RelatedClass> {
 
     __modelsInSameDocument?: Related[];
@@ -19,7 +21,7 @@ export default class SolidBelongsToManyRelation<
             this.__modelsInOtherDocumentIds = this.parent.getAttribute(this.foreignKeyName);
         }
 
-        const idsByContainerUrl = {};
+        const idsByContainerUrl: Record<string, string[]> = {};
 
         for (const id of this.__modelsInOtherDocumentIds!) {
             const containerUrl = Url.parentDirectory(id);

@@ -1,14 +1,15 @@
 import { DocumentNotFound, SoukaiError } from 'soukai';
-import { Quad } from 'rdf-js';
+import type { Quad } from 'rdf-js';
 
 import { decantUpdateOperations, decantUpdateOperationsData } from '@/solid/operations/utils';
-import { OperationType, UpdateOperation } from '@/solid/operations/Operation';
-import RDF, { IRI, RDFParsingError } from '@/solid/utils/RDF';
-import RDFDocument from '@/solid/RDFDocument';
-import RDFResource from '@/solid/RDFResource';
+import { OperationType } from '@/solid/operations/Operation';
+import IRI from '@/solid/utils/IRI';
+import RDFDocument, { RDFParsingError } from '@/solid/RDFDocument';
 import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
+import type { UpdateOperation } from '@/solid/operations/Operation';
+import type RDFResource from '@/solid/RDFResource';
 
 import MalformedDocumentError, { DocumentFormat } from '@/errors/MalformedDocumentError';
 import NetworkError from '@/errors/NetworkError';
@@ -59,7 +60,7 @@ export default class SolidClient {
             property =>
                 property.resourceUrl === url &&
                 property.type === RDFResourcePropertyType.Type &&
-                property.value === ldpContainer
+                property.value === ldpContainer,
         );
 
         // TODO some of these operations can overwrite an existing document.
@@ -72,7 +73,7 @@ export default class SolidClient {
 
     public async getDocument(url: string): Promise<RDFDocument | null> {
         const response = await this.fetch(url, {
-            headers: { 'Accept': 'text/turtle' },
+            headers: { Accept: 'text/turtle' },
         });
 
         if (response.status !== 200)
@@ -81,7 +82,7 @@ export default class SolidClient {
         const data = await response.text();
 
         try {
-            const document = await RDF.parseTurtle(data, {
+            const document = await RDFDocument.fromTurtle(data, {
                 headers: response.headers,
                 baseUrl: url,
             });
@@ -139,7 +140,7 @@ export default class SolidClient {
             ]);
 
             await Promise.all(
-                Arr.flatten(documents).map(document => this.deleteDocument(document.url!)),
+                Arr.flatten(documents).map(document => this.deleteDocument(document.url as string)),
             );
         }
 
@@ -150,7 +151,7 @@ export default class SolidClient {
 
     public async documentExists(url: string): Promise<boolean> {
         const response = await this.fetch(url, {
-            headers: { 'Accept': 'text/turtle' },
+            headers: { Accept: 'text/turtle' },
         });
 
         if (response.status === 200) {
@@ -161,7 +162,7 @@ export default class SolidClient {
             return false;
         } else {
             throw new SoukaiError(
-                `Couldn't determine if document at ${url} exists, got ${response.status} response`
+                `Couldn't determine if document at ${url} exists, got ${response.status} response`,
             );
         }
     }
@@ -234,25 +235,25 @@ export default class SolidClient {
     }
 
     private async getContainerDocuments(containerUrl: string): Promise<RDFDocument[]> {
-        const response = await this.fetch(containerUrl, { headers: { 'Accept': 'text/turtle' } });
+        const response = await this.fetch(containerUrl, { headers: { Accept: 'text/turtle' } });
 
         this.assertSuccessfulResponse(response, `Error getting container documents from ${containerUrl}`);
 
         const turtleData = await response.text();
-        const containerDocument = await RDF.parseTurtle(turtleData, { baseUrl: containerUrl });
+        const containerDocument = await RDFDocument.fromTurtle(turtleData, { baseUrl: containerUrl });
 
         return await Promise.all(
             containerDocument
                 .resource(containerUrl)?.getPropertyValues('ldp:contains')
-                .map((url: string) => containerDocument.resource(url))
-                .filter(resource => resource !== null && resource.isType('ldp:Container'))
-                .map((resource: RDFResource) => this.getDocument(resource.url!) as Promise<RDFDocument>)
+                .map(url => containerDocument.resource(url as string))
+                .filter((resource): resource is RDFResource => resource !== null && resource.isType('ldp:Container'))
+                .map(resource => this.getDocument(resource.url as string) as Promise<RDFDocument>)
             || [],
         );
     }
 
     private async getNonContainerDocumentsUsingGlobbing(containerUrl: string): Promise<RDFDocument[]> {
-        const response = await this.fetch(containerUrl + '*', { headers: { 'Accept': 'text/turtle' } });
+        const response = await this.fetch(containerUrl + '*', { headers: { Accept: 'text/turtle' } });
 
         this.assertSuccessfulResponse(
             response,
@@ -260,7 +261,7 @@ export default class SolidClient {
         );
 
         const turtleData = await response.text();
-        const globbingDocument = await RDF.parseTurtle(turtleData, { baseUrl: containerUrl });
+        const globbingDocument = await RDFDocument.fromTurtle(turtleData, { baseUrl: containerUrl });
         const statementsByUrl = globbingDocument.statements.reduce(
             (statementsByUrl, statement) => {
                 const baseUrl = Url.clean(statement.subject.value, { fragment: false });
@@ -280,8 +281,10 @@ export default class SolidClient {
     }
 
     private async updateContainerDocument(document: RDFDocument, operations: UpdateOperation[]): Promise<void> {
-        const createRemovePropertyOperation = property => new RemovePropertyOperation(document.url, property);
-        const createRemoveTypeOperation = type => new RemovePropertyOperation(document.url, IRI('rdf:type'), type);
+        const createRemovePropertyOperation =
+            (property: string) => new RemovePropertyOperation(document.url as string, property);
+        const createRemoveTypeOperation =
+            (type: string) => new RemovePropertyOperation(document.url as string, IRI('rdf:type'), type);
 
         operations.push(...RESERVED_CONTAINER_PROPERTIES.map(createRemovePropertyOperation));
         operations.push(...RESERVED_CONTAINER_TYPES.map(createRemoveTypeOperation));
@@ -299,15 +302,14 @@ export default class SolidClient {
             document.properties.filter(
                 property =>
                     removedProperties.some(([resourceUrl, name, value]) =>
-                            resourceUrl === property.resourceUrl &&
+                        resourceUrl === property.resourceUrl &&
                             (!name || name === property.name) &&
-                            (!value || value === property.value),
-                    )
-                ),
-                document.url,
+                            (!value || value === property.value)),
+            ),
+            document.url,
         );
 
-        const response = await this.fetch(document.url, {
+        const response = await this.fetch(document.url as string, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/sparql-update' },
             body: Arr.filter([
@@ -323,15 +325,17 @@ export default class SolidClient {
         resourceUrl: string | null,
         properties: RDFResourceProperty[],
     ): RDFResourceProperty[] {
-        const isReservedProperty = property => Arr.contains(RESERVED_CONTAINER_PROPERTIES, property.name);
-        const isReservedType = property =>
-            property.type === RDFResourcePropertyType.Type &&
-            Arr.contains(RESERVED_CONTAINER_TYPES, property.value);
+        const isReservedProperty =
+            (property: RDFResourceProperty) => Arr.contains(RESERVED_CONTAINER_PROPERTIES, property.name);
+        const isReservedType =
+            (property: RDFResourceProperty) =>
+                property.type === RDFResourcePropertyType.Type &&
+                Arr.contains(RESERVED_CONTAINER_TYPES, property.value);
 
         return properties.filter(
             property =>
                 property.resourceUrl !== resourceUrl ||
-                (!isReservedProperty(property) && !isReservedType(property))
+                (!isReservedProperty(property) && !isReservedType(property)),
         );
     }
 
@@ -357,9 +361,12 @@ export default class SolidClient {
             operations.push(new RemovePropertyOperation(changeUrlOperation.resourceUrl));
             operations.push(
                 ...resource.properties
-                    .filter(property =>
-                        !updatePropertyOperations.some(operation => operation.property.name === property.name) &&
-                        !removePropertyOperations.some(operation => !operation.property || operation.property === property.name),
+                    .filter(
+                        property =>
+                            !updatePropertyOperations.some(operation => operation.property.name === property.name) &&
+                            !removePropertyOperations.some(
+                                operation => !operation.property || operation.property === property.name,
+                            ),
                     )
                     .map(property => new UpdatePropertyOperation(property.clone(changeUrlOperation.newResourceUrl))),
             );
@@ -374,11 +381,11 @@ export default class SolidClient {
             operation =>
                 operation.type === OperationType.UpdateProperty &&
                 operation.property.type !== RDFResourcePropertyType.Type &&
-                document.hasProperty(operation.property.resourceUrl!, operation.property.name)
+                document.hasProperty(operation.property.resourceUrl as string, operation.property.name),
         ) as UpdatePropertyOperation[];
 
         for (const { property } of updateOperations) {
-            operations.push(new RemovePropertyOperation(property.resourceUrl!, property.name));
+            operations.push(new RemovePropertyOperation(property.resourceUrl as string, property.name));
         }
     }
 

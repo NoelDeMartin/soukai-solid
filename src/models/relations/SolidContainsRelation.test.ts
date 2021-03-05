@@ -3,15 +3,15 @@ import Soukai from 'soukai';
 
 import Url from '@/utils/Url';
 
-import Group from '@tests/stubs/Group';
-import Person from '@tests/stubs/Person';
-import StubEngine from '@tests/stubs/StubEngine';
+import Group from '@/testing/lib/stubs/Group';
+import Person from '@/testing/lib/stubs/Person';
+import StubEngine from '@/testing/lib/stubs/StubEngine';
 
 let engine: StubEngine;
 
 describe('SolidHasManyRelation', () => {
 
-    beforeAll(() => {Soukai.loadModels({ Group, Person })});
+    beforeAll(() => Soukai.loadModels({ Group, Person }));
 
     beforeEach(() => {
         engine = new StubEngine();

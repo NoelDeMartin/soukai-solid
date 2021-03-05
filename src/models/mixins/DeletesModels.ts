@@ -2,10 +2,10 @@ import Soukai from 'soukai';
 
 import Url from '@/utils/Url';
 
-import SolidModel from '@/models/SolidModel';
+import type { SolidModel } from '@/models/SolidModel';
 
 type ResourcesGraph = { '@graph': { '@id': string }[] };
-type DocumentModels = { documentUrl: string, models: SolidModel[] };
+type DocumentModels = { documentUrl: string; models: SolidModel[] };
 type DecantedDocumentModels = Record<string, SolidModel[]>;
 type DecantedContainerDocuments = Record<string, DocumentModels[]>;
 
@@ -54,7 +54,10 @@ export default class DeletesModels {
         }, {} as DecantedDocumentModels);
     }
 
-    private async deleteContainerDocumentsModels(containerUrl: string, documentsModels: DocumentModels[]): Promise<void> {
+    private async deleteContainerDocumentsModels(
+        containerUrl: string,
+        documentsModels: DocumentModels[],
+    ): Promise<void> {
         const engine = Soukai.requireEngine();
         const engineDocuments = await engine.readMany(
             containerUrl,
@@ -69,7 +72,7 @@ export default class DeletesModels {
                     documentUrl,
                     models,
                 ),
-            )
+            ),
         );
     }
 
@@ -80,7 +83,7 @@ export default class DeletesModels {
         models: SolidModel[],
     ): Promise<void> {
         const engine = Soukai.requireEngine();
-        const modelUrls = models.map(model => model.url);
+        const modelUrls = models.filter(model => model.exists()).map(model => model.url);
         const { '@graph': resources } = engineDocuments[documentUrl];
 
         if (!resources.some(resource => !modelUrls.some(url => url === resource['@id']))) {

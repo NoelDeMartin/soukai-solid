@@ -5,7 +5,7 @@ declare global {
     namespace jest {
 
         interface Matchers<R> {
-            toEqualJsonLD(jsonld: object): R;
+            toEqualJsonLD(jsonld: Record<string, unknown>): R;
             toEqualSPARQL(sparql: string): R;
         }
 

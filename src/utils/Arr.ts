@@ -60,7 +60,7 @@ class Arr {
         const zippedArrays: T[][] = [];
 
         for (let i = 0; i < arrays[0].length; i++)
-        zippedArrays.push(arrays.map(a => a[i]));
+            zippedArrays.push(arrays.map(a => a[i]));
 
         return zippedArrays;
     }

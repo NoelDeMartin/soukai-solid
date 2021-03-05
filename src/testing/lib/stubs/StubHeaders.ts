@@ -1,17 +1,33 @@
 export default class StubHeaders implements Headers {
 
-    public static make(data: object): StubHeaders {
+    public static make(data: Record<string, string>): StubHeaders {
         return new StubHeaders(data);
     }
 
-    private data: object;
+    private data: Record<string, string>;
 
-    private constructor(data: object) {
+    private constructor(data: Record<string, string>) {
         this.data = {};
 
         for (const name in data) {
             this.set(name, data[name]);
         }
+    }
+
+    [Symbol.iterator](): IterableIterator<[string, string]> {
+        throw new Error('Method not implemented.');
+    }
+
+    entries(): IterableIterator<[string, string]> {
+        throw new Error('Method not implemented.');
+    }
+
+    keys(): IterableIterator<string> {
+        throw new Error('Method not implemented.');
+    }
+
+    public values(): IterableIterator<string> {
+        throw new Error('Method not implemented.');
     }
 
     public append(name: string, value: string): void {
@@ -34,7 +50,7 @@ export default class StubHeaders implements Headers {
         this.data[this.normalizeHeader(name)] = value;
     }
 
-    public forEach(callbackfn: (value: string, key: string, parent: Headers) => void, thisArg?: any): void {
+    public forEach(callbackfn: (value: string, key: string, parent: Headers) => void): void {
         for (const key in this.data) {
             callbackfn(this.data[key], key, this);
         }

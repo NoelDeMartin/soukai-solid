@@ -1,15 +1,15 @@
 import Faker from 'faker';
 import Soukai, { FieldType } from 'soukai';
 
-import { IRI } from '@/solid/utils/RDF';
+import IRI from '@/solid/utils/IRI';
 
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 
-import { stubPersonJsonLD, stubGroupJsonLD, stubSolidDocumentJsonLD } from '@tests/stubs/helpers';
-import Group from '@tests/stubs/Group';
-import Person from '@tests/stubs/Person';
-import StubEngine from '@tests/stubs/StubEngine';
+import { stubGroupJsonLD, stubPersonJsonLD, stubSolidDocumentJsonLD } from '@/testing/lib/stubs/helpers';
+import Group from '@/testing/lib/stubs/Group';
+import Person from '@/testing/lib/stubs/Person';
+import StubEngine from '@/testing/lib/stubs/StubEngine';
 
 import SolidContainerModel from './SolidContainerModel';
 import SolidDocument from './SolidDocument';
@@ -18,7 +18,7 @@ let engine: StubEngine;
 
 describe('SolidContainerModel', () => {
 
-    beforeAll(() => {Soukai.loadModels({ Group, Person })});
+    beforeAll(() => Soukai.loadModels({ Group, Person }));
 
     beforeEach(() => {
         engine = new StubEngine();
@@ -30,7 +30,7 @@ describe('SolidContainerModel', () => {
 
         Soukai.loadModels({ StubModel });
 
-        expect(StubModel.rdfsClasses).toEqual(new Set([IRI('ldp:Container')]));
+        expect(StubModel.rdfsClasses).toEqual([IRI('ldp:Container')]);
     });
 
     it('adds resourceUrls field', () => {
@@ -49,7 +49,6 @@ describe('SolidContainerModel', () => {
             url: {
                 type: FieldType.Key,
                 required: false,
-                rdfProperty: null,
             },
             resourceUrls: {
                 type: FieldType.Array,
@@ -137,7 +136,7 @@ describe('SolidContainerModel', () => {
         expect(engine.readMany).toHaveBeenCalledWith(
             containerUrl,
             {
-                $in: [
+                '$in': [
                     musashiUrl,
                     kojiroUrl,
                 ],
@@ -160,13 +159,15 @@ describe('SolidContainerModel', () => {
     it('uses name for minting url for new containers', async () => {
         // Arrange
         class StubModel extends SolidContainerModel {
+
             public static rdfContexts = {
-                'foaf': 'http://xmlns.com/foaf/0.1/',
+                foaf: 'http://xmlns.com/foaf/0.1/',
             };
 
             public static fields = {
                 name: FieldType.String,
             };
+
         }
 
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
@@ -192,13 +193,15 @@ describe('SolidContainerModel', () => {
 
     it('mints unique urls when urls are already in use', async () => {
         class StubModel extends SolidContainerModel {
+
             public static rdfContexts = {
-                'foaf': 'http://xmlns.com/foaf/0.1/',
+                foaf: 'http://xmlns.com/foaf/0.1/',
             };
 
             public static fields = {
                 name: FieldType.String,
             };
+
         }
 
         const name = Faker.random.word();
@@ -219,7 +222,7 @@ describe('SolidContainerModel', () => {
         // Assert
         expect(typeof model.url).toEqual('string');
         expect(model.url).not.toEqual(resourceUrl);
-        expect(model.url).toMatch(new RegExp(`^${escapedContainerUrl}${slug}-[\\d\\w-]+\/$`));
+        expect(model.url).toMatch(new RegExp(`^${escapedContainerUrl}${slug}-[\\d\\w-]+/$`));
 
         expect(engine.create).toHaveBeenCalledWith(
             containerUrl,

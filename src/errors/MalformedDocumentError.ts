@@ -2,7 +2,7 @@ import { SoukaiError } from 'soukai';
 
 export enum DocumentFormat {
     RDF = 'RDF',
-};
+}
 
 export default class MalformedDocumentError extends SoukaiError {
 
