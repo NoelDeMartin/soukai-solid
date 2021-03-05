@@ -334,24 +334,31 @@ describe('SolidModel', () => {
         await collection.loadRelation('movies');
 
         // Assert
-        expect(collection.movies).toHaveLength(3);
-
         const movies = collection.movies as Movie[];
-        expect(movies[0].url).toEqual(firstMovieUrl);
-        expect(movies[0].name).toEqual(firstMovieName);
-        expect(movies[0].actions).toHaveLength(0);
+        expect(movies).toHaveLength(3);
 
-        expect(movies[1].url).toEqual(secondMovieUrl);
-        expect(movies[1].name).toEqual(secondMovieName);
-        expect(movies[1].actions).toHaveLength(1);
-        expect(movies[1].actions![0].url).toEqual(firstWatchActionUrl);
-        expect(movies[1].actions![0].getSourceDocumentUrl()).toEqual(secondDocumentUrl);
+        const firstMovie = movies.find(movie => movie.url === firstMovieUrl) as Movie;
+        expect(firstMovie).not.toBeNull();
+        expect(firstMovie.name).toEqual(firstMovieName);
+        expect(firstMovie.actions).toHaveLength(0);
 
-        expect(movies[2].url).toEqual(thirdMovieUrl);
-        expect(movies[2].name).toEqual(thirdMovieName);
-        expect(movies[2].actions).toHaveLength(1);
-        expect(movies[2].actions![0].url).toEqual(secondWatchActionUrl);
-        expect(movies[2].actions![0].getSourceDocumentUrl()).toEqual(secondDocumentUrl);
+        const secondMovie = movies.find(movie => movie.url === secondMovieUrl) as Movie;
+        expect(secondMovie).not.toBeNull();
+        expect(secondMovie.name).toEqual(secondMovieName);
+        expect(secondMovie.actions).toHaveLength(1);
+
+        const secondMovieActions = secondMovie.actions as WatchAction[];
+        expect(secondMovieActions[0].url).toEqual(firstWatchActionUrl);
+        expect(secondMovieActions[0].getSourceDocumentUrl()).toEqual(secondDocumentUrl);
+
+        const thirdMovie = movies.find(movie => movie.url === thirdMovieUrl) as Movie;
+        expect(thirdMovie).not.toBeNull();
+        expect(thirdMovie.name).toEqual(thirdMovieName);
+        expect(thirdMovie.actions).toHaveLength(1);
+
+        const thirdMovieActions = thirdMovie.actions as WatchAction[];
+        expect(thirdMovieActions[0].url).toEqual(secondWatchActionUrl);
+        expect(thirdMovieActions[0].getSourceDocumentUrl()).toEqual(secondDocumentUrl);
     });
 
     it('mints url for new models', async () => {

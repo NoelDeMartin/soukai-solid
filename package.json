@@ -32,8 +32,7 @@
   "dependencies": {
     "@babel/runtime": "^7.13.8",
     "core-js": "^3.9.0",
-    "jsonld-streaming-parser": "^2.0.1",
-    "jsonld-streaming-serializer": "^1.1.0",
+    "jsonld": "^4.0.1",
     "n3": "^1.3.6"
   },
   "devDependencies": {
@@ -43,6 +42,7 @@
     "@noeldemartin/scripts": "0.0.0-next.8c3720ca71c3cced5cb8673d0297646404773fca",
     "@types/faker": "^4.1.5",
     "@types/jest": "^24.0.0",
+    "@types/jsonld": "^1.5.5",
     "@types/n3": "^1.1.6",
     "@types/rdf-js": "^3.0.0",
     "cross-env": "^5.2.0",

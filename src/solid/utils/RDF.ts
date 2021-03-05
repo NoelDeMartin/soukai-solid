@@ -1,4 +1,4 @@
-import { JsonLdSerializer as JsonLDSerializer } from 'jsonld-streaming-serializer';
+import { fromRDF } from 'jsonld';
 import type { Quad } from 'rdf-js';
 
 import IRI from '@/solid/utils/IRI';
@@ -15,21 +15,11 @@ export type JsonLDGraph = { '@graph': JsonLDResource[] };
 class RDF {
 
     public async createJsonLD(statements: Quad[]): Promise<JsonLDGraph> {
-        statements.sort((a: Quad, b: Quad) => a.subject.value.localeCompare(b.subject.value));
+        const resources = await fromRDF(statements) as JsonLDResource[];
 
-        return new Promise((resolve, reject) => {
-            const serializer = new JsonLDSerializer();
-            let flattened = '';
-
-            serializer.on('data', data => flattened += data);
-            serializer.on('error', reject);
-            serializer.on('end', () => resolve({ '@graph': JSON.parse(flattened) }));
-
-            for (const statement of statements) {
-                serializer.write(statement);
-            }
-            serializer.end();
-        });
+        return {
+            '@graph': resources,
+        };
     }
 
     public getJsonLDProperty<T = unknown>(json: JsonLD, property: string): T | null {

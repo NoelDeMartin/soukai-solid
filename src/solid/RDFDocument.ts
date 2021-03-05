@@ -1,6 +1,7 @@
-import { JsonLdParser as JsonLDParser } from 'jsonld-streaming-parser';
 import { Parser as TurtleParser } from 'n3';
 import { SoukaiError } from 'soukai';
+import { toRDF } from 'jsonld';
+import type { JsonLdObj } from 'jsonld/jsonld-spec';
 import type { Quad } from 'rdf-js';
 
 import RDF from '@/solid/utils/RDF';
@@ -63,19 +64,9 @@ export default class RDFDocument {
     }
 
     static async fromJsonLD(json: JsonLD): Promise<RDFDocument> {
-        return new Promise((resolve, reject) => {
-            const quads: Quad[] = [];
-            const parser = new JsonLDParser({ baseIRI: json['@id'] || '' });
+        const quads = await toRDF(json as JsonLdObj) as Quad[];
 
-            parser.on('data', quad => {
-                quads.push(quad);
-            });
-            parser.on('error', reject);
-            parser.on('end', () => resolve(new RDFDocument(json['@id'] || null, quads)));
-
-            parser.write(JSON.stringify(json));
-            parser.end();
-        });
+        return new RDFDocument(json['@id'] || null, quads);
     }
 
     public readonly url: string | null;
