@@ -1,6 +1,6 @@
-import { fromRDF } from 'jsonld';
 import type { Quad } from 'rdf-js';
 
+import { fromRDF } from '@/solid/external';
 import IRI from '@/solid/utils/IRI';
 
 export type JsonLD = Partial<{
@@ -15,7 +15,7 @@ export type JsonLDGraph = { '@graph': JsonLDResource[] };
 class RDF {
 
     public async createJsonLD(statements: Quad[]): Promise<JsonLDGraph> {
-        const resources = await fromRDF(statements) as JsonLDResource[];
+        const resources = await fromRDF(statements);
 
         return {
             '@graph': resources,

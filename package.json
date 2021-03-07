@@ -39,7 +39,7 @@
     "@babel/plugin-proposal-class-properties": "^7.13.0",
     "@babel/plugin-transform-runtime": "^7.13.8",
     "@noeldemartin/eslint-config-typescript": "0.0.0-next.fa3c9edeea6e1526504797ddd3097cbd1f039287",
-    "@noeldemartin/scripts": "0.0.0-next.8c3720ca71c3cced5cb8673d0297646404773fca",
+    "@noeldemartin/scripts": "0.0.0-next.0fe4a5ffafe6325621fd501c83dcd42fb8bf1930",
     "@types/faker": "^4.1.5",
     "@types/jest": "^24.0.0",
     "@types/jsonld": "^1.5.5",
@@ -49,7 +49,7 @@
     "eslint": "^7.20.0",
     "faker": "^4.1.0",
     "jest": "^26.6.3",
-    "soukai": "0.4.1-next.54c1eece7f37f3ac643b5b975b833e29724f2e3d",
+    "soukai": "^0.4.1-next.b6b57ed7755cdff1c18ccf1b7ea83098633292e3",
     "ts-jest": "^26.5.2",
     "typescript": "^4.1.5"
   }

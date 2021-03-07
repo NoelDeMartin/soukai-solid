@@ -1,9 +1,7 @@
-import { Parser as TurtleParser } from 'n3';
 import { SoukaiError } from 'soukai';
-import { toRDF } from 'jsonld';
-import type { JsonLdObj } from 'jsonld/jsonld-spec';
 import type { Quad } from 'rdf-js';
 
+import { fromTurtle, toRDF } from '@/solid/external';
 import RDF from '@/solid/utils/RDF';
 import RDFResource from '@/solid/RDFResource';
 import type { JsonLD, JsonLDGraph } from '@/solid/utils/RDF';
@@ -27,44 +25,24 @@ export class RDFParsingError extends SoukaiError {}
 
 export default class RDFDocument {
 
-    static fromTurtle(turtle: string, options: TurtleParsingOptions = {}): Promise<RDFDocument> {
-        return new Promise((resolve, reject) => {
-            const quads: Quad[] = [];
-            const parser = new TurtleParser({
+    static async fromTurtle(turtle: string, options: TurtleParsingOptions = {}): Promise<RDFDocument> {
+        try {
+            const data = await fromTurtle(turtle, {
                 baseIRI: options.baseUrl || '',
                 format: options.format || 'text/turtle',
             });
-            const metadata: RDFDocumentMetadata = {
-                containsRelativeIRIs: false,
+
+            return new RDFDocument(options.baseUrl || '', data.quads, {
+                containsRelativeIRIs: data.containsRelativeIRIs,
                 describedBy: getDescribedBy(options),
-            };
-            const resolveRelativeIRI = parser._resolveRelativeIRI;
-
-            parser._resolveRelativeIRI = (...args) => {
-                metadata.containsRelativeIRIs = true;
-                parser._resolveRelativeIRI = resolveRelativeIRI;
-
-                return parser._resolveRelativeIRI(...args);
-            };
-
-            parser.parse(turtle, (error, quad) => {
-                if (error) {
-                    reject(new RDFParsingError(error.message));
-                    return;
-                }
-
-                if (!quad) {
-                    resolve(new RDFDocument(options.baseUrl || '', quads, metadata));
-                    return;
-                }
-
-                quads.push(quad);
             });
-        });
+        } catch (error) {
+            throw new RDFParsingError(error.message);
+        }
     }
 
     static async fromJsonLD(json: JsonLD): Promise<RDFDocument> {
-        const quads = await toRDF(json as JsonLdObj) as Quad[];
+        const quads = await toRDF(json);
 
         return new RDFDocument(json['@id'] || null, quads);
     }
