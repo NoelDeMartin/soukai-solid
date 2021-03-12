@@ -39,7 +39,7 @@ describe('SolidHasManyRelation', () => {
             ],
         });
 
-        engine.setMany('watchactions', {
+        engine.setMany('solid://watchactions/', {
             [secondActionUrl]: stubWatchActionJsonLD(secondActionUrl, movieUrl, '2010-02-15T23:42:00.000Z'),
         });
 

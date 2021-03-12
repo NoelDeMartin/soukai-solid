@@ -1,6 +1,7 @@
 import Soukai, {
     DocumentAlreadyExists,
     FieldType,
+    InvalidModelDefinition,
     Model,
     SoukaiError,
 } from 'soukai';
@@ -75,10 +76,20 @@ export class SolidModel extends Model {
     public static boot(name: string): void {
         super.boot(name);
 
-        const fields = this.fields as BootedFieldsDefinition<{ rdfProperty?: string }>;
+        const modelClass = this;
+        const instance = modelClass.pureInstance();
 
-        this.rdfContexts = {
-            ...this.rdfContexts,
+        // Validate collection name.
+        if (!modelClass.collection.match(/^\w+:\/\/.*\/$/))
+            throw new InvalidModelDefinition(
+                modelClass.name,
+                'SolidModel collections must be valid container urls (ending with a trailing slash), ' +
+                `'${modelClass.collection}' isn't.`,
+            );
+
+        // Expand RDF definitions.
+        modelClass.rdfContexts = {
+            ...modelClass.rdfContexts,
             solid: 'http://www.w3.org/ns/solid/terms#',
             rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
             rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
@@ -86,7 +97,7 @@ export class SolidModel extends Model {
             purl: 'http://purl.org/dc/terms/',
         };
 
-        const instance = this.pureInstance();
+        const fields = modelClass.fields as BootedFieldsDefinition<{ rdfProperty?: string }>;
         const defaultRdfContext = instance.getDefaultRdfContext();
 
         if (
@@ -103,22 +114,22 @@ export class SolidModel extends Model {
             fields['updatedAt'].rdfProperty = IRI('purl:modified');
         }
 
-        this.rdfsClasses = Arr.unique(
-            this.rdfsClasses.map(
-                name => name.indexOf(':') === -1 ? (defaultRdfContext + name) : IRI(name, this.rdfContexts),
+        modelClass.rdfsClasses = Arr.unique(
+            modelClass.rdfsClasses.map(
+                name => name.indexOf(':') === -1 ? (defaultRdfContext + name) : IRI(name, modelClass.rdfContexts),
             ),
         );
 
         for (const field in fields) {
             fields[field].rdfProperty = IRI(
                 fields[field].rdfProperty || `${defaultRdfContext}${field}`,
-                this.rdfContexts,
+                modelClass.rdfContexts,
             );
         }
 
-        delete fields[this.primaryKey].rdfProperty;
+        delete fields[modelClass.primaryKey].rdfProperty;
 
-        this.fields = fields;
+        modelClass.fields = fields;
     }
 
     /* eslint-disable max-len */
@@ -321,6 +332,12 @@ export class SolidModel extends Model {
         const documentUrl = this.getSourceDocumentUrl();
 
         return documentUrl ? Url.parentDirectory(documentUrl) : null;
+    }
+
+    protected getDefaultCollection(): string {
+        const collection = super.getDefaultCollection();
+
+        return `solid://${collection}/`;
     }
 
     protected async createFromEngineDocument(id: Key, document: EngineDocument, resourceId?: string): Promise<this> {
