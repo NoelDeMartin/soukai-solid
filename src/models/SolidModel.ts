@@ -86,17 +86,18 @@ export class SolidModel extends Model {
             purl: 'http://purl.org/dc/terms/',
         };
 
-        const defaultRdfContext = this.instance().getDefaultRdfContext();
+        const instance = this.pureInstance();
+        const defaultRdfContext = instance.getDefaultRdfContext();
 
         if (
-            this.instance().hasAutomaticTimestamp('createdAt') &&
+            instance.hasAutomaticTimestamp('createdAt') &&
             typeof fields['createdAt'].rdfProperty === 'undefined'
         ) {
             fields['createdAt'].rdfProperty = IRI('purl:created');
         }
 
         if (
-            this.instance().hasAutomaticTimestamp('updatedAt') &&
+            instance.hasAutomaticTimestamp('updatedAt') &&
             typeof fields['updatedAt'].rdfProperty === 'undefined'
         ) {
             fields['updatedAt'].rdfProperty = IRI('purl:modified');
