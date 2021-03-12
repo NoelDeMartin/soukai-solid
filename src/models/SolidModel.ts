@@ -115,10 +115,13 @@ export class SolidModel extends Model {
         }
 
         modelClass.rdfsClasses = Arr.unique(
-            modelClass.rdfsClasses.map(
+            (modelClass.rdfsClasses ?? []).map(
                 name => name.indexOf(':') === -1 ? (defaultRdfContext + name) : IRI(name, modelClass.rdfContexts),
             ),
         );
+
+        if (modelClass.rdfsClasses.length === 0)
+            modelClass.rdfsClasses = [defaultRdfContext + modelClass.modelName];
 
         for (const field in fields) {
             fields[field].rdfProperty = IRI(

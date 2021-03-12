@@ -17,11 +17,12 @@ import type SolidDocument from './SolidDocument';
 export default class SolidContainerModel extends SolidModel {
 
     public static boot(name: string): void {
-        super.boot(name);
+        const modelClass = this;
 
-        this.rdfsClasses = Arr.unique(this.rdfsClasses.concat([IRI('ldp:Container')]));
-
-        this.fields['resourceUrls'] = {
+        // Add container definitions.
+        modelClass.rdfsClasses = Arr.unique((modelClass.rdfsClasses ?? []).concat([IRI('ldp:Container')]));
+        modelClass.fields = modelClass.fields ?? {};
+        modelClass.fields['resourceUrls'] = {
             type: FieldType.Array,
             required: false,
             rdfProperty: IRI('ldp:contains'),
@@ -29,6 +30,9 @@ export default class SolidContainerModel extends SolidModel {
                 type: FieldType.Key,
             },
         };
+
+        // Boot model.
+        super.boot(name);
     }
 
     resourceUrls!: string[];

@@ -5,6 +5,7 @@ import type { ModelInterface } from 'soukai';
 export default class SolidDocument extends SolidModel {
 
     public static timestamps = [TimestampField.UpdatedAt];
+    public static rdfsClasses = ['ldp:Resource'];
 
 }
 
