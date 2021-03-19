@@ -1,6 +1,6 @@
 import { SolidModel } from './SolidModel';
 import { TimestampField } from 'soukai';
-import type { ModelInterface } from 'soukai';
+import type { IModel } from 'soukai';
 
 export default class SolidDocument extends SolidModel {
 
@@ -9,4 +9,4 @@ export default class SolidDocument extends SolidModel {
 
 }
 
-export default interface SolidDocument extends ModelInterface<typeof SolidDocument> {}
+export default interface SolidDocument extends IModel<typeof SolidDocument> {}

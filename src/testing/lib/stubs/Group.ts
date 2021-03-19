@@ -1,5 +1,5 @@
-import type { ModelInterface, MultiModelRelation } from 'soukai';
 import { FieldType } from 'soukai';
+import type { IModel, MultiModelRelation } from 'soukai';
 
 import SolidContainerModel from '@/models/SolidContainerModel';
 import type SolidContainsRelation from '@/models/relations/SolidContainsRelation';
@@ -29,4 +29,4 @@ export default class Group extends SolidContainerModel {
 
 }
 
-export default interface Group extends ModelInterface<typeof Group> {}
+export default interface Group extends IModel<typeof Group> {}

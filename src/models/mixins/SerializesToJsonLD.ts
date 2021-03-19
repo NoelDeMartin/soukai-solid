@@ -135,6 +135,7 @@ export default class SerializesToJsonLD {
     protected convertEngineFiltersToJsonLD(
         this: SolidModel,
         filters: EngineFilters,
+        compactIRIs: boolean,
     ): EngineFilters {
         const jsonldFilters: EngineFilters = {};
         const rdfContext = new RDFContext(this.static('rdfContexts'));
@@ -157,7 +158,7 @@ export default class SerializesToJsonLD {
             delete filters.$in;
         }
 
-        const graphContainsFilters = this.convertAttributeValuesToJsonLD(filters) as EngineFilters;
+        const graphContainsFilters = this.convertAttributeValuesToJsonLD(filters, compactIRIs) as EngineFilters;
 
         if (typeFilters.length > 0)
             graphContainsFilters['@type'] = { $or: typeFilters };
@@ -168,8 +169,12 @@ export default class SerializesToJsonLD {
         return jsonldFilters;
     }
 
-    protected convertEngineUpdatesToJsonLD(this: SolidModel, updates: EngineUpdates): EngineUpdates {
-        return this.convertAttributeValuesToJsonLD(updates) as EngineUpdates;
+    protected convertEngineUpdatesToJsonLD(
+        this: SolidModel,
+        updates: EngineUpdates,
+        compactIRIs: boolean,
+    ): EngineUpdates {
+        return this.convertAttributeValuesToJsonLD(updates, compactIRIs) as EngineUpdates;
     }
 
     private setJsonLDField(
@@ -299,8 +304,8 @@ export default class SerializesToJsonLD {
         }
     }
 
-    private convertAttributeValuesToJsonLD(this: SolidModel, attributes: Attributes): JsonLD {
-        const rdfContext = new RDFContext(this.static('rdfContexts'), false);
+    private convertAttributeValuesToJsonLD(this: SolidModel, attributes: Attributes, compactIRIs: boolean): JsonLD {
+        const rdfContext = new RDFContext(this.static('rdfContexts'), compactIRIs);
         const jsonld: JsonLD = {};
 
         for (const [field, value] of Object.entries(attributes)) {

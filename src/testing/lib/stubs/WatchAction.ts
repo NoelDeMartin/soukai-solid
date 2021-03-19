@@ -1,5 +1,5 @@
 import { FieldType } from 'soukai';
-import type { ModelInterface, SingleModelRelation } from 'soukai';
+import type { IModel, SingleModelRelation } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
 
@@ -26,4 +26,4 @@ export default class WatchAction extends SolidModel {
 
 }
 
-export default interface WatchAction extends ModelInterface<typeof WatchAction> {}
+export default interface WatchAction extends IModel<typeof WatchAction> {}

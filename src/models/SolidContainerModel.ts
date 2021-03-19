@@ -16,7 +16,7 @@ import type SolidDocument from './SolidDocument';
 
 export default class SolidContainerModel extends SolidModel {
 
-    public static boot(name: string): void {
+    public static boot(name?: string): void {
         const modelClass = this;
 
         // Add container definitions.

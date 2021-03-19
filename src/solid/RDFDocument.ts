@@ -44,7 +44,7 @@ export default class RDFDocument {
     static async fromJsonLD(json: JsonLD): Promise<RDFDocument> {
         const quads = await toRDF(json);
 
-        return new RDFDocument(json['@id'] || null, quads);
+        return new RDFDocument(json['@id'] ? Url.route(json['@id']) : null, quads);
     }
 
     public readonly url: string | null;

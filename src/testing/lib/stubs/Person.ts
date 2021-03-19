@@ -1,5 +1,5 @@
-import type { ModelInterface, Relation, SingleModelRelation } from 'soukai';
 import { FieldType, TimestampField } from 'soukai';
+import type { IModel, Relation, SingleModelRelation } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
 
@@ -38,4 +38,4 @@ export default class Person extends SolidModel {
 
 }
 
-export default interface Person extends ModelInterface<typeof Person> {}
+export default interface Person extends IModel<typeof Person> {}

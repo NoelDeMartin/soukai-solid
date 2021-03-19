@@ -1,5 +1,5 @@
-import type { ModelInterface, Relation } from 'soukai';
 import { FieldType } from 'soukai';
+import type { IModel, Relation } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
 import type SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
@@ -32,4 +32,4 @@ export default class Movie extends SolidModel {
 
 }
 
-export default interface Movie extends ModelInterface<typeof Movie> {}
+export default interface Movie extends IModel<typeof Movie> {}

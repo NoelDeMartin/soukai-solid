@@ -4,6 +4,7 @@ import Soukai, {
     InvalidModelDefinition,
     Model,
     SoukaiError,
+    getEngine,
 } from 'soukai';
 import type {
     Attributes,
@@ -14,16 +15,20 @@ import type {
     EngineDocument,
     EngineFilters,
     EngineUpdates,
+    IModel,
     Key,
     ModelConstructor,
-    ModelInterface,
     MultiModelRelation,
     SingleModelRelation,
     TimestampFieldValue,
 } from 'soukai';
+import { fail } from '@noeldemartin/utils';
+
+import { SolidEngine } from '@/engines';
 
 import flattenJsonLD from '@/solid/utils/flattenJsonLD';
 import IRI from '@/solid/utils/IRI';
+import RDFDocument from '@/solid/RDFDocument';
 import type { JsonLD } from '@/solid/utils/RDF';
 import type RDFResource from '@/solid/RDFResource';
 
@@ -41,7 +46,6 @@ import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
 import type { SolidModelConstructor } from './inference';
 import type { SolidBootedFieldsDefinition, SolidFieldsDefinition } from './fields';
 import type SolidContainerModel from './SolidContainerModel';
-import RDFDocument from '@/solid/RDFDocument';
 
 export class SolidModel extends Model {
 
@@ -73,7 +77,7 @@ export class SolidModel extends Model {
         return this.from(parentUrl);
     }
 
-    public static boot(name: string): void {
+    public static boot(name?: string): void {
         super.boot(name);
 
         const modelClass = this;
@@ -172,7 +176,12 @@ export class SolidModel extends Model {
     }
 
     public static prepareEngineFilters(filters: EngineFilters = {}): EngineFilters {
-        return this.instance().convertEngineFiltersToJsonLD(filters);
+        // This is necessary because a SolidEngine behaves differently than other engines.
+        // Even if a document is stored using compacted IRIs, a SolidEngine will need them expanded
+        // because it's ultimately stored in turtle, not json-ld.
+        const compactIRIs = !(getEngine() instanceof SolidEngine);
+
+        return this.instance().convertEngineFiltersToJsonLD(filters, compactIRIs);
     }
 
     public static async newFromJsonLD<T extends SolidModel>(
@@ -319,6 +328,10 @@ export class SolidModel extends Model {
             return null;
 
         return Url.route(this.url);
+    }
+
+    public requireDocumentUrl(): string {
+        return this.getDocumentUrl() ?? fail(SoukaiError, 'Failed getting required document url');
     }
 
     public getSourceDocumentUrl(): string | null {
@@ -497,10 +510,15 @@ export class SolidModel extends Model {
         if (super.isDirty() && this.url) {
             const modelUpdates = super.getDirtyEngineDocumentUpdates();
 
+            // This is necessary because a SolidEngine behaves differently than other engines.
+            // Even if a document is stored using compacted IRIs, a SolidEngine will need them expanded
+            // because it's ultimately stored in turtle, not json-ld.
+            const compactIRIs = !(getEngine() instanceof SolidEngine);
+
             graphUpdates.push({
                 $updateItems: {
                     $where: { '@id': this.url },
-                    $update: this.convertEngineUpdatesToJsonLD(modelUpdates),
+                    $update: this.convertEngineUpdatesToJsonLD(modelUpdates, compactIRIs),
                 },
             });
         }
@@ -599,7 +617,7 @@ export class SolidModel extends Model {
         if (!this.url)
             this.mintUrl();
 
-        const documentUrl = this.getDocumentUrl() as string;
+        const documentUrl = this.requireDocumentUrl();
 
         dirtyModels.forEach(model => !model.url && model.mintUrl(documentUrl, this._documentExists, UUID.generate()));
 
@@ -609,6 +627,6 @@ export class SolidModel extends Model {
 }
 
 useMixins(SolidModel, [DeletesModels, SerializesToJsonLD]);
-export interface SolidModel extends ModelInterface<typeof SolidModel> {}
+export interface SolidModel extends IModel<typeof SolidModel> {}
 export interface SolidModel extends DeletesModels {}
 export interface SolidModel extends SerializesToJsonLD {}

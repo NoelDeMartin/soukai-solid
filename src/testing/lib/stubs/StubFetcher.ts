@@ -19,7 +19,7 @@ class StubFetcher extends EventEmitter {
         this.fetchResponses.push(StubResponse.make(content, headers, status));
     }
 
-    public async fetch(): Promise<Response> {
+    public async fetch(_: RequestInfo, __?: RequestInit): Promise<Response> {
         const response = this.fetchResponses.shift();
 
         if (!response) {

@@ -2,8 +2,6 @@ import Faker from 'faker';
 
 import Soukai, { FieldType } from 'soukai';
 
-import IRI from '@/solid/utils/IRI';
-
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
 
@@ -248,7 +246,7 @@ describe('SolidModel', () => {
                                 { $eq: 'http://xmlns.com/foaf/0.1/Person' },
                             ],
                         },
-                        [IRI('foaf:name')]: 'Alice',
+                        'name': 'Alice',
                     },
                 },
             },
@@ -294,8 +292,8 @@ describe('SolidModel', () => {
                     $updateItems: {
                         $where: { '@id': model.url },
                         $update: {
-                            [IRI('solid:name')]: 'John',
-                            [IRI('solid:surname')]: { $unset: true },
+                            name: 'John',
+                            surname: { $unset: true },
                         },
                     },
                 },
@@ -569,7 +567,7 @@ describe('SolidModel', () => {
                 '@graph': {
                     $updateItems: {
                         $where: { '@id': movieUrl },
-                        $update: { [IRI('schema:name')]: movieName },
+                        $update: { name: movieName },
                     },
                 },
             },
