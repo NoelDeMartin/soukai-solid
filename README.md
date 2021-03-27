@@ -344,6 +344,6 @@ These methods don't take foreign and local keys because they rely on the `url` o
 
 ## Going Further
 
-If you want to see more examples, you can find some models defined under [tests/stubs/models](tests/stubs/models) and files ending with `.test.ts` throughout the source code.
+If you want to see more examples, you can find some models defined under [src/testing/lib/stubs](src/testing/lib/stubs) and files ending with `.test.ts` throughout the source code.
 
 If you want to see some real-life applications using this library, check out [Media Kraken](https://github.com/noeldemartin/media-kraken) and [Solid Focus](https://github.com/NoelDeMartin/solid-focus).
