@@ -39,21 +39,7 @@ export async function toRDF(input: JsonLD): Promise<Quad[]> {
 
     const { toRDF } = await import('./external.chunk');
 
-    return toRDF(
-        input as JsonLdObj,
-        {
-            // By default, this library makes network requests that can end up being very costly.
-            //
-            // For example, using https://schema.org results in a network request with a 160KB response, this one:
-            // https://schema.org/docs/jsonldcontext.jsonld
-            //
-            // With the following configuration, those network requests are circumvented.
-            documentLoader: async (url) => ({
-                documentUrl: url,
-                document: { '@context': { '@vocab': url } },
-            }),
-        },
-    ) as Promise<Quad[]>;
+    return toRDF(input as JsonLdObj) as Promise<Quad[]>;
 }
 
 export async function fromTurtle(turtle: string, options: ParserOptions = {}): Promise<DocumentData> {

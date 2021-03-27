@@ -11,7 +11,7 @@ import IRI from '@/solid/utils/IRI';
 import RDFDocument from '@/solid/RDFDocument';
 import RDFResourceProperty from '@/solid/RDFResourceProperty';
 
-describe('CRUD', () => {
+describe('Solid CRUD', () => {
 
     let fetch: jest.Mock<Promise<Response>, [RequestInfo, RequestInit?]>;
 

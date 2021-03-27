@@ -8,7 +8,7 @@ import WatchAction from '@/testing/lib/stubs/WatchAction';
 
 let engine: InMemoryEngine;
 
-describe('CRUD', () => {
+describe('Soukai CRUD', () => {
 
     beforeEach(() => {
         engine = new InMemoryEngine;
@@ -30,7 +30,7 @@ describe('CRUD', () => {
         await expect(engine.database[Movie.collection][movie.requireDocumentUrl()]).toEqualJsonLD({
             '@graph': [
                 {
-                    '@context': 'https://schema.org/',
+                    '@context': { '@vocab': 'https://schema.org/' },
                     '@id': movie.url,
                     '@type': 'Movie',
                     name,
@@ -67,7 +67,7 @@ describe('CRUD', () => {
         await expect(engine.database[Movie.collection][stub.requireDocumentUrl()]).toEqualJsonLD({
             '@graph': [
                 {
-                    '@context': 'https://schema.org/',
+                    '@context': { '@vocab': 'https://schema.org/' },
                     '@id': stub.url,
                     '@type': 'Movie',
                     name,
