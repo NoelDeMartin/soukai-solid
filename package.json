@@ -1,6 +1,6 @@
 {
   "name": "soukai-solid",
-  "version": "0.4.1",
+  "version": "0.4.2",
   "description": "Solid engine for Soukai ODM",
   "main": "dist/soukai-solid.common.js",
   "module": "dist/soukai-solid.esm.js",
