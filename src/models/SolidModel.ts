@@ -210,6 +210,8 @@ export class SolidModel extends Model {
                     delete model[relation.foreignKeyName as keyof SolidModel];
                     relation.__newModels.push(model);
                 });
+
+                relation.__modelsInSameDocument = [];
             }
         }
 

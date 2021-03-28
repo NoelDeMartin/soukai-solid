@@ -82,6 +82,9 @@ export default class SolidHasManyRelation<
     public add(model: Related): void {
         this.assertLoaded('add');
 
+        if (this.related!.includes(model) || this.__newModels.includes(model))
+            return;
+
         if (this.parent.exists())
             this.initializeInverseRelations(model);
 
@@ -133,7 +136,7 @@ export default class SolidHasManyRelation<
         if (this.__modelsInOtherDocumentIds.length > 0)
             return;
 
-        this.related = this.__modelsInSameDocument;
+        this.related = this.__modelsInSameDocument.slice(0);
     }
 
     private initializeInverseRelations(model: Related): void {
