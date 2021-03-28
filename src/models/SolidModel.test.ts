@@ -1007,6 +1007,8 @@ describe('SolidModel', () => {
         expect(movie.actions![0].url).toBeUndefined();
         expect(movie.actions![0].object).toBeUndefined();
 
+        expect(movie.relatedActions.__modelsInSameDocument).toHaveLength(0);
+
         expect(movie.relatedActions.__newModels).toHaveLength(1);
         expect(movie.relatedActions.__newModels[0]).toBe(movie.actions![0]);
     });

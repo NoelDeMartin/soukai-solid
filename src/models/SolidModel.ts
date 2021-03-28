@@ -173,6 +173,8 @@ abstract class SolidModel extends Model {
                     delete model[relation.foreignKeyName];
                     relation.__newModels.push(model);
                 });
+
+                relation.__modelsInSameDocument = [];
             }
         }
 

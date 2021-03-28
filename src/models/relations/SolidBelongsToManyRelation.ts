@@ -84,7 +84,7 @@ export default class SolidBelongsToManyRelation<
         if (this.__modelsInOtherDocumentIds.length > 0)
             return;
 
-        this.related = this.__modelsInSameDocument;
+        this.related = this.__modelsInSameDocument.slice(0);
     }
 
 }
