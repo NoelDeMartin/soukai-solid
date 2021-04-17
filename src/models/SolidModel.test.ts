@@ -1,6 +1,8 @@
+/* eslint-disable max-len */
+import { FieldType, bootModels, setEngine } from 'soukai';
+import { tt } from '@noeldemartin/utils';
 import Faker from 'faker';
-
-import Soukai, { FieldType } from 'soukai';
+import type { Equals, Expect } from '@noeldemartin/utils';
 
 import Str from '@/utils/Str';
 import Url from '@/utils/Url';
@@ -19,19 +21,18 @@ let engine: StubEngine;
 
 describe('SolidModel', () => {
 
-    beforeAll(() => {
-        Soukai.loadModels({
-            Group,
-            Movie,
-            MoviesCollection,
-            Person,
-            WatchAction,
-        });
-    });
+    beforeAll(() => bootModels({
+        Group,
+        Movie,
+        MoviesCollection,
+        Person,
+        WatchAction,
+    }));
 
     beforeEach(() => {
         engine = new StubEngine();
-        Soukai.useEngine(engine);
+
+        setEngine(engine);
     });
 
     it('resolves contexts when booting', () => {
@@ -54,7 +55,7 @@ describe('SolidModel', () => {
 
         }
 
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         expect(StubModel.rdfsClasses).toEqual([
             'http://xmlns.com/foaf/0.1/Person',
@@ -88,7 +89,7 @@ describe('SolidModel', () => {
 
         }
 
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         expect(StubModel.fields).toEqual({
             url: {
@@ -104,33 +105,31 @@ describe('SolidModel', () => {
     });
 
     it('allows adding undefined fields', async () => {
-        class StubModel extends SolidModel {
-        }
+        class StubModel extends SolidModel {}
 
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const createSpy = jest.spyOn(engine, 'create');
 
-        jest.spyOn(engine, 'create');
-
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         await StubModel.at(containerUrl).create({ nickname: 'Johnny' });
 
-        const document = (engine.create as any).mock.calls[0][1];
+        const document = createSpy.mock.calls[0][1] as { '@graph': { nickname: string }[] };
 
-        expect(document['@graph'][0]['nickname']).toEqual('Johnny');
+        expect(document['@graph'][0].nickname).toEqual('Johnny');
     });
 
     it('sends types on create', async () => {
         class StubModel extends SolidModel {
         }
 
-        jest.spyOn(engine, 'create');
+        const createSpy = jest.spyOn(engine, 'create');
 
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         await StubModel.create({});
 
-        const document = (engine.create as any).mock.calls[0][1];
+        const document = createSpy.mock.calls[0][1] as { '@graph': { '@type': string }[] };
 
         expect(document['@graph'][0]['@type']).not.toBeUndefined();
     });
@@ -143,7 +142,7 @@ describe('SolidModel', () => {
         const movie = new Movie({ url: movieUrl, name: movieName });
         const action = await movie.relatedActions.create({ startTime: new Date('1997-07-21T23:42:00Z') });
 
-        jest.spyOn(engine, 'create');
+        const createSpy = jest.spyOn(engine, 'create');
 
         // Act
         await movie.save(containerUrl);
@@ -155,7 +154,7 @@ describe('SolidModel', () => {
             movieUrl,
         );
 
-        const document = (engine.create as any).mock.calls[0][1];
+        const document = createSpy.mock.calls[0][1];
         await expect(document).toEqualJsonLD({
             '@graph': [
                 ...stubMovieJsonLD(movieUrl, movieName)['@graph'],
@@ -181,7 +180,7 @@ describe('SolidModel', () => {
         const movie = new Movie({ name: movieName });
         const action = await movie.relatedActions.create({ startTime: new Date('1997-07-21T23:42:00Z') });
 
-        jest.spyOn(engine, 'create');
+        const createSpy = jest.spyOn(engine, 'create');
 
         // Act
         await movie.save(containerUrl);
@@ -194,7 +193,7 @@ describe('SolidModel', () => {
             expect.anything(),
             movie.getDocumentUrl(),
         );
-        expect((engine.create as any).mock.calls[0][1]).toEqualJsonLD({
+        expect(createSpy.mock.calls[0][1]).toEqualJsonLD({
             '@graph': [
                 ...stubMovieJsonLD(movieUrl, movieName)['@graph'],
                 ...stubWatchActionJsonLD(action.url as string, movieUrl, '1997-07-21T23:42:00.000Z')['@graph'],
@@ -266,7 +265,7 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'update');
 
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const model = new StubModel(
@@ -367,7 +366,7 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'create');
 
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         const model = await StubModel.at(containerUrl).create();
 
@@ -393,7 +392,7 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'create');
 
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         // Act
         const model = await StubModel.at(containerUrl).create();
@@ -421,7 +420,7 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'create');
 
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         await StubModel.at(containerUrl).create();
 
@@ -444,7 +443,7 @@ describe('SolidModel', () => {
         engine.setOne({ url: resourceUrl });
         jest.spyOn(engine, 'create');
 
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         // Act
         const model = new StubModel({ url: resourceUrl });
@@ -477,7 +476,7 @@ describe('SolidModel', () => {
 
         jest.spyOn(engine, 'create');
 
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         const model = new StubModel();
 
@@ -579,14 +578,13 @@ describe('SolidModel', () => {
         }
 
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const readOneSpy = jest.spyOn(engine, 'readOne');
 
-        jest.spyOn(engine, 'readOne');
-
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         await StubModel.find(Url.resolve(containerUrl, Faker.random.uuid()));
 
-        const collection = (engine.readOne as any).mock.calls[0][0];
+        const collection = readOneSpy.mock.calls[0][0];
 
         expect(collection).toEqual(containerUrl);
     });
@@ -596,10 +594,9 @@ describe('SolidModel', () => {
         }
 
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const updateSpy = jest.spyOn(engine, 'update');
 
-        jest.spyOn(engine, 'update');
-
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         const model = new StubModel(
             { url: Url.resolve(containerUrl, Faker.random.uuid()) },
@@ -608,7 +605,7 @@ describe('SolidModel', () => {
 
         await model.update({ name: 'John' });
 
-        const collection = (engine.update as any).mock.calls[0][0];
+        const collection = updateSpy.mock.calls[0]?.[0];
 
         expect(collection).toEqual(containerUrl);
     });
@@ -646,7 +643,7 @@ describe('SolidModel', () => {
         // Arrange
         class StubModel extends SolidModel {
         }
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
         jest.spyOn(engine, 'update');
 
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
@@ -753,7 +750,7 @@ describe('SolidModel', () => {
         class StubModel extends SolidModel {
         }
 
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         const model = new StubModel();
 
@@ -858,7 +855,7 @@ describe('SolidModel', () => {
         // Assert
         expect(movie.actions).toHaveLength(1);
 
-        const watchAction = movie.actions![0];
+        const watchAction = movie.actions?.[0] as WatchAction;
         expect(watchAction).toBeInstanceOf(WatchAction);
         expect(watchAction.object).toBe(movieUrl);
         expect(watchAction.exists()).toBe(true);
@@ -1030,15 +1027,37 @@ describe('SolidModel', () => {
         expect(movie.name).toEqual(name);
         expect(movie.url).toBeUndefined();
         expect(movie.actions).toHaveLength(1);
-        expect(movie.actions![0]).toBeInstanceOf(WatchAction);
-        expect(movie.actions![0].exists()).toBe(false);
-        expect(movie.actions![0].url).toBeUndefined();
-        expect(movie.actions![0].object).toBeUndefined();
+
+        const action = movie.actions?.[0] as WatchAction;
+        expect(action).toBeInstanceOf(WatchAction);
+        expect(action.exists()).toBe(false);
+        expect(action.url).toBeUndefined();
+        expect(action.object).toBeUndefined();
 
         expect(movie.relatedActions.__modelsInSameDocument).toHaveLength(0);
 
         expect(movie.relatedActions.__newModels).toHaveLength(1);
-        expect(movie.relatedActions.__newModels[0]).toBe(movie.actions![0]);
+        expect(movie.relatedActions.__newModels[0]).toBe(action);
     });
+
+});
+
+class StubModel extends SolidModel.schema({
+    foo: FieldType.String,
+    bar: FieldType.Number,
+}) {}
+
+const instance = StubModel.newInstance();
+const jsonldInstance = StubModel.newFromJsonLD({ '@id': '' });
+
+describe('SolidModel types', () => {
+
+    it('has correct types', tt<
+        Expect<Equals<typeof instance, StubModel>> |
+        Expect<Equals<typeof jsonldInstance, Promise<StubModel>>> |
+        Expect<Equals<typeof instance['foo'], string | undefined>> |
+        Expect<Equals<typeof instance['bar'], number | undefined>> |
+        true
+    >());
 
 });

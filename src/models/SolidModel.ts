@@ -6,6 +6,7 @@ import Soukai, {
     SoukaiError,
     getEngine,
 } from 'soukai';
+import { fail } from '@noeldemartin/utils';
 import type {
     Attributes,
     BootedFieldDefinition,
@@ -15,14 +16,16 @@ import type {
     EngineDocument,
     EngineFilters,
     EngineUpdates,
+    FieldsDefinition,
     IModel,
     Key,
+    MagicAttributes,
     ModelConstructor,
     MultiModelRelation,
     SingleModelRelation,
     TimestampFieldValue,
 } from 'soukai';
-import { fail } from '@noeldemartin/utils';
+import type { Constructor } from '@noeldemartin/utils';
 
 import { SolidEngine } from '@/engines';
 
@@ -183,6 +186,14 @@ export class SolidModel extends Model {
 
         return this.instance().convertEngineFiltersToJsonLD(filters, compactIRIs);
     }
+
+    /* eslint-disable max-len */
+    static schema<T extends SolidModel, F extends SolidFieldsDefinition>(this: SolidModelConstructor<T>, fields: F): Constructor<MagicAttributes<F>> & SolidModelConstructor<T>;
+    static schema<T extends Model, F extends FieldsDefinition>(this: ModelConstructor<T>, fields: F): Constructor<MagicAttributes<F>> & ModelConstructor<T>;
+    static schema<T extends SolidModel, F extends SolidFieldsDefinition>(this: SolidModelConstructor<T>, fields: F): Constructor<MagicAttributes<F>> & SolidModelConstructor<T> {
+        return super.schema(fields) as Constructor<MagicAttributes<F>> & SolidModelConstructor<T>;
+    }
+    /* eslint-enable max-len */
 
     public static async newFromJsonLD<T extends SolidModel>(
         this: SolidModelConstructor<T>,

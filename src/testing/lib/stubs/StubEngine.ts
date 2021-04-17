@@ -6,6 +6,7 @@ import type {
     Engine,
     EngineDocument,
     EngineDocumentsCollection,
+    EngineUpdates,
 } from 'soukai';
 
 import UUID from '@/utils/UUID';
@@ -46,7 +47,8 @@ export default class StubEngine implements Engine {
         return this.many[collection] || {};
     }
 
-    public async update(): Promise<void> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    public async update(collection: string, id: string, updates: EngineUpdates): Promise<void> {
         //
     }
 
