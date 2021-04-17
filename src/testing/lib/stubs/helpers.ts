@@ -1,6 +1,14 @@
 import type { JsonLD } from '@/solid/utils/RDF';
 
-export function stubPersonJsonLD(url: string, name: string, birthdate?: string): any {
+export function stubPersonJsonLD(
+    url: string,
+    name: string,
+    optional: {
+        birthDate?: string;
+        directed?: string;
+        createdAt?: string;
+    } = {},
+): any {
     const jsonld: any = {
         '@context': {
             '@vocab': 'http://xmlns.com/foaf/0.1/',
@@ -10,10 +18,22 @@ export function stubPersonJsonLD(url: string, name: string, birthdate?: string):
         'name': name,
     };
 
-    if (birthdate) {
+    if (optional.birthDate) {
         jsonld['birthdate'] = {
             '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
-            '@value': birthdate,
+            '@value': optional.birthDate,
+        };
+    }
+
+    if (optional.directed) {
+        jsonld['made'] = { '@id': optional.directed };
+    }
+
+    if (optional.createdAt) {
+        jsonld['@context']['purl'] = 'http://purl.org/dc/terms/';
+        jsonld['purl:created'] = {
+            '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+            '@value': optional.createdAt,
         };
     }
 

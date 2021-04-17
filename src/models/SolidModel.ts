@@ -45,6 +45,7 @@ import DeletesModels from './mixins/DeletesModels';
 import SerializesToJsonLD from './mixins/SerializesToJsonLD';
 import SolidBelongsToManyRelation from './relations/SolidBelongsToManyRelation';
 import SolidHasManyRelation from './relations/SolidHasManyRelation';
+import SolidHasOneRelation from './relations/SolidHasOneRelation';
 import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
 import type { SolidModelConstructor } from './inference';
 import type { SolidBootedFieldsDefinition, SolidFieldsDefinition } from './fields';
@@ -223,6 +224,18 @@ export class SolidModel extends Model {
                 });
 
                 relation.__modelsInSameDocument = [];
+
+                continue;
+            }
+
+            if (relation instanceof SolidHasOneRelation) {
+                if (models.length === 0)
+                    continue;
+
+                relation.__newModel = models[0];
+                delete relation.__modelInSameDocument;
+
+                continue;
             }
         }
 
@@ -406,15 +419,20 @@ export class SolidModel extends Model {
     }
 
     protected async loadDocumentModels(documentUrl: string, document: EngineDocument): Promise<void> {
-        const relations = Object
-            .values(this._relations)
-            .filter(
-                relation =>
-                    relation instanceof SolidHasManyRelation ||
-                    relation instanceof SolidBelongsToManyRelation,
-            ) as (SolidHasManyRelation | SolidBelongsToManyRelation)[];
+        await Promise.all(
+            Object
+                .values(this._relations)
+                .map(async relation => {
+                    if (
+                        relation instanceof SolidHasManyRelation ||
+                        relation instanceof SolidBelongsToManyRelation
+                    )
+                        return relation.__loadDocumentModels(documentUrl, document);
 
-        await Promise.all(relations.map(relation => relation.__loadDocumentModels(documentUrl, document)));
+                    if (relation instanceof SolidHasOneRelation)
+                        return relation.__loadDocumentModel(documentUrl, document);
+                }),
+        );
     }
 
     protected async syncDirty(): Promise<string> {
@@ -459,24 +477,44 @@ export class SolidModel extends Model {
 
         this._documentExists = true;
 
-        const sameDocumentRelations = Object
+        Object
             .values(this._relations)
             .filter<SolidHasManyRelation>(
                 (relation): relation is SolidHasManyRelation =>
                     relation instanceof SolidHasManyRelation &&
                     relation.useSameDocument,
-            );
+            )
+            .forEach(relation => {
+                relation.__modelsInSameDocument = relation.__modelsInSameDocument || [];
+                relation.__modelsInSameDocument.push(...relation.__newModels);
+                relation.__newModels = [];
+            });
 
-        for (const relation of sameDocumentRelations) {
-            relation.__modelsInSameDocument = relation.__modelsInSameDocument || [];
-            relation.__modelsInSameDocument.push(...relation.__newModels);
-            relation.__newModels = [];
-        }
+        Object
+            .values(this._relations)
+            .filter<SolidHasOneRelation>(
+                (relation): relation is SolidHasOneRelation =>
+                    relation instanceof SolidHasOneRelation &&
+                    relation.useSameDocument &&
+                    !!relation.__newModel,
+            )
+            .forEach(relation => {
+                relation.__modelInSameDocument = relation.__newModel;
+                delete relation.__newModel;
+            });
     }
 
     protected async deleteModelsFromEngine(models: this[]): Promise<void> {
         await this.deleteModels(models);
     }
+
+    /* eslint-disable max-len */
+    protected hasOne<T extends typeof SolidModel>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): SolidHasOneRelation;
+    protected hasOne<T extends typeof Model>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): SingleModelRelation;
+    protected hasOne<T extends typeof Model | typeof SolidModel>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): SingleModelRelation | SolidHasOneRelation {
+        return new SolidHasOneRelation(this, relatedClass as typeof SolidModel, foreignKeyField, localKeyField);
+    }
+    /* eslint-enable max-len */
 
     /* eslint-disable max-len */
     protected hasMany<T extends typeof SolidModel>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): SolidHasManyRelation;
@@ -513,12 +551,23 @@ export class SolidModel extends Model {
 
     protected getDirtyEngineDocumentUpdates(): EngineUpdates {
         const graphUpdates: EngineAttributeUpdateOperation[] = [];
+        const relatedModels = this.prepareDirtyDocumentModels();
 
-        graphUpdates.push(
-            ...this.prepareDirtyDocumentModels().map(model => ({
-                $push: model.serializeToJsonLD(false) as EngineAttributeValue,
-            })),
-        );
+        for (const relatedModel of relatedModels) {
+            if (!relatedModel.exists()) {
+                graphUpdates.push({ $push: relatedModel.serializeToJsonLD(false) as EngineAttributeValue });
+
+                continue;
+            }
+
+            const relatedGraphUpdates = (relatedModel.getDirtyEngineDocumentUpdates() as any)['@graph'];
+
+            if ('$apply' in relatedGraphUpdates) {
+                graphUpdates.push(...relatedGraphUpdates['$apply']);
+            } else {
+                graphUpdates.push(relatedGraphUpdates);
+            }
+        }
 
         if (super.isDirty() && this.url) {
             const modelUpdates = super.getDirtyEngineDocumentUpdates();
@@ -592,14 +641,16 @@ export class SolidModel extends Model {
         const dirtyModels = Arr.flatten(
             Object
                 .values(this._relations)
-                .filter<SolidHasManyRelation>(
-                    (relation): relation is SolidHasManyRelation =>
+                .filter<SolidHasManyRelation | SolidHasOneRelation>(
+                    (relation): relation is SolidHasManyRelation | SolidHasOneRelation =>
                         relation.loaded &&
-                        relation instanceof SolidHasManyRelation &&
+                        (relation instanceof SolidHasManyRelation || relation instanceof SolidHasOneRelation) &&
                         relation.useSameDocument,
                 )
                 .map(relation => {
-                    const models = [...relation.__newModels];
+                    const models = relation instanceof SolidHasManyRelation
+                        ? [...relation.__newModels]
+                        : Arr.filter([relation.__newModel]) as SolidModel[];
 
                     for (const relatedModel of relation.getLoadedModels()) {
                         if (

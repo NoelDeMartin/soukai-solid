@@ -138,9 +138,14 @@ describe('SolidModel', () => {
         // Arrange
         const containerUrl = Url.resolveDirectory(Faker.internet.url());
         const movieName = Faker.name.title();
+        const directorName = Faker.name.firstName();
         const movieUrl = Url.resolve(containerUrl, Str.slug(movieName));
         const movie = new Movie({ url: movieUrl, name: movieName });
         const action = await movie.relatedActions.create({ startTime: new Date('1997-07-21T23:42:00Z') });
+        const director = await movie.relatedDirector.create({
+            name: directorName,
+            createdAt: new Date('1998-07-21T23:42:00.000Z'),
+        });
 
         const createSpy = jest.spyOn(engine, 'create');
 
@@ -158,6 +163,10 @@ describe('SolidModel', () => {
         await expect(document).toEqualJsonLD({
             '@graph': [
                 ...stubMovieJsonLD(movieUrl, movieName)['@graph'],
+                ...stubPersonJsonLD(director.url as string, directorName, {
+                    directed: movieUrl,
+                    createdAt: '1998-07-21T23:42:00.000Z',
+                })['@graph'],
                 ...stubWatchActionJsonLD(action.url as string, movieUrl, '1997-07-21T23:42:00.000Z')['@graph'],
             ],
         });
@@ -168,9 +177,14 @@ describe('SolidModel', () => {
         expect(typeof actions[0].url).toEqual('string');
         expect(actions[0].exists()).toBe(true);
 
-        const url = actions[0].url as string;
-        expect(url.startsWith(`${movieUrl}#`)).toBe(true);
+        const actionUrl = actions[0].url as string;
+        expect(actionUrl.startsWith(`${movieUrl}#`)).toBe(true);
         expect(actions[0].object).toEqual(movieUrl);
+
+        const movieDirector = movie.director as Person;
+        expect(movieDirector).toBeInstanceOf(Person);
+        expect(movieDirector.name).toEqual(directorName);
+        expect(movieDirector.directed).toEqual(movieUrl);
     });
 
     it('sends JSON-LD with related models in the same document without minted url', async () => {

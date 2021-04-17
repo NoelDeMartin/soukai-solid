@@ -18,6 +18,10 @@ export default class Person extends SolidModel {
     public static fields = {
         name: FieldType.String,
         lastName: FieldType.String,
+        directed: {
+            type: FieldType.Key,
+            rdfProperty: 'foaf:made',
+        },
         friendUrls: {
             type: FieldType.Array,
             rdfProperty: 'foaf:knows',

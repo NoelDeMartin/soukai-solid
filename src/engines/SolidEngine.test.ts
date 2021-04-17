@@ -37,7 +37,7 @@ describe('SolidEngine', () => {
         const personUrl = Url.resolve(containerUrl, Faker.random.uuid());
         const name = Faker.name.firstName();
         const date = new Date('1997-07-21T23:42:00Z');
-        const jsonld = stubPersonJsonLD(personUrl, name, '1997-07-21T23:42:00.000Z');
+        const jsonld = stubPersonJsonLD(personUrl, name, { birthDate: '1997-07-21T23:42:00.000Z' });
 
         // Act
         const id = await engine.create(containerUrl, jsonld, personUrl);

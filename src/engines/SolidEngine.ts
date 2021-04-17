@@ -228,19 +228,22 @@ export class SolidEngine implements Engine {
             );
 
         const operations: UpdateOperation[] = [];
+        const graphUpdates = '$apply' in updates['@graph'] ? updates['@graph'].$apply : [updates['@graph']];
 
-        if (updates['@graph'].$updateItems)
-            operations.push(
-                ...Arr.flatten(
-                    Arr.create(updates['@graph'].$updateItems)
-                        .map(update => this.extractJsonLDGraphItemsUpdate(update)),
-                ),
-            );
+        for (const graphUpdate of graphUpdates) {
+            if (graphUpdate.$updateItems)
+                operations.push(
+                    ...Arr.flatten(
+                        Arr.create(graphUpdate.$updateItems)
+                            .map(update => this.extractJsonLDGraphItemsUpdate(update)),
+                    ),
+                );
 
-        if (updates['@graph'].$push) {
-            const updateOperations = await this.extractJsonLDGraphItemPush(updates['@graph'].$push);
+            if (graphUpdate.$push) {
+                const updateOperations = await this.extractJsonLDGraphItemPush(graphUpdate.$push);
 
-            operations.push(...updateOperations);
+                operations.push(...updateOperations);
+            }
         }
 
         return operations;
@@ -347,13 +350,23 @@ export class SolidEngine implements Engine {
         '@graph': {
             $updateItems?: EngineUpdateItemsOperatorData;
             $push?: EngineDocument;
+        } | {
+            $apply: {
+                $updateItems?: EngineUpdateItemsOperatorData;
+                $push?: EngineDocument;
+            }[];
         };
     } {
-        return typeof updates['@graph'] === 'object'
-            && (
-                typeof updates['@graph'].$updateItems === 'object' ||
-                typeof updates['@graph'].$push === 'object'
-            );
+        if (typeof updates['@graph'] !== 'object')
+            return false;
+
+        const operations = (updates['@graph'].$apply ?? [updates['@graph']]) as any[];
+
+        return !operations.some(update => {
+            const keys = Object.keys(update);
+
+            return keys.length !== 1 || !['$updateItems', '$push'].includes(keys[0]);
+        });
     }
 
     private isJsonLDGraphTypesFilter(filters: any): filters is {
