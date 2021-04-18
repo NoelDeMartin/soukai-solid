@@ -1,3 +1,4 @@
+import { isObject } from '@noeldemartin/utils';
 import {
     DocumentAlreadyExists,
     DocumentNotFound,
@@ -7,6 +8,7 @@ import {
 import type {
     Engine,
     EngineAttributeLeafValue,
+    EngineAttributeValue,
     EngineDocument,
     EngineDocumentsCollection,
     EngineFilters,
@@ -16,7 +18,6 @@ import type {
 } from 'soukai';
 
 import ChangeUrlOperation from '@/solid/operations/ChangeUrlOperation';
-import IRI from '@/solid/utils/IRI';
 import RDFDocument from '@/solid/RDFDocument';
 import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
@@ -31,7 +32,9 @@ import Arr from '@/utils/Arr';
 import Url from '@/utils/Url';
 
 export interface SolidEngineConfig {
+    useGlobbing: boolean;
     globbingBatchSize: number | null;
+    concurrentFetchBatchSize: number | null;
 }
 
 export interface SolidEngineListener {
@@ -47,11 +50,22 @@ export class SolidEngine implements Engine {
 
     public constructor(fetch: Fetch, config: Partial<SolidEngineConfig> = {}) {
         this.helper = new EngineHelper();
-        this.client = new SolidClient(fetch);
         this.config = {
+            useGlobbing: false,
             globbingBatchSize: 5,
+            concurrentFetchBatchSize: 10,
             ...config,
         };
+        this.client = new SolidClient(fetch);
+
+        this.client.setConfig({
+            useGlobbing: this.config.useGlobbing,
+            concurrentFetchBatchSize: this.config.concurrentFetchBatchSize,
+        });
+    }
+
+    public setConfig(config: Partial<SolidEngineConfig>): void {
+        Object.assign(this.config, config);
     }
 
     public async create(collection: string, document: EngineDocument, id?: string): Promise<string> {
@@ -129,7 +143,7 @@ export class SolidEngine implements Engine {
         // See https://github.com/solid/node-solid-server/issues/962
         return filters.$in
             ? await this.getDocumentsFromUrls(filters.$in, rdfsClasses)
-            : await this.getContainerDocuments(collection, rdfsClasses);
+            : await this.client.getDocuments(collection, rdfsClasses);
     }
 
     private async getDocumentsFromUrls(urls: string[], rdfsClasses: string[]): Promise<RDFDocument[]> {
@@ -148,8 +162,12 @@ export class SolidEngine implements Engine {
 
         const containerDocumentPromises = Object.entries(containerDocumentUrlsMap)
             .map(async ([containerUrl, documentUrls]) => {
-                if (this.config.globbingBatchSize !== null && documentUrls.length >= this.config.globbingBatchSize)
-                    return this.getContainerDocuments(containerUrl, rdfsClasses);
+                if (
+                    this.config.useGlobbing &&
+                    this.config.globbingBatchSize !== null &&
+                    this.config.globbingBatchSize <= documentUrls.length
+                )
+                    return this.client.getDocuments(containerUrl, rdfsClasses);
 
                 const documentPromises = documentUrls.map(url => this.client.getDocument(url));
                 const documents = await Promise.all(documentPromises);
@@ -162,26 +180,17 @@ export class SolidEngine implements Engine {
         return Arr.flatten(containerDocuments);
     }
 
-    private async getContainerDocuments(containerUrl: string, types: string[]): Promise<RDFDocument[]> {
-        const documents = await this.client.getDocuments(
-            containerUrl,
-            types.indexOf(IRI('ldp:Container')) !== -1,
-        );
-
-        return documents;
-    }
-
     private convertToEngineDocument(document: RDFDocument): EngineDocument {
         // TODO use RDF libraries instead of implementing this conversion
         return {
             '@graph': document.resources.map(resource => {
-                const attributes: any = {};
+                const attributes: JsonLD = {};
 
                 for (const [name, properties] of Object.entries(resource.propertiesIndex)) {
                     const [firstProperty, ...otherProperties] = properties;
 
                     let key: string = name;
-                    let cast: (value: any) => any = value => value;
+                    let cast: (value: unknown) => unknown = value => value;
 
                     switch (firstProperty.type) {
                         case RDFResourcePropertyType.Type:
@@ -205,9 +214,10 @@ export class SolidEngine implements Engine {
                         : [firstProperty, ...otherProperties].map(property => cast(property.value));
                 }
 
-                attributes['@id'] = resource.url;
+                if (resource.url)
+                    attributes['@id'] = resource.url;
 
-                return attributes;
+                return attributes as EngineAttributeValue;
             }),
         };
     }
@@ -346,7 +356,7 @@ export class SolidEngine implements Engine {
         return document.properties;
     }
 
-    private isJsonLDGraphUpdate(updates: any): updates is {
+    private isJsonLDGraphUpdate(updates: Record<string, unknown>): updates is {
         '@graph': {
             $updateItems?: EngineUpdateItemsOperatorData;
             $push?: EngineDocument;
@@ -357,10 +367,12 @@ export class SolidEngine implements Engine {
             }[];
         };
     } {
-        if (typeof updates['@graph'] !== 'object')
+        const graphUpdate = updates['@graph'];
+
+        if (!isObject(graphUpdate))
             return false;
 
-        const operations = (updates['@graph'].$apply ?? [updates['@graph']]) as any[];
+        const operations = (graphUpdate.$apply ?? [graphUpdate]) as Record<string, unknown>[];
 
         return !operations.some(update => {
             const keys = Object.keys(update);
@@ -369,7 +381,7 @@ export class SolidEngine implements Engine {
         });
     }
 
-    private isJsonLDGraphTypesFilter(filters: any): filters is {
+    private isJsonLDGraphTypesFilter(filters: Record<string, unknown>): filters is {
         '@graph': {
             $contains: {
                 '@type': {
@@ -381,10 +393,12 @@ export class SolidEngine implements Engine {
             };
         };
     } {
-        return typeof filters['@graph'] === 'object'
-            && typeof filters['@graph'].$contains === 'object'
-            && typeof filters['@graph'].$contains['@type'] === 'object'
-            && Array.isArray(filters['@graph'].$contains['@type'].$or);
+        const graphFilter = filters['@graph'];
+
+        return isObject(graphFilter)
+            && isObject(graphFilter.$contains)
+            && isObject(graphFilter.$contains['@type'])
+            && Array.isArray(graphFilter.$contains['@type'].$or);
     }
 
 }

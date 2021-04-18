@@ -6,6 +6,13 @@ import UUID from '@/utils/UUID';
 
 export class SolidClientMock {
 
+    createDocumentSpy!: jest.SpyInstance<Promise<string>, [string, (string|null)?, (RDFResourceProperty[])?]>;
+    getDocumentSpy!: jest.SpyInstance<Promise<RDFDocument | null>, [string]>;
+    getDocumentsSpy!: jest.SpyInstance<Promise<RDFDocument[]>, [string]>;
+    updateDocumentSpy!: jest.SpyInstance<Promise<void>, [string]>;
+    deleteDocumentSpy!: jest.SpyInstance<Promise<void>, [string]>;
+    documentExistsSpy!: jest.SpyInstance<Promise<boolean>, [string]>;
+
     private documents: Record<string, RDFDocument[]> = {};
 
     public reset(): void {
@@ -43,7 +50,7 @@ export class SolidClientMock {
 
         for (const containerDocuments of Object.values(this.documents)) {
             for (const document of containerDocuments) {
-                if (!document.url!.startsWith(containerUrl))
+                if (!document.url?.startsWith(containerUrl))
                     continue;
 
                 documents.push(document);
@@ -85,11 +92,11 @@ export class SolidClientMock {
 
 const instance = new SolidClientMock();
 
-jest.spyOn(instance, 'createDocument');
-jest.spyOn(instance, 'getDocument');
-jest.spyOn(instance, 'getDocuments');
-jest.spyOn(instance, 'updateDocument');
-jest.spyOn(instance, 'deleteDocument');
-jest.spyOn(instance, 'documentExists');
+instance.createDocumentSpy = jest.spyOn(instance, 'createDocument');
+instance.getDocumentSpy = jest.spyOn(instance, 'getDocument');
+instance.getDocumentsSpy = jest.spyOn(instance, 'getDocuments');
+instance.updateDocumentSpy = jest.spyOn(instance, 'updateDocument');
+instance.deleteDocumentSpy = jest.spyOn(instance, 'deleteDocument');
+instance.documentExistsSpy = jest.spyOn(instance, 'documentExists');
 
 export default instance;

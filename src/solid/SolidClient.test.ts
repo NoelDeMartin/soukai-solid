@@ -21,6 +21,7 @@ describe('SolidClient', () => {
 
     beforeEach(() => {
         StubFetcher.reset();
+
         client = new SolidClient(StubFetcher.fetch.bind(StubFetcher));
     });
 
@@ -60,7 +61,7 @@ describe('SolidClient', () => {
             body: expect.anything(),
         });
 
-        const body = (StubFetcher.fetch as any).mock.calls[0][1].body;
+        const body = StubFetcher.fetchSpy.mock.calls[0][1]?.body;
 
         await expect(body).toEqualSPARQL(`
             INSERT DATA {
@@ -194,16 +195,25 @@ describe('SolidClient', () => {
             Faker.internet.url(),
             Str.slug(Faker.random.word()),
         );
-        const data = `
+        const containerData = `
+            <>
+                a <http://www.w3.org/ns/ldp#Container> ;
+                <http://www.w3.org/ns/ldp#contains> <foobar>, <anothercontainer> .
+
+            <foobar> a <https://schema.org/Thing> .
+            <anothercontainer> a <http://www.w3.org/ns/ldp#Container> .
+        `;
+        const documentData = `
             <foobar>
                 a <http://xmlns.com/foaf/0.1/Person> ;
                 <http://xmlns.com/foaf/0.1/name> "Foo Bar" .
         `;
 
-        StubFetcher.addFetchResponse(data);
+        StubFetcher.addFetchResponse(containerData);
+        StubFetcher.addFetchResponse(documentData);
 
         // Act
-        const documents = await client.getDocuments(containerUrl);
+        const documents = await client.getDocuments(containerUrl, ['https://schema.org/Thing']);
 
         // Assert
         expect(documents).toHaveLength(1);
@@ -213,7 +223,11 @@ describe('SolidClient', () => {
         expect(documents[0].requireResource(containerUrl + 'foobar').name).toEqual('Foo Bar');
         expect(documents[0].requireResource(containerUrl + 'foobar').types).toEqual([IRI('foaf:Person')]);
 
-        expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl + '*', {
+        expect(StubFetcher.fetch).toHaveBeenCalledTimes(2);
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(1, containerUrl, {
+            headers: { Accept: 'text/turtle' },
+        });
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(2, `${containerUrl}foobar`, {
             headers: { Accept: 'text/turtle' },
         });
     });
@@ -233,6 +247,7 @@ describe('SolidClient', () => {
                 <http://xmlns.com/foaf/0.1/name> "Baz" .
         `;
 
+        client.setConfig({ useGlobbing: true });
         StubFetcher.addFetchResponse(data);
 
         // Act
@@ -302,6 +317,7 @@ describe('SolidClient', () => {
         const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
         const type = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
 
+        client.setConfig({ useGlobbing: true });
         StubFetcher.addFetchResponse(`
             <>
                 <http://www.w3.org/ns/ldp#contains> <foo>, <bar> .
@@ -322,7 +338,7 @@ describe('SolidClient', () => {
         `);
 
         // Act
-        const documents = await client.getDocuments(containerUrl, true);
+        const documents = await client.getDocuments(containerUrl, [IRI('ldp:Container')]);
 
         // Assert
         expect(documents).toHaveLength(2);
@@ -383,7 +399,7 @@ describe('SolidClient', () => {
             },
         );
 
-        const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
+        const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
 
         await expect(body).toEqualSPARQL(`
             DELETE DATA {
@@ -433,7 +449,7 @@ describe('SolidClient', () => {
             },
         );
 
-        const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
+        const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
 
         await expect(body).toEqualSPARQL(`
             DELETE DATA {
@@ -496,7 +512,7 @@ describe('SolidClient', () => {
             },
         );
 
-        const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
+        const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
 
         await expect(body).toEqualSPARQL(`
             DELETE DATA {
@@ -542,7 +558,7 @@ describe('SolidClient', () => {
             },
         );
 
-        const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
+        const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
 
         await expect(body).toEqualSPARQL(`
             INSERT DATA {
@@ -580,7 +596,7 @@ describe('SolidClient', () => {
             },
         );
 
-        const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
+        const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
 
         await expect(body).toEqualSPARQL(`
             DELETE DATA {
@@ -621,7 +637,7 @@ describe('SolidClient', () => {
             body: expect.anything(),
         });
 
-        const body = (StubFetcher.fetch as any).mock.calls[1][1].body;
+        const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
 
         await expect(body).toEqualSPARQL(`
             DELETE DATA {
@@ -690,13 +706,6 @@ describe('SolidClient', () => {
         `;
 
         StubFetcher.addFetchResponse(containerData);
-
-        // TODO this one is not necessary, but the current implementation is not optimal
-        StubFetcher.addFetchResponse(containerData);
-
-        StubFetcher.addFetchResponse(documentData);
-
-        // TODO this one is not necessary, but the current implementation is not optimal
         StubFetcher.addFetchResponse(documentData);
 
         StubFetcher.addFetchResponse();
@@ -706,14 +715,11 @@ describe('SolidClient', () => {
         await client.deleteDocument(containerUrl);
 
         // Assert
-        expect(StubFetcher.fetch).toHaveBeenCalledTimes(6);
+        expect(StubFetcher.fetch).toHaveBeenCalledTimes(4);
         expect(StubFetcher.fetch).toHaveBeenNthCalledWith(1, containerUrl, { headers: { Accept: 'text/turtle' } });
-        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(2, containerUrl, { headers: { Accept: 'text/turtle' } });
-        expect(StubFetcher.fetch)
-            .toHaveBeenNthCalledWith(3, containerUrl + '*', { headers: { Accept: 'text/turtle' } });
-        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(4, documentUrl, { headers: { Accept: 'text/turtle' } });
-        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(5, documentUrl, { method: 'DELETE' });
-        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(6, containerUrl, { method: 'DELETE' });
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(2, documentUrl, { headers: { Accept: 'text/turtle' } });
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(3, documentUrl, { method: 'DELETE' });
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(4, containerUrl, { method: 'DELETE' });
     });
 
     it('checks if a document exists', async () => {

@@ -4,11 +4,14 @@ import StubResponse from '@/testing/lib/stubs/StubResponse';
 
 class StubFetcher extends EventEmitter {
 
+    fetchSpy!: jest.SpyInstance<Promise<Response>, [RequestInfo, RequestInit?]>;
+
     private fetchResponses: Response[] = [];
 
     public reset(): void {
         this.fetchResponses = [];
-        (this as any).fetch.mockClear();
+
+        this.fetchSpy.mockClear();
     }
 
     public addFetchNotFoundResponse(): void {
@@ -33,6 +36,6 @@ class StubFetcher extends EventEmitter {
 
 const instance = new StubFetcher();
 
-jest.spyOn(instance, 'fetch');
+instance.fetchSpy = jest.spyOn(instance, 'fetch');
 
 export default instance;

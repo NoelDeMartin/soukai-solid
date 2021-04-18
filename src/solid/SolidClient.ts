@@ -32,9 +32,15 @@ const RESERVED_CONTAINER_TYPES = [
 
 export type Fetch = (input: RequestInfo, options?: RequestInit) => Promise<Response>;
 
+export type SolidClientConfig = {
+    useGlobbing: boolean;
+    concurrentFetchBatchSize: number | null;
+};
+
 export default class SolidClient {
 
     private fetch: Fetch;
+    private config: SolidClientConfig;
 
     constructor(fetch: Fetch) {
         this.fetch = async (input, options) => {
@@ -48,6 +54,14 @@ export default class SolidClient {
                 throw new NetworkError(`Error fetching ${url}`, error);
             }
         };
+        this.config = {
+            useGlobbing: false,
+            concurrentFetchBatchSize: 5,
+        };
+    }
+
+    public setConfig(config: Partial<SolidClientConfig>): void {
+        Object.assign(this.config, config);
     }
 
     public async createDocument(
@@ -93,20 +107,28 @@ export default class SolidClient {
         }
     }
 
-    public async getDocuments(containerUrl: string, onlyContainers: boolean = false): Promise<RDFDocument[]> {
+    public async getDocuments(containerUrl: string, types: string[] = []): Promise<RDFDocument[]> {
         try {
-            return onlyContainers
-                ? await this.getContainerDocuments(containerUrl)
-                : await this.getNonContainerDocumentsUsingGlobbing(containerUrl);
+            const resourcesFilter = (resource: RDFResource) => types.some(type => !resource.isType(type));
+
+            return types.includes(IRI('ldp:Container'))
+                ? await this.getContainerDocuments(containerUrl, resourcesFilter)
+                : this.config.useGlobbing
+                    ? await this.getContainerDocumentsUsingGlobbing(containerUrl)
+                    : await this.getContainerDocuments(containerUrl, resourcesFilter);
         } catch (error) {
             if (error instanceof RDFParsingError)
                 throw new MalformedDocumentError(containerUrl, DocumentFormat.RDF, error.message);
 
-            // Due to an existing bug, empty containers return 404
-            // see: https://github.com/solid/node-solid-server/issues/900
-            console.error(error);
+            if (this.config.useGlobbing) {
+                // Due to an existing bug, empty containers return 404
+                // see: https://github.com/solid/node-solid-server/issues/900
+                console.error(error);
 
-            return [];
+                return [];
+            }
+
+            throw error;
         }
     }
 
@@ -127,21 +149,18 @@ export default class SolidClient {
             : await this.updateNonContainerDocument(document, operations);
     }
 
-    public async deleteDocument(url: string): Promise<void> {
-        const document = await this.getDocument(url);
+    public async deleteDocument(url: string, preloadedDocument?: RDFDocument): Promise<void> {
+        const document = preloadedDocument ?? await this.getDocument(url);
 
         if (document === null)
             return;
 
         if (document.resource(url)?.isType(IRI('ldp:Container'))) {
-            const documents = await Promise.all([
-                this.getDocuments(url, true),
-                this.getDocuments(url),
-            ]);
+            const documents = this.config.useGlobbing
+                ? await this.getContainerDocumentsUsingGlobbing(url)
+                : await this.getDocumentsFromContainer(url, document, () => false);
 
-            await Promise.all(
-                Arr.flatten(documents).map(document => this.deleteDocument(document.url as string)),
-            );
+            await Promise.all(documents.map(document => this.deleteDocument(document.url as string, document)));
         }
 
         const response = await this.fetch(url, { method: 'DELETE' });
@@ -234,25 +253,42 @@ export default class SolidClient {
         return url;
     }
 
-    private async getContainerDocuments(containerUrl: string): Promise<RDFDocument[]> {
+    private async getContainerDocuments(
+        containerUrl: string,
+        excludeFilter: (resource: RDFResource) => boolean,
+    ): Promise<RDFDocument[]> {
         const response = await this.fetch(containerUrl, { headers: { Accept: 'text/turtle' } });
-
-        this.assertSuccessfulResponse(response, `Error getting container documents from ${containerUrl}`);
-
         const turtleData = await response.text();
         const containerDocument = await RDFDocument.fromTurtle(turtleData, { baseUrl: containerUrl });
 
-        return await Promise.all(
-            containerDocument
-                .resource(containerUrl)?.getPropertyValues('ldp:contains')
-                .map(url => containerDocument.resource(url as string))
-                .filter((resource): resource is RDFResource => resource !== null && resource.isType('ldp:Container'))
-                .map(resource => this.getDocument(resource.url as string) as Promise<RDFDocument>)
-            || [],
-        );
+        return this.getDocumentsFromContainer(containerUrl, containerDocument, excludeFilter);
     }
 
-    private async getNonContainerDocumentsUsingGlobbing(containerUrl: string): Promise<RDFDocument[]> {
+    private async getDocumentsFromContainer(
+        containerUrl: string,
+        containerDocument: RDFDocument,
+        excludeFilter: (resource: RDFResource) => boolean,
+    ): Promise<RDFDocument[]> {
+        const documents = [];
+        const resourceUrls =
+            (containerDocument.resource(containerUrl)?.getPropertyValues('ldp:contains') as string[] || [])
+                .filter(url => {
+                    const resource = containerDocument.resource(url);
+
+                    return !resource || !excludeFilter(resource);
+                });
+
+        while (resourceUrls.length > 0) {
+            const chunkUrls = resourceUrls.splice(0, this.config.concurrentFetchBatchSize || resourceUrls.length);
+            const chunkDocuments = await Promise.all(chunkUrls.map(url => this.getDocument(url)));
+
+            documents.push(...chunkDocuments);
+        }
+
+        return documents.filter<RDFDocument>((document: RDFDocument | null): document is RDFDocument => !!document);
+    }
+
+    private async getContainerDocumentsUsingGlobbing(containerUrl: string): Promise<RDFDocument[]> {
         const response = await this.fetch(containerUrl + '*', { headers: { Accept: 'text/turtle' } });
 
         this.assertSuccessfulResponse(
@@ -276,8 +312,7 @@ export default class SolidClient {
             {} as Record<string, Quad[]>,
         );
 
-        return Object.entries(statementsByUrl)
-            .map(([url, statements]) => new RDFDocument(url, statements));
+        return Object.entries(statementsByUrl).map(([url, statements]) => new RDFDocument(url, statements));
     }
 
     private async updateContainerDocument(document: RDFDocument, operations: UpdateOperation[]): Promise<void> {
