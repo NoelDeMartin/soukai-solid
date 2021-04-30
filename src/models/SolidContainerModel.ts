@@ -1,12 +1,15 @@
+import {
+    arrayUnique,
+    stringToSlug,
+    urlDirectoryName,
+    urlParentDirectory,
+    urlResolveDirectory,
+    uuid,
+} from '@noeldemartin/utils';
 import { FieldType } from 'soukai';
 import type { MultiModelRelation } from 'soukai';
 
 import IRI from '@/solid/utils/IRI';
-
-import Arr from '@/utils/Arr';
-import Str from '@/utils/Str';
-import Url from '@/utils/Url';
-import UUID from '@/utils/UUID';
 
 import SolidContainerDocumentsRelation from './relations/SolidContainerDocumentsRelation';
 import SolidContainsRelation from './relations/SolidContainsRelation';
@@ -20,7 +23,7 @@ export default class SolidContainerModel extends SolidModel {
         const modelClass = this;
 
         // Add container definitions.
-        modelClass.rdfsClasses = Arr.unique((modelClass.rdfsClasses ?? []).concat([IRI('ldp:Container')]));
+        modelClass.rdfsClasses = arrayUnique((modelClass.rdfsClasses ?? []).concat([IRI('ldp:Container')]));
         modelClass.fields = modelClass.fields ?? {};
         modelClass.fields['resourceUrls'] = {
             type: FieldType.Array,
@@ -57,18 +60,17 @@ export default class SolidContainerModel extends SolidModel {
     }
 
     protected newUrl(): string {
-        const slug = this.hasAttribute('name') ? Str.slug(this.getAttribute('name')) : UUID.generate();
+        const slug = this.hasAttribute('name') ? stringToSlug(this.getAttribute('name')) : uuid();
 
-        return Url.resolveDirectory(this.static('collection'), slug);
+        return urlResolveDirectory(this.static('collection'), slug);
     }
 
     protected newUniqueUrl(url?: string): string {
         url = url ?? this.newUrl();
 
-        const uuid = UUID.generate();
-        const directoryName = Url.directoryName(url);
+        const directoryName = urlDirectoryName(url);
 
-        return Url.resolveDirectory(Url.parentDirectory(url), `${directoryName}-${uuid}`);
+        return urlResolveDirectory(urlParentDirectory(url), `${directoryName}-${uuid()}`);
     }
 
 }

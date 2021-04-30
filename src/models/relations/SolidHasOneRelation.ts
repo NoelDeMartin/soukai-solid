@@ -1,8 +1,5 @@
-import {
-    EngineHelper,
-    HasOneRelation,
-    SoukaiError,
-} from 'soukai';
+import { EngineHelper, HasOneRelation, SoukaiError } from 'soukai';
+import { urlRoute } from '@noeldemartin/utils';
 import type {
     Attributes,
     EngineAttributeValue,
@@ -13,7 +10,6 @@ import type {
 import type { SolidModel } from '@/models/SolidModel';
 
 import RDF from '@/solid/utils/RDF';
-import Url from '@/utils/Url';
 import type { JsonLDResource } from '@/solid/utils/RDF';
 import type { SolidBootedFieldsDefinition } from '@/models/fields';
 import type { SolidModelConstructor } from '@/models/inference';
@@ -138,7 +134,7 @@ export default class SolidHasOneRelation<
         const modelsInOtherDocumentIds = Object.keys(documents).filter(
             resourceId =>
                 !modelsInSameDocument.some(model => model.url === resourceId) &&
-                Url.route(resourceId) !== documentUrl,
+                urlRoute(resourceId) !== documentUrl,
         );
 
         if (modelsInSameDocument.length + modelsInOtherDocumentIds.length > 1)

@@ -1,6 +1,6 @@
-import type RDFResourceProperty from '@/solid/RDFResourceProperty';
+import { arrayFilter } from '@noeldemartin/utils';
 
-import Arr from '@/utils/Arr';
+import type RDFResourceProperty from '@/solid/RDFResourceProperty';
 
 import { OperationType } from './Operation';
 import type { UpdateOperation } from './Operation';
@@ -40,7 +40,7 @@ export function decantUpdateOperationsData(operations: UpdateOperation[]): Decan
                     break;
                 case OperationType.RemoveProperty:
                     data[1].push(
-                        Arr.filter([
+                        arrayFilter([
                             operation.resourceUrl,
                             operation.property,
                             operation.value,

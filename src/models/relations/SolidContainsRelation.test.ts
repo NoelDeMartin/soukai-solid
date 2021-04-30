@@ -1,7 +1,6 @@
 import Faker from 'faker';
 import Soukai from 'soukai';
-
-import Url from '@/utils/Url';
+import { urlResolveDirectory } from '@noeldemartin/utils';
 
 import Group from '@/testing/lib/stubs/Group';
 import Person from '@/testing/lib/stubs/Person';
@@ -20,7 +19,7 @@ describe('SolidHasManyRelation', () => {
 
     it('creates related models', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
         const personName = Faker.name.title();
         const group = new Group({ url: containerUrl }, true);
 

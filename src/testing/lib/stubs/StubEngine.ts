@@ -2,14 +2,13 @@ import {
     DocumentAlreadyExists,
     DocumentNotFound,
 } from 'soukai';
+import { uuid } from '@noeldemartin/utils';
 import type {
     Engine,
     EngineDocument,
     EngineDocumentsCollection,
     EngineUpdates,
 } from 'soukai';
-
-import UUID from '@/utils/UUID';
 
 export default class StubEngine implements Engine {
 
@@ -31,7 +30,7 @@ export default class StubEngine implements Engine {
         if (id && this.many && this.many[collection] && this.many[collection][id])
             throw new DocumentAlreadyExists(id);
 
-        return id || UUID.generate();
+        return id ?? uuid();
     }
 
     public async readOne(collection: string, id: string): Promise<EngineDocument>

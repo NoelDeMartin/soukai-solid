@@ -1,6 +1,6 @@
 import Faker from 'faker';
+import { urlResolve } from '@noeldemartin/utils';
 
-import Url from '@/utils/Url';
 import type { JsonLD } from '@/solid/utils/RDF';
 
 import flattenJsonLD from './flattenJsonLD';
@@ -9,7 +9,7 @@ describe('flattenJsonLD', () => {
 
     it('works', async () => {
         // Arrange
-        const movieUrl = Url.resolve(Faker.internet.url());
+        const movieUrl = urlResolve(Faker.internet.url());
         const watchActionUrl = `${movieUrl}#${Faker.random.uuid()}`;
         const jsonld: JsonLD = {
             '@id': movieUrl,

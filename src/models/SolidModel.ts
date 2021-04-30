@@ -1,4 +1,15 @@
 import {
+    arrayFilter,
+    arrayUnique,
+    fail,
+    tap,
+    urlParentDirectory,
+    urlResolve,
+    urlRoute,
+    useMixins,
+    uuid,
+} from '@noeldemartin/utils';
+import {
     DocumentAlreadyExists,
     FieldType,
     InvalidModelDefinition,
@@ -7,7 +18,6 @@ import {
     getEngine,
     requireEngine,
 } from 'soukai';
-import { fail } from '@noeldemartin/utils';
 import type {
     Attributes,
     BootedFieldDefinition,
@@ -35,12 +45,6 @@ import IRI from '@/solid/utils/IRI';
 import RDFDocument from '@/solid/RDFDocument';
 import type { JsonLD } from '@/solid/utils/RDF';
 import type RDFResource from '@/solid/RDFResource';
-
-import { useMixins } from '@/utils/mixins';
-import Arr from '@/utils/Arr';
-import Fluent from '@/utils/Fluent';
-import Url from '@/utils/Url';
-import UUID from '@/utils/UUID';
 
 import DeletesModels from './mixins/DeletesModels';
 import SerializesToJsonLD from './mixins/SerializesToJsonLD';
@@ -123,7 +127,7 @@ export class SolidModel extends Model {
             fields['updatedAt'].rdfProperty = IRI('purl:modified');
         }
 
-        modelClass.rdfsClasses = Arr.unique(
+        modelClass.rdfsClasses = arrayUnique(
             (modelClass.rdfsClasses ?? []).map(
                 name => name.indexOf(':') === -1 ? (defaultRdfContext + name) : IRI(name, modelClass.rdfContexts),
             ),
@@ -156,8 +160,8 @@ export class SolidModel extends Model {
     public static async find<T extends SolidModel>(this: SolidModelConstructor<T>, id: Key): Promise<T | null>;
     public static async find<T extends SolidModel>(this: SolidModelConstructor<T>, id: Key): Promise<T | null> {
         const resourceUrl = this.instance().serializeKey(id);
-        const documentUrl = Url.route(resourceUrl);
-        const containerUrl = Url.parentDirectory(documentUrl);
+        const documentUrl = urlRoute(resourceUrl);
+        const containerUrl = urlParentDirectory(documentUrl);
 
         this.ensureBooted();
 
@@ -202,7 +206,7 @@ export class SolidModel extends Model {
         baseUrl?: string,
     ): Promise<T> {
         const flatJsonLD = await flattenJsonLD(jsonld) as EngineDocument;
-        const documentUrl = baseUrl || Url.route(jsonld['@id']);
+        const documentUrl = baseUrl || urlRoute(jsonld['@id']);
         const attributes = await this.instance().parseEngineDocumentAttributes(documentUrl, flatJsonLD, jsonld['@id']);
         const model = this.newInstance(attributes);
 
@@ -353,7 +357,7 @@ export class SolidModel extends Model {
         if (!this.url)
             return null;
 
-        return Url.route(this.url);
+        return urlRoute(this.url);
     }
 
     public requireDocumentUrl(): string {
@@ -367,13 +371,13 @@ export class SolidModel extends Model {
     public getContainerUrl(): string | null {
         const documentUrl = this.getDocumentUrl();
 
-        return documentUrl ? Url.parentDirectory(documentUrl) : null;
+        return documentUrl ? urlParentDirectory(documentUrl) : null;
     }
 
     public getSourceContainerUrl(): string | null {
         const documentUrl = this.getSourceDocumentUrl();
 
-        return documentUrl ? Url.parentDirectory(documentUrl) : null;
+        return documentUrl ? urlParentDirectory(documentUrl) : null;
     }
 
     protected getDefaultCollection(): string {
@@ -395,7 +399,7 @@ export class SolidModel extends Model {
 
         await model.loadDocumentModels(id, document);
 
-        return Fluent.tap(model, m => m._sourceDocumentUrl = id);
+        return tap(model, m => m._sourceDocumentUrl = id);
     }
 
     protected async createManyFromEngineDocuments(documents: Record<string, EngineDocument>): Promise<this[]> {
@@ -415,7 +419,7 @@ export class SolidModel extends Model {
             );
         }));
 
-        return Arr.flatten(models);
+        return models.flat();
     }
 
     protected async loadDocumentModels(documentUrl: string, document: EngineDocument): Promise<void> {
@@ -613,7 +617,7 @@ export class SolidModel extends Model {
     }
 
     protected newUrl(documentUrl?: string, resourceHash?: string): string {
-        documentUrl = documentUrl ?? Url.resolve(this.static('collection'), UUID.generate());
+        documentUrl = documentUrl ?? urlResolve(this.static('collection'), uuid());
         resourceHash = resourceHash ?? this.static('defaultResourceHash');
 
         return `${documentUrl}#${resourceHash}`;
@@ -622,53 +626,49 @@ export class SolidModel extends Model {
     protected newUniqueUrl(url?: string): string {
         url = url ?? this.newUrl();
 
-        const uuid = UUID.generate();
-
-        return `${url}-${uuid}`;
+        return `${url}-${uuid()}`;
     }
 
     protected guessCollection(): string | undefined {
         if (!this.url)
             return;
 
-        return Url.parentDirectory(this.url);
+        return urlParentDirectory(this.url);
     }
 
     private getDirtyDocumentModels(): SolidModel[] {
         // TODO this should be recursive to take care of 2nd degree relations and more.
         const documentUrl = this.getDocumentUrl();
-        const dirtyModels = Arr.flatten(
-            Object
-                .values(this._relations)
-                .filter<SolidHasManyRelation | SolidHasOneRelation>(
-                    (relation): relation is SolidHasManyRelation | SolidHasOneRelation =>
-                        relation.loaded &&
-                        (relation instanceof SolidHasManyRelation || relation instanceof SolidHasOneRelation) &&
-                        relation.useSameDocument,
-                )
-                .map(relation => {
-                    const models = relation instanceof SolidHasManyRelation
-                        ? [...relation.__newModels]
-                        : Arr.filter([relation.__newModel]) as SolidModel[];
 
-                    for (const relatedModel of relation.getLoadedModels()) {
-                        if (
-                            !relatedModel.isDirty() ||
-                            relatedModel.getDocumentUrl() !== documentUrl ||
-                            models.some(model => model === relatedModel)
-                        )
-                            continue;
+        return Object
+            .values(this._relations)
+            .filter<SolidHasManyRelation | SolidHasOneRelation>(
+                (relation): relation is SolidHasManyRelation | SolidHasOneRelation =>
+                    relation.loaded &&
+                    (relation instanceof SolidHasManyRelation || relation instanceof SolidHasOneRelation) &&
+                    relation.useSameDocument,
+            )
+            .map(relation => {
+                const models = relation instanceof SolidHasManyRelation
+                    ? [...relation.__newModels]
+                    : arrayFilter([relation.__newModel]) as SolidModel[];
 
-                        models.push(relatedModel);
-                    }
+                for (const relatedModel of relation.getLoadedModels()) {
+                    if (
+                        !relatedModel.isDirty() ||
+                        relatedModel.getDocumentUrl() !== documentUrl ||
+                        models.some(model => model === relatedModel)
+                    )
+                        continue;
 
-                    models.forEach(model => model.setAttribute(relation.foreignKeyName, this.url));
+                    models.push(relatedModel);
+                }
 
-                    return models;
-                }),
-        );
+                models.forEach(model => model.setAttribute(relation.foreignKeyName, this.url));
 
-        return dirtyModels;
+                return models;
+            })
+            .flat();
     }
 
     private prepareDirtyDocumentModels(): SolidModel[] {
@@ -682,7 +682,7 @@ export class SolidModel extends Model {
 
         const documentUrl = this.requireDocumentUrl();
 
-        dirtyModels.forEach(model => !model.url && model.mintUrl(documentUrl, this._documentExists, UUID.generate()));
+        dirtyModels.forEach(model => !model.url && model.mintUrl(documentUrl, this._documentExists, uuid()));
 
         return dirtyModels;
     }

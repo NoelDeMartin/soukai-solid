@@ -1,8 +1,6 @@
 import RDFDocument from '@/solid/RDFDocument';
+import { urlResolve, uuid } from '@noeldemartin/utils';
 import type RDFResourceProperty from '@/solid/RDFResourceProperty';
-
-import Url from '@/utils/Url';
-import UUID from '@/utils/UUID';
 
 export class SolidClientMock {
 
@@ -29,7 +27,7 @@ export class SolidClientMock {
             .join('\n');
 
         if (url === null)
-            url = Url.resolve(parentUrl, UUID.generate());
+            url = urlResolve(parentUrl, uuid());
 
         if (await this.documentExists(url))
             throw new Error(`Cannot create a document at ${url}, url already in use`);

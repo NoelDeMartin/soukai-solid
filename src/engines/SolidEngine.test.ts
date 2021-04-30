@@ -1,4 +1,12 @@
 import { DocumentAlreadyExists, DocumentNotFound, SoukaiError } from 'soukai';
+import {
+    arrayZip,
+    range,
+    stringToSlug,
+    urlParentDirectory,
+    urlResolve,
+    urlResolveDirectory,
+} from '@noeldemartin/utils';
 import type { EngineFilters } from 'soukai';
 
 import Faker from 'faker';
@@ -11,10 +19,6 @@ import RDFResourceProperty from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
 import type { Fetch } from '@/solid/SolidClient';
-
-import Str from '@/utils/Str';
-import Url from '@/utils/Url';
-import Arr from '@/utils/Arr';
 
 import SolidClientMock from '@/solid/__mocks__';
 
@@ -34,8 +38,8 @@ describe('SolidEngine', () => {
 
     it('creates one document', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const personUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const personUrl = urlResolve(containerUrl, Faker.random.uuid());
         const name = Faker.name.firstName();
         const date = new Date('1997-07-21T23:42:00Z');
         const jsonld = stubPersonJsonLD(personUrl, name, { birthDate: '1997-07-21T23:42:00.000Z' });
@@ -63,12 +67,12 @@ describe('SolidEngine', () => {
     it('creates one container', async () => {
         // Arrange
         const name = Faker.name.firstName();
-        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const documentUrl = Url.resolve(parentUrl, Str.slug(name));
+        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const documentUrl = urlResolve(parentUrl, stringToSlug(name));
 
         // Act
         const id = await engine.create(
-            Url.parentDirectory(documentUrl),
+            urlParentDirectory(documentUrl),
             stubGroupJsonLD(documentUrl, name),
             documentUrl,
         );
@@ -91,8 +95,8 @@ describe('SolidEngine', () => {
     });
 
     it('fails creating documents if the provided url is already in use', async () => {
-        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const documentUrl = urlResolve(parentUrl, Faker.random.uuid());
 
         await SolidClientMock.createDocument(parentUrl, documentUrl, [
             RDFResourceProperty.type(documentUrl, IRI('foaf:Person')),
@@ -105,8 +109,8 @@ describe('SolidEngine', () => {
 
     it('gets one document', async () => {
         // Arrange
-        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const documentUrl = urlResolve(parentUrl, Faker.random.uuid());
         const name = Faker.name.firstName();
 
         await SolidClientMock.createDocument(parentUrl, documentUrl, [
@@ -116,7 +120,7 @@ describe('SolidEngine', () => {
         ]);
 
         // Act
-        const document = await engine.readOne(Url.parentDirectory(documentUrl), documentUrl);
+        const document = await engine.readOne(urlParentDirectory(documentUrl), documentUrl);
 
         // Assert
         expect(SolidClientMock.getDocument).toHaveBeenCalledWith(documentUrl);
@@ -125,19 +129,19 @@ describe('SolidEngine', () => {
     });
 
     it('fails reading when document doesn\'t exist', async () => {
-        const documentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const documentUrl = urlResolve(Faker.internet.url(), Faker.random.uuid());
 
-        await expect(engine.readOne(Url.parentDirectory(documentUrl), documentUrl))
+        await expect(engine.readOne(urlParentDirectory(documentUrl), documentUrl))
             .rejects
             .toBeInstanceOf(DocumentNotFound);
     });
 
     it('gets many documents', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const firstDocumentUrl = Url.resolve(containerUrl, 'first');
-        const secondDocumentUrl = Url.resolve(containerUrl, 'second');
-        const thirdDocumentUrl = Url.resolve(containerUrl, 'third');
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const firstDocumentUrl = urlResolve(containerUrl, 'first');
+        const secondDocumentUrl = urlResolve(containerUrl, 'second');
+        const thirdDocumentUrl = urlResolve(containerUrl, 'third');
         const firstPersonUrl = `${firstDocumentUrl}#it`;
         const secondPersonUrl = `${secondDocumentUrl}#it`;
         const thirdPersonUrl = `${secondDocumentUrl}#${Faker.random.uuid()}`;
@@ -183,11 +187,11 @@ describe('SolidEngine', () => {
 
     it('gets many documents using $in filter', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const missingDocumentUrl = Url.resolve(containerUrl, Faker.random.uuid());
-        const firstDocumentUrl = Url.resolve(containerUrl, Faker.random.uuid());
-        const secondDocumentUrl = Url.resolve(containerUrl, Faker.random.uuid());
-        const thirdDocumentUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const missingDocumentUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const firstDocumentUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const secondDocumentUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const thirdDocumentUrl = urlResolve(containerUrl, Faker.random.uuid());
         const firstPersonName = Faker.name.firstName();
         const secondPersonName = Faker.name.firstName();
         const thirdPersonName = Faker.name.firstName();
@@ -239,9 +243,9 @@ describe('SolidEngine', () => {
 
     it('gets many containers passing onlyContainers flag to client', async () => {
         // Arrange
-        const parentUrl = Url.resolveDirectory(Faker.internet.url());
+        const parentUrl = urlResolveDirectory(Faker.internet.url());
         const containerName = Faker.lorem.word();
-        const containerUrl = Url.resolveDirectory(parentUrl, Str.slug(containerName));
+        const containerUrl = urlResolveDirectory(parentUrl, stringToSlug(containerName));
 
         await SolidClientMock.createDocument(parentUrl, containerUrl, [
             RDFResourceProperty.type(containerUrl, IRI('ldp:Container')),
@@ -266,10 +270,10 @@ describe('SolidEngine', () => {
 
     it('gets many documents filtering by attributes', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
         const name = Faker.name.firstName();
-        const firstUrl = Url.resolve(containerUrl, Faker.random.uuid());
-        const secondUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const firstUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const secondUrl = urlResolve(containerUrl, Faker.random.uuid());
 
         await SolidClientMock.createDocument(containerUrl, firstUrl, [
             RDFResourceProperty.type(firstUrl, IRI('foaf:Person')),
@@ -296,15 +300,15 @@ describe('SolidEngine', () => {
 
     it('gets many documents using globbing for $in filter', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
         const documentsCount = 10;
         const urls: string[] = [];
         const names: string[] = [];
 
         engine.setConfig({ useGlobbing: true });
 
-        await Promise.all(Arr.range(documentsCount).map(async i => {
-            const url = Url.resolve(containerUrl, `document-${i}`);
+        await Promise.all(range(documentsCount).map(async i => {
+            const url = urlResolve(containerUrl, `document-${i}`);
             const name = Faker.name.firstName();
 
             urls.push(url);
@@ -327,17 +331,17 @@ describe('SolidEngine', () => {
         expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, false);
 
         await Promise.all(
-            Arr
-                .zip(urls, names)
-                .map(([url, name]) => expect(documents[url]).toEqualJsonLD(stubPersonJsonLD(url, name))),
+            arrayZip(urls, names).map(
+                ([url, name]) => expect(documents[url]).toEqualJsonLD(stubPersonJsonLD(url, name)),
+            ),
         );
     });
 
     it('gets many documents with the legacy "document root" format', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const firstUrl = Url.resolve(containerUrl, 'first');
-        const secondUrl = Url.resolve(containerUrl, 'second');
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const firstUrl = urlResolve(containerUrl, 'first');
+        const secondUrl = urlResolve(containerUrl, 'second');
         const thirdUrl = `${secondUrl}#${Faker.random.uuid()}`;
         const firstName = Faker.name.firstName();
         const secondName = Faker.name.firstName();
@@ -376,12 +380,12 @@ describe('SolidEngine', () => {
 
     it('gets many documents using $in filter with the legacy "document root" format', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const brokenUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const brokenUrl = urlResolve(containerUrl, Faker.random.uuid());
         const firstName = Faker.name.firstName();
-        const firstUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const firstUrl = urlResolve(containerUrl, Faker.random.uuid());
         const secondName = Faker.name.firstName();
-        const secondUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const secondUrl = urlResolve(containerUrl, Faker.random.uuid());
 
         await SolidClientMock.createDocument(containerUrl, firstUrl, [
             RDFResourceProperty.type(firstUrl, IRI('foaf:Person')),
@@ -410,8 +414,8 @@ describe('SolidEngine', () => {
 
     it('updates document updated attributes', async () => {
         // Arrange
-        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const documentUrl = urlResolve(parentUrl, Faker.random.uuid());
         const name = Faker.random.word();
         const date = new Date();
 
@@ -448,8 +452,8 @@ describe('SolidEngine', () => {
     });
 
     it('updates document removed attributes', async () => {
-        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const documentUrl = urlResolve(parentUrl, Faker.random.uuid());
 
         await SolidClientMock.createDocument(parentUrl, documentUrl);
 
@@ -474,8 +478,8 @@ describe('SolidEngine', () => {
 
     it('updates document removing resources', async () => {
         // Arrange
-        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const documentUrl = urlResolve(parentUrl, Faker.random.uuid());
         const firstResourceUrl = `${documentUrl}#one`;
         const secondResourceUrl = `${documentUrl}#two`;
 
@@ -507,10 +511,10 @@ describe('SolidEngine', () => {
 
     it('updates document changing resource urls', async () => {
         // Arrange
-        const legacyParentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const legacyDocumentUrl = Url.resolve(legacyParentUrl, Faker.random.uuid());
-        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const legacyParentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const legacyDocumentUrl = urlResolve(legacyParentUrl, Faker.random.uuid());
+        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const documentUrl = urlResolve(parentUrl, Faker.random.uuid());
         const firstResourceUrl = legacyDocumentUrl;
         const secondResourceUrl = `${legacyDocumentUrl}#something-else`;
         const newFirstResourceUrl = `${documentUrl}#it`;
@@ -555,9 +559,9 @@ describe('SolidEngine', () => {
     });
 
     it('fails updating when document doesn\'t exist', async () => {
-        const documentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const documentUrl = urlResolve(Faker.internet.url(), Faker.random.uuid());
 
-        await expect(engine.readOne(Url.parentDirectory(documentUrl), documentUrl))
+        await expect(engine.readOne(urlParentDirectory(documentUrl), documentUrl))
             .rejects
             .toBeInstanceOf(DocumentNotFound);
     });

@@ -1,9 +1,7 @@
 import Faker from 'faker';
+import { stringToSlug, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 
 import MalformedDocumentError from '@/errors/MalformedDocumentError';
-
-import Str from '@/utils/Str';
-import Url from '@/utils/Url';
 
 import ChangeUrlOperation from '@/solid/operations/ChangeUrlOperation';
 import IRI from '@/solid/utils/IRI';
@@ -27,13 +25,13 @@ describe('SolidClient', () => {
 
     it('creates documents', async () => {
         // Arrange
-        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const documentUrl = urlResolve(parentUrl, Faker.random.uuid());
         const resourceUrl = `${documentUrl}#it`;
         const secondResourceUrl = `${documentUrl}#someone-else`;
         const name = Faker.random.word();
-        const firstType = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const secondType = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const firstType = urlResolve(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const secondType = urlResolve(Faker.internet.url(), stringToSlug(Faker.random.word()));
 
         StubFetcher.addFetchResponse();
 
@@ -76,8 +74,8 @@ describe('SolidClient', () => {
 
     it('creates documents without minted url', async () => {
         // Arrange
-        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const documentUrl = urlResolve(parentUrl, Faker.random.uuid());
 
         StubFetcher.addFetchResponse('', { Location: documentUrl }, 201);
 
@@ -102,8 +100,8 @@ describe('SolidClient', () => {
     it('creates container documents', async () => {
         // Arrange
         const label = Faker.random.word();
-        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const containerUrl = Url.resolveDirectory(parentUrl, Str.slug(label));
+        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const containerUrl = urlResolveDirectory(parentUrl, stringToSlug(label));
 
         StubFetcher.addFetchResponse('', {}, 201);
 
@@ -125,7 +123,7 @@ describe('SolidClient', () => {
             headers: {
                 'Content-Type': 'text/turtle',
                 'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
-                'Slug': Str.slug(label),
+                'Slug': stringToSlug(label),
             },
             body: `<> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" .`,
         });
@@ -133,8 +131,8 @@ describe('SolidClient', () => {
 
     it('creates container documents without a minted url', async () => {
         // Arrange
-        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const containerUrl = Url.resolveDirectory(parentUrl, Str.slug(Faker.random.word()));
+        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const containerUrl = urlResolveDirectory(parentUrl, stringToSlug(Faker.random.word()));
 
         StubFetcher.addFetchResponse('', { Location: containerUrl }, 201);
 
@@ -191,9 +189,9 @@ describe('SolidClient', () => {
 
     it('gets documents using a trailing slash', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(
+        const containerUrl = urlResolveDirectory(
             Faker.internet.url(),
-            Str.slug(Faker.random.word()),
+            stringToSlug(Faker.random.word()),
         );
 
         StubFetcher.addFetchResponse(`
@@ -323,8 +321,8 @@ describe('SolidClient', () => {
 
     it('getting container documents does not use globbing', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const type = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const containerUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const type = urlResolve(Faker.internet.url(), stringToSlug(Faker.random.word()));
 
         client.setConfig({ useGlobbing: true });
         StubFetcher.addFetchResponse(`
@@ -424,8 +422,8 @@ describe('SolidClient', () => {
 
     it('updates container documents', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const metaDocumentName = '.' + Str.slug(Faker.random.word());
+        const containerUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const metaDocumentName = '.' + stringToSlug(Faker.random.word());
         const metaDocumentUrl = containerUrl + metaDocumentName;
         const data = `
             <${containerUrl}>
@@ -475,10 +473,10 @@ describe('SolidClient', () => {
 
     it('changes resource urls', async () => {
         // Arrange
-        const legacyParentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const legacyDocumentUrl = Url.resolve(legacyParentUrl, Faker.random.uuid());
-        const parentUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const documentUrl = Url.resolve(parentUrl, Faker.random.uuid());
+        const legacyParentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const legacyDocumentUrl = urlResolve(legacyParentUrl, Faker.random.uuid());
+        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const documentUrl = urlResolve(parentUrl, Faker.random.uuid());
         const firstResourceUrl = legacyDocumentUrl;
         const secondResourceUrl = `${legacyDocumentUrl}#someone-else`;
         const newFirstResourceUrl = `${documentUrl}#it`;
@@ -618,7 +616,7 @@ describe('SolidClient', () => {
 
     it('deletes all properties from a resource within a container document', async () => {
         // Arrange
-        const documentUrl = Url.resolve(Faker.internet.url(), Str.slug(Faker.random.word()));
+        const documentUrl = urlResolve(Faker.internet.url(), stringToSlug(Faker.random.word()));
         const metaDocumentUrl = `${documentUrl}.meta`;
         const resourceUrl = `${documentUrl}#it`;
         const data = `
@@ -702,8 +700,8 @@ describe('SolidClient', () => {
 
     it('deletes container documents', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(Faker.random.word()));
-        const documentUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const documentUrl = urlResolve(containerUrl, Faker.random.uuid());
         const containerData = `
             <${containerUrl}>
                 a <http://www.w3.org/ns/ldp#Container> ;
@@ -779,9 +777,9 @@ describe('SolidClient', () => {
     it('handles malformed document errors reading containers', async () => {
         // Arrange
         let error;
-        const containerUrl = Url.resolveDirectory(
+        const containerUrl = urlResolveDirectory(
             Faker.internet.url(),
-            Str.slug(Faker.random.word()),
+            stringToSlug(Faker.random.word()),
         );
 
         StubFetcher.addFetchResponse('this is not turtle');

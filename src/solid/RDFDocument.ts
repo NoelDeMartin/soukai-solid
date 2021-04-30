@@ -1,4 +1,5 @@
 import { SoukaiError } from 'soukai';
+import { arrayWithout, urlResolve, urlRoute } from '@noeldemartin/utils';
 import type { Quad } from 'rdf-js';
 
 import { fromTurtle, toRDF } from '@/solid/external';
@@ -6,9 +7,6 @@ import RDF from '@/solid/utils/RDF';
 import RDFResource from '@/solid/RDFResource';
 import type { JsonLD, JsonLDGraph } from '@/solid/utils/RDF';
 import type RDFResourceProperty from '@/solid/RDFResourceProperty';
-
-import Arr from '@/utils/Arr';
-import Url from '@/utils/Url';
 
 export interface TurtleParsingOptions {
     baseUrl?: string;
@@ -44,7 +42,7 @@ export default class RDFDocument {
     public static async fromJsonLD(json: JsonLD): Promise<RDFDocument> {
         const quads = await toRDF(json);
 
-        return new RDFDocument(json['@id'] ? Url.route(json['@id']) : null, quads);
+        return new RDFDocument(json['@id'] ? urlRoute(json['@id']) : null, quads);
     }
 
     public readonly url: string | null;
@@ -105,7 +103,7 @@ export default class RDFDocument {
 
     public clone(url: string | null = null): RDFDocument {
         const document = new RDFDocument(url || this.url);
-        const properties = Arr.without(Object.getOwnPropertyNames(this), ['url']);
+        const properties = arrayWithout(Object.getOwnPropertyNames(this), ['url']);
 
         Object.assign(
             document,
@@ -130,5 +128,5 @@ function getDescribedBy(options: TurtleParsingOptions): string | undefined {
     if (!matches)
         return undefined;
 
-    return Url.resolve(options.baseUrl || '', matches[1]);
+    return urlResolve(options.baseUrl || '', matches[1]);
 }

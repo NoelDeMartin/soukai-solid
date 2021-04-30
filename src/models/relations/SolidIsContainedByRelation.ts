@@ -1,8 +1,8 @@
 import { SingleModelRelation } from 'soukai';
+import { urlParentDirectory } from '@noeldemartin/utils';
 
 import type { SolidModel } from '@/models/SolidModel';
 
-import Url from '@/utils/Url';
 import type { SolidContainerModelConstructor, SolidModelConstructor } from '@/models/inference';
 import type SolidContainerModel from '@/models/SolidContainerModel';
 
@@ -18,10 +18,10 @@ export default class SolidIsContainedByRelation<
 
     public async resolve(): Promise<Related | null> {
         const oldCollection = this.relatedClass.collection;
-        const containerUrl = Url.parentDirectory(this.parent.url);
+        const containerUrl = urlParentDirectory(this.parent.url);
 
         this.related = await this.relatedClass
-            .from(Url.parentDirectory(containerUrl))
+            .from(urlParentDirectory(containerUrl))
             .find(containerUrl);
 
         this.relatedClass.collection = oldCollection;

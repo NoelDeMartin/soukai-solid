@@ -1,4 +1,5 @@
 import { EngineHelper, HasManyRelation, SoukaiError } from 'soukai';
+import { urlRoute } from '@noeldemartin/utils';
 import type {
     Attributes,
     EngineAttributeValue,
@@ -7,7 +8,6 @@ import type {
 } from 'soukai';
 
 import RDF from '@/solid/utils/RDF';
-import Url from '@/utils/Url';
 import type { JsonLDResource } from '@/solid/utils/RDF';
 import type { SolidBootedFieldsDefinition } from '@/models/fields';
 import type { SolidModel } from '@/models/SolidModel';
@@ -135,7 +135,7 @@ export default class SolidHasManyRelation<
         this.__modelsInOtherDocumentIds = Object.keys(documents).filter(
             resourceId =>
                 !modelsInSameDocument.some(model => model.url === resourceId) &&
-                Url.route(resourceId) !== documentUrl,
+                urlRoute(resourceId) !== documentUrl,
         );
 
         if (this.__modelsInOtherDocumentIds.length > 0)

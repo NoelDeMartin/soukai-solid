@@ -1,11 +1,8 @@
 /* eslint-disable max-len */
 import { FieldType, bootModels, setEngine } from 'soukai';
-import { tt } from '@noeldemartin/utils';
+import { stringToSlug, tt, urlParentDirectory, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 import Faker from 'faker';
 import type { Equals, Expect } from '@noeldemartin/utils';
-
-import Str from '@/utils/Str';
-import Url from '@/utils/Url';
 
 import { stubGroupJsonLD, stubMovieJsonLD, stubPersonJsonLD, stubWatchActionJsonLD } from '@/testing/lib/stubs/helpers';
 import Group from '@/testing/lib/stubs/Group';
@@ -107,7 +104,7 @@ describe('SolidModel', () => {
     it('allows adding undefined fields', async () => {
         class StubModel extends SolidModel {}
 
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
         const createSpy = jest.spyOn(engine, 'create');
 
         bootModels({ StubModel });
@@ -136,10 +133,10 @@ describe('SolidModel', () => {
 
     it('sends JSON-LD with related models in the same document', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
         const movieName = Faker.name.title();
         const directorName = Faker.name.firstName();
-        const movieUrl = Url.resolve(containerUrl, Str.slug(movieName));
+        const movieUrl = urlResolve(containerUrl, stringToSlug(movieName));
         const movie = new Movie({ url: movieUrl, name: movieName });
         const action = await movie.relatedActions.create({ startTime: new Date('1997-07-21T23:42:00Z') });
         const director = await movie.relatedDirector.create({
@@ -189,7 +186,7 @@ describe('SolidModel', () => {
 
     it('sends JSON-LD with related models in the same document without minted url', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
         const movieName = Faker.name.title();
         const movie = new Movie({ name: movieName });
         const action = await movie.relatedActions.create({ startTime: new Date('1997-07-21T23:42:00Z') });
@@ -281,10 +278,10 @@ describe('SolidModel', () => {
 
         bootModels({ StubModel });
 
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
         const model = new StubModel(
             {
-                url: Url.resolve(containerUrl, Faker.random.uuid()),
+                url: urlResolve(containerUrl, Faker.random.uuid()),
                 surname: Faker.name.lastName(),
             },
             true,
@@ -316,9 +313,9 @@ describe('SolidModel', () => {
 
     it('reads many from multiple documents with related models', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const firstDocumentUrl = Url.resolve(containerUrl, Faker.random.uuid());
-        const secondDocumentUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const firstDocumentUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const secondDocumentUrl = urlResolve(containerUrl, Faker.random.uuid());
         const firstMovieUrl = `${firstDocumentUrl}#it`;
         const secondMovieUrl = `${secondDocumentUrl}#it`;
         const thirdMovieUrl = `${secondDocumentUrl}#${Faker.random.uuid()}`;
@@ -376,7 +373,7 @@ describe('SolidModel', () => {
         class StubModel extends SolidModel {
         }
 
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
 
         jest.spyOn(engine, 'create');
 
@@ -402,7 +399,7 @@ describe('SolidModel', () => {
 
         }
 
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
 
         jest.spyOn(engine, 'create');
 
@@ -430,7 +427,7 @@ describe('SolidModel', () => {
 
         }
 
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
 
         jest.spyOn(engine, 'create');
 
@@ -450,9 +447,9 @@ describe('SolidModel', () => {
         class StubModel extends SolidModel {
         }
 
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
         const escapedContainerUrl = containerUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const resourceUrl = Url.resolve(containerUrl, Str.slug(Faker.random.word()));
+        const resourceUrl = urlResolve(containerUrl, stringToSlug(Faker.random.word()));
 
         engine.setOne({ url: resourceUrl });
         jest.spyOn(engine, 'create');
@@ -486,7 +483,7 @@ describe('SolidModel', () => {
         class StubModel extends SolidModel {
         }
 
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
 
         jest.spyOn(engine, 'create');
 
@@ -508,7 +505,7 @@ describe('SolidModel', () => {
 
     it('uses hash fragment for minting model urls in the same document', async () => {
         // Arrange
-        const movieUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const movieUrl = urlResolve(Faker.internet.url(), Faker.random.uuid());
         const movie = new Movie({ url: movieUrl }, true);
 
         movie.setRelationModels('actions', []);
@@ -536,7 +533,7 @@ describe('SolidModel', () => {
 
     it('creates models in existing documents', async () => {
         // Arrange
-        const documentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const documentUrl = urlResolve(Faker.internet.url(), Faker.random.uuid());
         const movieUrl = documentUrl + '#' + Faker.random.uuid();
         const movie = new Movie({ url: movieUrl });
 
@@ -560,7 +557,7 @@ describe('SolidModel', () => {
 
     it('updates models', async () => {
         // Arrange
-        const documentUrl = Url.resolve(Faker.internet.url(), Faker.random.uuid());
+        const documentUrl = urlResolve(Faker.internet.url(), Faker.random.uuid());
         const movieName = Faker.name.title();
         const movieUrl = documentUrl + '#' + Faker.random.uuid();
         const movie = new Movie({ url: movieUrl }, true);
@@ -591,12 +588,12 @@ describe('SolidModel', () => {
         class StubModel extends SolidModel {
         }
 
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
         const readOneSpy = jest.spyOn(engine, 'readOne');
 
         bootModels({ StubModel });
 
-        await StubModel.find(Url.resolve(containerUrl, Faker.random.uuid()));
+        await StubModel.find(urlResolve(containerUrl, Faker.random.uuid()));
 
         const collection = readOneSpy.mock.calls[0][0];
 
@@ -607,13 +604,13 @@ describe('SolidModel', () => {
         class StubModel extends SolidModel {
         }
 
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
         const updateSpy = jest.spyOn(engine, 'update');
 
         bootModels({ StubModel });
 
         const model = new StubModel(
-            { url: Url.resolve(containerUrl, Faker.random.uuid()) },
+            { url: urlResolve(containerUrl, Faker.random.uuid()) },
             true,
         );
 
@@ -626,8 +623,8 @@ describe('SolidModel', () => {
 
     it('deletes the entire document if all stored resources are deleted', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const documentUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const documentUrl = urlResolve(containerUrl, Faker.random.uuid());
         const movieUrl = `${documentUrl}#it`;
         const actionUrl = `${documentUrl}#action`;
         const movie = new Movie({ url: movieUrl }, true);
@@ -660,8 +657,8 @@ describe('SolidModel', () => {
         bootModels({ StubModel });
         jest.spyOn(engine, 'update');
 
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const documentUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const documentUrl = urlResolve(containerUrl, Faker.random.uuid());
         const url = `${documentUrl}#it`;
         const model = new StubModel({ url, name: Faker.name.firstName() }, true);
 
@@ -694,11 +691,11 @@ describe('SolidModel', () => {
 
     it('deletes complex document structures properly', async () => {
         // Arrange - create models & urls
-        const firstContainerUrl = Url.resolveDirectory(Faker.internet.url());
-        const secondContainerUrl = Url.resolveDirectory(Faker.internet.url());
-        const firstDocumentUrl = Url.resolve(firstContainerUrl, Faker.random.uuid());
-        const secondDocumentUrl = Url.resolve(firstContainerUrl, Faker.random.uuid());
-        const thirdDocumentUrl = Url.resolve(secondContainerUrl, Faker.random.uuid());
+        const firstContainerUrl = urlResolveDirectory(Faker.internet.url());
+        const secondContainerUrl = urlResolveDirectory(Faker.internet.url());
+        const firstDocumentUrl = urlResolve(firstContainerUrl, Faker.random.uuid());
+        const secondDocumentUrl = urlResolve(firstContainerUrl, Faker.random.uuid());
+        const thirdDocumentUrl = urlResolve(secondContainerUrl, Faker.random.uuid());
         const movieUrl = `${firstDocumentUrl}#it`;
         const firstActionUrl = `${firstDocumentUrl}#action`;
         const secondActionUrl = `${secondDocumentUrl}#it`;
@@ -853,7 +850,7 @@ describe('SolidModel', () => {
 
     it('loads related models in the same document', async () => {
         // Arrange
-        const movieUrl = Url.resolve(Faker.internet.url());
+        const movieUrl = urlResolve(Faker.internet.url());
         const watchActionUrl = `${movieUrl}#${Faker.random.uuid()}`;
 
         engine.setOne({
@@ -878,9 +875,9 @@ describe('SolidModel', () => {
     it('implements is contained by relationship', async () => {
         // Arrange
         const name = Faker.random.word();
-        const containerUrl = Url.resolveDirectory(Faker.internet.url(), Str.slug(name));
+        const containerUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(name));
         const person = new Person({
-            url: Url.resolve(containerUrl, Faker.random.uuid()),
+            url: urlResolve(containerUrl, Faker.random.uuid()),
         });
 
         jest.spyOn(engine, 'readOne');
@@ -899,20 +896,20 @@ describe('SolidModel', () => {
         const group = person.group as Group;
         expect(group.name).toBe(name);
 
-        expect(engine.readOne).toHaveBeenCalledWith(Url.parentDirectory(containerUrl), containerUrl);
+        expect(engine.readOne).toHaveBeenCalledWith(urlParentDirectory(containerUrl), containerUrl);
     });
 
     it('serializes to JSON-LD', () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
         const name = Faker.random.word();
         const person = new Person({
             name,
-            url: Url.resolve(containerUrl, Faker.random.uuid()),
+            url: urlResolve(containerUrl, Faker.random.uuid()),
             friendUrls: [
-                Url.resolve(containerUrl, Faker.random.uuid()),
-                Url.resolve(containerUrl, Faker.random.uuid()),
-                Url.resolve(containerUrl, Faker.random.uuid()),
+                urlResolve(containerUrl, Faker.random.uuid()),
+                urlResolve(containerUrl, Faker.random.uuid()),
+                urlResolve(containerUrl, Faker.random.uuid()),
             ],
             createdAt: new Date('1997-07-21T23:42:00Z'),
         });
@@ -941,7 +938,7 @@ describe('SolidModel', () => {
     it('serializes to JSON-LD with relations', () => {
         // Arrange
         const movieName = Faker.name.title();
-        const movieUrl = Url.resolve(Faker.internet.url(), Str.slug(movieName));
+        const movieUrl = urlResolve(Faker.internet.url(), stringToSlug(movieName));
         const watchActionUrl = `${movieUrl}#${Faker.random.uuid()}`;
         const movie = new Movie({ url: movieUrl, name: movieName });
 
@@ -980,18 +977,18 @@ describe('SolidModel', () => {
 
     it('parses JSON-LD', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
         const name = Faker.random.word();
         const friendUrls = [
-            Url.resolve(containerUrl, Faker.random.uuid()),
-            Url.resolve(containerUrl, Faker.random.uuid()),
-            Url.resolve(containerUrl, Faker.random.uuid()),
+            urlResolve(containerUrl, Faker.random.uuid()),
+            urlResolve(containerUrl, Faker.random.uuid()),
+            urlResolve(containerUrl, Faker.random.uuid()),
         ];
 
         // Act
         const person = await Person.newFromJsonLD({
             '@context': { '@vocab': 'http://xmlns.com/foaf/0.1/' },
-            '@id': Url.resolve(containerUrl, Faker.random.uuid()),
+            '@id': urlResolve(containerUrl, Faker.random.uuid()),
             '@type': [
                 'http://xmlns.com/foaf/0.1/Person',
             ],
@@ -1014,9 +1011,9 @@ describe('SolidModel', () => {
 
     it('parses JSON-LD with related models', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
         const name = Faker.random.word();
-        const documentUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const documentUrl = urlResolve(containerUrl, Faker.random.uuid());
         const url = `${documentUrl}#it`;
 
         // Act

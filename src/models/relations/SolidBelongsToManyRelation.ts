@@ -1,7 +1,7 @@
 import { BelongsToManyRelation, EngineHelper } from 'soukai';
+import { urlParentDirectory, urlRoute } from '@noeldemartin/utils';
 import type { EngineAttributeValue, EngineDocument , EngineDocumentsCollection } from 'soukai';
 
-import Url from '@/utils/Url';
 import type { JsonLDResource } from '@/solid/utils/RDF';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
@@ -24,7 +24,7 @@ export default class SolidBelongsToManyRelation<
         const idsByContainerUrl: Record<string, string[]> = {};
 
         for (const id of this.__modelsInOtherDocumentIds ?? []) {
-            const containerUrl = Url.parentDirectory(id);
+            const containerUrl = urlParentDirectory(id);
 
             if (!(containerUrl in idsByContainerUrl)) {
                 idsByContainerUrl[containerUrl] = [];
@@ -82,7 +82,7 @@ export default class SolidBelongsToManyRelation<
         this.__modelsInOtherDocumentIds = modelIds.filter(
             resourceId =>
                 !modelsInSameDocument.some(model => model.url === resourceId) &&
-                Url.route(resourceId) !== documentUrl,
+                urlRoute(resourceId) !== documentUrl,
         );
 
         if (this.__modelsInOtherDocumentIds.length > 0)

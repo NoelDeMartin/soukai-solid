@@ -1,10 +1,8 @@
 import Faker from 'faker';
 import Soukai, { FieldType } from 'soukai';
+import { stringToSlug, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 
 import IRI from '@/solid/utils/IRI';
-
-import Str from '@/utils/Str';
-import Url from '@/utils/Url';
 
 import { stubGroupJsonLD, stubPersonJsonLD, stubSolidDocumentJsonLD } from '@/testing/lib/stubs/helpers';
 import Group from '@/testing/lib/stubs/Group';
@@ -63,9 +61,9 @@ describe('SolidContainerModel', () => {
 
     it('adds documents relation', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const firstDocumentUrl = Url.resolve(containerUrl, Faker.random.uuid());
-        const secondDocumentUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const firstDocumentUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const secondDocumentUrl = urlResolve(containerUrl, Faker.random.uuid());
 
         engine.setOne({
             '@graph': [
@@ -94,9 +92,9 @@ describe('SolidContainerModel', () => {
 
     it('implements contains relationship', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const musashiUrl = Url.resolve(containerUrl, 'musashi');
-        const kojiroUrl = Url.resolve(containerUrl, 'kojiro');
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const musashiUrl = urlResolve(containerUrl, 'musashi');
+        const kojiroUrl = urlResolve(containerUrl, 'kojiro');
 
         const group = new Group({
             url: containerUrl,
@@ -170,7 +168,7 @@ describe('SolidContainerModel', () => {
 
         }
 
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
         const name = Faker.random.word();
 
         jest.spyOn(engine, 'create');
@@ -182,7 +180,7 @@ describe('SolidContainerModel', () => {
 
         // Assert
         expect(typeof model.url).toEqual('string');
-        expect(model.url).toEqual(Url.resolveDirectory(containerUrl, Str.slug(name)));
+        expect(model.url).toEqual(urlResolveDirectory(containerUrl, stringToSlug(name)));
 
         expect(engine.create).toHaveBeenCalledWith(
             containerUrl,
@@ -205,10 +203,10 @@ describe('SolidContainerModel', () => {
         }
 
         const name = Faker.random.word();
-        const slug = Str.slug(name);
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
+        const slug = stringToSlug(name);
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
         const escapedContainerUrl = containerUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const resourceUrl = Url.resolveDirectory(containerUrl, slug);
+        const resourceUrl = urlResolveDirectory(containerUrl, slug);
 
         engine.setOne({ url: resourceUrl });
 

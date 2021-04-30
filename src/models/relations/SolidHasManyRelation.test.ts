@@ -1,9 +1,8 @@
 import Faker from 'faker';
 import Soukai from 'soukai';
+import { urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 
 import IRI from '@/solid/utils/IRI';
-
-import Url from '@/utils/Url';
 
 import { stubMovieJsonLD, stubWatchActionJsonLD } from '@/testing/lib/stubs/helpers';
 import Movie from '@/testing/lib/stubs/Movie';
@@ -23,10 +22,10 @@ describe('SolidHasManyRelation', () => {
 
     it('loads models from different containers', async () => {
         // Arrange
-        const containerUrl = Url.resolveDirectory(Faker.internet.url());
-        const movieUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const movieUrl = urlResolve(containerUrl, Faker.random.uuid());
         const firstActionUrl = `${movieUrl}#${Faker.random.uuid()}`;
-        const secondActionUrl = Url.resolve(containerUrl, Faker.random.uuid());
+        const secondActionUrl = urlResolve(containerUrl, Faker.random.uuid());
 
         engine.setOne({
             '@graph': [

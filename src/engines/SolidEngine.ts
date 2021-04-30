@@ -1,4 +1,4 @@
-import { isObject } from '@noeldemartin/utils';
+import { arrayFrom, arrayUnique, isObject, urlParentDirectory } from '@noeldemartin/utils';
 import {
     DocumentAlreadyExists,
     DocumentNotFound,
@@ -28,8 +28,6 @@ import type { JsonLD } from '@/solid/utils/RDF';
 import type { RDFDocumentMetadata } from '@/solid/RDFDocument';
 import type { Fetch } from '@/solid/SolidClient';
 
-import Arr from '@/utils/Arr';
-import Url from '@/utils/Url';
 import IRI from '@/solid/utils/IRI';
 
 export interface SolidEngineConfig {
@@ -150,7 +148,7 @@ export class SolidEngine implements Engine {
     private async getDocumentsFromUrls(urls: string[], rdfsClasses: string[]): Promise<RDFDocument[]> {
         const containerDocumentUrlsMap = urls
             .reduce((containerDocumentUrlsMap, documentUrl) => {
-                const containerUrl = Url.parentDirectory(documentUrl);
+                const containerUrl = urlParentDirectory(documentUrl);
 
                 return {
                     ...containerDocumentUrlsMap,
@@ -178,7 +176,7 @@ export class SolidEngine implements Engine {
 
         const containerDocuments = await Promise.all(containerDocumentPromises);
 
-        return Arr.flatten(containerDocuments);
+        return containerDocuments.flat();
     }
 
     private convertToEngineDocument(document: RDFDocument): EngineDocument {
@@ -244,10 +242,9 @@ export class SolidEngine implements Engine {
         for (const graphUpdate of graphUpdates) {
             if (graphUpdate.$updateItems)
                 operations.push(
-                    ...Arr.flatten(
-                        Arr.create(graphUpdate.$updateItems)
-                            .map(update => this.extractJsonLDGraphItemsUpdate(update)),
-                    ),
+                    ...arrayFrom(graphUpdate.$updateItems)
+                        .map(update => this.extractJsonLDGraphItemsUpdate(update))
+                        .flat(),
                 );
 
             if (graphUpdate.$push) {
@@ -348,7 +345,7 @@ export class SolidEngine implements Engine {
             return types;
         }, [] as string[]);
 
-        return Arr.unique(types.filter(type => type.startsWith('http')));
+        return arrayUnique(types.filter(type => type.startsWith('http')));
     }
 
     private async getJsonLDGraphProperties(jsonld: JsonLD): Promise<RDFResourceProperty[]> {

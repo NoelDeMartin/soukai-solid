@@ -1,4 +1,12 @@
 import { DocumentNotFound, SoukaiError } from 'soukai';
+import {
+    arrayFilter,
+    arrayRemove,
+    objectWithoutEmpty,
+    urlClean,
+    urlDirectoryName,
+    urlResolve,
+} from '@noeldemartin/utils';
 import type { Quad } from 'rdf-js';
 
 import { decantUpdateOperations, decantUpdateOperationsData } from '@/solid/operations/utils';
@@ -12,10 +20,6 @@ import type { UpdateOperation } from '@/solid/operations/Operation';
 
 import MalformedDocumentError, { DocumentFormat } from '@/errors/MalformedDocumentError';
 import NetworkError from '@/errors/NetworkError';
-
-import Arr from '@/utils/Arr';
-import Obj from '@/utils/Obj';
-import Url from '@/utils/Url';
 
 const RESERVED_CONTAINER_PROPERTIES = [
     IRI('ldp:contains'),
@@ -197,10 +201,10 @@ export default class SolidClient {
             parentUrl,
             {
                 method: 'POST',
-                headers: Obj.withoutEmpty({
+                headers: objectWithoutEmpty({
                     'Content-Type': 'text/turtle',
                     'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
-                    'Slug': url ? Url.directoryName(url) : null,
+                    'Slug': url ? urlDirectoryName(url) : null,
                 }) as Record<string, string>,
                 body: RDFResourceProperty.toTurtle(
                     this.withoutReservedContainerProperties(url, properties),
@@ -211,7 +215,7 @@ export default class SolidClient {
 
         this.assertSuccessfulResponse(response, `Error creating container ${containerLocation}`);
 
-        return url || Url.resolve(parentUrl, response.headers.get('Location') || '');
+        return url || urlResolve(parentUrl, response.headers.get('Location') || '');
     }
 
     private async createNonContainerDocument(
@@ -228,7 +232,7 @@ export default class SolidClient {
 
             this.assertSuccessfulResponse(response, `Error creating document under ${parentUrl}`);
 
-            return Url.resolve(parentUrl, response.headers.get('Location') || '');
+            return urlResolve(parentUrl, response.headers.get('Location') || '');
         }
 
         if (!url.startsWith(parentUrl))
@@ -287,7 +291,7 @@ export default class SolidClient {
         const globbingDocument = await RDFDocument.fromTurtle(turtleData, { baseUrl: containerUrl });
         const statementsByUrl = globbingDocument.statements.reduce(
             (statementsByUrl, statement) => {
-                const baseUrl = Url.clean(statement.subject.value, { fragment: false });
+                const baseUrl = urlClean(statement.subject.value, { fragment: false });
 
                 if (!(baseUrl in statementsByUrl))
                     statementsByUrl[baseUrl] = [];
@@ -334,7 +338,7 @@ export default class SolidClient {
         const response = await this.fetch(document.url as string, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/sparql-update' },
-            body: Arr.filter([
+            body: arrayFilter([
                 deletes.length > 0 && `DELETE DATA { ${deletes} }`,
                 inserts.length > 0 && `INSERT DATA { ${inserts} }`,
             ]).join(' ; '),
@@ -348,11 +352,11 @@ export default class SolidClient {
         properties: RDFResourceProperty[],
     ): RDFResourceProperty[] {
         const isReservedProperty =
-            (property: RDFResourceProperty) => Arr.contains(RESERVED_CONTAINER_PROPERTIES, property.name);
+            (property: RDFResourceProperty) => RESERVED_CONTAINER_PROPERTIES.includes(property.name);
         const isReservedType =
             (property: RDFResourceProperty) =>
                 property.type === RDFResourcePropertyType.Type &&
-                Arr.contains(RESERVED_CONTAINER_TYPES, property.value);
+                RESERVED_CONTAINER_TYPES.includes(property.value as string);
 
         return properties.filter(
             property =>
@@ -393,7 +397,7 @@ export default class SolidClient {
                     .map(property => new UpdatePropertyOperation(property.clone(changeUrlOperation.newResourceUrl))),
             );
 
-            Arr.removeItem(operations, changeUrlOperation);
+            arrayRemove(operations, changeUrlOperation);
         }
     }
 

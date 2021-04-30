@@ -3,6 +3,7 @@ import {
     HasManyRelation,
     HasOneRelation,
 } from 'soukai';
+import { isObject, toString } from '@noeldemartin/utils';
 import type {
     Attributes,
     BootedArrayFieldDefinition,
@@ -15,7 +16,6 @@ import type {
 
 import type { SolidModel } from '@/models/SolidModel';
 
-import { isObject, toString } from '@/utils/helpers';
 import IRI from '@/solid/utils/IRI';
 import RDFDocument from '@/solid/RDFDocument';
 import type { JsonLD } from '@/solid/utils/RDF';

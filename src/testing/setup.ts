@@ -1,7 +1,8 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
+import { deepEquals } from '@noeldemartin/utils';
+
 import flattenJsonLD from '@/solid/utils/flattenJsonLD';
-import Obj from '@/utils/Obj';
 import SoukaiSolid from '@/SoukaiSolid';
 
 beforeEach(() => jest.clearAllMocks());
@@ -15,7 +16,7 @@ expect.extend({
             flattenJsonLD(received),
             flattenJsonLD(expected),
         ]);
-        const pass = Obj.deepEquals(flatReceived, flatExpected);
+        const pass = deepEquals(flatReceived, flatExpected);
         const message = pass
             ? () =>
                 this.utils.matcherHint('toEqualJsonLD') +
