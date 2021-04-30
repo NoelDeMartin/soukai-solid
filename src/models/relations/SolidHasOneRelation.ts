@@ -27,9 +27,24 @@ export default class SolidHasOneRelation<
     public __modelInOtherDocumentId?: string;
 
     public useSameDocument: boolean = false;
+    private documentModelLoaded: boolean = false;
+
+    public isEmpty(): boolean | null {
+        return !this.documentModelLoaded
+            ? null
+            : !!(
+                this.__modelInSameDocument ||
+                this.__modelInOtherDocumentId ||
+                this.__newModel ||
+                this.related
+            );
+    }
 
     public async resolve(): Promise<Related | null> {
-        if (!this.__modelInSameDocument || !this.__modelInOtherDocumentId)
+        if (this.isEmpty())
+            return this.related = null;
+
+        if (!(this.__modelInSameDocument || this.__modelInOtherDocumentId))
             // Solid hasOne relation only finds related models that have been
             // declared in the same document.
             return null;
@@ -146,15 +161,19 @@ export default class SolidHasOneRelation<
         if (modelsInSameDocument.length > 0) {
             this.__modelInSameDocument = modelsInSameDocument[0];
             this.related = this.__modelInSameDocument;
+            this.documentModelLoaded = true;
 
             return;
         }
 
         if (modelsInOtherDocumentIds.length > 0) {
             this.__modelInOtherDocumentId = modelsInOtherDocumentIds[0];
+            this.documentModelLoaded = true;
 
             return;
         }
+
+        this.documentModelLoaded = true;
     }
 
     private initializeInverseRelations(model: Related): void {

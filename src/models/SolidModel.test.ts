@@ -325,7 +325,10 @@ describe('SolidModel', () => {
         const firstMovieName = Faker.name.title();
         const secondMovieName = Faker.name.title();
         const thirdMovieName = Faker.name.title();
-        const collection = new MoviesCollection({ url: containerUrl }, true);
+        const collection = new MoviesCollection({
+            url: containerUrl,
+            resourceUrls: [firstDocumentUrl, secondDocumentUrl],
+        }, true);
 
         engine.setMany(containerUrl, {
             [firstDocumentUrl]: stubMovieJsonLD(firstMovieUrl, firstMovieName),

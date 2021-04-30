@@ -21,6 +21,9 @@ export default class SolidBelongsToManyRelation<
             this.__modelsInOtherDocumentIds = this.parent.getAttribute(this.foreignKeyName);
         }
 
+        if (this.isEmpty())
+            return this.related = [];
+
         const idsByContainerUrl: Record<string, string[]> = {};
 
         for (const id of this.__modelsInOtherDocumentIds ?? []) {

@@ -18,9 +18,11 @@ export default class SolidContainsRelation<
     }
 
     public async resolve(): Promise<Related[]> {
-        this.related = await this.relatedClass.from(this.parent.url).all<Related>({
-            $in: this.parent.resourceUrls,
-        });
+        this.related = this.isEmpty()
+            ? []
+            : await this.relatedClass.from(this.parent.url).all<Related>({
+                $in: this.parent.resourceUrls,
+            });
 
         return this.related;
     }

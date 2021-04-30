@@ -26,8 +26,23 @@ export default class SolidHasManyRelation<
     public __modelsInOtherDocumentIds?: string[];
 
     public useSameDocument: boolean = false;
+    private documentModelsLoaded: boolean = false;
+
+    public isEmpty(): boolean | null {
+        return this.documentModelsLoaded
+            ? null
+            : (
+                (this.__modelsInSameDocument?.length || 0) +
+                (this.__modelsInOtherDocumentIds?.length || 0) +
+                this.__newModels.length +
+                (this.related?.length || 0)
+            ) === 0;
+    }
 
     public async resolve(): Promise<Related[]> {
+        if (this.isEmpty())
+            return this.related = [];
+
         if (!this.__modelsInSameDocument || !this.__modelsInOtherDocumentIds)
             // Solid hasMany relation only finds related models that have been
             // declared in the same document.
@@ -138,10 +153,14 @@ export default class SolidHasManyRelation<
                 urlRoute(resourceId) !== documentUrl,
         );
 
-        if (this.__modelsInOtherDocumentIds.length > 0)
+        if (this.__modelsInOtherDocumentIds.length > 0) {
+            this.documentModelsLoaded = true;
+
             return;
+        }
 
         this.related = this.__modelsInSameDocument.slice(0);
+        this.documentModelsLoaded = true;
     }
 
     private initializeInverseRelations(model: Related): void {

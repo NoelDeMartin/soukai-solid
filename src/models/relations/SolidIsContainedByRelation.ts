@@ -16,6 +16,10 @@ export default class SolidIsContainedByRelation<
         super(parent, relatedClass, 'url');
     }
 
+    public isEmpty(): false {
+        return false;
+    }
+
     public async resolve(): Promise<Related | null> {
         const oldCollection = this.relatedClass.collection;
         const containerUrl = urlParentDirectory(this.parent.url);

@@ -27,6 +27,9 @@ export default class SolidContainerDocumentsRelation extends SolidBelongsToManyR
     public async resolve(): Promise<SolidDocument[]> {
         const engine = this.parent.requireEngine();
 
+        if (this.isEmpty())
+            return this.related = [];
+
         if (engine instanceof SolidEngine)
             return super.resolve();
 

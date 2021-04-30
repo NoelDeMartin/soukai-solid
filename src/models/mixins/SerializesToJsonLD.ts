@@ -217,7 +217,7 @@ export default class SerializesToJsonLD {
 
         for (const [relationName, relationInstance] of relations) {
             if (
-                !relationInstance.loaded || (
+                !relationInstance.loaded || relationInstance.isEmpty() || (
                     !(relationInstance instanceof HasManyRelation) &&
                     !(relationInstance instanceof HasOneRelation)
                 )
