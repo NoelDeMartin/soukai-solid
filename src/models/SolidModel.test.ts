@@ -2,6 +2,7 @@
 import { FieldType, bootModels, setEngine } from 'soukai';
 import { stringToSlug, tt, urlParentDirectory, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 import Faker from 'faker';
+import type { EngineDocument } from 'soukai';
 import type { Equals, Expect } from '@noeldemartin/utils';
 
 import { stubGroupJsonLD, stubMovieJsonLD, stubPersonJsonLD, stubWatchActionJsonLD } from '@/testing/lib/stubs/helpers';
@@ -335,7 +336,7 @@ describe('SolidModel', () => {
                     stubWatchActionJsonLD(firstWatchActionUrl, secondMovieUrl)['@graph'][0],
                     stubWatchActionJsonLD(secondWatchActionUrl, thirdMovieUrl)['@graph'][0],
                 ],
-            },
+            } as EngineDocument,
         });
 
         // Act
@@ -858,7 +859,7 @@ describe('SolidModel', () => {
                 ...stubMovieJsonLD(movieUrl, Faker.lorem.sentence())['@graph'],
                 ...stubWatchActionJsonLD(watchActionUrl, movieUrl)['@graph'],
             ],
-        });
+        } as EngineDocument);
 
         // Act
         const movie = await Movie.find(movieUrl) as Movie;

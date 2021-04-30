@@ -563,7 +563,12 @@ export class SolidModel extends Model {
                 continue;
             }
 
-            const relatedGraphUpdates = (relatedModel.getDirtyEngineDocumentUpdates() as any)['@graph'];
+            const relatedDocumentUpdates = relatedModel.getDirtyEngineDocumentUpdates() as {
+                '@graph': EngineAttributeUpdateOperation | {
+                    $apply: EngineAttributeUpdateOperation[];
+                };
+            };
+            const relatedGraphUpdates = relatedDocumentUpdates['@graph'];
 
             if ('$apply' in relatedGraphUpdates) {
                 graphUpdates.push(...relatedGraphUpdates['$apply']);

@@ -1,6 +1,7 @@
 import Faker from 'faker';
 import Soukai from 'soukai';
 import { urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
+import type { EngineDocument } from 'soukai';
 
 import IRI from '@/solid/utils/IRI';
 
@@ -36,7 +37,7 @@ describe('SolidHasManyRelation', () => {
                     [IRI('schema:object')]: { '@id': movieUrl },
                 },
             ],
-        });
+        } as EngineDocument);
 
         engine.setMany('solid://watchactions/', {
             [secondActionUrl]: stubWatchActionJsonLD(secondActionUrl, movieUrl, '2010-02-15T23:42:00.000Z'),
@@ -45,20 +46,21 @@ describe('SolidHasManyRelation', () => {
         jest.spyOn(engine, 'readMany');
 
         // Act
-        const movie = await Movie.find<Movie>(movieUrl);
+        const movie = await Movie.find<Movie>(movieUrl) as Movie;
 
-        await movie!.loadRelation('actions');
+        await movie.loadRelation('actions');
 
         // Assert
-        expect(movie!.actions).toHaveLength(2);
+        const movieActions = movie.actions as WatchAction[];
+        expect(movieActions).toHaveLength(2);
 
-        expect(movie!.actions![0].url).toEqual(firstActionUrl);
-        expect(movie!.actions![0].object).toEqual(movieUrl);
-        expect(movie!.actions![0].startTime).toEqual(new Date('1997-07-21T23:42:00.000Z'));
+        expect(movieActions[0].url).toEqual(firstActionUrl);
+        expect(movieActions[0].object).toEqual(movieUrl);
+        expect(movieActions[0].startTime).toEqual(new Date('1997-07-21T23:42:00.000Z'));
 
-        expect(movie!.actions![1].url).toEqual(secondActionUrl);
-        expect(movie!.actions![1].object).toEqual(movieUrl);
-        expect(movie!.actions![1].startTime).toEqual(new Date('2010-02-15T23:42:00.000Z'));
+        expect(movieActions[1].url).toEqual(secondActionUrl);
+        expect(movieActions[1].object).toEqual(movieUrl);
+        expect(movieActions[1].startTime).toEqual(new Date('2010-02-15T23:42:00.000Z'));
 
         expect(engine.readMany).toHaveBeenCalledWith(
             expect.anything(),

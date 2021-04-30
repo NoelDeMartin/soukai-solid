@@ -103,7 +103,7 @@ export default class RDFDocument {
 
     public clone(url: string | null = null): RDFDocument {
         const document = new RDFDocument(url || this.url);
-        const properties = arrayWithout(Object.getOwnPropertyNames(this), ['url']);
+        const properties = arrayWithout(Object.getOwnPropertyNames(this), ['url']) as (keyof this)[];
 
         Object.assign(
             document,
@@ -111,7 +111,7 @@ export default class RDFDocument {
                 properties[property] = this[property as keyof this];
 
                 return properties;
-            }, {} as any),
+            }, {} as this),
         );
 
         return document;

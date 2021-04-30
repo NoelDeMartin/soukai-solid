@@ -1,4 +1,6 @@
-import type { JsonLD } from '@/solid/utils/RDF';
+import type { EngineDocument } from 'soukai';
+
+import type { JsonLDGraph, JsonLDResource } from '@/solid/utils/RDF';
 
 export function stubPersonJsonLD(
     url: string,
@@ -8,8 +10,8 @@ export function stubPersonJsonLD(
         directed?: string;
         createdAt?: string;
     } = {},
-): any {
-    const jsonld: any = {
+): JsonLDGraph & EngineDocument {
+    const jsonld: JsonLDResource & { '@context': Record<string, unknown> } = {
         '@context': {
             '@vocab': 'http://xmlns.com/foaf/0.1/',
         },
@@ -40,8 +42,8 @@ export function stubPersonJsonLD(
     return jsonLDGraph(jsonld);
 }
 
-export function stubGroupJsonLD(url: string, name: string, contains: any[] = []): any {
-    const jsonld: JsonLD = {
+export function stubGroupJsonLD(url: string, name: string, contains: string[] = []): JsonLDGraph & EngineDocument {
+    const jsonld: JsonLDResource = {
         '@context': {
             '@vocab': 'http://xmlns.com/foaf/0.1/',
             'ldp': 'http://www.w3.org/ns/ldp#',
@@ -60,8 +62,12 @@ export function stubGroupJsonLD(url: string, name: string, contains: any[] = [])
     return jsonLDGraph(jsonld);
 }
 
-export function stubMovieJsonLD(url: string, name: string, actions: Record<string, unknown>[] = []): any {
-    const jsonld: any = {
+export function stubMovieJsonLD(
+    url: string,
+    name: string,
+    actions: Record<string, unknown>[] = [],
+): JsonLDGraph & EngineDocument {
+    const jsonld: JsonLDResource & { '@context': Record<string, unknown> } = {
         '@context': {
             '@vocab': 'https://schema.org/',
         },
@@ -78,8 +84,8 @@ export function stubMovieJsonLD(url: string, name: string, actions: Record<strin
     return jsonLDGraph(jsonld);
 }
 
-export function stubWatchActionJsonLD(url: string, movieUrl: string, startTime?: string): any {
-    const jsonld: any = {
+export function stubWatchActionJsonLD(url: string, movieUrl: string, startTime?: string): JsonLDGraph & EngineDocument {
+    const jsonld: JsonLDResource = {
         '@context': {
             '@vocab': 'https://schema.org/',
         },
@@ -98,7 +104,7 @@ export function stubWatchActionJsonLD(url: string, movieUrl: string, startTime?:
     return jsonLDGraph(jsonld);
 }
 
-export function stubSolidDocumentJsonLD(url: string, updatedAt: string): any {
+export function stubSolidDocumentJsonLD(url: string, updatedAt: string): JsonLDGraph & EngineDocument {
     return jsonLDGraph({
         '@context': {
             '@vocab': 'http://www.w3.org/ns/iana/media-types/text/turtle#',
@@ -114,6 +120,6 @@ export function stubSolidDocumentJsonLD(url: string, updatedAt: string): any {
     });
 }
 
-export function jsonLDGraph(...resources: any[]): any {
-    return { '@graph': resources };
+export function jsonLDGraph(...resources: JsonLDResource[]): JsonLDGraph & EngineDocument {
+    return { '@graph': resources } as JsonLDGraph & EngineDocument;
 }

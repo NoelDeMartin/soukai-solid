@@ -14,12 +14,12 @@ interface DecantedUpdateOperations {
     [OperationType.ChangeUrl]: ChangeUrlOperation[];
 }
 
-type DecantedUpdateOperationsData = [RDFResourceProperty[], [string, string?, any?][]];
+type DecantedUpdateOperationsData = [RDFResourceProperty[], [string, string?, unknown?][]];
 
 export function decantUpdateOperations(operations: UpdateOperation[]): DecantedUpdateOperations {
     return operations.reduce(
         (decantedOperations, operation) => {
-            decantedOperations[operation.type].push(operation as any);
+            decantedOperations[operation.type].push(operation as never);
 
             return decantedOperations;
         },
@@ -44,7 +44,7 @@ export function decantUpdateOperationsData(operations: UpdateOperation[]): Decan
                             operation.resourceUrl,
                             operation.property,
                             operation.value,
-                        ]) as [string, string?, any?],
+                        ]) as [string, string?, unknown?],
                     );
                     break;
             }

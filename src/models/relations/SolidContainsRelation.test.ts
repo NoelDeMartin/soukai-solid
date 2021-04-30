@@ -1,5 +1,5 @@
 import Faker from 'faker';
-import Soukai from 'soukai';
+import { bootModels, setEngine } from 'soukai';
 import { urlResolveDirectory } from '@noeldemartin/utils';
 
 import Group from '@/testing/lib/stubs/Group';
@@ -10,11 +10,11 @@ let engine: StubEngine;
 
 describe('SolidHasManyRelation', () => {
 
-    beforeAll(() => Soukai.loadModels({ Group, Person }));
+    beforeAll(() => bootModels({ Group, Person }));
 
     beforeEach(() => {
         engine = new StubEngine();
-        Soukai.useEngine(engine);
+        setEngine(engine);
     });
 
     it('creates related models', async () => {
@@ -32,7 +32,7 @@ describe('SolidHasManyRelation', () => {
         expect(group.resourceUrls).toHaveLength(1);
         expect(group.members).toHaveLength(1);
         expect(group.resourceUrls[0]).toEqual(person.getDocumentUrl());
-        expect(group.members![0]).toEqual(person);
+        expect(group.members?.[0]).toEqual(person);
         expect(person.exists()).toBe(true);
         expect(person.url.startsWith(group.url)).toBe(true);
         expect(person.name).toEqual(personName);

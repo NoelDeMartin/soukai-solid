@@ -34,22 +34,18 @@ export default class StubResponse implements Response {
     }
 
     public async arrayBuffer(): Promise<ArrayBuffer> {
-        // TODO
-
-        return null as any;
+        throw new Error('StubResponse.arrayBuffer is not implemented');
     }
 
     public async blob(): Promise<Blob> {
-        // TODO
-        return null as any;
+        throw new Error('StubResponse.blob is not implemented');
     }
 
     public async formData(): Promise<FormData> {
-        // TODO
-        return null as any;
+        throw new Error('StubResponse.formData is not implemented');
     }
 
-    public async json(): Promise<any> {
+    public async json(): Promise<unknown> {
         return JSON.parse(this.content);
     }
 

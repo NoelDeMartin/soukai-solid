@@ -1,6 +1,7 @@
 import Faker from 'faker';
 import Soukai, { FieldType } from 'soukai';
 import { stringToSlug, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
+import type { EngineDocument } from 'soukai';
 
 import IRI from '@/solid/utils/IRI';
 
@@ -75,7 +76,7 @@ describe('SolidContainerModel', () => {
                 stubSolidDocumentJsonLD(firstDocumentUrl, '1997-07-21T23:42:00.000Z')['@graph'][0],
                 stubSolidDocumentJsonLD(secondDocumentUrl, '2010-02-15T23:42:00.000Z')['@graph'][0],
             ],
-        });
+        } as EngineDocument);
 
         // Act
         const group = await Group.find(containerUrl) as Group;
@@ -122,13 +123,14 @@ describe('SolidContainerModel', () => {
         await group.loadRelation('members');
 
         // Assert
-        expect(group.members!).toHaveLength(2);
-        expect(group.members![0]).toBeInstanceOf(Person);
-        expect(group.members![0].url).toBe(musashiUrl);
-        expect(group.members![0].name).toBe('Musashi');
-        expect(group.members![1]).toBeInstanceOf(Person);
-        expect(group.members![1].url).toBe(kojiroUrl);
-        expect(group.members![1].name).toBe('Kojiro');
+        const groupMembers = group.members as Person[];
+        expect(groupMembers).toHaveLength(2);
+        expect(groupMembers[0]).toBeInstanceOf(Person);
+        expect(groupMembers[0].url).toBe(musashiUrl);
+        expect(groupMembers[0].name).toBe('Musashi');
+        expect(groupMembers[1]).toBeInstanceOf(Person);
+        expect(groupMembers[1].url).toBe(kojiroUrl);
+        expect(groupMembers[1].name).toBe('Kojiro');
 
         expect(engine.readMany).toHaveBeenCalledTimes(1);
         expect(engine.readMany).toHaveBeenCalledWith(
