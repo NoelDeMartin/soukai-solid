@@ -20,7 +20,7 @@ export default class WatchAction extends SolidModel {
         startTime: FieldType.Date,
     };
 
-    movieRelationship(): SingleModelRelation {
+    public movieRelationship(): SingleModelRelation {
         return this.belongsToOne(Movie, 'object');
     }
 

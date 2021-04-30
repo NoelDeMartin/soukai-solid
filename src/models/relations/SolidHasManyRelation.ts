@@ -67,7 +67,7 @@ export default class SolidHasManyRelation<
      *
      * @param model Related model instance to save.
      */
-    public async save(model: Related): Promise<void> {
+    public async save(model: Related): Promise<Related> {
         this.assertLoaded('save');
         this.add(model);
 
@@ -75,14 +75,16 @@ export default class SolidHasManyRelation<
             await model.save();
         else if (this.parent.exists())
             await this.parent.save();
+
+        return model;
     }
 
-    public add(model: Related): void {
+    public add(model: Related): Related {
         if (!this.assertLoaded('add'))
-            return;
+            return model;
 
         if (this.related.includes(model) || this.__newModels.includes(model))
-            return;
+            return model;
 
         if (this.parent.exists())
             this.initializeInverseRelations(model);
@@ -91,6 +93,8 @@ export default class SolidHasManyRelation<
             this.__newModels.push(model);
 
         this.related.push(model);
+
+        return model;
     }
 
     public usingSameDocument(useSameDocument: boolean = true): this {

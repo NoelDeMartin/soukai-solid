@@ -9,8 +9,8 @@ export default class MoviesCollection extends SolidContainerModel {
 
     public static timestamps = false;
 
-    movies?: Movie[];
-    relatedMovies!: SolidContainsRelation<MoviesCollection, Movie, typeof Movie>;
+    public movies?: Movie[];
+    public relatedMovies!: SolidContainsRelation<MoviesCollection, Movie, typeof Movie>;
 
     public moviesRelationship(): MultiModelRelation {
         return this.contains(Movie);

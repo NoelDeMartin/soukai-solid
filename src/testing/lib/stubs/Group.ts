@@ -20,8 +20,8 @@ export default class Group extends SolidContainerModel {
         name: FieldType.String,
     };
 
-    members?: Person[];
-    relatedMembers!: SolidContainsRelation<Group, Person, typeof Person>;
+    public members?: Person[];
+    public relatedMembers!: SolidContainsRelation<Group, Person, typeof Person>;
 
     public membersRelationship(): MultiModelRelation {
         return this.contains(Person);

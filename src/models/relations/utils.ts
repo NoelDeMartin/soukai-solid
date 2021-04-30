@@ -2,7 +2,9 @@ import { BelongsToManyRelation, BelongsToOneRelation } from 'soukai';
 import type { SolidModel } from '@/models/SolidModel';
 import type { Relation } from 'soukai';
 
-export function initializeInverseRelations(relation: Relation, model: SolidModel): void {
+type SolidRelation = Relation<SolidModel, SolidModel, typeof SolidModel>;
+
+export function initializeInverseRelations(relation: SolidRelation, model: SolidModel): void {
     const parentClass = relation.parent.constructor;
 
     for (const relationName of relation.relatedClass.relations) {

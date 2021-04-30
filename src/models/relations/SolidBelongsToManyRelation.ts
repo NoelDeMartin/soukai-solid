@@ -12,8 +12,8 @@ export default class SolidBelongsToManyRelation<
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
 > extends BelongsToManyRelation<Parent, Related, RelatedClass> {
 
-    __modelsInSameDocument?: Related[];
-    __modelsInOtherDocumentIds?: string[];
+    public __modelsInSameDocument?: Related[];
+    public __modelsInOtherDocumentIds?: string[];
 
     public async resolve(): Promise<Related[]> {
         if (!this.__modelsInSameDocument || !this.__modelsInOtherDocumentIds) {

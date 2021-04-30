@@ -35,9 +35,9 @@ export default class SolidContainerModel extends SolidModel {
         super.boot(name);
     }
 
-    resourceUrls!: string[];
-    documents!: SolidDocument[];
-    relatedDocuments!: MultiModelRelation<SolidContainerModel, SolidDocument, typeof SolidDocument>;
+    public resourceUrls!: string[];
+    public documents!: SolidDocument[];
+    public relatedDocuments!: MultiModelRelation<SolidContainerModel, SolidDocument, typeof SolidDocument>;
 
     public documentsRelationship(): MultiModelRelation {
         return new SolidContainerDocumentsRelation(this);

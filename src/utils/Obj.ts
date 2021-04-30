@@ -32,7 +32,7 @@ type ObjectWithoutEmpty<T> =
 
 class Obj {
 
-    createMap<T extends Record<string, unknown>>(items: T[], key: keyof T): Record<string, T> {
+    public createMap<T extends Record<string, unknown>>(items: T[], key: keyof T): Record<string, T> {
         const map = {} as Record<string, T>;
 
         for (const item of items)
@@ -41,7 +41,7 @@ class Obj {
         return map;
     }
 
-    deepEquals(a: any, b: any): boolean {
+    public deepEquals(a: any, b: any): boolean {
         if (a === b) {
             return true;
         }
@@ -72,7 +72,7 @@ class Obj {
         return true;
     }
 
-    withoutEmpty<T>(obj: T): ObjectWithoutEmpty<T> {
+    public withoutEmpty<T>(obj: T): ObjectWithoutEmpty<T> {
         const cleanObj = {} as ObjectWithoutEmpty<T>;
 
         for (const [key, value] of Object.entries(obj)) {

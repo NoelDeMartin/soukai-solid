@@ -167,7 +167,7 @@ describe('SolidEngine', () => {
 
         // Assert
         expect(Object.keys(documents)).toHaveLength(2);
-        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, [IRI('foaf:Person')]);
+        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, false);
 
         const secondPerson = stubPersonJsonLD(secondPersonUrl, secondPersonName);
         const thirdPerson = stubPersonJsonLD(thirdPersonUrl, thirdPersonName);
@@ -253,7 +253,7 @@ describe('SolidEngine', () => {
 
         // Assert
         expect(Object.keys(documents)).toHaveLength(1);
-        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(parentUrl, [IRI('ldp:Container')]);
+        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(parentUrl, true);
 
         await expect(documents[containerUrl]).toEqualJsonLD({
             '@graph': [{
@@ -289,7 +289,7 @@ describe('SolidEngine', () => {
 
         // Assert
         expect(Object.keys(documents)).toHaveLength(1);
-        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, [IRI('foaf:Person')]);
+        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, false);
 
         await expect(documents[firstUrl]).toEqualJsonLD(stubPersonJsonLD(firstUrl, name));
     });
@@ -324,7 +324,7 @@ describe('SolidEngine', () => {
 
         // Assert
         expect(Object.keys(documents)).toHaveLength(documentsCount);
-        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, [IRI('foaf:Person')]);
+        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, false);
 
         await Promise.all(
             Arr
@@ -360,7 +360,7 @@ describe('SolidEngine', () => {
 
         // Assert
         expect(Object.keys(documents)).toHaveLength(2);
-        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, [IRI('foaf:Person')]);
+        expect(SolidClientMock.getDocuments).toHaveBeenCalledWith(containerUrl, false);
 
         const secondPerson = stubPersonJsonLD(secondUrl, secondName);
         const thirdPerson = stubPersonJsonLD(thirdUrl, thirdName);

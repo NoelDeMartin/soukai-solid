@@ -30,6 +30,7 @@ import type { Fetch } from '@/solid/SolidClient';
 
 import Arr from '@/utils/Arr';
 import Url from '@/utils/Url';
+import IRI from '@/solid/utils/IRI';
 
 export interface SolidEngineConfig {
     useGlobbing: boolean;
@@ -143,7 +144,7 @@ export class SolidEngine implements Engine {
         // See https://github.com/solid/node-solid-server/issues/962
         return filters.$in
             ? await this.getDocumentsFromUrls(filters.$in, rdfsClasses)
-            : await this.client.getDocuments(collection, rdfsClasses);
+            : await this.client.getDocuments(collection, rdfsClasses.includes(IRI('ldp:Container')));
     }
 
     private async getDocumentsFromUrls(urls: string[], rdfsClasses: string[]): Promise<RDFDocument[]> {
@@ -167,7 +168,7 @@ export class SolidEngine implements Engine {
                     this.config.globbingBatchSize !== null &&
                     this.config.globbingBatchSize <= documentUrls.length
                 )
-                    return this.client.getDocuments(containerUrl, rdfsClasses);
+                    return this.client.getDocuments(containerUrl, rdfsClasses.includes(IRI('ldp:Container')));
 
                 const documentPromises = documentUrls.map(url => this.client.getDocument(url));
                 const documents = await Promise.all(documentPromises);

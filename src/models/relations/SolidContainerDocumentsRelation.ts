@@ -1,5 +1,3 @@
-import Soukai from 'soukai';
-
 import { SolidEngine } from '@/engines/SolidEngine';
 import SolidBelongsToManyRelation from '@/models/relations/SolidBelongsToManyRelation';
 import SolidDocument from '@/models/SolidDocument';
@@ -27,13 +25,15 @@ export default class SolidContainerDocumentsRelation extends SolidBelongsToManyR
     }
 
     public async resolve(): Promise<SolidDocument[]> {
-        if (Soukai.engine instanceof SolidEngine)
+        const engine = this.parent.requireEngine();
+
+        if (engine instanceof SolidEngine)
             return super.resolve();
 
         // TODO this implementation can have serious performance issues for some engines.
         // Right now, there are only local engines other than Solid being used with Soukai,
         // so the problem is not as severe.
-        const documents = await Soukai.requireEngine().readMany(this.container.getDocumentUrl()!);
+        const documents = await engine.readMany(this.container.requireDocumentUrl());
 
         this.related = Object.entries(documents).map(([url, document]) => new SolidDocument({
             url,

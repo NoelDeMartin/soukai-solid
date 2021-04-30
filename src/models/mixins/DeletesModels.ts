@@ -1,5 +1,3 @@
-import Soukai from 'soukai';
-
 import Url from '@/utils/Url';
 
 import type { SolidModel } from '@/models/SolidModel';
@@ -11,7 +9,7 @@ type DecantedContainerDocuments = Record<string, DocumentModels[]>;
 
 export default class DeletesModels {
 
-    protected async deleteModels(models: SolidModel[]): Promise<void> {
+    protected async deleteModels(this: SolidModel, models: SolidModel[]): Promise<void> {
         const containersDocuments = this.decantDocumentModelsByContainer(models);
 
         await Promise.all(
@@ -43,7 +41,7 @@ export default class DeletesModels {
 
     private decantModelsByDocument(models: SolidModel[]): DecantedDocumentModels {
         return models.reduce((documentModels, model) => {
-            const documentUrl = model.getDocumentUrl()!;
+            const documentUrl = model.requireDocumentUrl();
 
             if (!(documentUrl in documentModels))
                 documentModels[documentUrl] = [];
@@ -55,11 +53,11 @@ export default class DeletesModels {
     }
 
     private async deleteContainerDocumentsModels(
+        this: SolidModel,
         containerUrl: string,
         documentsModels: DocumentModels[],
     ): Promise<void> {
-        const engine = Soukai.requireEngine();
-        const engineDocuments = await engine.readMany(
+        const engineDocuments = await this.requireEngine().readMany(
             containerUrl,
             { $in: documentsModels.map(({ documentUrl }) => documentUrl) },
         ) as Record<string, ResourcesGraph>;
@@ -77,22 +75,22 @@ export default class DeletesModels {
     }
 
     private async deleteDocumentModels(
+        this: SolidModel,
         engineDocuments: Record<string, ResourcesGraph>,
         containerUrl: string,
         documentUrl: string,
         models: SolidModel[],
     ): Promise<void> {
-        const engine = Soukai.requireEngine();
         const modelUrls = models.filter(model => model.exists()).map(model => model.url);
         const { '@graph': resources } = engineDocuments[documentUrl];
 
         if (!resources.some(resource => !modelUrls.some(url => url === resource['@id']))) {
-            await engine.delete(containerUrl, documentUrl);
+            await this.requireEngine().delete(containerUrl, documentUrl);
 
             return;
         }
 
-        await engine.update(containerUrl, documentUrl, {
+        await this.requireEngine().update(containerUrl, documentUrl, {
             '@graph': {
                 $updateItems: {
                     $where: { '@id': { $in: modelUrls } },

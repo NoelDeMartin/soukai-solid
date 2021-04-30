@@ -4,7 +4,7 @@ import StubResponse from '@/testing/lib/stubs/StubResponse';
 
 class StubFetcher extends EventEmitter {
 
-    fetchSpy!: jest.SpyInstance<Promise<Response>, [RequestInfo, RequestInit?]>;
+    public fetchSpy!: jest.SpyInstance<Promise<Response>, [RequestInfo, RequestInit?]>;
 
     private fetchResponses: Response[] = [];
 

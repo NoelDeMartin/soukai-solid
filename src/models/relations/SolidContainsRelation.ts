@@ -1,4 +1,4 @@
-import Soukai, { BelongsToManyRelation, SoukaiError } from 'soukai';
+import { BelongsToManyRelation, SoukaiError } from 'soukai';
 import type { Attributes } from 'soukai';
 
 import { SolidEngine } from '@/engines/SolidEngine';
@@ -33,19 +33,21 @@ export default class SolidContainsRelation<
         return model;
     }
 
-    public async save(model: Related): Promise<void> {
+    public async save(model: Related): Promise<Related> {
         if (!this.parent.exists())
             throw new SoukaiError('Cannot save a model because the container doesn\'t exist');
 
         await model.save(this.parent.url);
 
-        if (!(Soukai.engine instanceof SolidEngine))
+        if (!(this.parent.requireEngine() instanceof SolidEngine))
             await this.parent.update({
                 resourceUrls: [...this.parent.resourceUrls, model.getDocumentUrl()],
             });
 
         if (this.loaded)
-            this.related!.push(model);
+            this.related?.push(model);
+
+        return model;
     }
 
 }

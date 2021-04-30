@@ -75,7 +75,7 @@ export default class SolidHasOneRelation<
      *
      * @param model Related model instance to save.
      */
-    public async save(model: Related): Promise<void> {
+    public async save(model: Related): Promise<Related> {
         this.assertNotLoaded('save');
         this.set(model);
 
@@ -83,9 +83,11 @@ export default class SolidHasOneRelation<
             await model.save();
         else if (this.parent.exists())
             await this.parent.save();
+
+        return model;
     }
 
-    public set(model: Related): void {
+    public set(model: Related): Related {
         this.assertNotLoaded('set');
 
         if (this.parent.exists())
@@ -95,6 +97,8 @@ export default class SolidHasOneRelation<
             this.__newModel = model;
 
         this.related = model;
+
+        return model;
     }
 
     public usingSameDocument(useSameDocument: boolean = true): this {

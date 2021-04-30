@@ -10,7 +10,7 @@ export class SoukaiSolid {
     /**
      * @deprecated This is no longer necessary, models are loaded automatically now.
      */
-    loadSolidModels(): void {
+    public loadSolidModels(): void {
         Soukai.loadModels({ SolidDocument });
     }
 

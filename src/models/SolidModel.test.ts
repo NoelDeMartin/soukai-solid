@@ -270,10 +270,10 @@ describe('SolidModel', () => {
         // Arrange.
         class StubModel extends SolidModel {
 
-            static timestamps = false;
+            public static timestamps = false;
 
-            name?: string;
-            surname?: string;
+            public name?: string;
+            public surname?: string;
 
         }
 
@@ -398,7 +398,7 @@ describe('SolidModel', () => {
         // Arrange
         class StubModel extends SolidModel {
 
-            static defaultResourceHash = 'foobar';
+            public static defaultResourceHash = 'foobar';
 
         }
 
@@ -426,7 +426,7 @@ describe('SolidModel', () => {
     it('doesn\'t mint urls for new models if disabled', async () => {
         class StubModel extends SolidModel {
 
-            static mintsUrls = false;
+            public static mintsUrls = false;
 
         }
 

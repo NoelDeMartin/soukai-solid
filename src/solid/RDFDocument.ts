@@ -25,7 +25,7 @@ export class RDFParsingError extends SoukaiError {}
 
 export default class RDFDocument {
 
-    static async fromTurtle(turtle: string, options: TurtleParsingOptions = {}): Promise<RDFDocument> {
+    public static async fromTurtle(turtle: string, options: TurtleParsingOptions = {}): Promise<RDFDocument> {
         try {
             const data = await fromTurtle(turtle, {
                 baseIRI: options.baseUrl || '',
@@ -41,7 +41,7 @@ export default class RDFDocument {
         }
     }
 
-    static async fromJsonLD(json: JsonLD): Promise<RDFDocument> {
+    public static async fromJsonLD(json: JsonLD): Promise<RDFDocument> {
         const quads = await toRDF(json);
 
         return new RDFDocument(json['@id'] ? Url.route(json['@id']) : null, quads);

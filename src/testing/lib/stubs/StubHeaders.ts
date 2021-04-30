@@ -14,15 +14,15 @@ export default class StubHeaders implements Headers {
         }
     }
 
-    [Symbol.iterator](): IterableIterator<[string, string]> {
+    public [Symbol.iterator](): IterableIterator<[string, string]> {
         throw new Error('Method not implemented.');
     }
 
-    entries(): IterableIterator<[string, string]> {
+    public entries(): IterableIterator<[string, string]> {
         throw new Error('Method not implemented.');
     }
 
-    keys(): IterableIterator<string> {
+    public keys(): IterableIterator<string> {
         throw new Error('Method not implemented.');
     }
 

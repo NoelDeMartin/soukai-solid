@@ -1,10 +1,11 @@
-import Soukai, {
+import {
     DocumentAlreadyExists,
     FieldType,
     InvalidModelDefinition,
     Model,
     SoukaiError,
     getEngine,
+    requireEngine,
 } from 'soukai';
 import { fail } from '@noeldemartin/utils';
 import type {
@@ -161,9 +162,8 @@ export class SolidModel extends Model {
         this.ensureBooted();
 
         try {
-            const document = await Soukai
-                .requireEngine()
-                .readOne(containerUrl, documentUrl);
+            const engine = this.engine ?? requireEngine();
+            const document = await engine.readOne(containerUrl, documentUrl);
 
             return this.instance().createFromEngineDocument(documentUrl, document, resourceUrl);
         } catch (error) {
@@ -189,9 +189,9 @@ export class SolidModel extends Model {
     }
 
     /* eslint-disable max-len */
-    static schema<T extends SolidModel, F extends SolidFieldsDefinition>(this: SolidModelConstructor<T>, fields: F): Constructor<MagicAttributes<F>> & SolidModelConstructor<T>;
-    static schema<T extends Model, F extends FieldsDefinition>(this: ModelConstructor<T>, fields: F): Constructor<MagicAttributes<F>> & ModelConstructor<T>;
-    static schema<T extends SolidModel, F extends SolidFieldsDefinition>(this: SolidModelConstructor<T>, fields: F): Constructor<MagicAttributes<F>> & SolidModelConstructor<T> {
+    public static schema<T extends SolidModel, F extends SolidFieldsDefinition>(this: SolidModelConstructor<T>, fields: F): Constructor<MagicAttributes<F>> & SolidModelConstructor<T>;
+    public static schema<T extends Model, F extends FieldsDefinition>(this: ModelConstructor<T>, fields: F): Constructor<MagicAttributes<F>> & ModelConstructor<T>;
+    public static schema<T extends SolidModel, F extends SolidFieldsDefinition>(this: SolidModelConstructor<T>, fields: F): Constructor<MagicAttributes<F>> & SolidModelConstructor<T> {
         return super.schema(fields) as Constructor<MagicAttributes<F>> & SolidModelConstructor<T>;
     }
     /* eslint-enable max-len */
@@ -266,7 +266,7 @@ export class SolidModel extends Model {
     }
 
     // TODO this should be optional
-    url!: string;
+    public url!: string;
 
     protected _documentExists!: boolean;
     protected _sourceDocumentUrl!: string | null;
@@ -436,22 +436,21 @@ export class SolidModel extends Model {
     }
 
     protected async syncDirty(): Promise<string> {
-        const engine = Soukai.requireEngine();
         const documentUrl = this.getDocumentUrl();
 
-        const createDocument = () => engine.create(
+        const createDocument = () => this.requireEngine().create(
             this.static('collection'),
             this.toEngineDocument(),
             documentUrl || undefined,
         );
-        const addToDocument = () => engine.update(
+        const addToDocument = () => this.requireEngine().update(
             this.static('collection'),
             documentUrl as string,
             {
                 '@graph': { $push: this.serializeToJsonLD(false) as EngineDocument },
             },
         );
-        const updateDocument = () => engine.update(
+        const updateDocument = () => this.requireEngine().update(
             this.static('collection'),
             documentUrl as string,
             this.getDirtyEngineDocumentUpdates(),

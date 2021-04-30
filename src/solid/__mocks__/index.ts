@@ -6,12 +6,12 @@ import UUID from '@/utils/UUID';
 
 export class SolidClientMock {
 
-    createDocumentSpy!: jest.SpyInstance<Promise<string>, [string, (string|null)?, (RDFResourceProperty[])?]>;
-    getDocumentSpy!: jest.SpyInstance<Promise<RDFDocument | null>, [string]>;
-    getDocumentsSpy!: jest.SpyInstance<Promise<RDFDocument[]>, [string]>;
-    updateDocumentSpy!: jest.SpyInstance<Promise<void>, [string]>;
-    deleteDocumentSpy!: jest.SpyInstance<Promise<void>, [string]>;
-    documentExistsSpy!: jest.SpyInstance<Promise<boolean>, [string]>;
+    public createDocumentSpy!: jest.SpyInstance<Promise<string>, [string, (string|null)?, (RDFResourceProperty[])?]>;
+    public getDocumentSpy!: jest.SpyInstance<Promise<RDFDocument | null>, [string]>;
+    public getDocumentsSpy!: jest.SpyInstance<Promise<RDFDocument[]>, [string]>;
+    public updateDocumentSpy!: jest.SpyInstance<Promise<void>, [string]>;
+    public deleteDocumentSpy!: jest.SpyInstance<Promise<void>, [string]>;
+    public documentExistsSpy!: jest.SpyInstance<Promise<boolean>, [string]>;
 
     private documents: Record<string, RDFDocument[]> = {};
 

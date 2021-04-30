@@ -16,16 +16,16 @@ export default class StubResponse implements Response {
 
     private content: string;
 
-    readonly body!: ReadableStream<Uint8Array> | null;
-    readonly bodyUsed!: boolean;
-    readonly headers: StubHeaders;
-    readonly ok!: boolean;
-    readonly redirected!: boolean;
-    readonly status: number;
-    readonly statusText!: string;
-    readonly trailer!: Promise<Headers>;
-    readonly type!: ResponseType;
-    readonly url!: string;
+    public readonly body!: ReadableStream<Uint8Array> | null;
+    public readonly bodyUsed!: boolean;
+    public readonly headers: StubHeaders;
+    public readonly ok!: boolean;
+    public readonly redirected!: boolean;
+    public readonly status: number;
+    public readonly statusText!: string;
+    public readonly trailer!: Promise<Headers>;
+    public readonly type!: ResponseType;
+    public readonly url!: string;
 
     private constructor(status: number, content: string = '', headers: Record<string, string> = {}) {
         this.status = status;

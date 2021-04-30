@@ -5,7 +5,7 @@ import type Operation from './Operation';
 
 export default class UpdatePropertyOperation implements Operation {
 
-    type: OperationType.UpdateProperty = OperationType.UpdateProperty;
+    public type: OperationType.UpdateProperty = OperationType.UpdateProperty;
 
     constructor(public property: RDFResourceProperty) {}
 
