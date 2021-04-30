@@ -1,5 +1,5 @@
 import Faker from 'faker';
-import Soukai from 'soukai';
+import { bootModels, setEngine } from 'soukai';
 import { urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 import type { EngineDocument } from 'soukai';
 
@@ -14,11 +14,11 @@ let engine: StubEngine;
 
 describe('SolidHasManyRelation', () => {
 
-    beforeAll(() => Soukai.loadModels({ Movie, WatchAction }));
+    beforeAll(() => bootModels({ Movie, WatchAction }));
 
     beforeEach(() => {
         engine = new StubEngine();
-        Soukai.useEngine(engine);
+        setEngine(engine);
     });
 
     it('loads models from different containers', async () => {

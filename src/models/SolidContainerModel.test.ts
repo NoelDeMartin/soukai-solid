@@ -1,5 +1,5 @@
 import Faker from 'faker';
-import Soukai, { FieldType } from 'soukai';
+import { FieldType, bootModels, setEngine } from 'soukai';
 import { stringToSlug, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 import type { EngineDocument } from 'soukai';
 
@@ -17,17 +17,17 @@ let engine: StubEngine;
 
 describe('SolidContainerModel', () => {
 
-    beforeAll(() => Soukai.loadModels({ Group, Person }));
+    beforeAll(() => bootModels({ Group, Person }));
 
     beforeEach(() => {
         engine = new StubEngine();
-        Soukai.useEngine(engine);
+        setEngine(engine);
     });
 
     it('adds ldp:Container rdfsClass', () => {
         class StubModel extends SolidContainerModel {}
 
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         expect(StubModel.rdfsClasses).toEqual([IRI('ldp:Container')]);
     });
@@ -41,7 +41,7 @@ describe('SolidContainerModel', () => {
         }
 
         // Act
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         // Assert
         expect(StubModel.fields).toEqual({
@@ -175,7 +175,7 @@ describe('SolidContainerModel', () => {
 
         jest.spyOn(engine, 'create');
 
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         // Act
         const model = await StubModel.at(containerUrl).create({ name });
@@ -214,7 +214,7 @@ describe('SolidContainerModel', () => {
 
         jest.spyOn(engine, 'create');
 
-        Soukai.loadModels({ StubModel });
+        bootModels({ StubModel });
 
         // Act
         const model = await StubModel.at(containerUrl).create({ name });
