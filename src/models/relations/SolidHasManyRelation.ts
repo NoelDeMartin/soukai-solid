@@ -1,8 +1,4 @@
-import {
-    EngineHelper,
-    HasManyRelation,
-    SoukaiError,
-} from 'soukai';
+import { EngineHelper, HasManyRelation, SoukaiError } from 'soukai';
 import type {
     Attributes,
     EngineAttributeValue,
@@ -10,11 +6,11 @@ import type {
     EngineDocumentsCollection,
 } from 'soukai';
 
-import type { SolidModel } from '@/models/SolidModel';
-
 import RDF from '@/solid/utils/RDF';
+import Url from '@/utils/Url';
 import type { JsonLDResource } from '@/solid/utils/RDF';
 import type { SolidBootedFieldsDefinition } from '@/models/fields';
+import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
 import { initializeInverseRelations } from './utils';
@@ -133,7 +129,9 @@ export default class SolidHasManyRelation<
         );
 
         this.__modelsInOtherDocumentIds = Object.keys(documents).filter(
-            resourceId => !modelsInSameDocument.some(model => model.url === resourceId),
+            resourceId =>
+                !modelsInSameDocument.some(model => model.url === resourceId) &&
+                Url.route(resourceId) !== documentUrl,
         );
 
         if (this.__modelsInOtherDocumentIds.length > 0)

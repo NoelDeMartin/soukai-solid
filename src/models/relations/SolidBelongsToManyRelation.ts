@@ -1,9 +1,9 @@
 import { BelongsToManyRelation, EngineHelper } from 'soukai';
-import type { EngineDocument, EngineDocumentsCollection } from 'soukai';
-
-import type { SolidModel } from '@/models/SolidModel';
+import type { EngineAttributeValue, EngineDocument , EngineDocumentsCollection } from 'soukai';
 
 import Url from '@/utils/Url';
+import type { JsonLDResource } from '@/solid/utils/RDF';
+import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
 export default class SolidBelongsToManyRelation<
@@ -23,7 +23,7 @@ export default class SolidBelongsToManyRelation<
 
         const idsByContainerUrl: Record<string, string[]> = {};
 
-        for (const id of this.__modelsInOtherDocumentIds!) {
+        for (const id of this.__modelsInOtherDocumentIds ?? []) {
             const containerUrl = Url.parentDirectory(id);
 
             if (!(containerUrl in idsByContainerUrl)) {
@@ -62,15 +62,15 @@ export default class SolidBelongsToManyRelation<
         const helper = new EngineHelper();
         const modelIds = this.parent.getAttribute(this.foreignKeyName) as string[];
         const filters = this.relatedClass.prepareEngineFilters();
-        const documents = (document['@graph'] as any[])
+        const documents = (document['@graph'] as JsonLDResource[])
             .filter(resource => modelIds.indexOf(resource['@id']) !== -1)
             .reduce((documents, resource) => {
-                documents[resource['@id']] = { '@graph': [resource] };
+                documents[resource['@id']] = { '@graph': [resource as EngineAttributeValue] };
 
                 return documents;
             }, {} as EngineDocumentsCollection);
 
-        this.__modelsInSameDocument = await Promise.all(
+        const modelsInSameDocument = this.__modelsInSameDocument = await Promise.all(
             Object
                 .entries(helper.filterDocuments(documents, filters))
                 .map(
@@ -80,7 +80,9 @@ export default class SolidBelongsToManyRelation<
         );
 
         this.__modelsInOtherDocumentIds = modelIds.filter(
-            resourceId => !this.__modelsInSameDocument!.some(model => model.url === resourceId),
+            resourceId =>
+                !modelsInSameDocument.some(model => model.url === resourceId) &&
+                Url.route(resourceId) !== documentUrl,
         );
 
         if (this.__modelsInOtherDocumentIds.length > 0)

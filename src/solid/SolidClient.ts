@@ -9,7 +9,6 @@ import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourc
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
 import type { UpdateOperation } from '@/solid/operations/Operation';
-import type RDFResource from '@/solid/RDFResource';
 
 import MalformedDocumentError, { DocumentFormat } from '@/errors/MalformedDocumentError';
 import NetworkError from '@/errors/NetworkError';
@@ -107,15 +106,11 @@ export default class SolidClient {
         }
     }
 
-    public async getDocuments(containerUrl: string, types: string[] = []): Promise<RDFDocument[]> {
+    public async getDocuments(containerUrl: string, needsContainers: boolean = false): Promise<RDFDocument[]> {
         try {
-            const resourcesFilter = (resource: RDFResource) => types.some(type => !resource.isType(type));
-
-            return types.includes(IRI('ldp:Container'))
-                ? await this.getContainerDocuments(containerUrl, resourcesFilter)
-                : this.config.useGlobbing
-                    ? await this.getContainerDocumentsUsingGlobbing(containerUrl)
-                    : await this.getContainerDocuments(containerUrl, resourcesFilter);
+            return (this.config.useGlobbing && !needsContainers)
+                ? await this.getContainerDocumentsUsingGlobbing(containerUrl)
+                : await this.getContainerDocuments(containerUrl);
         } catch (error) {
             if (error instanceof RDFParsingError)
                 throw new MalformedDocumentError(containerUrl, DocumentFormat.RDF, error.message);
@@ -158,7 +153,7 @@ export default class SolidClient {
         if (document.resource(url)?.isType(IRI('ldp:Container'))) {
             const documents = this.config.useGlobbing
                 ? await this.getContainerDocumentsUsingGlobbing(url)
-                : await this.getDocumentsFromContainer(url, document, () => false);
+                : await this.getDocumentsFromContainer(url, document);
 
             await Promise.all(documents.map(document => this.deleteDocument(document.url as string, document)));
         }
@@ -253,30 +248,22 @@ export default class SolidClient {
         return url;
     }
 
-    private async getContainerDocuments(
-        containerUrl: string,
-        excludeFilter: (resource: RDFResource) => boolean,
-    ): Promise<RDFDocument[]> {
+    private async getContainerDocuments(containerUrl: string): Promise<RDFDocument[]> {
         const response = await this.fetch(containerUrl, { headers: { Accept: 'text/turtle' } });
         const turtleData = await response.text();
         const containerDocument = await RDFDocument.fromTurtle(turtleData, { baseUrl: containerUrl });
 
-        return this.getDocumentsFromContainer(containerUrl, containerDocument, excludeFilter);
+        return this.getDocumentsFromContainer(containerUrl, containerDocument);
     }
 
     private async getDocumentsFromContainer(
         containerUrl: string,
         containerDocument: RDFDocument,
-        excludeFilter: (resource: RDFResource) => boolean,
     ): Promise<RDFDocument[]> {
         const documents = [];
         const resourceUrls =
-            (containerDocument.resource(containerUrl)?.getPropertyValues('ldp:contains') as string[] || [])
-                .filter(url => {
-                    const resource = containerDocument.resource(url);
-
-                    return !resource || !excludeFilter(resource);
-                });
+            containerDocument.resource(containerUrl)?.getPropertyValues('ldp:contains') as string[] ??
+            [];
 
         while (resourceUrls.length > 0) {
             const chunkUrls = resourceUrls.splice(0, this.config.concurrentFetchBatchSize || resourceUrls.length);

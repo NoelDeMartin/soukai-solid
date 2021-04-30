@@ -195,39 +195,48 @@ describe('SolidClient', () => {
             Faker.internet.url(),
             Str.slug(Faker.random.word()),
         );
-        const containerData = `
+
+        StubFetcher.addFetchResponse(`
             <>
                 a <http://www.w3.org/ns/ldp#Container> ;
-                <http://www.w3.org/ns/ldp#contains> <foobar>, <anothercontainer> .
+                <http://www.w3.org/ns/ldp#contains> <foobar>, <another-container> .
 
             <foobar> a <https://schema.org/Thing> .
-            <anothercontainer> a <http://www.w3.org/ns/ldp#Container> .
-        `;
-        const documentData = `
+            <another-container> a <http://www.w3.org/ns/ldp#Container> .
+        `);
+
+        StubFetcher.addFetchResponse(`
             <foobar>
                 a <http://xmlns.com/foaf/0.1/Person> ;
                 <http://xmlns.com/foaf/0.1/name> "Foo Bar" .
-        `;
+        `);
 
-        StubFetcher.addFetchResponse(containerData);
-        StubFetcher.addFetchResponse(documentData);
+        StubFetcher.addFetchResponse('<another-container> a <http://www.w3.org/ns/ldp#Container> .');
 
         // Act
-        const documents = await client.getDocuments(containerUrl, ['https://schema.org/Thing']);
+        const documents = await client.getDocuments(containerUrl);
 
         // Assert
-        expect(documents).toHaveLength(1);
+        expect(documents).toHaveLength(2);
 
         expect(documents[0].url).toEqual(containerUrl + 'foobar');
         expect(documents[0].requireResource(containerUrl + 'foobar').url).toEqual(containerUrl + 'foobar');
         expect(documents[0].requireResource(containerUrl + 'foobar').name).toEqual('Foo Bar');
         expect(documents[0].requireResource(containerUrl + 'foobar').types).toEqual([IRI('foaf:Person')]);
 
-        expect(StubFetcher.fetch).toHaveBeenCalledTimes(2);
+        expect(documents[1].url).toEqual(containerUrl + 'another-container');
+        expect(documents[1].requireResource(containerUrl + 'another-container').url)
+            .toEqual(containerUrl + 'another-container');
+        expect(documents[1].requireResource(containerUrl + 'another-container').types).toEqual([IRI('ldp:Container')]);
+
+        expect(StubFetcher.fetch).toHaveBeenCalledTimes(3);
         expect(StubFetcher.fetch).toHaveBeenNthCalledWith(1, containerUrl, {
             headers: { Accept: 'text/turtle' },
         });
         expect(StubFetcher.fetch).toHaveBeenNthCalledWith(2, `${containerUrl}foobar`, {
+            headers: { Accept: 'text/turtle' },
+        });
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(3, `${containerUrl}another-container`, {
             headers: { Accept: 'text/turtle' },
         });
     });
@@ -338,7 +347,7 @@ describe('SolidClient', () => {
         `);
 
         // Act
-        const documents = await client.getDocuments(containerUrl, [IRI('ldp:Container')]);
+        const documents = await client.getDocuments(containerUrl, true);
 
         // Assert
         expect(documents).toHaveLength(2);
