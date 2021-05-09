@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import { FieldType, bootModels, setEngine } from 'soukai';
+import { FieldType, InMemoryEngine, bootModels, setEngine } from 'soukai';
 import { stringToSlug, tt, urlParentDirectory, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 import Faker from 'faker';
 import type { EngineDocument } from 'soukai';
@@ -225,6 +225,63 @@ describe('SolidModel', () => {
         const url = actions[0].url as string;
         expect(url.startsWith(`${movie.getDocumentUrl()}#`)).toBe(true);
         expect(actions[0].object).toEqual(movie.url);
+    });
+
+    it('sends JSON-LD with related model updates using parent engine', async () => {
+        // Arrange
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const documentUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const movieUrl = `${documentUrl}#it`;
+        const actionUrl = `${documentUrl}#action`;
+        const document = {
+            '@graph': [
+                ...stubMovieJsonLD(movieUrl, Faker.lorem.sentence())['@graph'],
+                ...stubWatchActionJsonLD(actionUrl, movieUrl)['@graph'],
+            ],
+        } as EngineDocument;
+        const movie = await Movie.createFromEngineDocument(movieUrl, document, movieUrl);
+        const action = movie.actions?.[0] as WatchAction;
+        const updateSpy = jest.spyOn(engine, 'update');
+
+        engine.setOne(document);
+        action.setEngine(new InMemoryEngine);
+
+        // Act
+        movie.name = Faker.lorem.sentence();
+        action.startTime = new Date();
+
+        await movie.save();
+
+        // Assert
+        expect(engine.update).toHaveBeenCalledWith(
+            containerUrl,
+            documentUrl,
+            expect.anything(),
+        );
+
+        expect(updateSpy.mock.calls[0][2]).toEqual({
+            '@graph': {
+                $apply: [
+                    {
+                        $updateItems: {
+                            $where: { '@id': actionUrl },
+                            $update: {
+                                [IRI('schema:startTime')]: {
+                                    '@type': IRI('xsd:dateTime'),
+                                    '@value': action.startTime.toISOString(),
+                                },
+                            },
+                        },
+                    },
+                    {
+                        $updateItems: {
+                            $where: { '@id': movieUrl },
+                            $update: { [IRI('schema:name')]: movie.name },
+                        },
+                    },
+                ],
+            },
+        });
     });
 
     it('converts filters to JSON-LD', async () => {

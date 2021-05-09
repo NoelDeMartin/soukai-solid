@@ -545,6 +545,7 @@ export class SolidModel extends Model {
 
     protected getDirtyEngineDocumentUpdates(): EngineUpdates {
         const graphUpdates: EngineAttributeUpdateOperation[] = [];
+        const engine = this.requireEngine();
         const relatedModels = this.prepareDirtyDocumentModels();
 
         for (const relatedModel of relatedModels) {
@@ -554,18 +555,16 @@ export class SolidModel extends Model {
                 continue;
             }
 
-            const relatedDocumentUpdates = relatedModel.getDirtyEngineDocumentUpdates() as {
-                '@graph': EngineAttributeUpdateOperation | {
-                    $apply: EngineAttributeUpdateOperation[];
-                };
-            };
+            const relatedDocumentUpdates = relatedModel.withEngine(
+                engine,
+                model => model.getDirtyEngineDocumentUpdates(),
+            ) as { '@graph': EngineAttributeUpdateOperation | { $apply: EngineAttributeUpdateOperation[] } };
+
             const relatedGraphUpdates = relatedDocumentUpdates['@graph'];
 
-            if ('$apply' in relatedGraphUpdates) {
-                graphUpdates.push(...relatedGraphUpdates['$apply']);
-            } else {
-                graphUpdates.push(relatedGraphUpdates);
-            }
+            '$apply' in relatedGraphUpdates
+                ? graphUpdates.push(...relatedGraphUpdates.$apply)
+                : graphUpdates.push(relatedGraphUpdates);
         }
 
         if (super.isDirty() && this.url) {
@@ -574,7 +573,7 @@ export class SolidModel extends Model {
             // This is necessary because a SolidEngine behaves differently than other engines.
             // Even if a document is stored using compacted IRIs, a SolidEngine will need them expanded
             // because it's ultimately stored in turtle, not json-ld.
-            const compactIRIs = !(this.requireEngine() instanceof SolidEngine);
+            const compactIRIs = !(engine instanceof SolidEngine);
 
             graphUpdates.push({
                 $updateItems: {
