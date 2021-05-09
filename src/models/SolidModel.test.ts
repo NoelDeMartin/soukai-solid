@@ -5,6 +5,8 @@ import Faker from 'faker';
 import type { EngineDocument } from 'soukai';
 import type { Equals, Expect } from '@noeldemartin/utils';
 
+import IRI from '@/solid/utils/IRI';
+
 import { stubGroupJsonLD, stubMovieJsonLD, stubPersonJsonLD, stubWatchActionJsonLD } from '@/testing/lib/stubs/helpers';
 import Group from '@/testing/lib/stubs/Group';
 import Movie from '@/testing/lib/stubs/Movie';
@@ -257,7 +259,7 @@ describe('SolidModel', () => {
                                 { $eq: 'http://xmlns.com/foaf/0.1/Person' },
                             ],
                         },
-                        'name': 'Alice',
+                        [IRI('foaf:name')]: 'Alice',
                     },
                 },
             },
@@ -303,8 +305,8 @@ describe('SolidModel', () => {
                     $updateItems: {
                         $where: { '@id': model.url },
                         $update: {
-                            name: 'John',
-                            surname: { $unset: true },
+                            [IRI('solid:name')]: 'John',
+                            [IRI('solid:surname')]: { $unset: true },
                         },
                     },
                 },
@@ -581,7 +583,7 @@ describe('SolidModel', () => {
                 '@graph': {
                     $updateItems: {
                         $where: { '@id': movieUrl },
-                        $update: { name: movieName },
+                        $update: { [IRI('schema:name')]: movieName },
                     },
                 },
             },

@@ -4,16 +4,22 @@ import {
 } from 'soukai';
 import { uuid } from '@noeldemartin/utils';
 import type {
-    Engine,
     EngineDocument,
     EngineDocumentsCollection,
     EngineUpdates,
 } from 'soukai';
 
-export default class StubEngine implements Engine {
+import { SolidEngine } from '@/engines';
+import type { Fetch } from '@/engines';
+
+export default class StubEngine extends SolidEngine {
 
     private one: EngineDocument | null = null;
     private many: { [collection: string]: EngineDocumentsCollection } = {};
+
+    constructor() {
+        super(null as unknown as Fetch);
+    }
 
     public setOne(one: EngineDocument): void {
         this.one = one;

@@ -9,15 +9,7 @@ import {
     useMixins,
     uuid,
 } from '@noeldemartin/utils';
-import {
-    DocumentAlreadyExists,
-    FieldType,
-    InvalidModelDefinition,
-    Model,
-    SoukaiError,
-    getEngine,
-    requireEngine,
-} from 'soukai';
+import { DocumentAlreadyExists, FieldType, InvalidModelDefinition, Model, SoukaiError } from 'soukai';
 import type {
     Attributes,
     BootedFieldDefinition,
@@ -166,8 +158,7 @@ export class SolidModel extends Model {
         this.ensureBooted();
 
         try {
-            const engine = this.engine ?? requireEngine();
-            const document = await engine.readOne(containerUrl, documentUrl);
+            const document = await this.requireEngine().readOne(containerUrl, documentUrl);
 
             return this.instance().createFromEngineDocument(documentUrl, document, resourceUrl);
         } catch (error) {
@@ -187,7 +178,7 @@ export class SolidModel extends Model {
         // This is necessary because a SolidEngine behaves differently than other engines.
         // Even if a document is stored using compacted IRIs, a SolidEngine will need them expanded
         // because it's ultimately stored in turtle, not json-ld.
-        const compactIRIs = !(getEngine() instanceof SolidEngine);
+        const compactIRIs = !(this.requireEngine() instanceof SolidEngine);
 
         return this.instance().convertEngineFiltersToJsonLD(filters, compactIRIs);
     }
@@ -353,6 +344,39 @@ export class SolidModel extends Model {
         return this.getDirtyDocumentModels().length > 0;
     }
 
+    public cleanDirty(): void {
+        super.cleanDirty();
+        this.getDirtyDocumentModels().map(model => model.cleanDirty());
+
+        this._documentExists = true;
+
+        Object
+            .values(this._relations)
+            .filter<SolidHasManyRelation>(
+                (relation): relation is SolidHasManyRelation =>
+                    relation instanceof SolidHasManyRelation &&
+                    relation.useSameDocument,
+            )
+            .forEach(relation => {
+                relation.__modelsInSameDocument = relation.__modelsInSameDocument || [];
+                relation.__modelsInSameDocument.push(...relation.__newModels);
+                relation.__newModels = [];
+            });
+
+        Object
+            .values(this._relations)
+            .filter<SolidHasOneRelation>(
+                (relation): relation is SolidHasOneRelation =>
+                    relation instanceof SolidHasOneRelation &&
+                    relation.useSameDocument &&
+                    !!relation.__newModel,
+            )
+            .forEach(relation => {
+                relation.__modelInSameDocument = relation.__newModel;
+                delete relation.__newModel;
+            });
+    }
+
     public getDocumentUrl(): string | null {
         if (!this.url)
             return null;
@@ -474,39 +498,6 @@ export class SolidModel extends Model {
         return this.getSerializedPrimaryKey() as string;
     }
 
-    protected cleanDirty(): void {
-        super.cleanDirty();
-        this.getDirtyDocumentModels().map(model => model.cleanDirty());
-
-        this._documentExists = true;
-
-        Object
-            .values(this._relations)
-            .filter<SolidHasManyRelation>(
-                (relation): relation is SolidHasManyRelation =>
-                    relation instanceof SolidHasManyRelation &&
-                    relation.useSameDocument,
-            )
-            .forEach(relation => {
-                relation.__modelsInSameDocument = relation.__modelsInSameDocument || [];
-                relation.__modelsInSameDocument.push(...relation.__newModels);
-                relation.__newModels = [];
-            });
-
-        Object
-            .values(this._relations)
-            .filter<SolidHasOneRelation>(
-                (relation): relation is SolidHasOneRelation =>
-                    relation instanceof SolidHasOneRelation &&
-                    relation.useSameDocument &&
-                    !!relation.__newModel,
-            )
-            .forEach(relation => {
-                relation.__modelInSameDocument = relation.__newModel;
-                delete relation.__newModel;
-            });
-    }
-
     protected async deleteModelsFromEngine(models: this[]): Promise<void> {
         await this.deleteModels(models);
     }
@@ -583,7 +574,7 @@ export class SolidModel extends Model {
             // This is necessary because a SolidEngine behaves differently than other engines.
             // Even if a document is stored using compacted IRIs, a SolidEngine will need them expanded
             // because it's ultimately stored in turtle, not json-ld.
-            const compactIRIs = !(getEngine() instanceof SolidEngine);
+            const compactIRIs = !(this.requireEngine() instanceof SolidEngine);
 
             graphUpdates.push({
                 $updateItems: {
