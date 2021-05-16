@@ -1,8 +1,4 @@
-import {
-    FieldType,
-    HasManyRelation,
-    HasOneRelation,
-} from 'soukai';
+import { FieldType } from 'soukai';
 import { isObject, toString } from '@noeldemartin/utils';
 import type {
     Attributes,
@@ -16,9 +12,11 @@ import type {
 
 import type { SolidModel } from '@/models/SolidModel';
 
-import IRI from '@/solid/utils/IRI';
 import RDFDocument from '@/solid/RDFDocument';
 import type { JsonLD } from '@/solid/utils/RDF';
+
+import SolidHasManyRelation from '../relations/SolidHasManyRelation';
+import SolidHasOneRelation from '../relations/SolidHasOneRelation';
 
 class EmptyJsonLDValue {}
 
@@ -177,6 +175,17 @@ export default class SerializesToJsonLD {
         return this.convertAttributeValuesToJsonLD(updates, compactIRIs) as EngineUpdates;
     }
 
+    protected getFieldRdfProperty(this: SolidModel, field: string): string | null {
+        const fieldDefinition = this.static('fields')[field];
+
+        if (fieldDefinition && !fieldDefinition.rdfProperty)
+            return null;
+
+        return fieldDefinition
+            ? fieldDefinition.rdfProperty as string
+            : (this.getDefaultRdfContext() + field);
+    }
+
     private setJsonLDField(
         this: SolidModel,
         jsonld: JsonLD,
@@ -190,13 +199,10 @@ export default class SerializesToJsonLD {
         }
 
         const fieldDefinition = this.static('fields')[field];
+        const propertyName = this.getFieldRdfProperty(field);
 
-        if (fieldDefinition && !fieldDefinition.rdfProperty)
+        if (!propertyName)
             return;
-
-        const propertyName = fieldDefinition
-            ? fieldDefinition.rdfProperty as string
-            : (this.getDefaultRdfContext() + field);
 
         this.setJsonLDProperty(
             jsonld,
@@ -218,15 +224,14 @@ export default class SerializesToJsonLD {
         for (const [relationName, relationInstance] of relations) {
             if (
                 !relationInstance.loaded || relationInstance.isEmpty() || (
-                    !(relationInstance instanceof HasManyRelation) &&
-                    !(relationInstance instanceof HasOneRelation)
+                    !(relationInstance instanceof SolidHasManyRelation) &&
+                    !(relationInstance instanceof SolidHasOneRelation)
                 )
             )
                 continue;
 
-            const foreignPropertyName = IRI(
-                relationInstance.foreignKeyName,
-                (relationInstance.relatedClass as typeof SolidModel).rdfContexts,
+            const foreignPropertyName = rdfContext.compactIRI(
+                relationInstance.relatedClass.instance().getFieldRdfProperty(relationInstance.foreignKeyName) as string,
             );
             const serializeRelatedModel = (model: SolidModel) => {
                 const jsonld = model.serializeToJsonLD(false, rdfContext);
@@ -237,7 +242,7 @@ export default class SerializesToJsonLD {
                 return jsonld;
             };
 
-            jsonld[relationName] = relationInstance instanceof HasManyRelation
+            jsonld[relationName] = relationInstance instanceof SolidHasManyRelation
                 ? relationInstance.getLoadedModels().map(model => serializeRelatedModel(model as SolidModel))
                 : serializeRelatedModel(relationInstance.related as SolidModel);
 
