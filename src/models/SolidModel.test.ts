@@ -120,8 +120,7 @@ describe('SolidModel', () => {
     });
 
     it('sends types on create', async () => {
-        class StubModel extends SolidModel {
-        }
+        class StubModel extends SolidModel {}
 
         const createSpy = jest.spyOn(engine, 'create');
 
@@ -433,8 +432,7 @@ describe('SolidModel', () => {
     });
 
     it('mints url for new models', async () => {
-        class StubModel extends SolidModel {
-        }
+        class StubModel extends SolidModel {}
 
         const containerUrl = urlResolveDirectory(Faker.internet.url());
 
@@ -507,8 +505,7 @@ describe('SolidModel', () => {
 
     it('mints unique urls when urls are already in use', async () => {
         // Arrange
-        class StubModel extends SolidModel {
-        }
+        class StubModel extends SolidModel {}
 
         const containerUrl = urlResolveDirectory(Faker.internet.url());
         const escapedContainerUrl = containerUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -543,8 +540,7 @@ describe('SolidModel', () => {
     });
 
     it('uses explicit containerUrl for minting url on save', async () => {
-        class StubModel extends SolidModel {
-        }
+        class StubModel extends SolidModel {}
 
         const containerUrl = urlResolveDirectory(Faker.internet.url());
 
@@ -648,8 +644,7 @@ describe('SolidModel', () => {
     });
 
     it('uses model url container on find', async () => {
-        class StubModel extends SolidModel {
-        }
+        class StubModel extends SolidModel {}
 
         const containerUrl = urlResolveDirectory(Faker.internet.url());
         const readOneSpy = jest.spyOn(engine, 'readOne');
@@ -664,8 +659,7 @@ describe('SolidModel', () => {
     });
 
     it('uses model url container on save', async () => {
-        class StubModel extends SolidModel {
-        }
+        class StubModel extends SolidModel {}
 
         const containerUrl = urlResolveDirectory(Faker.internet.url());
         const updateSpy = jest.spyOn(engine, 'update');
@@ -715,8 +709,7 @@ describe('SolidModel', () => {
 
     it('deletes only model properties if the document has other resources', async () => {
         // Arrange
-        class StubModel extends SolidModel {
-        }
+        class StubModel extends SolidModel {}
         bootModels({ StubModel });
         jest.spyOn(engine, 'update');
 
@@ -821,8 +814,7 @@ describe('SolidModel', () => {
     });
 
     it('aliases url attribute as id', async () => {
-        class StubModel extends SolidModel {
-        }
+        class StubModel extends SolidModel {}
 
         bootModels({ StubModel });
 
@@ -1116,22 +1108,32 @@ describe('SolidModel', () => {
 
 });
 
-class StubModel extends SolidModel.schema({
-    foo: FieldType.String,
-    bar: FieldType.Number,
-}) {}
-
-const instance = StubModel.newInstance();
-const jsonldInstance = StubModel.newFromJsonLD({ '@id': '' });
-
 describe('SolidModel types', () => {
 
-    it('has correct types', tt<
-        Expect<Equals<typeof instance, StubModel>> |
-        Expect<Equals<typeof jsonldInstance, Promise<StubModel>>> |
-        Expect<Equals<typeof instance['foo'], string | undefined>> |
-        Expect<Equals<typeof instance['bar'], number | undefined>> |
-        true
-    >());
+    it('has correct types', () => {
+        // Arrange
+        class StubModel extends SolidModel.schema({
+            foo: FieldType.String,
+            bar: FieldType.Number,
+        }) {}
+
+        setEngine(new StubEngine);
+
+        // Act
+        const instance = StubModel.newInstance();
+        const jsonldInstance = StubModel.newFromJsonLD({
+            '@id': 'https://example.org/alice',
+            'https://example.org/name': 'Alice',
+        });
+
+        // Assert
+        tt<
+            Expect<Equals<typeof instance, StubModel>> |
+            Expect<Equals<typeof jsonldInstance, Promise<StubModel>>> |
+            Expect<Equals<typeof instance['foo'], string | undefined>> |
+            Expect<Equals<typeof instance['bar'], number | undefined>> |
+            true
+        >();
+    });
 
 });
