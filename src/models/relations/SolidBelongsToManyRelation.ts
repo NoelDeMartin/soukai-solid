@@ -94,4 +94,22 @@ export default class SolidBelongsToManyRelation<
         this.related = this.__modelsInSameDocument.slice(0);
     }
 
+    public clone(): this {
+        const clone = super.clone();
+
+        if (this.__modelsInSameDocument) {
+            const relatedClones = clone.related ?? [];
+
+            clone.__modelsInSameDocument = this.__modelsInSameDocument.map(relatedModel => {
+                return relatedClones.find(relatedClone => relatedClone.is(relatedModel))
+                    ?? relatedModel.clone();
+            });
+        }
+
+        if (this.__modelsInOtherDocumentIds)
+            clone.__modelsInOtherDocumentIds = this.__modelsInOtherDocumentIds;
+
+        return clone;
+    }
+
 }

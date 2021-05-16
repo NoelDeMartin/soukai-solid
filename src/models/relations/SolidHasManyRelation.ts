@@ -1,5 +1,5 @@
 import { EngineHelper, HasManyRelation, SoukaiError } from 'soukai';
-import { urlRoute } from '@noeldemartin/utils';
+import { tap, urlRoute } from '@noeldemartin/utils';
 import type {
     Attributes,
     EngineAttributeValue,
@@ -21,11 +21,11 @@ export default class SolidHasManyRelation<
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
 > extends HasManyRelation<Parent, Related, RelatedClass> {
 
+    public useSameDocument: boolean = false;
     public __newModels: Related[] = [];
     public __modelsInSameDocument?: Related[];
     public __modelsInOtherDocumentIds?: string[];
 
-    public useSameDocument: boolean = false;
     private documentModelsLoaded: boolean = false;
 
     public isEmpty(): boolean | null {
@@ -116,6 +116,33 @@ export default class SolidHasManyRelation<
         this.useSameDocument = useSameDocument;
 
         return this;
+    }
+
+    public clone(): this {
+        const clone = super.clone();
+        const relatedClones = clone.related ?? [];
+
+        clone.useSameDocument = this.useSameDocument;
+        clone.documentModelsLoaded = this.documentModelsLoaded;
+        clone.__newModels = [];
+
+        for (const relatedModel of this.__newModels) {
+            clone.__newModels.push(
+                relatedClones.find(relatedClone => relatedClone.is(relatedModel)) ??
+                tap(relatedModel.clone(), relatedClone => relatedClones.push(relatedClone)),
+            );
+        }
+
+        if (this.__modelsInSameDocument)
+            clone.__modelsInSameDocument = this.__modelsInSameDocument.map(relatedModel => {
+                return relatedClones.find(relatedClone => relatedClone.is(relatedModel))
+                    ?? relatedModel.clone();
+            });
+
+        if (this.__modelsInOtherDocumentIds)
+            clone.__modelsInOtherDocumentIds = this.__modelsInOtherDocumentIds;
+
+        return clone;
     }
 
     public async __loadDocumentModels(documentUrl: string, document: EngineDocument): Promise<void> {

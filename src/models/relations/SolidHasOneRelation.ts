@@ -1,5 +1,5 @@
 import { EngineHelper, HasOneRelation, SoukaiError } from 'soukai';
-import { urlRoute } from '@noeldemartin/utils';
+import { tap, urlRoute } from '@noeldemartin/utils';
 import type {
     Attributes,
     EngineAttributeValue,
@@ -116,6 +116,26 @@ export default class SolidHasOneRelation<
         this.useSameDocument = useSameDocument;
 
         return this;
+    }
+
+    public clone(): this {
+        const clone = super.clone();
+        let relatedClone = clone.related ?? null as Related | null;
+
+        clone.useSameDocument = this.useSameDocument;
+        clone.documentModelLoaded = this.documentModelLoaded;
+
+        if (this.__newModel)
+            this.__newModel = relatedClone ??
+                tap(this.__newModel.clone(), rClone => relatedClone = rClone);
+
+        if (this.__modelInSameDocument)
+            clone.__modelInSameDocument = relatedClone ?? this.__modelInSameDocument.clone();
+
+        if (this.__modelInOtherDocumentId)
+            clone.__modelInOtherDocumentId = this.__modelInOtherDocumentId;
+
+        return clone;
     }
 
     public async __loadDocumentModel(documentUrl: string, document: EngineDocument): Promise<void> {
