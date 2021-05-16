@@ -624,7 +624,7 @@ describe('SolidClient', () => {
                 a <http://www.w3.org/ns/ldp#Container>, <https://schema.org/Collection> ;
                 <http://www.w3.org/2000/01/rdf-schema#label> "Container name" ;
                 <http://purl.org/dc/terms/modified>
-                    "2020-03-08T14:33:09Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+                    "2020-03-08T14:33:09.123Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
             <${resourceUrl}>
                 <http://xmlns.com/foaf/0.1/name> "Jonathan" ;
                 <http://xmlns.com/foaf/0.1/surname> "Doe" ;
@@ -651,7 +651,7 @@ describe('SolidClient', () => {
                 <${documentUrl}> a <http://www.w3.org/ns/ldp#Container> .
                 <${documentUrl}>
                     <http://purl.org/dc/terms/modified>
-                    "2020-03-08T14:33:09Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+                        "2020-03-08T14:33:09.123Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
                 <${resourceUrl}> <http://xmlns.com/foaf/0.1/name> "Jonathan" .
                 <${resourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
                 <${resourceUrl}> <http://xmlns.com/foaf/0.1/givenName> "John" .

@@ -160,8 +160,9 @@ class RDFResourceLiteralProperty extends RDFResourceProperty {
                 this.value.getUTCMinutes(),
                 this.value.getUTCSeconds(),
             ).join(':');
+            const milliseconds = this.value.getUTCMilliseconds().toString().padStart(3, '0');
 
-            return `"${date}T${time}Z"^^<${IRI('xsd:dateTime')}>`;
+            return `"${date}T${time}.${milliseconds}Z"^^<${IRI('xsd:dateTime')}>`;
         }
 
         return JSON.stringify(this.value);
