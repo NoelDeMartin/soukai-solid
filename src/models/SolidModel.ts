@@ -43,7 +43,7 @@ import { SolidEngine } from '@/engines';
 
 import IRI from '@/solid/utils/IRI';
 import RDFDocument from '@/solid/RDFDocument';
-import type { JsonLD } from '@/solid/utils/RDF';
+import type { JsonLD, JsonLDResource } from '@/solid/utils/RDF';
 import type RDFResource from '@/solid/RDFResource';
 
 import DeletesModels from './mixins/DeletesModels';
@@ -55,6 +55,7 @@ import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
 import type { SolidModelConstructor } from './inference';
 import type { SolidBootedFieldsDefinition, SolidFieldsDefinition } from './fields';
 import type SolidContainerModel from './SolidContainerModel';
+import type SolidModelMetadata from './SolidModelMetadata';
 
 export class SolidModel extends Model {
 
@@ -108,24 +109,17 @@ export class SolidModel extends Model {
             rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
             ldp: 'http://www.w3.org/ns/ldp#',
             purl: 'http://purl.org/dc/terms/',
+            soukai: 'https://soukai.noeldemartin.com/vocab/',
         };
 
         const fields = modelClass.fields as BootedFieldsDefinition<{ rdfProperty?: string }>;
         const defaultRdfContext = instance.getDefaultRdfContext();
 
-        if (
-            instance.hasAutomaticTimestamp('createdAt') &&
-            typeof fields['createdAt'].rdfProperty === 'undefined'
-        ) {
-            fields['createdAt'].rdfProperty = IRI('purl:created');
-        }
+        if (instance.hasAutomaticTimestamp(TimestampField.CreatedAt))
+            delete fields[TimestampField.CreatedAt];
 
-        if (
-            instance.hasAutomaticTimestamp('updatedAt') &&
-            typeof fields['updatedAt'].rdfProperty === 'undefined'
-        ) {
-            fields['updatedAt'].rdfProperty = IRI('purl:modified');
-        }
+        if (instance.hasAutomaticTimestamp(TimestampField.UpdatedAt))
+            delete fields[TimestampField.UpdatedAt];
 
         modelClass.rdfsClasses = arrayUnique(
             (modelClass.rdfsClasses ?? []).map(
@@ -149,10 +143,10 @@ export class SolidModel extends Model {
     }
 
     /* eslint-disable max-len */
-    public static createFromEngineDocument<T extends SolidModel>(this: SolidModelConstructor<T>, id: Key, document: EngineDocument, resourceId?: string, rdfDocument?: RDFDocument): Promise<T>;
+    public static createFromEngineDocument<T extends SolidModel>(this: SolidModelConstructor<T>, id: Key, document: EngineDocument, resourceId?: string): Promise<T>;
     public static createFromEngineDocument<T extends Model>(this: ModelConstructor<T>, id: Key, document: EngineDocument): Promise<T>;
-    public static createFromEngineDocument<T extends SolidModel>(this: SolidModelConstructor<T>, id: Key, document: EngineDocument, resourceId?: string, rdfDocument?: RDFDocument): Promise<T> {
-        return this.instance().createFromEngineDocument(id, document, resourceId, rdfDocument);
+    public static createFromEngineDocument<T extends SolidModel>(this: SolidModelConstructor<T>, id: Key, document: EngineDocument, resourceId?: string): Promise<T> {
+        return this.instance().createFromEngineDocument(id, document, resourceId);
     }
     /* eslint-enable max-len */
 
@@ -213,10 +207,15 @@ export class SolidModel extends Model {
             documentUrl,
             flatJsonLD as EngineDocument,
             resourceId,
-            rdfDocument,
         );
 
-        return tap(this.newInstance(attributes), async (model) => {
+        if (this.instance().hasAutomaticTimestamp(TimestampField.CreatedAt))
+            attributes['createdAt'] = resource?.getPropertyValue(IRI('purl:created'));
+
+        if (this.instance().hasAutomaticTimestamp(TimestampField.UpdatedAt))
+            attributes['updatedAt'] = resource?.getPropertyValue(IRI('purl:modified'));
+
+        return tap(this.newInstance(objectWithoutEmpty(attributes)), async (model) => {
             await model.loadDocumentModels(documentUrl, flatJsonLD as EngineDocument);
 
             model.resetEngineData();
@@ -278,14 +277,45 @@ export class SolidModel extends Model {
     // TODO this should be optional
     public url!: string;
 
+    public metadata!: SolidModelMetadata;
+    public relatedMetadata!: SolidHasOneRelation<SolidModelMetadata, this, SolidModelConstructor<this>>;
+
     protected _documentExists!: boolean;
     protected _sourceDocumentUrl!: string | null;
 
     protected initialize(attributes: Attributes, exists: boolean): void {
-        super.initialize(attributes, exists);
-
         this._documentExists = exists;
         this._sourceDocumentUrl = this._sourceDocumentUrl ?? null;
+
+        super.initialize(attributes, exists);
+    }
+
+    protected initializeRelations(): void {
+        super.initializeRelations();
+
+        this.initializeMetadataRelation();
+    }
+
+    protected initializeMetadataRelation(): void {
+        const metadataModelClass = requireBootedModel<typeof SolidModelMetadata>('SolidModelMetadata');
+
+        if (this instanceof metadataModelClass || !this.hasAutomaticTimestamps())
+            return;
+
+        const metadataRelation = this._relations.metadata as SolidHasOneRelation;
+        const metadataModel = metadataModelClass.newInstance(objectWithoutEmpty({
+            resourceUrl: this._attributes[this.static('primaryKey')],
+            createdAt: this._attributes.createdAt,
+            updatedAt: this._attributes.updatedAt,
+        }), this._exists);
+
+        metadataModel.resourceUrl && metadataModel.mintUrl(this.getDocumentUrl() || undefined, this._documentExists);
+        metadataRelation.set(metadataModel);
+
+        delete this._attributes.createdAt;
+        delete this._attributes.updatedAt;
+        delete this._originalAttributes.createdAt;
+        delete this._originalAttributes.updatedAt;
     }
 
     public static(): SolidModelConstructor<this>;
@@ -347,6 +377,18 @@ export class SolidModel extends Model {
 
     public setDocumentExists(documentExists: boolean): void {
         this._documentExists = documentExists;
+
+        Object
+            .values(this._relations)
+            .filter(
+                (relation): relation is SolidHasManyRelation | SolidHasOneRelation =>
+                    relation instanceof SolidHasManyRelation ||
+                    relation instanceof SolidHasOneRelation,
+            )
+            .filter(relation => relation.useSameDocument)
+            .map(relation => relation.getLoadedModels())
+            .flat()
+            .forEach(relatedModel => relatedModel.setDocumentExists(documentExists));
     }
 
     public isDirty(field?: string): boolean {
@@ -416,6 +458,45 @@ export class SolidModel extends Model {
         return documentUrl ? urlParentDirectory(documentUrl) : null;
     }
 
+    public setAttribute(field: string, value: unknown): void {
+        super.setAttribute(field, value);
+
+        if (field === this.static('primaryKey') && this.metadata) {
+            this.metadata.setAttribute('resourceUrl', this.getAttribute(field));
+            this.metadata.mintUrl(this.getDocumentUrl() || undefined, this.documentExists());
+        }
+    }
+
+    protected setCreatedAtAttribute(value: unknown): void {
+        this.hasAutomaticTimestamp(TimestampField.CreatedAt)
+            ? this.metadata?.setAttribute('createdAt', value)
+            : this.setAttributeValue('createdAt', value);
+    }
+
+    protected setUpdatedAtAttribute(value: unknown): void {
+        this.hasAutomaticTimestamp(TimestampField.UpdatedAt)
+            ? this.metadata?.setAttribute('updatedAt', value)
+            : this.setAttributeValue('updatedAt', value);
+    }
+
+    public getCreatedAtAttribute(): Date {
+        return this.hasAutomaticTimestamp(TimestampField.CreatedAt)
+            ? this.metadata?.createdAt
+            : super.getAttributeValue('createdAt');
+    }
+
+    public getUpdatedAtAttribute(): Date {
+        return this.hasAutomaticTimestamp(TimestampField.UpdatedAt)
+            ? this.metadata?.updatedAt
+            : super.getAttributeValue('updatedAt');
+    }
+
+    public metadataRelationship(): SingleModelRelation {
+        const metadataModelClass = requireBootedModel<typeof SolidModelMetadata>('SolidModelMetadata');
+
+        return this.hasOne(metadataModelClass, 'resourceUrl').usingSameDocument(true).onDelete('cascade');
+    }
+
     protected getDefaultCollection(): string {
         const collection = super.getDefaultCollection();
 
@@ -426,10 +507,9 @@ export class SolidModel extends Model {
         id: Key,
         document: EngineDocument,
         resourceId?: string,
-        rdfDocument?: RDFDocument,
     ): Promise<this> {
         const createModel = async () => {
-            const attributes = await this.parseEngineDocumentAttributes(id, document, resourceId, rdfDocument);
+            const attributes = await this.parseEngineDocumentAttributes(id, document, resourceId);
 
             attributes[this.static('primaryKey')] = resourceId || id;
 
@@ -460,7 +540,6 @@ export class SolidModel extends Model {
                         documentUrl,
                         engineDocument,
                         resource.url,
-                        rdfDocument,
                     )),
             );
         }));
@@ -560,7 +639,7 @@ export class SolidModel extends Model {
         return {
             '@graph': [
                 this.serializeToJsonLD(false),
-                ...this.prepareDirtyDocumentModels().map(model => model.serializeToJsonLD(false)),
+                ...this.prepareDirtyDocumentModels().map(model => model.serializeToJsonLD(true)),
             ],
         } as EngineDocument;
     }
@@ -614,7 +693,6 @@ export class SolidModel extends Model {
         id: Key,
         document: EngineDocument,
         resourceId?: string,
-        rdfDocument?: RDFDocument,
     ): Promise<Attributes> {
         resourceId = resourceId || id as string;
 
@@ -623,7 +701,7 @@ export class SolidModel extends Model {
         if (!jsonld)
             throw new SoukaiError(`Resource '${resourceId}' not found on document`);
 
-        return this.convertJsonLDToAttributes(resourceId, rdfDocument || jsonld);
+        return this.convertJsonLDToAttributes(jsonld as JsonLDResource);
     }
 
     protected castAttribute(value: unknown, definition?: BootedFieldDefinition): unknown {
@@ -668,23 +746,23 @@ export class SolidModel extends Model {
             )
             .map(relation => {
                 const models = relation instanceof SolidHasManyRelation
-                    ? [...relation.__newModels]
-                    : arrayFilter([relation.__newModel]) as SolidModel[];
+                    ? new Set(relation.__newModels)
+                    : new Set(arrayFilter([relation.__newModel])) as Set<SolidModel>;
 
                 for (const relatedModel of relation.getLoadedModels()) {
                     if (
                         !relatedModel.isDirty() ||
                         relatedModel.getDocumentUrl() !== documentUrl ||
-                        models.some(model => model === relatedModel)
+                        models.has(relatedModel)
                     )
                         continue;
 
-                    models.push(relatedModel);
+                    models.add(relatedModel);
                 }
 
                 models.forEach(model => model.setAttribute(relation.foreignKeyName, this.url));
 
-                return models;
+                return [...models];
             })
             .flat();
     }

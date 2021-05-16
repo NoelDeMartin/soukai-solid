@@ -3,13 +3,13 @@ import { urlParentDirectory } from '@noeldemartin/utils';
 
 import type { SolidModel } from '@/models/SolidModel';
 
-import type { SolidContainerModelConstructor, SolidModelConstructor } from '@/models/inference';
+import type { SolidContainerModelConstructor } from '@/models/inference';
 import type SolidContainerModel from '@/models/SolidContainerModel';
 
 export default class SolidIsContainedByRelation<
     Parent extends SolidModel = SolidModel,
     Related extends SolidContainerModel = SolidContainerModel,
-    RelatedClass extends SolidContainerModelConstructor<Related> = SolidModelConstructor<Related>,
+    RelatedClass extends SolidContainerModelConstructor<Related> = SolidContainerModelConstructor<Related>,
 > extends SingleModelRelation<Parent, Related, RelatedClass> {
 
     public constructor(parent: Parent, relatedClass: RelatedClass) {

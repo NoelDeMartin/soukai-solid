@@ -146,6 +146,8 @@ describe('SolidModel', () => {
             createdAt: new Date('1998-07-21T23:42:00.000Z'),
         });
 
+        action.setRelationModel('movie', movie);
+
         const createSpy = jest.spyOn(engine, 'create');
 
         // Act
@@ -716,6 +718,7 @@ describe('SolidModel', () => {
         const containerUrl = urlResolveDirectory(Faker.internet.url());
         const documentUrl = urlResolve(containerUrl, Faker.random.uuid());
         const url = `${documentUrl}#it`;
+        const metadataUrl = `${documentUrl}#it-metadata`;
         const model = new StubModel({ url, name: Faker.name.firstName() }, true);
 
         engine.setMany(containerUrl, {
@@ -737,7 +740,7 @@ describe('SolidModel', () => {
             {
                 '@graph': {
                     $updateItems: {
-                        $where: { '@id': { $in: [url] } },
+                        $where: { '@id': { $in: [metadataUrl, url] } },
                         $unset: true,
                     },
                 },
@@ -978,14 +981,19 @@ describe('SolidModel', () => {
             '@id': person.url,
             '@context': {
                 '@vocab': 'http://xmlns.com/foaf/0.1/',
-                'purl': 'http://purl.org/dc/terms/',
+                'soukai': 'https://soukai.noeldemartin.com/vocab/',
+                'metadata': { '@reverse': 'resource' },
             },
             '@type': 'Person',
             'name': name,
             'knows': friendUrls.map(url => ({ '@id': url })),
-            'purl:created': {
-                '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
-                '@value': '1997-07-21T23:42:00.000Z',
+            'metadata': {
+                '@id': person.url + '-metadata',
+                '@type': 'soukai:Metadata',
+                'soukai:createdAt': {
+                    '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+                    '@value': '1997-07-21T23:42:00.000Z',
+                },
             },
         });
     });
@@ -1004,6 +1012,8 @@ describe('SolidModel', () => {
                 startTime: new Date('1997-07-21T23:42:00Z'),
             }),
         ]);
+
+        movie.actions?.forEach(action => action.setRelationModel('movie', movie));
 
         // Act
         const jsonld = movie.toJsonLD();
@@ -1106,11 +1116,37 @@ describe('SolidModel', () => {
         expect(movie.relatedActions.__newModels[0]).toBe(action);
     });
 
+    it('[legacy] parses legacy automatic timestamps from JsonLD', async () => {
+        // Arrange
+        const date = new Date(926848344123); // Date.now() - 42000);
+        const jsonld = {
+            '@context': {
+                '@vocab': 'http://xmlns.com/foaf/0.1/',
+                'purl': 'http://purl.org/dc/terms/',
+                'xls': 'http://www.w3.org/2001/XMLSchema#',
+            },
+            '@id': urlResolve(urlResolveDirectory(Faker.internet.url()), Faker.random.uuid()) + '#it',
+            '@type': 'Person',
+            'name': Faker.random.word(),
+            'purl:created': {
+                '@type': 'xls:dateTime',
+                '@value': date.toISOString(),
+            },
+        };
+
+        // Act
+        const person = await Person.newFromJsonLD(jsonld);
+
+        // Assert
+        expect(person.createdAt).toBeInstanceOf(Date);
+        expect(person.createdAt.toISOString()).toEqual(date.toISOString());
+    });
+
 });
 
 describe('SolidModel types', () => {
 
-    it('has correct types', () => {
+    it('has correct types', async () => {
         // Arrange
         class StubModel extends SolidModel.schema({
             foo: FieldType.String,
@@ -1121,7 +1157,7 @@ describe('SolidModel types', () => {
 
         // Act
         const instance = StubModel.newInstance();
-        const jsonldInstance = StubModel.newFromJsonLD({
+        const jsonldInstance = await StubModel.newFromJsonLD({
             '@id': 'https://example.org/alice',
             'https://example.org/name': 'Alice',
         });
@@ -1129,7 +1165,7 @@ describe('SolidModel types', () => {
         // Assert
         tt<
             Expect<Equals<typeof instance, StubModel>> |
-            Expect<Equals<typeof jsonldInstance, Promise<StubModel>>> |
+            Expect<Equals<typeof jsonldInstance, StubModel>> |
             Expect<Equals<typeof instance['foo'], string | undefined>> |
             Expect<Equals<typeof instance['bar'], number | undefined>> |
             true

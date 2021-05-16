@@ -619,6 +619,7 @@ describe('SolidClient', () => {
         const documentUrl = urlResolve(Faker.internet.url(), stringToSlug(Faker.random.word()));
         const metaDocumentUrl = `${documentUrl}.meta`;
         const resourceUrl = `${documentUrl}#it`;
+        const metadataUrl = `${resourceUrl}-metadata`;
         const data = `
             <${documentUrl}>
                 a <http://www.w3.org/ns/ldp#Container>, <https://schema.org/Collection> ;
@@ -629,13 +630,19 @@ describe('SolidClient', () => {
                 <http://xmlns.com/foaf/0.1/name> "Jonathan" ;
                 <http://xmlns.com/foaf/0.1/surname> "Doe" ;
                 <http://xmlns.com/foaf/0.1/givenName> "John" .
+            <${metadataUrl}>
+                <https://soukai.noeldemartin.com/vocab/createdAt>
+                    "2020-03-08T14:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
         `;
 
         StubFetcher.addFetchResponse(data);
         StubFetcher.addFetchResponse();
 
         // Act
-        await client.updateDocument(documentUrl, [new RemovePropertyOperation(resourceUrl)]);
+        await client.updateDocument(documentUrl, [
+            new RemovePropertyOperation(resourceUrl),
+            new RemovePropertyOperation(metadataUrl),
+        ]);
 
         // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledWith(metaDocumentUrl, {
@@ -655,6 +662,9 @@ describe('SolidClient', () => {
                 <${resourceUrl}> <http://xmlns.com/foaf/0.1/name> "Jonathan" .
                 <${resourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
                 <${resourceUrl}> <http://xmlns.com/foaf/0.1/givenName> "John" .
+                <${metadataUrl}>
+                    <https://soukai.noeldemartin.com/vocab/createdAt>
+                        "2020-03-08T14:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
             }
         `);
     });

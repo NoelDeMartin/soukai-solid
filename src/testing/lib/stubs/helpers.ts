@@ -32,10 +32,15 @@ export function stubPersonJsonLD(
     }
 
     if (optional.createdAt) {
-        jsonld['@context']['purl'] = 'http://purl.org/dc/terms/';
-        jsonld['purl:created'] = {
-            '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
-            '@value': optional.createdAt,
+        jsonld['@context']['metadata'] = { '@reverse': 'resource' };
+        jsonld['@context']['soukai'] = 'https://soukai.noeldemartin.com/vocab/';
+        jsonld['metadata'] = {
+            '@id': `${url}-metadata`,
+            '@type': 'soukai:Metadata',
+            'soukai:createdAt': {
+                '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+                '@value': optional.createdAt,
+            },
         };
     }
 

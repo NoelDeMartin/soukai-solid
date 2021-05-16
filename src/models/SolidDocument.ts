@@ -1,12 +1,20 @@
 import { SolidModel } from './SolidModel';
-import { TimestampField } from 'soukai';
+import { FieldType } from 'soukai';
 import type { IModel } from 'soukai';
 
 export default class SolidDocument extends SolidModel {
 
-    public static timestamps = [TimestampField.UpdatedAt];
+    public static timestamps = false;
+
     public static rdfsClasses = ['ldp:Resource'];
+
+    public static fields = {
+        updatedAt: {
+            type: FieldType.Date,
+            rdfProperty: 'purl:modified',
+        },
+    } as const;
 
 }
 
-export default interface SolidDocument extends IModel<typeof SolidDocument> {}
+export default interface SolidDocument extends Omit<IModel<typeof SolidDocument>, 'updatedAt'> {}

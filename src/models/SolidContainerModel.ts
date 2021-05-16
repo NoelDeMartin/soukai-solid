@@ -7,7 +7,7 @@ import {
     uuid,
 } from '@noeldemartin/utils';
 import { FieldType } from 'soukai';
-import type { MultiModelRelation } from 'soukai';
+import type { IModel , MultiModelRelation } from 'soukai';
 
 import IRI from '@/solid/utils/IRI';
 
@@ -18,6 +18,8 @@ import { SolidModel } from './SolidModel';
 import type SolidDocument from './SolidDocument';
 
 export default class SolidContainerModel extends SolidModel {
+
+    public static timestamps = false;
 
     public static boot(name?: string): void {
         const modelClass = this;
@@ -74,3 +76,5 @@ export default class SolidContainerModel extends SolidModel {
     }
 
 }
+
+export default interface SolidContainerModel extends IModel<typeof SolidContainerModel> {}

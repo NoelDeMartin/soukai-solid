@@ -1,0 +1,34 @@
+# WIP! https://soukai.noeldemartin.com/vocab/ doesn't exist yet.
+# Based on https://github.com/schemaorg/schemaorg/blob/main/data/schema.ttl
+
+@prefix : <https://soukai.noeldemartin.com/vocab/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix dcmi: <http://purl.org/dc/dcmitype/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#dateTime> .
+
+:Metadata a rdfs:Class ;
+    rdfs:label "Metadata" ;
+    rdfs:comment "Metadata about a resource." ;
+    rdfs:subClassOf dcmi:Dataset .
+
+:resource a rdf:Property ;
+    rdfs:label "resource" ;
+    rdfs:comment "Resource which the metadata makes reference to." ;
+    rdfs:subPropertyOf dcmi:subject ;
+    rdfs:range rdfs:Resource ;
+    rdfs:domain :Metadata .
+
+:createdAt a rdf:Property ;
+    rdfs:label "createdAt" ;
+    rdfs:comment "Time at which the resource was created." ;
+    rdfs:subPropertyOf dcmi:created ;
+    rdfs:range xsd:dateTime ;
+    rdfs:domain :Metadata .
+
+:updatedAt a rdf:Property ;
+    rdfs:label "updatedAt" ;
+    rdfs:comment "Time at which the resource was updated for the last time." ;
+    rdfs:subPropertyOf dcmi:modified ;
+    rdfs:range xsd:dateTime ;
+    rdfs:domain :Metadata .

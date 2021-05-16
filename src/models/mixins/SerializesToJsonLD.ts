@@ -13,7 +13,7 @@ import type {
 import type { SolidModel } from '@/models/SolidModel';
 
 import RDFDocument from '@/solid/RDFDocument';
-import type { JsonLD } from '@/solid/utils/RDF';
+import type { JsonLD, JsonLDResource } from '@/solid/utils/RDF';
 
 import SolidHasManyRelation from '../relations/SolidHasManyRelation';
 import SolidHasOneRelation from '../relations/SolidHasOneRelation';
@@ -106,19 +106,14 @@ export default class SerializesToJsonLD {
         return jsonld;
     }
 
-    protected async convertJsonLDToAttributes(
-        this: SolidModel,
-        resourceId: string,
-        jsonldOrDocument: JsonLD | RDFDocument,
-    ): Promise<Attributes> {
-        const document = jsonldOrDocument instanceof RDFDocument
-            ? jsonldOrDocument
-            : await RDFDocument.fromJsonLD(jsonldOrDocument);
-        const resource = document.requireResource(resourceId);
+    protected async convertJsonLDToAttributes(this: SolidModel, jsonld: JsonLDResource): Promise<Attributes> {
+        // TODO this is probably wasteful because we've already parsed this in createManyFromEngineDocuments method
+        const document = await RDFDocument.fromJsonLD(jsonld);
+        const resource = document.requireResource(jsonld['@id']);
         const fieldsDefinition = this.static('fields');
         const attributes: Attributes = {};
 
-        attributes[this.static('primaryKey')] = resourceId;
+        attributes[this.static('primaryKey')] = jsonld['@id'];
 
         for (const [fieldName, fieldDefinition] of Object.entries(fieldsDefinition)) {
             if (!fieldDefinition.rdfProperty)
