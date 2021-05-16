@@ -8,6 +8,8 @@ import { bootSolidModels } from '@/models';
 beforeEach(() => jest.clearAllMocks());
 beforeEach(() => bootSolidModels());
 
+process.on('unhandledRejection', (err) => fail(err));
+
 expect.extend({
 
     async toEqualJsonLD(received, expected) {
