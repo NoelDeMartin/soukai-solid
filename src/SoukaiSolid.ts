@@ -1,22 +1,20 @@
-import Soukai from 'soukai';
-
-import SolidDocument from '@/models/SolidDocument';
+import { bootSolidModels } from '@/models';
 
 /**
- * @deprecated This is no longer necessary.
+ * @deprecated Use bootSolidModels() instead.
  */
 export class SoukaiSolid {
 
     /**
-     * @deprecated This is no longer necessary, models are loaded automatically now.
+     * @deprecated Use bootSolidModels() instead.
      */
     public loadSolidModels(): void {
-        Soukai.loadModels({ SolidDocument });
+        bootSolidModels();
     }
 
 }
 
 /**
- * @deprecated This is no longer necessary.
+ * @deprecated Use bootSolidModels() instead.
  */
 export default new SoukaiSolid();

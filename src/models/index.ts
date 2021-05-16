@@ -1,3 +1,5 @@
+import { bootModels } from 'soukai';
+
 import type { JsonLD } from '@/solid/utils/RDF';
 
 import type DeletesModels from './mixins/DeletesModels';
@@ -27,3 +29,7 @@ export type {
     SolidFieldsDefinition,
     SolidBootedFieldsDefinition,
 } from './fields';
+
+export function bootSolidModels(): void {
+    bootModels({ SolidDocument });
+}

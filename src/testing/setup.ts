@@ -3,10 +3,10 @@
 import { deepEquals } from '@noeldemartin/utils';
 
 import flattenJsonLD from '@/solid/utils/flattenJsonLD';
-import SoukaiSolid from '@/SoukaiSolid';
+import { bootSolidModels } from '@/models';
 
 beforeEach(() => jest.clearAllMocks());
-beforeEach(() => SoukaiSolid.loadSolidModels());
+beforeEach(() => bootSolidModels());
 
 expect.extend({
 
