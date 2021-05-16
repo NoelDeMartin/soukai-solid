@@ -2,6 +2,7 @@ import {
     arrayFilter,
     arrayUnique,
     fail,
+    objectWithoutEmpty,
     tap,
     urlParentDirectory,
     urlResolve,
@@ -9,7 +10,15 @@ import {
     useMixins,
     uuid,
 } from '@noeldemartin/utils';
-import { DocumentAlreadyExists, FieldType, InvalidModelDefinition, Model, SoukaiError } from 'soukai';
+import {
+    DocumentAlreadyExists,
+    FieldType,
+    InvalidModelDefinition,
+    Model,
+    SoukaiError,
+    TimestampField,
+    requireBootedModel,
+} from 'soukai';
 import type {
     Attributes,
     BootedFieldDefinition,
@@ -32,7 +41,6 @@ import type { Constructor } from '@noeldemartin/utils';
 
 import { SolidEngine } from '@/engines';
 
-import flattenJsonLD from '@/solid/utils/flattenJsonLD';
 import IRI from '@/solid/utils/IRI';
 import RDFDocument from '@/solid/RDFDocument';
 import type { JsonLD } from '@/solid/utils/RDF';
@@ -141,10 +149,10 @@ export class SolidModel extends Model {
     }
 
     /* eslint-disable max-len */
-    public static createFromEngineDocument<T extends SolidModel>(this: SolidModelConstructor<T>, id: Key, document: EngineDocument, resourceId?: string): Promise<T>;
+    public static createFromEngineDocument<T extends SolidModel>(this: SolidModelConstructor<T>, id: Key, document: EngineDocument, resourceId?: string, rdfDocument?: RDFDocument): Promise<T>;
     public static createFromEngineDocument<T extends Model>(this: ModelConstructor<T>, id: Key, document: EngineDocument): Promise<T>;
-    public static createFromEngineDocument<T extends SolidModel>(this: SolidModelConstructor<T>, id: Key, document: EngineDocument, resourceId?: string): Promise<T> {
-        return this.instance().createFromEngineDocument(id, document, resourceId);
+    public static createFromEngineDocument<T extends SolidModel>(this: SolidModelConstructor<T>, id: Key, document: EngineDocument, resourceId?: string, rdfDocument?: RDFDocument): Promise<T> {
+        return this.instance().createFromEngineDocument(id, document, resourceId, rdfDocument);
     }
     /* eslint-enable max-len */
 
@@ -196,45 +204,52 @@ export class SolidModel extends Model {
         jsonld: Omit<JsonLD, '@id'> & { '@id': string },
         baseUrl?: string,
     ): Promise<T> {
-        const flatJsonLD = await flattenJsonLD(jsonld) as EngineDocument;
-        const documentUrl = baseUrl || urlRoute(jsonld['@id']);
-        const attributes = await this.instance().parseEngineDocumentAttributes(documentUrl, flatJsonLD, jsonld['@id']);
-        const model = this.newInstance(attributes);
+        const rdfDocument = await RDFDocument.fromJsonLD(jsonld);
+        const flatJsonLD = await rdfDocument.toJsonLD();
+        const resourceId = jsonld['@id'];
+        const resource = rdfDocument.resource(resourceId);
+        const documentUrl = baseUrl || urlRoute(resourceId);
+        const attributes = await this.instance().parseEngineDocumentAttributes(
+            documentUrl,
+            flatJsonLD as EngineDocument,
+            resourceId,
+            rdfDocument,
+        );
 
-        await model.loadDocumentModels(documentUrl, flatJsonLD);
+        return tap(this.newInstance(attributes), async (model) => {
+            await model.loadDocumentModels(documentUrl, flatJsonLD as EngineDocument);
 
-        model.resetEngineData();
+            model.resetEngineData();
 
-        // TODO this should be recursive to take care of 2nd degree relations and more.
-        for (const relationName of this.relations) {
-            const relation = model._relations[relationName];
-            const models = relation.getLoadedModels() as SolidModel[];
+            // TODO this should be recursive to take care of 2nd degree relations.
+            for (const relationName of this.relations) {
+                const relation = model._relations[relationName];
+                const models = relation.getLoadedModels() as SolidModel[];
 
-            models.forEach(model => model.resetEngineData());
+                models.forEach(model => model.resetEngineData());
 
-            if (relation instanceof SolidHasManyRelation) {
-                models.forEach(model => {
-                    delete model[relation.foreignKeyName as keyof SolidModel];
-                    relation.__newModels.push(model);
-                });
+                if (relation instanceof SolidHasManyRelation) {
+                    models.forEach(model => {
+                        delete model[relation.foreignKeyName as keyof SolidModel];
+                        relation.__newModels.push(model);
+                    });
 
-                relation.__modelsInSameDocument = [];
+                    relation.__modelsInSameDocument = [];
 
-                continue;
-            }
-
-            if (relation instanceof SolidHasOneRelation) {
-                if (models.length === 0)
                     continue;
+                }
 
-                relation.__newModel = models[0];
-                delete relation.__modelInSameDocument;
+                if (relation instanceof SolidHasOneRelation) {
+                    if (models.length === 0)
+                        continue;
 
-                continue;
+                    relation.__newModel = models[0];
+                    delete relation.__modelInSameDocument;
+
+                    continue;
+                }
             }
-        }
-
-        return model;
+        });
     }
 
     protected static async withCollection<Result>(
@@ -378,10 +393,7 @@ export class SolidModel extends Model {
     }
 
     public getDocumentUrl(): string | null {
-        if (!this.url)
-            return null;
-
-        return urlRoute(this.url);
+        return this.url ? urlRoute(this.url) : null;
     }
 
     public requireDocumentUrl(): string {
@@ -410,9 +422,14 @@ export class SolidModel extends Model {
         return `solid://${collection}/`;
     }
 
-    protected async createFromEngineDocument(id: Key, document: EngineDocument, resourceId?: string): Promise<this> {
+    protected async createFromEngineDocument(
+        id: Key,
+        document: EngineDocument,
+        resourceId?: string,
+        rdfDocument?: RDFDocument,
+    ): Promise<this> {
         const createModel = async () => {
-            const attributes = await this.parseEngineDocumentAttributes(id, document, resourceId);
+            const attributes = await this.parseEngineDocumentAttributes(id, document, resourceId, rdfDocument);
 
             attributes[this.static('primaryKey')] = resourceId || id;
 
@@ -439,7 +456,12 @@ export class SolidModel extends Model {
                             !!resource.url &&
                             !rdfsClasses.some(rdfsClass => !resource.isType(rdfsClass)),
                     )
-                    .map(async resource => this.createFromEngineDocument(documentUrl, engineDocument, resource.url)),
+                    .map(async resource => this.createFromEngineDocument(
+                        documentUrl,
+                        engineDocument,
+                        resource.url,
+                        rdfDocument,
+                    )),
             );
         }));
 
@@ -591,16 +613,17 @@ export class SolidModel extends Model {
     protected async parseEngineDocumentAttributes(
         id: Key,
         document: EngineDocument,
-        resourceId: string | null = null,
+        resourceId?: string,
+        rdfDocument?: RDFDocument,
     ): Promise<Attributes> {
-        resourceId = resourceId || id;
+        resourceId = resourceId || id as string;
 
         const jsonld = (document['@graph'] as EngineDocument[]).find(entity => entity['@id'] === resourceId);
 
         if (!jsonld)
             throw new SoukaiError(`Resource '${resourceId}' not found on document`);
 
-        return this.convertJsonLDToAttributes(jsonld);
+        return this.convertJsonLDToAttributes(resourceId, rdfDocument || jsonld);
     }
 
     protected castAttribute(value: unknown, definition?: BootedFieldDefinition): unknown {
@@ -632,7 +655,7 @@ export class SolidModel extends Model {
     }
 
     private getDirtyDocumentModels(): SolidModel[] {
-        // TODO this should be recursive to take care of 2nd degree relations and more.
+        // TODO this should be recursive to take care of 2nd degree relations.
         const documentUrl = this.getDocumentUrl();
 
         return Object

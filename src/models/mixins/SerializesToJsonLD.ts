@@ -106,14 +106,19 @@ export default class SerializesToJsonLD {
         return jsonld;
     }
 
-    protected async convertJsonLDToAttributes(this: SolidModel, jsonld: JsonLD): Promise<Attributes> {
-        // TODO this is probably wasteful because we've already parsed this in createManyFromEngineDocuments method
-        const document = await RDFDocument.fromJsonLD(jsonld);
-        const resource = document.requireResource(jsonld['@id'] as string);
+    protected async convertJsonLDToAttributes(
+        this: SolidModel,
+        resourceId: string,
+        jsonldOrDocument: JsonLD | RDFDocument,
+    ): Promise<Attributes> {
+        const document = jsonldOrDocument instanceof RDFDocument
+            ? jsonldOrDocument
+            : await RDFDocument.fromJsonLD(jsonldOrDocument);
+        const resource = document.requireResource(resourceId);
         const fieldsDefinition = this.static('fields');
         const attributes: Attributes = {};
 
-        attributes[this.static('primaryKey')] = jsonld['@id'];
+        attributes[this.static('primaryKey')] = resourceId;
 
         for (const [fieldName, fieldDefinition] of Object.entries(fieldsDefinition)) {
             if (!fieldDefinition.rdfProperty)
