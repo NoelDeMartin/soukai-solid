@@ -3,7 +3,6 @@ import { bootModels } from 'soukai';
 import type { JsonLD, JsonLDResource } from '@/solid/utils/RDF';
 
 import type DeletesModels from './mixins/DeletesModels';
-import type { RDFContext } from './mixins/SerializesToJsonLD';
 import type SerializesToJsonLD from './mixins/SerializesToJsonLD';
 
 import SolidContainerModel from './SolidContainerModel';
@@ -24,7 +23,6 @@ export type {
     DeletesModels,
     JsonLD,
     JsonLDResource,
-    RDFContext,
     SerializesToJsonLD,
 };
 

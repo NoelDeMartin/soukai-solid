@@ -48,15 +48,6 @@ export default class SolidContainerModel extends SolidModel {
         return new SolidContainerDocumentsRelation(this);
     }
 
-    public async save(collection?: string): Promise<this> {
-        await super.save(collection);
-
-        if (this.wasRecentlyCreated() && !this.isRelationLoaded('documents'))
-            this.setRelationModels('documents', []);
-
-        return this;
-    }
-
     protected contains<T extends typeof SolidModel>(model: T): MultiModelRelation {
         return new SolidContainsRelation(this, model);
     }

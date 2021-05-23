@@ -13,13 +13,13 @@ const KNOWN_NAMESPACES: IRINamespacesMap = {
     xsd: 'http://www.w3.org/2001/XMLSchema#',
 };
 
-export default function IRI(value: string, namespaces: IRINamespacesMap = {}): string {
+export default function IRI(value: string, namespaces: IRINamespacesMap = {}, defaultNamespace: string = ''): string {
     if (/^https?:\/\//.test(value))
         return value;
 
     const colonIndex = value.indexOf(':');
     if (colonIndex === -1)
-        return value;
+        return defaultNamespace + value;
 
     namespaces = {
         ...KNOWN_NAMESPACES,
@@ -27,8 +27,6 @@ export default function IRI(value: string, namespaces: IRINamespacesMap = {}): s
     };
 
     const namespace = value.substr(0, colonIndex);
-    if (!(namespace in namespaces))
-        return value;
 
-    return namespaces[namespace] + value.substr(namespace.length + 1);
+    return namespace in namespaces ? namespaces[namespace] + value.substr(namespace.length + 1) : value;
 }

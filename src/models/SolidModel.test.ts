@@ -982,7 +982,7 @@ describe('SolidModel', () => {
             '@context': {
                 '@vocab': 'http://xmlns.com/foaf/0.1/',
                 'soukai': 'https://soukai.noeldemartin.com/vocab/',
-                'metadata': { '@reverse': 'resource' },
+                'metadata': { '@reverse': 'soukai:resource' },
             },
             '@type': 'Person',
             'name': name,
@@ -1118,7 +1118,7 @@ describe('SolidModel', () => {
 
     it('[legacy] parses legacy automatic timestamps from JsonLD', async () => {
         // Arrange
-        const date = new Date(926848344123); // Date.now() - 42000);
+        const date = new Date(Date.now() - 42000);
         const jsonld = {
             '@context': {
                 '@vocab': 'http://xmlns.com/foaf/0.1/',

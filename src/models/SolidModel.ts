@@ -63,7 +63,7 @@ export class SolidModel extends Model {
 
     public static fields: SolidFieldsDefinition;
 
-    public static rdfContexts: { [alias: string]: string } = {};
+    public static rdfContexts: Record<string, string> = {};
 
     public static rdfsClasses: string[] = [];
 
@@ -122,9 +122,7 @@ export class SolidModel extends Model {
             delete fields[TimestampField.UpdatedAt];
 
         modelClass.rdfsClasses = arrayUnique(
-            (modelClass.rdfsClasses ?? []).map(
-                name => name.indexOf(':') === -1 ? (defaultRdfContext + name) : IRI(name, modelClass.rdfContexts),
-            ),
+            (modelClass.rdfsClasses ?? []).map(name =>IRI(name, modelClass.rdfContexts, defaultRdfContext)),
         );
 
         if (modelClass.rdfsClasses.length === 0)
@@ -132,8 +130,9 @@ export class SolidModel extends Model {
 
         for (const field in fields) {
             fields[field].rdfProperty = IRI(
-                fields[field].rdfProperty || `${defaultRdfContext}${field}`,
+                fields[field].rdfProperty ?? `${defaultRdfContext}${field}`,
                 modelClass.rdfContexts,
+                defaultRdfContext,
             );
         }
 
@@ -278,7 +277,7 @@ export class SolidModel extends Model {
     public url!: string;
 
     public metadata!: SolidModelMetadata;
-    public relatedMetadata!: SolidHasOneRelation<SolidModelMetadata, this, SolidModelConstructor<this>>;
+    public relatedMetadata!: SolidHasOneRelation<this, SolidModelMetadata, SolidModelConstructor<SolidModelMetadata>>;
 
     protected _documentExists!: boolean;
     protected _sourceDocumentUrl!: string | null;
@@ -327,27 +326,11 @@ export class SolidModel extends Model {
     }
 
     public save(collection?: string): Promise<this> {
-        return this.static().withCollection(collection || this.guessCollection(), async () => {
-            if (!this.url && this.static('mintsUrls'))
-                this.mintUrl();
-
-            try {
-                await super.save();
-            } catch (error) {
-                if (!(error instanceof DocumentAlreadyExists))
-                    throw error;
-
-                this.url = this.newUniqueUrl(this.url);
-
-                await super.save();
-            }
-
-            return this;
-        });
+        return this.static().withCollection(collection || this.guessCollection(), () => super.save());
     }
 
     public delete(): Promise<this> {
-        return this.static().withCollection(this.guessCollection() || '', () => super.delete());
+        return this.static().withCollection(this.guessCollection(), () => super.delete());
     }
 
     public mintUrl(documentUrl?: string, documentExists?: boolean, resourceHash?: string): void {
@@ -458,6 +441,16 @@ export class SolidModel extends Model {
         return documentUrl ? urlParentDirectory(documentUrl) : null;
     }
 
+    public getFieldRdfProperty(this: SolidModel, field: string): string | null {
+        const fieldDefinition = this.static('fields')[field];
+
+        if (fieldDefinition && !fieldDefinition.rdfProperty)
+            return null;
+
+        return fieldDefinition?.rdfProperty
+            ?? this.getDefaultRdfContext() + field;
+    }
+
     public setAttribute(field: string, value: unknown): void {
         super.setAttribute(field, value);
 
@@ -467,13 +460,13 @@ export class SolidModel extends Model {
         }
     }
 
-    protected setCreatedAtAttribute(value: unknown): void {
+    public setCreatedAtAttribute(value: unknown): void {
         this.hasAutomaticTimestamp(TimestampField.CreatedAt)
             ? this.metadata?.setAttribute('createdAt', value)
             : this.setAttributeValue('createdAt', value);
     }
 
-    protected setUpdatedAtAttribute(value: unknown): void {
+    public setUpdatedAtAttribute(value: unknown): void {
         this.hasAutomaticTimestamp(TimestampField.UpdatedAt)
             ? this.metadata?.setAttribute('updatedAt', value)
             : this.setAttributeValue('updatedAt', value);
@@ -494,7 +487,10 @@ export class SolidModel extends Model {
     public metadataRelationship(): SingleModelRelation {
         const metadataModelClass = requireBootedModel<typeof SolidModelMetadata>('SolidModelMetadata');
 
-        return this.hasOne(metadataModelClass, 'resourceUrl').usingSameDocument(true).onDelete('cascade');
+        return this
+            .hasOne(metadataModelClass, 'resourceUrl')
+            .usingSameDocument(true)
+            .onDelete('cascade');
     }
 
     protected getDefaultCollection(): string {
@@ -562,6 +558,26 @@ export class SolidModel extends Model {
                         return relation.__loadDocumentModel(documentUrl, document);
                 }),
         );
+    }
+
+    protected beforeSave(): Promise<void> {
+        if (!this.url && this.static('mintsUrls'))
+            this.mintUrl();
+
+        return super.beforeSave();
+    }
+
+    protected async duringSave(): Promise<void> {
+        try {
+            await super.duringSave();
+        } catch (error) {
+            if (!(error instanceof DocumentAlreadyExists))
+                throw error;
+
+            this.url = this.newUniqueUrl(this.url);
+
+            await super.duringSave();
+        }
     }
 
     protected async syncDirty(): Promise<string> {

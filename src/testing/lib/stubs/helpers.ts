@@ -9,6 +9,7 @@ export function stubPersonJsonLD(
         birthDate?: string;
         directed?: string;
         createdAt?: string;
+        updatedAt?: string;
     } = {},
 ): JsonLDGraph & EngineDocument {
     const jsonld: JsonLDResource & { '@context': Record<string, unknown> } = {
@@ -32,7 +33,7 @@ export function stubPersonJsonLD(
     }
 
     if (optional.createdAt) {
-        jsonld['@context']['metadata'] = { '@reverse': 'resource' };
+        jsonld['@context']['metadata'] = { '@reverse': 'soukai:resource' };
         jsonld['@context']['soukai'] = 'https://soukai.noeldemartin.com/vocab/';
         jsonld['metadata'] = {
             '@id': `${url}-metadata`,
@@ -42,6 +43,13 @@ export function stubPersonJsonLD(
                 '@value': optional.createdAt,
             },
         };
+
+        if (optional.updatedAt) {
+            (jsonld['metadata'] as Record<string, unknown>)['soukai:updatedAt'] = {
+                '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+                '@value': optional.updatedAt,
+            };
+        }
     }
 
     return jsonLDGraph(jsonld);

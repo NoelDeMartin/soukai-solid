@@ -1,109 +1,16 @@
-import { FieldType } from 'soukai';
-import { isObject, toString } from '@noeldemartin/utils';
-import type {
-    Attributes,
-    BootedArrayFieldDefinition,
-    BootedFieldDefinition,
-    EngineAttributeFilter,
-    EngineFilters,
-    EngineUpdates,
-    Relation,
-} from 'soukai';
+import type { Attributes, EngineAttributeFilter, EngineFilters, EngineUpdates } from 'soukai';
 
 import type { SolidModel } from '@/models/SolidModel';
 
 import RDFDocument from '@/solid/RDFDocument';
 import type { JsonLD, JsonLDResource } from '@/solid/utils/RDF';
 
-import SolidHasManyRelation from '../relations/SolidHasManyRelation';
-import SolidHasOneRelation from '../relations/SolidHasOneRelation';
-
-class EmptyJsonLDValue {}
-
-export class RDFContext {
-
-    private vocabs: {
-        name: string;
-        propertyPrefix: string;
-        iriPrefix: string;
-        used: boolean;
-    }[];
-
-    public readonly compactIRIs: boolean;
-
-    private declarations: Record<string, unknown> = {};
-
-    public constructor(vocabDefinitions: { [alias: string]: string }, compactIRIs: boolean = true) {
-        this.vocabs = Object
-            .entries(vocabDefinitions)
-            .map(([name, iriPrefix]) => ({
-                name,
-                iriPrefix,
-                propertyPrefix: `${name}:`,
-                used: false,
-            }));
-        this.compactIRIs = compactIRIs;
-
-        this.vocabs[0].name = '@vocab';
-        this.vocabs[0].propertyPrefix = '';
-        this.vocabs[0].used = true;
-    }
-
-    public compactIRI(property: string): string {
-        for (const vocab of this.vocabs) {
-            if (!property.startsWith(vocab.iriPrefix))
-                continue;
-
-            vocab.used = true;
-
-            return `${vocab.propertyPrefix}${property.substr(vocab.iriPrefix.length)}`;
-        }
-
-        return property;
-    }
-
-    public addDeclaration(name: string, value: Record<string, unknown>): void {
-        this.declarations[name] = value;
-    }
-
-    public toJsonLD(): Record<string, unknown> {
-        const vocabDeclarations = this.vocabs
-            .filter(vocab => vocab.used)
-            .reduce((context, vocab) => ({
-                ...context,
-                [vocab.name]: vocab.iriPrefix,
-            }), {});
-
-        return {
-            ...vocabDeclarations,
-            ...this.declarations,
-        };
-    }
-
-}
+import JsonLDModelSerializer from '../utils/JsonLDModelSerializer';
 
 export default class SerializesToJsonLD {
 
-    protected serializeToJsonLD(
-        this: SolidModel,
-        includeRelations: boolean = true,
-        rdfContext?: RDFContext,
-    ): JsonLD {
-        rdfContext = rdfContext || new RDFContext(this.static('rdfContexts'));
-
-        const jsonld: JsonLD = { '@context': {}, '@type': null };
-
-        for (const [field, value] of Object.entries(this.getAttributes())) {
-            this.setJsonLDField(jsonld, field, value, rdfContext);
-        }
-
-        if (includeRelations)
-            this.includeRelatedJsonLDInstances(jsonld, rdfContext);
-
-        this.setJsonLDTypes(jsonld, rdfContext);
-        this.setJsonLDContexts(jsonld, rdfContext);
-
-        return jsonld;
+    protected serializeToJsonLD(this: SolidModel, includeRelations: boolean = true): JsonLD {
+        return JsonLDModelSerializer.forModel(this).serialize(this, { includeRelations });
     }
 
     protected async convertJsonLDToAttributes(this: SolidModel, jsonld: JsonLDResource): Promise<Attributes> {
@@ -136,11 +43,13 @@ export default class SerializesToJsonLD {
         compactIRIs: boolean,
     ): EngineFilters {
         const jsonldFilters: EngineFilters = {};
-        const rdfContext = new RDFContext(this.static('rdfContexts'));
+        const serializer = JsonLDModelSerializer.forModel(this);
         const expandedTypes = this.static('rdfsClasses');
-        const compactedTypes = expandedTypes.map(rdfClass => rdfContext.compactIRI(rdfClass));
+        const compactedTypes = expandedTypes.map(rdfClass => serializer.processExpandedIRI(rdfClass));
         const typeFilters: EngineAttributeFilter[] = [];
 
+        // TODO this should probably be refactored, because it doesn't make sense that
+        // types are both expanded and compacted but filters aren't.
         if (expandedTypes.length > 0) {
             typeFilters.push({ $contains: compactedTypes });
             typeFilters.push({ $contains: expandedTypes });
@@ -175,149 +84,15 @@ export default class SerializesToJsonLD {
         return this.convertAttributeValuesToJsonLD(updates, compactIRIs) as EngineUpdates;
     }
 
-    protected getFieldRdfProperty(this: SolidModel, field: string): string | null {
-        const fieldDefinition = this.static('fields')[field];
-
-        if (fieldDefinition && !fieldDefinition.rdfProperty)
-            return null;
-
-        return fieldDefinition
-            ? fieldDefinition.rdfProperty as string
-            : (this.getDefaultRdfContext() + field);
-    }
-
-    private setJsonLDField(
-        this: SolidModel,
-        jsonld: JsonLD,
-        field: string,
-        value: unknown,
-        rdfContext: RDFContext,
-    ): void {
-        if (field === this.static('primaryKey')) {
-            jsonld['@id'] = toString(value);
-            return;
-        }
-
-        const fieldDefinition = this.static('fields')[field];
-        const propertyName = this.getFieldRdfProperty(field);
-
-        if (!propertyName)
-            return;
-
-        this.setJsonLDProperty(
-            jsonld,
-            rdfContext.compactIRIs ? rdfContext.compactIRI(propertyName) : propertyName,
-            value,
-            fieldDefinition,
-        );
-    }
-
-    private includeRelatedJsonLDInstances(
-        this: SolidModel,
-        jsonld: Record<string, unknown>,
-        rdfContext: RDFContext,
-    ): void {
-        const relations = this
-            .static('relations')
-            .map(name => [name, this.requireRelation(name)]) as [string, Relation][];
-
-        for (const [relationName, relationInstance] of relations) {
-            if (
-                !relationInstance.loaded || relationInstance.isEmpty() || (
-                    !(relationInstance instanceof SolidHasManyRelation) &&
-                    !(relationInstance instanceof SolidHasOneRelation)
-                )
-            )
-                continue;
-
-            const foreignPropertyName = rdfContext.compactIRI(
-                relationInstance.relatedClass.instance().getFieldRdfProperty(relationInstance.foreignKeyName) as string,
-            );
-            const serializeRelatedModel = (model: SolidModel) => {
-                const jsonld = model.serializeToJsonLD(false, rdfContext);
-
-                delete jsonld['@context'];
-                delete jsonld[foreignPropertyName];
-
-                return jsonld;
-            };
-
-            jsonld[relationName] = relationInstance instanceof SolidHasManyRelation
-                ? relationInstance.getLoadedModels().map(model => serializeRelatedModel(model as SolidModel))
-                : serializeRelatedModel(relationInstance.related as SolidModel);
-
-            rdfContext.addDeclaration(relationName, { '@reverse': foreignPropertyName });
-        }
-    }
-
-    private setJsonLDTypes(this: SolidModel, jsonld: Record<string, unknown>, rdfContext: RDFContext): void {
-        const types = this.static('rdfsClasses').map(rdfsClass => rdfContext.compactIRI(rdfsClass));
-
-        if (types.length === 1)
-            jsonld['@type'] = types[0];
-        else if (types.length > 0)
-            jsonld['@type'] = types;
-    }
-
-    private setJsonLDContexts(jsonld: Record<string, unknown>, rdfContext: RDFContext): void {
-        jsonld['@context'] = rdfContext.toJsonLD();
-    }
-
-    private setJsonLDProperty(
-        jsonld: Record<string, unknown>,
-        name: string,
-        value: unknown,
-        fieldDefinition: BootedFieldDefinition | null = null,
-    ): boolean {
-        if (!isObject(value) || Object.keys(value).length !== 1 || Object.keys(value)[0].startsWith('$'))
-            value = this.castJsonLDValue(value, fieldDefinition);
-
-        if (value instanceof EmptyJsonLDValue)
-            return false;
-
-        jsonld[name] = value;
-
-        return true;
-    }
-
-    private castJsonLDValue(value: unknown, fieldDefinition: BootedFieldDefinition | null = null): unknown {
-        switch (fieldDefinition && fieldDefinition.type || null) {
-            case FieldType.Key:
-                return { '@id': toString(value) };
-            case FieldType.Date:
-                return {
-                    '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
-                    '@value': (new Date(value as string)).toISOString(),
-                };
-            case FieldType.Array: {
-                const arrayValue = value as unknown[];
-                const itemsFieldDefinition =
-                    (fieldDefinition as BootedArrayFieldDefinition).items as BootedFieldDefinition;
-
-                switch (arrayValue.length) {
-                    case 0:
-                        return new EmptyJsonLDValue();
-                    case 1:
-                        return this.castJsonLDValue(arrayValue[0], itemsFieldDefinition);
-                    default:
-                        return arrayValue.map(itemValue => this.castJsonLDValue(itemValue, itemsFieldDefinition));
-                }
-            }
-            // TODO handle nested objects
-            default:
-                return JSON.parse(JSON.stringify(value));
-        }
-    }
-
     private convertAttributeValuesToJsonLD(this: SolidModel, attributes: Attributes, compactIRIs: boolean): JsonLD {
-        const rdfContext = new RDFContext(this.static('rdfContexts'), compactIRIs);
-        const jsonld: JsonLD = {};
+        const serializer = JsonLDModelSerializer.forModel(this, compactIRIs);
 
-        for (const [field, value] of Object.entries(attributes)) {
-            this.setJsonLDField(jsonld, field, value, rdfContext);
-        }
-
-        return jsonld;
+        return serializer.serialize(this, {
+            includeContext: false,
+            includeTypes: false,
+            includeRelations: false,
+            attributes,
+        });
     }
 
 }
