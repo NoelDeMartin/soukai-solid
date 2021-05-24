@@ -1,8 +1,9 @@
+__mocks__
+jest.config.js
 scripts
 src/**/*.test.ts
-__mocks__
 tests
-jest.config.js
+tmp
 tsconfig.json
 tslint.json
 webpack.config.js
