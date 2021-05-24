@@ -31,7 +31,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.13.8",
-    "@noeldemartin/utils": "0.1.0-next.b1ef40e0e83fbb134a4f4c0829b8091692df9152",
+    "@noeldemartin/utils": "0.1.0-next.c837a53424143e9641a1f2957a52df7186c4e1cd",
     "core-js": "^3.9.0",
     "jsonld": "^4.0.1",
     "n3": "^1.3.6"

@@ -120,6 +120,23 @@ describe('SolidModel', () => {
         expect(document['@graph'][0].nickname).toEqual('Johnny');
     });
 
+    it('defines custom class fields', () => {
+        // Arrange
+        class StubModel extends SolidModel {
+
+            public static classFields = ['stubField'];
+
+        }
+
+        bootModels({ StubModel });
+
+        // Assert
+        expect(StubModel.classFields).toHaveLength(3);
+        expect(StubModel.classFields).toContain('_history');
+        expect(StubModel.classFields).toContain('_engine');
+        expect(StubModel.classFields).toContain('stubField');
+    });
+
     it('sends types on create', async () => {
         class StubModel extends SolidModel {}
 

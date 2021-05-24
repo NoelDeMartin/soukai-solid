@@ -1,7 +1,11 @@
 import {
     arrayFilter,
+    arraySorted,
     arrayUnique,
     fail,
+    invert,
+    isPromise,
+    map,
     objectWithout,
     objectWithoutEmpty,
     tap,
@@ -64,6 +68,8 @@ export class SolidModel extends Model {
     public static primaryKey: string = 'url';
 
     public static fields: SolidFieldsDefinition;
+
+    public static classFields = ['_history'];
 
     public static rdfContexts: Record<string, string> = {};
 
@@ -289,6 +295,8 @@ export class SolidModel extends Model {
     protected _documentExists!: boolean;
     protected _sourceDocumentUrl!: string | null;
 
+    private _history?: boolean;
+
     protected initialize(attributes: Attributes, exists: boolean): void {
         this._documentExists = exists;
         this._sourceDocumentUrl = this._sourceDocumentUrl ?? null;
@@ -422,6 +430,55 @@ export class SolidModel extends Model {
                 relation.__modelInSameDocument = relation.__newModel;
                 delete relation.__newModel;
             });
+    }
+
+    public tracksHistory(): boolean {
+        return this._history ?? this.static('history');
+    }
+
+    public withoutTrackingHistory<T>(operation: () => T): T;
+    public withoutTrackingHistory<T>(operation: () => Promise<T>): Promise<T>;
+    public withoutTrackingHistory<T>(operation: () => T | Promise<T>): T | Promise<T> {
+        if (!this.tracksHistory())
+            return operation();
+
+        const wasTrackingHistory = this._history;
+        const restoreHistoryTracking = (): true => {
+            typeof wasTrackingHistory === 'undefined'
+                ? delete this._history
+                : this._history = wasTrackingHistory;
+
+            return true;
+        };
+
+        this._history = false;
+
+        const result = operation();
+
+        return isPromise(result)
+            ? result.then(result => restoreHistoryTracking() && result)
+            : restoreHistoryTracking() && result;
+    }
+
+    public rebuildAttributesFromHistory(): void {
+        if (this.operations.length === 0)
+            return;
+
+        const operations = arraySorted(this.operations, 'date');
+        const fields = invert(map(
+            Object.keys(this.static('fields')),
+            field => this.getFieldRdfProperty(field) as string,
+        ));
+
+        for (const operation of operations) {
+            if (!(operation.property in fields))
+                continue;
+
+            this.setAttributeValue(fields[operation.property], operation.value);
+        }
+
+        this.setAttributeValue('createdAt', operations[0].date);
+        this.setAttributeValue('updatedAt', operations.slice(-1)[0].date);
     }
 
     public getDocumentUrl(): string | null {
@@ -590,7 +647,7 @@ export class SolidModel extends Model {
         if (!this.url && this.static('mintsUrls'))
             this.mintUrl();
 
-        if (this.static('history') && this.exists())
+        if (this.tracksHistory() && this.exists())
             this.addHistoryOperations();
     }
 
