@@ -1,5 +1,5 @@
 import { FieldType, TimestampField } from 'soukai';
-import type { IModel, Relation, SingleModelRelation } from 'soukai';
+import type { IModel, Relation, SingleModelRelation, TimestampFieldValue } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
 
@@ -7,7 +7,7 @@ import Group from '@/testing/lib/stubs/Group';
 
 export default class Person extends SolidModel {
 
-    public static timestamps = [TimestampField.CreatedAt];
+    public static timestamps: boolean | TimestampFieldValue[] = [TimestampField.CreatedAt];
 
     public static rdfContexts = {
         foaf: 'http://xmlns.com/foaf/0.1/',
@@ -18,6 +18,7 @@ export default class Person extends SolidModel {
     public static fields = {
         name: FieldType.String,
         lastName: FieldType.String,
+        givenName: FieldType.String,
         directed: {
             type: FieldType.Key,
             rdfProperty: 'foaf:made',
@@ -27,7 +28,7 @@ export default class Person extends SolidModel {
             rdfProperty: 'foaf:knows',
             items: FieldType.Key,
         },
-    };
+    } as const;
 
     public friends?: Person[];
     public group?: Group;

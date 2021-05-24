@@ -2,6 +2,7 @@ import {
     arrayFilter,
     arrayUnique,
     fail,
+    objectWithout,
     objectWithoutEmpty,
     tap,
     urlParentDirectory,
@@ -56,6 +57,7 @@ import type { SolidModelConstructor } from './inference';
 import type { SolidBootedFieldsDefinition, SolidFieldsDefinition } from './fields';
 import type SolidContainerModel from './SolidContainerModel';
 import type SolidModelMetadata from './SolidModelMetadata';
+import type SolidModelOperation from './SolidModelOperation';
 
 export class SolidModel extends Model {
 
@@ -70,6 +72,8 @@ export class SolidModel extends Model {
     public static defaultResourceHash: string = 'it';
 
     public static mintsUrls: boolean = true;
+
+    public static history: boolean = false;
 
     public static from<T extends SolidModel>(
         this: SolidModelConstructor<T>,
@@ -277,7 +281,10 @@ export class SolidModel extends Model {
     public url!: string;
 
     public metadata!: SolidModelMetadata;
+    public operations!: SolidModelOperation[];
     public relatedMetadata!: SolidHasOneRelation<this, SolidModelMetadata, SolidModelConstructor<SolidModelMetadata>>;
+    public relatedOperations!:
+        SolidHasManyRelation<this, SolidModelOperation, SolidModelConstructor<SolidModelOperation>>;
 
     protected _documentExists!: boolean;
     protected _sourceDocumentUrl!: string | null;
@@ -454,9 +461,17 @@ export class SolidModel extends Model {
     public setAttribute(field: string, value: unknown): void {
         super.setAttribute(field, value);
 
-        if (field === this.static('primaryKey') && this.metadata) {
-            this.metadata.setAttribute('resourceUrl', this.getAttribute(field));
-            this.metadata.mintUrl(this.getDocumentUrl() || undefined, this.documentExists());
+        if (field === this.static('primaryKey')) {
+            const url = this.getAttribute(field);
+            const documentUrl = this.getDocumentUrl() || undefined;
+            const documentExists = this.documentExists();
+
+            this.metadata?.setAttribute('resourceUrl', url);
+            this.metadata?.mintUrl(documentUrl, documentExists);
+            this.operations?.map(operation => {
+                operation.setAttribute('resourceUrl', url);
+                operation.mintUrl(documentUrl, documentExists);
+            });
         }
     }
 
@@ -489,6 +504,15 @@ export class SolidModel extends Model {
 
         return this
             .hasOne(metadataModelClass, 'resourceUrl')
+            .usingSameDocument(true)
+            .onDelete('cascade');
+    }
+
+    public operationsRelationship(): MultiModelRelation {
+        const operationModelClass = requireBootedModel<typeof SolidModelOperation>('SolidModelOperation');
+
+        return this
+            .hasMany(operationModelClass, 'resourceUrl')
             .usingSameDocument(true)
             .onDelete('cascade');
     }
@@ -560,11 +584,14 @@ export class SolidModel extends Model {
         );
     }
 
-    protected beforeSave(): Promise<void> {
+    protected async beforeSave(): Promise<void> {
+        await super.beforeSave();
+
         if (!this.url && this.static('mintsUrls'))
             this.mintUrl();
 
-        return super.beforeSave();
+        if (this.static('history') && this.exists())
+            this.addHistoryOperations();
     }
 
     protected async duringSave(): Promise<void> {
@@ -617,6 +644,44 @@ export class SolidModel extends Model {
 
     protected async deleteModelsFromEngine(models: this[]): Promise<void> {
         await this.deleteModels(models);
+    }
+
+    protected addHistoryOperations(): void {
+        if (this.operations.length === 0) {
+            const originalAttributes = objectWithoutEmpty(
+                objectWithout(this._originalAttributes, [this.static('primaryKey')]),
+            );
+
+            for (const [field, value] of Object.entries(originalAttributes)) {
+                if (Array.isArray(value)) {
+                    // TODO handle array values
+
+                    continue;
+                }
+
+                this.relatedOperations.add({
+                    property: this.getFieldRdfProperty(field),
+                    date: this.metadata.createdAt,
+                    value,
+                });
+            }
+        }
+
+        for (const [field, value] of Object.entries(this._dirtyAttributes)) {
+            if (Array.isArray(value)) {
+                // TODO handle array values
+
+                continue;
+            }
+
+            // TODO handle unset operations
+
+            this.relatedOperations.add({
+                property: this.getFieldRdfProperty(field),
+                date: this.metadata.updatedAt,
+                value,
+            });
+        }
     }
 
     /* eslint-disable max-len */

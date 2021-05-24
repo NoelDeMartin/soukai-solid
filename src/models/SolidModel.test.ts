@@ -1,11 +1,12 @@
 /* eslint-disable max-len */
 import { FieldType, InMemoryEngine, bootModels, setEngine } from 'soukai';
-import { stringToSlug, tt, urlParentDirectory, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
+import { after, stringToSlug, tt, urlParentDirectory, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 import Faker from 'faker';
 import type { EngineDocument } from 'soukai';
 import type { Equals, Expect } from '@noeldemartin/utils';
 
 import IRI from '@/solid/utils/IRI';
+import type { SolidModelOperation } from '@/models';
 
 import { stubGroupJsonLD, stubMovieJsonLD, stubPersonJsonLD, stubWatchActionJsonLD } from '@/testing/lib/stubs/helpers';
 import Group from '@/testing/lib/stubs/Group';
@@ -1114,6 +1115,71 @@ describe('SolidModel', () => {
 
         expect(movie.relatedActions.__newModels).toHaveLength(1);
         expect(movie.relatedActions.__newModels[0]).toBe(action);
+    });
+
+    it('Does not create operations on create', async () => {
+        // Arrange
+        class TrackedPerson extends Person {
+
+            public static timestamps = true;
+            public static history = true;
+
+        }
+
+        // Act
+        const person = await TrackedPerson.create({ name: Faker.random.word() });
+
+        // Assert
+        expect(person.operations).toHaveLength(0);
+    });
+
+    it('Tracks operations with history enabled', async () => {
+        // Arrange
+        class PersonWithHistory extends Person {
+
+            public static timestamps = true;
+            public static history = true;
+
+        }
+
+        const firstName = Faker.random.word();
+        const secondName = Faker.random.word();
+        const firstLastName = Faker.random.word();
+        const secondLastName = Faker.random.word();
+
+        // Act
+        const person = await PersonWithHistory.create({ name: firstName });
+
+        await after({ ms: 100 });
+        await person.update({ name: secondName, lastName: firstLastName });
+        await after({ ms: 100 });
+        await person.update({ lastName: secondLastName });
+
+        // Assert
+        const operations = person.operations as SolidModelOperation[];
+
+        expect(operations).toHaveLength(4);
+
+        operations.forEach(operation => expect(operation.url.startsWith(person.url)).toBe(true));
+        operations.forEach(operation => expect(operation.resourceUrl).toEqual(person.url));
+
+        expect(operations[0].property).toEqual(IRI('foaf:name'));
+        expect(operations[0].value).toEqual(firstName);
+        expect(operations[0].date).toEqual(person.createdAt);
+
+        expect(operations[1].property).toEqual(IRI('foaf:name'));
+        expect(operations[1].value).toEqual(secondName);
+        expect(operations[1].date.getTime()).toBeGreaterThan(person.createdAt.getTime());
+        expect(operations[1].date.getTime()).toBeLessThan(person.updatedAt.getTime());
+
+        expect(operations[2].property).toEqual(IRI('foaf:lastName'));
+        expect(operations[2].value).toEqual(firstLastName);
+        expect(operations[2].date.getTime()).toBeGreaterThan(person.createdAt.getTime());
+        expect(operations[2].date.getTime()).toBeLessThan(person.updatedAt.getTime());
+
+        expect(operations[3].property).toEqual(IRI('foaf:lastName'));
+        expect(operations[3].value).toEqual(secondLastName);
+        expect(operations[3].date).toEqual(person.updatedAt);
     });
 
     it('[legacy] parses legacy automatic timestamps from JsonLD', async () => {

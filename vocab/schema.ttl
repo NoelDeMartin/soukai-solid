@@ -32,3 +32,33 @@
     rdfs:subPropertyOf dcmi:modified ;
     rdfs:range xsd:dateTime ;
     rdfs:domain :Metadata .
+
+:Operation a rdfs:Class ;
+    rdfs:label "Operation" ;
+    rdfs:comment "Operation performed on a resource." ;
+    rdfs:subClassOf dcmi:Dataset .
+
+:resource a rdf:Property ;
+    rdfs:label "resource" ;
+    rdfs:comment "Resource affected by the operation." ;
+    rdfs:subPropertyOf dcmi:subject ;
+    rdfs:range rdfs:Resource ;
+    rdfs:domain :Operation .
+
+:property a rdf:Property ;
+    rdfs:label "property" ;
+    rdfs:comment "Property affected by the operation." ;
+    rdfs:range rdf:Property ;
+    rdfs:domain :Operation .
+
+:value a rdf:Property ;
+    rdfs:label "value" ;
+    rdfs:comment "Value set by the operation." ;
+    rdfs:domain :Operation .
+
+:date a rdf:Property ;
+    rdfs:label "date" ;
+    rdfs:comment "Time at which the operation happened." ;
+    rdfs:subPropertyOf dcmi:created ;
+    rdfs:range xsd:dateTime ;
+    rdfs:domain :Operation .

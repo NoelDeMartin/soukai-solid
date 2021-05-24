@@ -94,7 +94,13 @@ export default class SolidHasManyRelation<
         return model;
     }
 
-    public add(model: Related): Related {
+    public add(model: Related): Related;
+    public add(attributes: Attributes): Related;
+    public add(modelOrAttributes: Related | Attributes): Related {
+        const model = modelOrAttributes instanceof this.relatedClass
+            ? modelOrAttributes as Related
+            : this.relatedClass.newInstance(modelOrAttributes);
+
         if (!this.assertLoaded('add'))
             return model;
 

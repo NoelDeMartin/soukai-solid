@@ -1,0 +1,35 @@
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<#it>
+    a foaf:Person ;
+    foaf:name "Femto" ;
+    foaf:givenName "Wings of Darkness" .
+
+<#it-metadata>
+    a soukai:Metadata ;
+    soukai:resource <#it> ;
+    soukai:createdAt "1991-11-01T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:updatedAt "1991-11-01T00:00:00.000Z"^^xsd:dateTime .
+
+<#it-operation-1>
+    a soukai:Operation ;
+    soukai:resource <#it> ;
+    soukai:date "1991-11-01T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:property foaf:name ;
+    soukai:value "Griffith" .
+
+<#it-operation-2>
+    a soukai:Operation ;
+    soukai:resource <#it> ;
+    soukai:date "1996-09-08T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:property foaf:name ;
+    soukai:value "Femto" .
+
+<#it-operation-3>
+    a soukai:Operation ;
+    soukai:resource <#it> ;
+    soukai:date "1996-09-08T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:property foaf:givenName ;
+    soukai:value "Wings of Darkness" .

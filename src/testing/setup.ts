@@ -1,10 +1,12 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
 import { deepEquals } from '@noeldemartin/utils';
+import { installJestPlugin } from '@noeldemartin/solid-utils';
 
 import flattenJsonLD from '@/solid/utils/flattenJsonLD';
 import { bootSolidModels } from '@/models';
 
+installJestPlugin();
 beforeEach(() => jest.clearAllMocks());
 beforeEach(() => bootSolidModels());
 

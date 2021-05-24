@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Replaced `jsonld-streaming-parser` and `jsonld-streaming-serializer` dependencies with `jsonld`.
 - Make sure to check Soukai's changelog.
 - Automatic timestamps have been refactored into a metadata resource.
+- Added history tracking.
 
 ## [v0.4.2](https://github.com/NoelDeMartin/soukai-solid/releases/tag/v0.4.2) - 2021-03-28
 
