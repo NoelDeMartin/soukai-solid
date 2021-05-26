@@ -1,6 +1,7 @@
 /* eslint-disable max-len */
 import { FieldType, InMemoryEngine, bootModels, setEngine } from 'soukai';
 import { after, stringToSlug, tt, urlParentDirectory, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
+import dayjs from 'dayjs';
 import Faker from 'faker';
 import type { EngineDocument } from 'soukai';
 import type { Equals, Expect } from '@noeldemartin/utils';
@@ -1223,6 +1224,72 @@ describe('SolidModel', () => {
         // Assert
         expect(person.createdAt).toBeInstanceOf(Date);
         expect(person.createdAt.toISOString()).toEqual(date.toISOString());
+    });
+
+    it('Rebuilds attributes from history', () => {
+        // Arrange
+        class TrackedPerson extends Person {
+
+            public static timestamps = true;
+            public static history = true;
+
+        }
+
+        const name = Faker.random.word();
+        const lastName = Faker.random.word();
+        const createdAt = Faker.date.between(
+            dayjs().subtract(3, 'months').toDate(),
+            dayjs().subtract(1, 'month').toDate(),
+        );
+        const updatedAt = Faker.date.between(
+            dayjs().add(1, 'month').toDate(),
+            dayjs().add(3, 'months').toDate(),
+        );
+        const person = new TrackedPerson({
+            name: Faker.random.word(),
+            lastName: Faker.random.word(),
+            givenName: Faker.random.word(),
+        });
+
+        // Arrange - initial operations
+        person.relatedOperations.add({
+            property: person.getFieldRdfProperty('name'),
+            value: Faker.random.word(),
+            date: createdAt,
+        });
+
+        person.relatedOperations.add({
+            property: person.getFieldRdfProperty('lastName'),
+            value: lastName,
+            date: createdAt,
+        });
+
+        // Arrange - second update operation
+        person.relatedOperations.add({
+            property: person.getFieldRdfProperty('name'),
+            value: name,
+            date: updatedAt,
+        });
+
+        // Arrange - first update operation
+        person.relatedOperations.add({
+            property: person.getFieldRdfProperty('name'),
+            value: Faker.random.word(),
+            date: Faker.date.between(
+                dayjs().subtract(1, 'month').toDate(),
+                dayjs().add(1, 'month').toDate(),
+            ),
+        });
+
+        // Act
+        person.rebuildAttributesFromHistory();
+
+        // Assert
+        expect(person.name).toEqual(name);
+        expect(person.lastName).toEqual(lastName);
+        expect(person.givenName).toBeUndefined();
+        expect(person.createdAt).toEqual(createdAt);
+        expect(person.updatedAt).toEqual(updatedAt);
     });
 
 });

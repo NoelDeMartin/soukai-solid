@@ -461,7 +461,7 @@ export class SolidModel extends Model {
     }
 
     public rebuildAttributesFromHistory(): void {
-        if (this.operations.length === 0)
+        if (this.operations.length === 0 || !this.tracksHistory())
             return;
 
         const operations = arraySorted(this.operations, 'date');
@@ -470,15 +470,26 @@ export class SolidModel extends Model {
             field => this.getFieldRdfProperty(field) as string,
         ));
 
+        const filledAttributes = new Set(Object.keys(this._attributes));
+
+        filledAttributes.delete(this.static('primaryKey'));
+        filledAttributes.delete(TimestampField.CreatedAt);
+        filledAttributes.delete(TimestampField.UpdatedAt);
+
         for (const operation of operations) {
             if (!(operation.property in fields))
                 continue;
 
+            filledAttributes.delete(fields[operation.property]);
             this.setAttributeValue(fields[operation.property], operation.value);
         }
 
-        this.setAttributeValue('createdAt', operations[0].date);
-        this.setAttributeValue('updatedAt', operations.slice(-1)[0].date);
+        for (const attribute of filledAttributes) {
+            this.unsetAttribute(attribute);
+        }
+
+        this.metadata.setAttributeValue('createdAt', operations[0].date);
+        this.metadata.setAttributeValue('updatedAt', operations.slice(-1)[0].date);
     }
 
     public getDocumentUrl(): string | null {
