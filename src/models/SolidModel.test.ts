@@ -1228,13 +1228,6 @@ describe('SolidModel', () => {
 
     it('Rebuilds attributes from history', () => {
         // Arrange
-        class TrackedPerson extends Person {
-
-            public static timestamps = true;
-            public static history = true;
-
-        }
-
         const name = Faker.random.word();
         const lastName = Faker.random.word();
         const createdAt = Faker.date.between(
@@ -1245,7 +1238,7 @@ describe('SolidModel', () => {
             dayjs().add(1, 'month').toDate(),
             dayjs().add(3, 'months').toDate(),
         );
-        const person = new TrackedPerson({
+        const person = new Person({
             name: Faker.random.word(),
             lastName: Faker.random.word(),
             givenName: Faker.random.word(),

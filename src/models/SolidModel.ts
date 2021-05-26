@@ -461,7 +461,7 @@ export class SolidModel extends Model {
     }
 
     public rebuildAttributesFromHistory(): void {
-        if (this.operations.length === 0 || !this.tracksHistory())
+        if (this.operations.length === 0)
             return;
 
         const operations = arraySorted(this.operations, 'date');
@@ -488,8 +488,8 @@ export class SolidModel extends Model {
             this.unsetAttribute(attribute);
         }
 
-        this.metadata.setAttributeValue('createdAt', operations[0].date);
-        this.metadata.setAttributeValue('updatedAt', operations.slice(-1)[0].date);
+        this.setAttribute('createdAt', operations[0].date);
+        this.setAttribute('updatedAt', operations.slice(-1)[0].date);
     }
 
     public getDocumentUrl(): string | null {
@@ -544,27 +544,19 @@ export class SolidModel extends Model {
     }
 
     public setCreatedAtAttribute(value: unknown): void {
-        this.hasAutomaticTimestamp(TimestampField.CreatedAt)
-            ? this.metadata?.setAttribute('createdAt', value)
-            : this.setAttributeValue('createdAt', value);
+        (this.metadata ?? this).setAttributeValue('createdAt', value);
     }
 
     public setUpdatedAtAttribute(value: unknown): void {
-        this.hasAutomaticTimestamp(TimestampField.UpdatedAt)
-            ? this.metadata?.setAttribute('updatedAt', value)
-            : this.setAttributeValue('updatedAt', value);
+        (this.metadata ?? this).setAttributeValue('updatedAt', value);
     }
 
     public getCreatedAtAttribute(): Date {
-        return this.hasAutomaticTimestamp(TimestampField.CreatedAt)
-            ? this.metadata?.createdAt
-            : super.getAttributeValue('createdAt');
+        return this.metadata?.createdAt ?? super.getAttributeValue('createdAt');
     }
 
     public getUpdatedAtAttribute(): Date {
-        return this.hasAutomaticTimestamp(TimestampField.UpdatedAt)
-            ? this.metadata?.updatedAt
-            : super.getAttributeValue('updatedAt');
+        return this.metadata?.updatedAt ?? super.getAttributeValue('updatedAt');
     }
 
     public metadataRelationship(): SingleModelRelation {
