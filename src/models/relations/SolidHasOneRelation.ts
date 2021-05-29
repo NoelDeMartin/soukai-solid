@@ -98,7 +98,13 @@ export default class SolidHasOneRelation<
         return model;
     }
 
-    public set(model: Related): Related {
+    public set(model: Related): Related;
+    public set(attributes: Attributes): Related;
+    public set(modelOrAttributes: Related | Attributes): Related {
+        const model = modelOrAttributes instanceof this.relatedClass
+            ? modelOrAttributes as Related
+            : this.relatedClass.newInstance(modelOrAttributes);
+
         this.assertNotLoaded('set');
 
         if (this.parent.exists())
