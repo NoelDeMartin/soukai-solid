@@ -528,9 +528,11 @@ export class SolidModel extends Model {
     }
 
     public setAttribute(field: string, value: unknown): void {
+        const url = this.getPrimaryKey();
+
         super.setAttribute(field, value);
 
-        if (field === this.static('primaryKey')) {
+        if (url !== this.getPrimaryKey()) {
             const url = this.getAttribute(field);
             const documentUrl = this.getDocumentUrl() || undefined;
             const documentExists = this.documentExists();
