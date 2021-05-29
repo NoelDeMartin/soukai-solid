@@ -52,7 +52,7 @@
     "eslint": "^7.20.0",
     "faker": "^4.1.0",
     "jest": "^26.6.3",
-    "soukai": "^0.4.1-next.cb29df1df46a70aa88870dfae821c96e10bdc460",
+    "soukai": "^0.4.1-next.9359f5f46849ab20021628ee702feab337cf2934",
     "ts-jest": "^26.5.2",
     "typescript": "^4.1.5"
   }

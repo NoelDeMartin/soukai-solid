@@ -39,6 +39,7 @@ import type {
     MagicAttributes,
     ModelConstructor,
     MultiModelRelation,
+    Relation,
     SingleModelRelation,
     TimestampFieldValue,
 } from 'soukai';
@@ -628,18 +629,29 @@ export class SolidModel extends Model {
     }
 
     protected async loadDocumentModels(documentUrl: string, document: EngineDocument): Promise<void> {
+        const engine = this.requireEngine();
+        const isSolidSingleModelRelation =
+            (relation: Relation): relation is SolidHasOneRelation => relation instanceof SolidHasOneRelation;
+        const isSolidMultiModelRelation =
+            (relation: Relation): relation is SolidHasManyRelation | SolidBelongsToManyRelation =>
+                relation instanceof SolidHasManyRelation ||
+                relation instanceof SolidBelongsToManyRelation;
+
         await Promise.all(
             Object
                 .values(this._relations)
                 .map(async relation => {
-                    if (
-                        relation instanceof SolidHasManyRelation ||
-                        relation instanceof SolidBelongsToManyRelation
-                    )
-                        return relation.__loadDocumentModels(documentUrl, document);
+                    if (isSolidMultiModelRelation(relation))
+                        return relation.relatedClass.withEngine(
+                            engine,
+                            () => relation.__loadDocumentModels(documentUrl, document),
+                        );
 
-                    if (relation instanceof SolidHasOneRelation)
-                        return relation.__loadDocumentModel(documentUrl, document);
+                    if (isSolidSingleModelRelation(relation))
+                        return relation.relatedClass.withEngine(
+                            engine,
+                            () => relation.__loadDocumentModel(documentUrl, document),
+                        );
                 }),
         );
     }
