@@ -33,7 +33,10 @@ const RESERVED_CONTAINER_TYPES = [
     IRI('ldp:BasicContainer'),
 ];
 
-export type Fetch = (input: RequestInfo, options?: RequestInit) => Promise<Response>;
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export declare type AnyFetch = (input: any, options?: any) => Promise<any>;
+export declare type TypedFetch = (input: RequestInfo, options?: RequestInit) => Promise<Response>;
+export declare type Fetch = TypedFetch | AnyFetch;
 
 export type SolidClientConfig = {
     useGlobbing: boolean;
@@ -42,7 +45,7 @@ export type SolidClientConfig = {
 
 export default class SolidClient {
 
-    private fetch: Fetch;
+    private fetch: TypedFetch;
     private config: SolidClientConfig;
 
     constructor(fetch: Fetch) {
