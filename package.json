@@ -31,6 +31,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.13.8",
+    "@noeldemartin/solid-utils": "0.0.0-next.b1938d5492a46c1362960b1ed28a8a7b020af439",
     "@noeldemartin/utils": "0.1.0-next.c837a53424143e9641a1f2957a52df7186c4e1cd",
     "core-js": "^3.9.0",
     "jsonld": "^4.0.1",
@@ -41,7 +42,6 @@
     "@babel/plugin-transform-runtime": "^7.13.8",
     "@noeldemartin/eslint-config-typescript": "0.0.0-next.bded47b9bf0a8721f5ac7317adea94f5002a10d3",
     "@noeldemartin/scripts": "0.0.0-next.fc10faa540c836a703b087e3bfe615dd68424745",
-    "@noeldemartin/solid-utils": "0.0.0-next.6947497f51a6791c5edb3292db48933ffa58c190",
     "@types/faker": "^4.1.5",
     "@types/jest": "^24.0.0",
     "@types/jsonld": "^1.5.5",

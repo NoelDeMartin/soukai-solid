@@ -66,6 +66,10 @@ export default class SolidClient {
         };
     }
 
+    public getFetch(): Fetch {
+        return this.fetch;
+    }
+
     public setConfig(config: Partial<SolidClientConfig>): void {
         Object.assign(this.config, config);
     }

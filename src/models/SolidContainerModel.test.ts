@@ -49,6 +49,11 @@ describe('SolidContainerModel', () => {
                 type: FieldType.Key,
                 required: false,
             },
+            name: {
+                type: FieldType.String,
+                required: false,
+                rdfProperty: IRI('rdfs:label'),
+            },
             resourceUrls: {
                 type: FieldType.Array,
                 required: false,
@@ -164,10 +169,6 @@ describe('SolidContainerModel', () => {
                 foaf: 'http://xmlns.com/foaf/0.1/',
             };
 
-            public static fields = {
-                name: FieldType.String,
-            };
-
         }
 
         const containerUrl = urlResolveDirectory(Faker.internet.url());
@@ -196,10 +197,6 @@ describe('SolidContainerModel', () => {
 
             public static rdfContexts = {
                 foaf: 'http://xmlns.com/foaf/0.1/',
-            };
-
-            public static fields = {
-                name: FieldType.String,
             };
 
         }

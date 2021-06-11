@@ -9,6 +9,7 @@ import SolidContainerModel from './SolidContainerModel';
 import SolidDocument from './SolidDocument';
 import SolidModelMetadata from './SolidModelMetadata';
 import SolidModelOperation from './SolidModelOperation';
+import SolidTypeRegistration from './SolidTypeRegistration';
 
 export * from './inference';
 export * from './relations/index';
@@ -19,6 +20,7 @@ export {
     SolidDocument,
     SolidModelMetadata,
     SolidModelOperation,
+    SolidTypeRegistration,
 };
 
 export type {
@@ -34,5 +36,11 @@ export type {
 } from './fields';
 
 export function bootSolidModels(): void {
-    bootModels({ SolidDocument, SolidModelMetadata, SolidModelOperation });
+    bootModels({
+        SolidContainerModel,
+        SolidDocument,
+        SolidModelMetadata,
+        SolidModelOperation,
+        SolidTypeRegistration,
+    });
 }

@@ -11,6 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 - Make sure to check Soukai's changelog.
 - Automatic timestamps have been refactored into a metadata resource.
 - Added history tracking.
+- Added type registration helpers.
 
 ## [v0.4.2](https://github.com/NoelDeMartin/soukai-solid/releases/tag/v0.4.2) - 2021-03-28
 

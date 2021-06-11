@@ -67,6 +67,10 @@ export class SolidEngine implements Engine {
         Object.assign(this.config, config);
     }
 
+    public getFetch(): Fetch {
+        return this.client.getFetch();
+    }
+
     public async create(collection: string, document: EngineDocument, id?: string): Promise<string> {
         this.validateJsonLDGraph(document);
 

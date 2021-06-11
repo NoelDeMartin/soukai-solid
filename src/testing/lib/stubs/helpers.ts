@@ -60,10 +60,11 @@ export function stubGroupJsonLD(url: string, name: string, contains: string[] = 
         '@context': {
             '@vocab': 'http://xmlns.com/foaf/0.1/',
             'ldp': 'http://www.w3.org/ns/ldp#',
+            'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
         },
         '@id': url,
         '@type': ['ldp:Container', 'Group'],
-        'name': name,
+        'rdfs:label': name,
     };
 
     if (contains.length === 1) {

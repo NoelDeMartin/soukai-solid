@@ -91,7 +91,7 @@ describe('SolidEngine', () => {
         expect(properties).toHaveLength(3);
         expect(properties).toContainEqual(RDFResourceProperty.type(documentUrl, IRI('ldp:Container')));
         expect(properties).toContainEqual(RDFResourceProperty.type(documentUrl, IRI('foaf:Group')));
-        expect(properties).toContainEqual(RDFResourceProperty.literal(documentUrl, IRI('foaf:name'), name));
+        expect(properties).toContainEqual(RDFResourceProperty.literal(documentUrl, IRI('rdfs:label'), name));
     });
 
     it('fails creating documents if the provided url is already in use', async () => {
@@ -116,7 +116,7 @@ describe('SolidEngine', () => {
         await SolidClientMock.createDocument(parentUrl, documentUrl, [
             RDFResourceProperty.type(documentUrl, IRI('ldp:Container')),
             RDFResourceProperty.type(documentUrl, IRI('foaf:Group')),
-            RDFResourceProperty.literal(documentUrl, IRI('foaf:name'), name),
+            RDFResourceProperty.literal(documentUrl, IRI('rdfs:label'), name),
         ]);
 
         // Act

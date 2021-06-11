@@ -1,5 +1,4 @@
-import { FieldType } from 'soukai';
-import type { IModel, MultiModelRelation } from 'soukai';
+import type { MultiModelRelation } from 'soukai';
 
 import SolidContainerModel from '@/models/SolidContainerModel';
 import type SolidContainsRelation from '@/models/relations/SolidContainsRelation';
@@ -16,10 +15,6 @@ export default class Group extends SolidContainerModel {
 
     public static rdfsClasses = ['foaf:Group'];
 
-    public static fields = {
-        name: FieldType.String,
-    };
-
     public members?: Person[];
     public relatedMembers!: SolidContainsRelation<Group, Person, typeof Person>;
 
@@ -28,5 +23,3 @@ export default class Group extends SolidContainerModel {
     }
 
 }
-
-export default interface Group extends IModel<typeof Group> {}
