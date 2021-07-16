@@ -1,0 +1,33 @@
+DELETE DATA {
+    @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+    <#it>
+        foaf:member
+            <https://berserk.fandom.com/wiki/Judeau>,
+            <https://berserk.fandom.com/wiki/Pippin>,
+            <https://berserk.fandom.com/wiki/Corkus> .
+
+    <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+} ;
+
+INSERT DATA {
+    @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+    <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+
+    <#it-operation-[[.*]]>
+        a soukai:Operation ;
+        soukai:resource <#it> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:member ;
+        soukai:type soukai:RemoveOperation ;
+        soukai:value
+            <https://berserk.fandom.com/wiki/Judeau>,
+            <https://berserk.fandom.com/wiki/Pippin>,
+            <https://berserk.fandom.com/wiki/Corkus> .
+
+}

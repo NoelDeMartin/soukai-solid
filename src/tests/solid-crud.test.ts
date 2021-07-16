@@ -37,7 +37,14 @@ describe('Solid CRUD', () => {
         StubFetcher.addFetchResponse();
 
         // Act
-        await movie.update({ title });
+        movie.setAttribute('title', title);
+        movie.setAttribute('externalUrls', [
+            ...movie.externalUrls,
+            'https://example.org/one',
+            'https://example.org/two',
+        ]);
+
+        await movie.save();
 
         // Assert
         expect(movie.title).toBe(title);
@@ -45,7 +52,11 @@ describe('Solid CRUD', () => {
 
         await expect(fetch.mock.calls[1][1]?.body).toEqualSparql(`
             DELETE DATA { <#it> <${IRI('schema:name')}> "${stub.title}" . } ;
-            INSERT DATA { <#it> <${IRI('schema:name')}> "${title}" . }
+            INSERT DATA {
+                <#it>
+                    <${IRI('schema:name')}> "${title}" ;
+                    <${IRI('schema:sameAs')}> <https://example.org/one>, <https://example.org/two> .
+            }
         `);
     });
 
@@ -82,6 +93,10 @@ describe('Solid CRUD', () => {
 async function createStub(title?: string): Promise<Movie> {
     const attributes = {
         title: title ?? Faker.name.title(),
+        externalUrls: [
+            'https://example.org/foo',
+            'https://example.org/bar',
+        ],
     };
 
     return tap(new Movie(attributes), async stub => {

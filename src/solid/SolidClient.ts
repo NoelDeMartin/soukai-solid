@@ -1,7 +1,9 @@
 import { DocumentNotFound, SoukaiError } from 'soukai';
 import {
+    arrayDiff,
     arrayFilter,
     arrayRemove,
+    arrayRemoveIndex,
     objectWithoutEmpty,
     urlClean,
     urlDirectoryName,
@@ -16,6 +18,7 @@ import RDFDocument, { RDFParsingError } from '@/solid/RDFDocument';
 import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
+import type { LiteralValue } from '@/solid/RDFResourceProperty';
 import type { UpdateOperation } from '@/solid/operations/Operation';
 
 import MalformedDocumentError, { DocumentFormat } from '@/errors/MalformedDocumentError';
@@ -32,6 +35,8 @@ const RESERVED_CONTAINER_TYPES = [
     IRI('ldp:Container'),
     IRI('ldp:BasicContainer'),
 ];
+
+// TODO extract file to @noeldemartin/solid-utils
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export declare type AnyFetch = (input: any, options?: any) => Promise<any>;
@@ -330,7 +335,7 @@ export default class SolidClient {
 
     private async updateNonContainerDocument(document: RDFDocument, operations: UpdateOperation[]): Promise<void> {
         const [updatedProperties, removedProperties] = decantUpdateOperationsData(operations);
-        const inserts = RDFResourceProperty.toTurtle(updatedProperties, document.url);
+        const inserts = RDFResourceProperty.toTurtle(updatedProperties.flat(), document.url);
         const deletes = RDFResourceProperty.toTurtle(
             document.properties.filter(
                 property =>
@@ -381,14 +386,16 @@ export default class SolidClient {
             if (!resource) continue;
 
             const updatePropertyOperations = decantedOperations[OperationType.UpdateProperty]
-                .filter(operation => operation.property.resourceUrl === changeUrlOperation.resourceUrl);
+                .filter(operation => operation.propertyResourceUrl === changeUrlOperation.resourceUrl);
 
             const removePropertyOperations = decantedOperations[OperationType.RemoveProperty]
                 .filter(operation => operation.resourceUrl === changeUrlOperation.resourceUrl);
 
-            updatePropertyOperations.forEach(
-                operation => operation.property = operation.property.clone(changeUrlOperation.newResourceUrl),
-            );
+            updatePropertyOperations.forEach(operation => {
+                operation.propertyOrProperties = Array.isArray(operation.propertyOrProperties)
+                    ? operation.propertyOrProperties.map(property => property.clone(changeUrlOperation.newResourceUrl))
+                    : operation.propertyOrProperties.clone(changeUrlOperation.newResourceUrl);
+            });
             removePropertyOperations.forEach(operation => operation.resourceUrl = changeUrlOperation.newResourceUrl);
 
             operations.push(new RemovePropertyOperation(changeUrlOperation.resourceUrl));
@@ -396,7 +403,7 @@ export default class SolidClient {
                 ...resource.properties
                     .filter(
                         property =>
-                            !updatePropertyOperations.some(operation => operation.property.name === property.name) &&
+                            !updatePropertyOperations.some(operation => operation.propertyName === property.name) &&
                             !removePropertyOperations.some(
                                 operation => !operation.property || operation.property === property.name,
                             ),
@@ -408,17 +415,80 @@ export default class SolidClient {
         }
     }
 
+    // TODO this method should remove all UpdatePropertyOperation and use only
+    // SetPropertyOperation and RemovePropertyOperation
     private processUpdatePropertyOperations(document: RDFDocument, operations: UpdateOperation[]): void {
+        // Diff arrays
+        const arrayOperationsIndexes: number[] = [];
+        const arrayProperties: string[] = [];
+
+        for (let index = 0; index < operations.length; index++) {
+            const operation = operations[index];
+
+            if (operation.type !== OperationType.UpdateProperty)
+                continue;
+
+            if (!Array.isArray(operation.propertyOrProperties) || operation.propertyResourceUrl === null)
+                continue;
+
+            const documentProperties = document.statements.filter(
+                statement =>
+                    statement.subject.value === operation.propertyResourceUrl &&
+                    statement.predicate.value === operation.propertyName,
+            );
+            const documentValues = documentProperties.map(statement => statement.object.value);
+
+            const sampleProperty = operation.propertyOrProperties[0] ?? documentProperties[0];
+            const { added, removed } = arrayDiff(
+                documentValues,
+                operation.propertyOrProperties.map(property => property.value),
+            );
+
+            added.forEach(value => operations.push(
+                new UpdatePropertyOperation(
+                    sampleProperty.type === RDFResourcePropertyType.Literal
+                        ? RDFResourceProperty.literal(
+                            operation.propertyResourceUrl,
+                            operation.propertyName,
+                            value as LiteralValue,
+                        )
+                        : RDFResourceProperty.reference(
+                            operation.propertyResourceUrl,
+                            operation.propertyName,
+                            value as string,
+                        ),
+                ),
+            ));
+
+            removed.forEach(value => operations.push(
+                new RemovePropertyOperation(
+                    operation.propertyResourceUrl as string,
+                    operation.propertyName,
+                    value,
+                ),
+            ));
+
+            arrayOperationsIndexes.push(index);
+            arrayProperties.push(`${operation.propertyResourceUrl}-${operation.propertyName}`);
+        }
+
+        arrayOperationsIndexes.forEach(index => arrayRemoveIndex(operations, index));
+
         // Properties that are going to be updated have to be deleted or they'll end up duplicated.
         const updateOperations = operations.filter(
             operation =>
                 operation.type === OperationType.UpdateProperty &&
-                operation.property.type !== RDFResourcePropertyType.Type &&
-                document.hasProperty(operation.property.resourceUrl as string, operation.property.name),
+                operation.propertyType !== RDFResourcePropertyType.Type &&
+                document.hasProperty(operation.propertyResourceUrl as string, operation.propertyName),
         ) as UpdatePropertyOperation[];
 
-        for (const { property } of updateOperations) {
-            operations.push(new RemovePropertyOperation(property.resourceUrl as string, property.name));
+        for (const operation of updateOperations) {
+            if (arrayProperties.includes(`${operation.propertyResourceUrl}-${operation.propertyName}`))
+                continue;
+
+            operations.push(
+                new RemovePropertyOperation(operation.propertyResourceUrl as string, operation.propertyName),
+            );
         }
     }
 

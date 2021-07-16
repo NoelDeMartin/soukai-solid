@@ -1,4 +1,5 @@
 import {
+    arrayDiff,
     arrayFilter,
     arraySorted,
     arrayUnique,
@@ -20,8 +21,10 @@ import {
     FieldType,
     InvalidModelDefinition,
     Model,
+    ModelKey,
     SoukaiError,
     TimestampField,
+    isArrayFieldDefinition,
     requireBootedModel,
 } from 'soukai';
 import type {
@@ -52,6 +55,7 @@ import RDFDocument from '@/solid/RDFDocument';
 import type { JsonLD, JsonLDResource } from '@/solid/utils/RDF';
 import type RDFResource from '@/solid/RDFResource';
 
+import { inferFieldDefinition } from './fields';
 import DeletesModels from './mixins/DeletesModels';
 import SerializesToJsonLD from './mixins/SerializesToJsonLD';
 import SolidBelongsToManyRelation from './relations/SolidBelongsToManyRelation';
@@ -59,7 +63,7 @@ import SolidHasManyRelation from './relations/SolidHasManyRelation';
 import SolidHasOneRelation from './relations/SolidHasOneRelation';
 import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
 import type { SolidModelConstructor } from './inference';
-import type { SolidBootedFieldsDefinition, SolidFieldsDefinition } from './fields';
+import type { SolidBootedFieldDefinition, SolidBootedFieldsDefinition, SolidFieldsDefinition } from './fields';
 import type SolidContainerModel from './SolidContainerModel';
 import type SolidModelMetadata from './SolidModelMetadata';
 import type SolidModelOperation from './SolidModelOperation';
@@ -133,7 +137,7 @@ export class SolidModel extends Model {
             delete fields[TimestampField.UpdatedAt];
 
         modelClass.rdfsClasses = arrayUnique(
-            (modelClass.rdfsClasses ?? []).map(name =>IRI(name, modelClass.rdfContexts, defaultRdfContext)),
+            (modelClass.rdfsClasses ?? []).map(name => IRI(name, modelClass.rdfContexts, defaultRdfContext)),
         );
 
         if (modelClass.rdfsClasses.length === 0)
@@ -517,6 +521,11 @@ export class SolidModel extends Model {
         return documentUrl ? urlParentDirectory(documentUrl) : null;
     }
 
+    public getFieldDefinition(field: string, value?: unknown): SolidBootedFieldDefinition {
+        return this.static('fields')[field]
+            ?? inferFieldDefinition(value, this.getDefaultRdfContext() + field, false);
+    }
+
     public getFieldRdfProperty(this: SolidModel, field: string): string | null {
         const fieldDefinition = this.static('fields')[field];
 
@@ -727,23 +736,36 @@ export class SolidModel extends Model {
             );
 
             for (const [field, value] of Object.entries(originalAttributes)) {
-                if (Array.isArray(value)) {
-                    // TODO handle array values
-
+                if (value === null || Array.isArray(value) && value.length === 0)
                     continue;
-                }
 
                 this.relatedOperations.add({
                     property: this.getFieldRdfProperty(field),
                     date: this.metadata.createdAt,
-                    value,
+                    value: this.getOperationValue(field, value),
                 });
             }
         }
 
         for (const [field, value] of Object.entries(this._dirtyAttributes)) {
             if (Array.isArray(value)) {
-                // TODO handle array values
+                const { added, removed } = arrayDiff(this._originalAttributes[field], value);
+
+                if (added.length > 0)
+                    this.relatedOperations.add({
+                        property: this.getFieldRdfProperty(field),
+                        type: IRI('soukai:AddOperation', this.static('rdfContexts')),
+                        date: this.metadata.updatedAt,
+                        value: this.getOperationValue(field, added),
+                    });
+
+                if (removed.length > 0)
+                    this.relatedOperations.add({
+                        property: this.getFieldRdfProperty(field),
+                        type: IRI('soukai:RemoveOperation', this.static('rdfContexts')),
+                        date: this.metadata.updatedAt,
+                        value: this.getOperationValue(field, removed),
+                    });
 
                 continue;
             }
@@ -753,7 +775,7 @@ export class SolidModel extends Model {
             this.relatedOperations.add({
                 property: this.getFieldRdfProperty(field),
                 date: this.metadata.updatedAt,
-                value,
+                value: this.getOperationValue(field, value),
             });
         }
     }
@@ -860,9 +882,8 @@ export class SolidModel extends Model {
     }
 
     protected castAttribute(value: unknown, definition?: BootedFieldDefinition): unknown {
-        if (definition && definition.type === FieldType.Array && !Array.isArray(value)) {
-            return [value];
-        }
+        if (definition?.type === FieldType.Array && !Array.isArray(value))
+            return super.castAttribute([value], definition);
 
         return super.castAttribute(value, definition);
     }
@@ -920,6 +941,22 @@ export class SolidModel extends Model {
                 return [...models];
             })
             .flat();
+    }
+
+    private getOperationValue(field: string, value?: unknown): unknown;
+    private getOperationValue(field: Omit<BootedFieldDefinition, 'required'>, value: unknown): unknown;
+    private getOperationValue(field: string | Omit<BootedFieldDefinition, 'required'>, value?: unknown): unknown {
+        const definition = typeof field === 'string' ? this.getFieldDefinition(field, value) : field;
+
+        value = value ?? this.getAttributeValue(field as string);
+
+        if (isArrayFieldDefinition(definition))
+            return (value as unknown[]).map(item => this.getOperationValue(definition.items, item));
+
+        if (definition.type === FieldType.Key)
+            return new ModelKey(value);
+
+        return value;
     }
 
     private prepareDirtyDocumentModels(): SolidModel[] {

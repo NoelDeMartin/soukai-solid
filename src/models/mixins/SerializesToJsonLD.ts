@@ -1,7 +1,9 @@
+import { ModelKey } from 'soukai';
 import type { Attributes, EngineAttributeFilter, EngineFilters, EngineUpdates } from 'soukai';
 
 import type { SolidModel } from '@/models/SolidModel';
 
+import { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 import RDFDocument from '@/solid/RDFDocument';
 import type { JsonLD, JsonLDResource } from '@/solid/utils/RDF';
 
@@ -26,7 +28,14 @@ export default class SerializesToJsonLD {
             if (!fieldDefinition.rdfProperty)
                 continue;
 
-            const [firstValue, ...otherValues] = resource.getPropertyValues(fieldDefinition.rdfProperty);
+            const properties = resource.propertiesIndex[fieldDefinition.rdfProperty] || [];
+            const propertyValues = properties.map(
+                property =>
+                    property.type === RDFResourcePropertyType.Reference
+                        ? new ModelKey(property.value)
+                        : property.value,
+            );
+            const [firstValue, ...otherValues] = propertyValues;
 
             if (typeof firstValue === 'undefined')
                 continue;

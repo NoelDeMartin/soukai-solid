@@ -12,12 +12,21 @@
     rdfs:comment "Metadata about a resource." ;
     rdfs:subClassOf dcmi:Dataset .
 
+:Operation a rdfs:Class ;
+    rdfs:label "Operation" ;
+    rdfs:comment "Operation performed on a resource." ;
+    rdfs:subClassOf dcmi:Dataset .
+
+:OperationType a rdf:Class ;
+    rdfs:label "Operation Type" ;
+    rdfs:comment "Type of the operation." .
+
 :resource a rdf:Property ;
     rdfs:label "resource" ;
-    rdfs:comment "Resource which the metadata makes reference to." ;
+    rdfs:comment "If the object is a :Metadata, resource which the metadata makes reference to. If the object is a :Operation, resource affected by the operation." ;
     rdfs:subPropertyOf dcmi:subject ;
     rdfs:range rdfs:Resource ;
-    rdfs:domain :Metadata .
+    rdfs:domain :Metadata, :Operation .
 
 :createdAt a rdf:Property ;
     rdfs:label "createdAt" ;
@@ -33,16 +42,10 @@
     rdfs:range xsd:dateTime ;
     rdfs:domain :Metadata .
 
-:Operation a rdfs:Class ;
-    rdfs:label "Operation" ;
-    rdfs:comment "Operation performed on a resource." ;
-    rdfs:subClassOf dcmi:Dataset .
-
-:resource a rdf:Property ;
-    rdfs:label "resource" ;
-    rdfs:comment "Resource affected by the operation." ;
-    rdfs:subPropertyOf dcmi:subject ;
-    rdfs:range rdfs:Resource ;
+:type a rdf:Property ;
+    rdfs:label "type" ;
+    rdfs:comment "Type of the operation. If this property is missing, :SetOperation will be assumed." ;
+    rdfs:range :OperationType ;
     rdfs:domain :Operation .
 
 :property a rdf:Property ;
@@ -62,3 +65,19 @@
     rdfs:subPropertyOf dcmi:created ;
     rdfs:range xsd:dateTime ;
     rdfs:domain :Operation .
+
+:SetOperation a :OperationType ;
+    rdfs:label "Set Operation" ;
+    rdfs:comment "A type of operation that removes all previous values for the affected property and replaces them with new ones." .
+
+:UnsetOperation a :OperationType ;
+    rdfs:label "Unset Operation" ;
+    rdfs:comment "A type of operation that removes all previous values for the affected property." .
+
+:AddOperation a :OperationType ;
+    rdfs:label "Add Operation" ;
+    rdfs:comment "A type of operation that adds new values to the affected property." .
+
+:RemoveOperation a :OperationType ;
+    rdfs:label "Remove Operation" ;
+    rdfs:comment "A type of operation that removes previous values from the affected property." .

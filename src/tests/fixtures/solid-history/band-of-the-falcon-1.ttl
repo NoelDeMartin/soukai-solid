@@ -1,0 +1,19 @@
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<#it>
+    a foaf:Group ;
+    foaf:name "Band of the Falcon" ;
+    foaf:member
+        <https://berserk.fandom.com/wiki/Griffith>,
+        <https://berserk.fandom.com/wiki/Casca>,
+        <https://berserk.fandom.com/wiki/Judeau>,
+        <https://berserk.fandom.com/wiki/Pippin>,
+        <https://berserk.fandom.com/wiki/Corkus> .
+
+<#it-metadata>
+    a soukai:Metadata ;
+    soukai:resource <#it> ;
+    soukai:createdAt "1991-11-01T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:updatedAt "1991-11-01T00:00:00.000Z"^^xsd:dateTime .

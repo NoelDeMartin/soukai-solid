@@ -1,0 +1,47 @@
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<#it>
+    a foaf:Group ;
+    foaf:name "Band of the Falcon" ;
+    foaf:member
+        <https://berserk.fandom.com/wiki/Griffith>,
+        <https://berserk.fandom.com/wiki/Casca>,
+        <https://berserk.fandom.com/wiki/Judeau>,
+        <https://berserk.fandom.com/wiki/Pippin>,
+        <https://berserk.fandom.com/wiki/Corkus>,
+        <https://berserk.fandom.com/wiki/Guts> .
+
+<#it-metadata>
+    a soukai:Metadata ;
+    soukai:resource <#it> ;
+    soukai:createdAt "1991-11-01T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:updatedAt "1992-01-01T00:00:00.000Z"^^xsd:dateTime .
+
+<#it-operation-1>
+    a soukai:Operation ;
+    soukai:resource <#it> ;
+    soukai:date "1991-11-01T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:property foaf:name ;
+    soukai:value "Band of the Falcon" .
+
+<#it-operation-2>
+    a soukai:Operation ;
+    soukai:resource <#it> ;
+    soukai:date "1991-11-01T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:property foaf:member ;
+    soukai:value
+        <https://berserk.fandom.com/wiki/Griffith>,
+        <https://berserk.fandom.com/wiki/Casca>,
+        <https://berserk.fandom.com/wiki/Judeau>,
+        <https://berserk.fandom.com/wiki/Pippin>,
+        <https://berserk.fandom.com/wiki/Corkus> .
+
+<#it-operation-3>
+    a soukai:Operation ;
+    soukai:resource <#it> ;
+    soukai:type soukai:AddOperation ;
+    soukai:date "1992-01-01T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:property foaf:member ;
+    soukai:value <https://berserk.fandom.com/wiki/Guts> .

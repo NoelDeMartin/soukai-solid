@@ -1200,6 +1200,9 @@ describe('SolidModel', () => {
         expect(operations[3].date).toEqual(person.updatedAt);
     });
 
+    it.todo('tracks history properly for array fields');
+    it.todo('reads operation values with types');
+
     it('[legacy] parses legacy automatic timestamps from JsonLD', async () => {
         // Arrange
         const date = new Date(Date.now() - 42000);

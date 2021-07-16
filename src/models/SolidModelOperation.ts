@@ -32,6 +32,7 @@ export default class SolidModelOperation extends SolidModel {
             type: FieldType.Date,
             required: true,
         },
+        type: FieldType.Key,
     } as const;
 
     protected newUrl(documentUrl?: string, resourceHash?: string): string {

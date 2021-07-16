@@ -1,12 +1,14 @@
 import { isObject, tap, toString } from '@noeldemartin/utils';
-import { FieldType } from 'soukai';
-import type { Attributes, BootedArrayFieldDefinition, BootedFieldDefinition } from 'soukai';
+import { FieldType, SoukaiError } from 'soukai';
+import type { Attributes, BootedArrayFieldDefinition } from 'soukai';
 
 import type { JsonLD } from '@/solid/utils/RDF';
 
+import { inferFieldDefinition } from '../fields';
 import SolidHasManyRelation from '../relations/SolidHasManyRelation';
 import SolidHasOneRelation from '../relations/SolidHasOneRelation';
 import type { SolidModel } from '../SolidModel';
+import type { SolidBootedFieldDefinition } from '../fields';
 
 class EmptyJsonLDValue {}
 
@@ -213,8 +215,13 @@ export default class JsonLDModelSerializer {
     }
 
     private setJsonLDProperty(jsonld: JsonLD, model: SolidModel, name: string, field: string, value: unknown): void {
-        if (!isObject(value) || Object.keys(value).length !== 1 || Object.keys(value)[0].startsWith('$'))
-            value = this.castJsonLDValue(value, model.static('fields')[field]);
+        if (
+            !isObject(value) ||
+            Array.isArray(value) ||
+            Object.keys(value).length !== 1 ||
+            Object.keys(value)[0].startsWith('$')
+        )
+            value = this.castJsonLDValue(value, model.getFieldDefinition(field, value));
 
         if (value instanceof EmptyJsonLDValue)
             return;
@@ -222,8 +229,20 @@ export default class JsonLDModelSerializer {
         jsonld[name] = value;
     }
 
-    private castJsonLDValue(value: unknown, fieldDefinition: BootedFieldDefinition | null = null): unknown {
-        switch (fieldDefinition && fieldDefinition.type || null) {
+    private castJsonLDValue(value: unknown, fieldDefinition: SolidBootedFieldDefinition): unknown {
+        switch (fieldDefinition.type) {
+            case FieldType.Any: {
+                const inferredFieldDefinition = inferFieldDefinition(
+                    value,
+                    fieldDefinition.rdfProperty,
+                    fieldDefinition.required,
+                );
+
+                if (inferredFieldDefinition.type === FieldType.Any)
+                    throw new SoukaiError('Couldn\'t infer field definition for a field declared as any');
+
+                return this.castJsonLDValue(value, inferredFieldDefinition);
+            }
             case FieldType.Key:
                 return { '@id': toString(value) };
             case FieldType.Date:
@@ -234,7 +253,7 @@ export default class JsonLDModelSerializer {
             case FieldType.Array: {
                 const arrayValue = value as unknown[];
                 const itemsFieldDefinition =
-                    (fieldDefinition as BootedArrayFieldDefinition).items as BootedFieldDefinition;
+                    (fieldDefinition as BootedArrayFieldDefinition).items as SolidBootedFieldDefinition;
 
                 switch (arrayValue.length) {
                     case 0:

@@ -23,10 +23,11 @@ import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourc
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import SolidClient from '@/solid/SolidClient';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
-import type { UpdateOperation } from '@/solid/operations/Operation';
-import type { JsonLD } from '@/solid/utils/RDF';
-import type { RDFDocumentMetadata } from '@/solid/RDFDocument';
 import type { Fetch } from '@/solid/SolidClient';
+import type { JsonLD } from '@/solid/utils/RDF';
+import type { LiteralValue } from '@/solid/RDFResourceProperty';
+import type { RDFDocumentMetadata } from '@/solid/RDFDocument';
+import type { UpdateOperation } from '@/solid/operations/Operation';
 
 import IRI from '@/solid/utils/IRI';
 
@@ -142,8 +143,6 @@ export class SolidEngine implements Engine {
     private async getDocumentsForFilters(collection: string, filters: EngineFilters): Promise<RDFDocument[]> {
         const rdfsClasses = this.extractJsonLDGraphTypes(filters);
 
-        // TODO use filters for SPARQL when supported
-        // See https://github.com/solid/node-solid-server/issues/962
         return filters.$in
             ? await this.getDocumentsFromUrls(filters.$in, rdfsClasses)
             : await this.client.getDocuments(collection, rdfsClasses.includes(IRI('ldp:Container')));
@@ -291,41 +290,46 @@ export class SolidEngine implements Engine {
                 continue;
             }
 
-            if (typeof value === 'object' && '@id' in value) {
-                operations.push(
-                    new UpdatePropertyOperation(RDFResourceProperty.reference(resourceUrl, attribute, value['@id'])),
-                );
-
-                continue;
-            }
-
-            if (
-                typeof value === 'object' &&
-                '@type' in value &&
-                value['@type'] === 'http://www.w3.org/2001/XMLSchema#dateTime'
-            ) {
-                operations.push(
-                    new UpdatePropertyOperation(
-                        RDFResourceProperty.literal(resourceUrl, attribute, new Date(value['@value'])),
-                    ),
-                );
-                continue;
-            }
-
             if (attribute === '@id') {
                 operations.push(new ChangeUrlOperation(resourceUrl, value as string));
                 continue;
             }
 
-            if (attribute === '@type') {
-                operations.push(new UpdatePropertyOperation(RDFResourceProperty.type(resourceUrl, value as string)));
-                continue;
-            }
-
-            operations.push(new UpdatePropertyOperation(RDFResourceProperty.literal(resourceUrl, attribute, value)));
+            operations.push(
+                new UpdatePropertyOperation(this.getUpdatePropertyOperationProperty(resourceUrl, attribute, value)),
+            );
         }
 
         return operations;
+    }
+
+    /* eslint-disable max-len */
+    private getUpdatePropertyOperationProperty(resourceUrl: string, attribute: string, value: unknown): RDFResourceProperty | RDFResourceProperty[];
+    private getUpdatePropertyOperationProperty(resourceUrl: string, attribute: string, value: unknown, allowArrays: true): RDFResourceProperty | RDFResourceProperty[];
+    private getUpdatePropertyOperationProperty(resourceUrl: string, attribute: string, value: unknown, allowArrays: false): RDFResourceProperty;
+    /* eslint-enable max-len */
+
+    private getUpdatePropertyOperationProperty(
+        resourceUrl: string,
+        attribute: string,
+        value: unknown,
+        allowArrays: boolean = true,
+    ): RDFResourceProperty | RDFResourceProperty[] {
+        if (attribute === '@type')
+            return RDFResourceProperty.type(resourceUrl, value as string);
+
+        if (Array.isArray(value))
+            return allowArrays
+                ? value.map(v => this.getUpdatePropertyOperationProperty(resourceUrl, attribute, v, false))
+                : fail('Cannot have nested array values');
+
+        if (isObject(value) && '@id' in value)
+            return RDFResourceProperty.reference(resourceUrl, attribute, value['@id'] as string);
+
+        if (isObject(value) && '@type' in value && value['@type'] === 'http://www.w3.org/2001/XMLSchema#dateTime')
+            return RDFResourceProperty.literal(resourceUrl, attribute, new Date(value['@value'] as string));
+
+        return RDFResourceProperty.literal(resourceUrl, attribute, value as LiteralValue);
     }
 
     private async extractJsonLDGraphItemPush(item: EngineDocument): Promise<UpdateOperation[]> {
