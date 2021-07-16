@@ -27,22 +27,22 @@ describe('Solid CRUD', () => {
 
     it('Updates models', async () => {
         // Arrange
-        const name = Faker.name.title();
+        const title = Faker.name.title();
         const stub = await createStub();
         const movie = new Movie(stub.getAttributes(), true);
 
         StubFetcher.addFetchResponse();
 
         // Act
-        await movie.update({ name });
+        await movie.update({ title });
 
         // Assert
-        expect(movie.name).toBe(name);
+        expect(movie.title).toBe(title);
         expect(fetch).toHaveBeenCalledTimes(2);
 
-        await expect(fetch.mock.calls[1][1]?.body).toEqualSPARQL(`
-            DELETE DATA { <#it> <${IRI('schema:name')}> "${stub.name}" . } ;
-            INSERT DATA { <#it> <${IRI('schema:name')}> "${name}" . }
+        await expect(fetch.mock.calls[1][1]?.body).toEqualSparql(`
+            DELETE DATA { <#it> <${IRI('schema:name')}> "${stub.title}" . } ;
+            INSERT DATA { <#it> <${IRI('schema:name')}> "${title}" . }
         `);
     });
 
@@ -140,11 +140,11 @@ describe('Solid CRUD', () => {
         const spiritedAway = movies.find(movie => movie.url.endsWith('spirited-away#it')) as Movie;
 
         expect(theLordOfTheRings).not.toBeUndefined();
-        expect(theLordOfTheRings.name).toEqual('The Lord of the Rings: The Fellowship of the Ring');
+        expect(theLordOfTheRings.title).toEqual('The Lord of the Rings: The Fellowship of the Ring');
         expect(theLordOfTheRings.actions).toHaveLength(0);
 
         expect(spiritedAway).not.toBeUndefined();
-        expect(spiritedAway.name).toEqual('Spirited Away');
+        expect(spiritedAway.title).toEqual('Spirited Away');
         expect(spiritedAway.actions).toHaveLength(1);
     });
 
@@ -152,8 +152,12 @@ describe('Solid CRUD', () => {
 
 });
 
-async function createStub(name?: string): Promise<Movie> {
-    return tap(new Movie({ name: name ?? Faker.name.title() }), async stub => {
+async function createStub(title?: string): Promise<Movie> {
+    const attributes = {
+        title: title ?? Faker.name.title(),
+    };
+
+    return tap(new Movie(attributes), async stub => {
         stub.mintUrl();
 
         const document = await RDFDocument.fromJsonLD(stub.toJsonLD());

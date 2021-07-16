@@ -1,11 +1,12 @@
-import type { MultiModelRelation } from 'soukai';
+import { FieldType } from 'soukai';
+import type { IModel, MultiModelRelation } from 'soukai';
 
-import SolidContainerModel from '@/models/SolidContainerModel';
-import type SolidContainsRelation from '@/models/relations/SolidContainsRelation';
+import { SolidModel } from '@/models/SolidModel';
+import type { SolidBelongsToManyRelation } from '@/models';
 
 import Person from '@/testing/lib/stubs/Person';
 
-export default class Group extends SolidContainerModel {
+export default class Group extends SolidModel {
 
     public static timestamps = false;
 
@@ -15,11 +16,25 @@ export default class Group extends SolidContainerModel {
 
     public static rdfsClasses = ['foaf:Group'];
 
+    public static fields = {
+        name: {
+            type: FieldType.String,
+            required: true,
+        },
+        memberUrls: {
+            type: FieldType.Array,
+            rdfProperty: 'foaf:member',
+            items: FieldType.Key,
+        },
+    };
+
     public members?: Person[];
-    public relatedMembers!: SolidContainsRelation<Group, Person, typeof Person>;
+    public relatedMembers!: SolidBelongsToManyRelation<Group, Person, typeof Person>;
 
     public membersRelationship(): MultiModelRelation {
-        return this.contains(Person);
+        return this.belongsToMany(Person, 'memberUrls');
     }
 
 }
+
+export default interface Group extends IModel<typeof Group> {}

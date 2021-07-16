@@ -14,6 +14,7 @@ process.on('unhandledRejection', (err) => fail(err));
 
 expect.extend({
 
+    // TODO migrate to @noeldemartin/solid-utils
     async toEqualJsonLD(received, expected) {
         const diff = require('jest-diff');
         const [flatReceived, flatExpected] = await Promise.all([
@@ -43,39 +44,6 @@ expect.extend({
 
         return {
             actual: flatReceived,
-            message,
-            pass,
-        };
-    },
-
-    async toEqualSPARQL(received, expected) {
-        const diff = require('jest-diff');
-        const normalizeQuery = (query: string) => query.trim().replace(/\s+/g, ' ');
-        const normalizedReceived = normalizeQuery(received);
-        const normalizedExpected = normalizeQuery(expected);
-        const pass = normalizedReceived === normalizedExpected;
-        const message = pass
-            ? () =>
-                this.utils.matcherHint('toEqualSPARQL') +
-                    '\n\n' +
-                    `Expected: not ${this.utils.printExpected(normalizedExpected)}\n` +
-                    `Received: ${this.utils.printReceived(normalizedReceived)}`
-            : () => {
-                const diffString = diff(normalizedExpected, normalizedReceived, {
-                    expand: this.expand,
-                });
-                return (
-                    this.utils.matcherHint('toEqualSPARQL') +
-                    '\n\n' +
-                    (diffString && diffString.includes('- Expect')
-                        ? `Difference:\n\n${diffString}`
-                        : `Expected: ${this.utils.printExpected(normalizedExpected)}\n` +
-                        `Received: ${this.utils.printReceived(normalizedReceived)}`)
-                );
-            };
-
-        return {
-            actual: received,
             message,
             pass,
         };

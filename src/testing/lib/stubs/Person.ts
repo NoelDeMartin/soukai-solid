@@ -38,7 +38,7 @@ export default class Person extends SolidModel {
     }
 
     public groupRelationship(): SingleModelRelation {
-        return this.isContainedBy(Group);
+        return this.hasOne(Group, 'memberUrls');
     }
 
 }

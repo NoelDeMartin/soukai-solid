@@ -140,7 +140,7 @@ abstract class RDFResourceProperty {
 
 class RDFResourceLiteralProperty extends RDFResourceProperty {
 
-    public readonly value!: LiteralValue;
+    declare public readonly value: LiteralValue;
     public readonly type = RDFResourcePropertyType.Literal;
 
     constructor(resourceUrl: string | null, name: string, value: LiteralValue) {
@@ -172,7 +172,7 @@ class RDFResourceLiteralProperty extends RDFResourceProperty {
 
 class RDFResourceReferenceProperty extends RDFResourceProperty {
 
-    public readonly value!: string | RDFResourcePropertyVariable | null;
+    declare public readonly value: string | RDFResourcePropertyVariable | null;
     public readonly type = RDFResourcePropertyType.Reference;
 
     constructor(
@@ -194,7 +194,7 @@ class RDFResourceReferenceProperty extends RDFResourceProperty {
 
 class RDFResourceTypeProperty extends RDFResourceProperty {
 
-    public readonly value!: string;
+    declare public readonly value: string;
     public readonly type = RDFResourcePropertyType.Type;
 
     constructor(resourceUrl: string | null, value: string) {

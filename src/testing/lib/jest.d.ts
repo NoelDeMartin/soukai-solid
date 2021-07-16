@@ -6,7 +6,6 @@ declare global {
 
         interface Matchers<R> {
             toEqualJsonLD(jsonld: Record<string, unknown>): R;
-            toEqualSPARQL(sparql: string): R;
         }
 
     }

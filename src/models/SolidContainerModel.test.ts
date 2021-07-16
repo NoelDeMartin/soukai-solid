@@ -5,9 +5,10 @@ import type { EngineDocument } from 'soukai';
 
 import IRI from '@/solid/utils/IRI';
 
-import { stubGroupJsonLD, stubPersonJsonLD, stubSolidDocumentJsonLD } from '@/testing/lib/stubs/helpers';
-import Group from '@/testing/lib/stubs/Group';
-import Person from '@/testing/lib/stubs/Person';
+import { stubMovieJsonLD, stubMoviesCollectionJsonLD, stubSolidDocumentJsonLD } from '@/testing/lib/stubs/helpers';
+import Movie from '@/testing/lib/stubs/Movie';
+import WatchAction from '@/testing/lib/stubs/WatchAction';
+import MoviesCollection from '@/testing/lib/stubs/MoviesCollection';
 import StubEngine from '@/testing/lib/stubs/StubEngine';
 
 import SolidContainerModel from './SolidContainerModel';
@@ -17,12 +18,8 @@ let engine: StubEngine;
 
 describe('SolidContainerModel', () => {
 
-    beforeAll(() => bootModels({ Group, Person }));
-
-    beforeEach(() => {
-        engine = new StubEngine();
-        setEngine(engine);
-    });
+    beforeAll(() => bootModels({ Movie, MoviesCollection, WatchAction }));
+    beforeEach(() => setEngine(engine = new StubEngine()));
 
     it('adds ldp:Container rdfsClass', () => {
         class StubModel extends SolidContainerModel {}
@@ -73,7 +70,7 @@ describe('SolidContainerModel', () => {
 
         engine.setOne({
             '@graph': [
-                stubGroupJsonLD(
+                stubMoviesCollectionJsonLD(
                     containerUrl,
                     Faker.lorem.word(),
                     [firstDocumentUrl, secondDocumentUrl],
@@ -84,75 +81,74 @@ describe('SolidContainerModel', () => {
         } as EngineDocument);
 
         // Act
-        const group = await Group.find(containerUrl) as Group;
+        const collection = await MoviesCollection.find(containerUrl) as MoviesCollection;
 
         // Assert
-        expect(group.documents).toHaveLength(2);
+        expect(collection.documents).toHaveLength(2);
 
-        expect(group.documents[0].url).toEqual(firstDocumentUrl);
-        expect(group.documents[0].updatedAt).toEqual(new Date('1997-07-21T23:42:00.000Z'));
+        expect(collection.documents[0].url).toEqual(firstDocumentUrl);
+        expect(collection.documents[0].updatedAt).toEqual(new Date('1997-07-21T23:42:00.000Z'));
 
-        expect(group.documents[1].url).toEqual(secondDocumentUrl);
-        expect(group.documents[1].updatedAt).toEqual(new Date('2010-02-15T23:42:00.000Z'));
+        expect(collection.documents[1].url).toEqual(secondDocumentUrl);
+        expect(collection.documents[1].updatedAt).toEqual(new Date('2010-02-15T23:42:00.000Z'));
     });
 
     it('implements contains relationship', async () => {
         // Arrange
         const containerUrl = urlResolveDirectory(Faker.internet.url());
-        const musashiUrl = urlResolve(containerUrl, 'musashi');
-        const kojiroUrl = urlResolve(containerUrl, 'kojiro');
-
-        const group = new Group({
+        const theLordOfTheRingsUrl = urlResolve(containerUrl, 'the-lord-of-the-rings');
+        const spiritedAwayUrl = urlResolve(containerUrl, 'spirited-away');
+        const collection = new MoviesCollection({
             url: containerUrl,
             resourceUrls: [
-                musashiUrl,
-                kojiroUrl,
+                theLordOfTheRingsUrl,
+                spiritedAwayUrl,
             ],
         });
 
-        group.setRelationModels('documents', [
-            new SolidDocument({ url: musashiUrl }),
-            new SolidDocument({ url: kojiroUrl }),
+        collection.setRelationModels('documents', [
+            new SolidDocument({ url: theLordOfTheRingsUrl }),
+            new SolidDocument({ url: spiritedAwayUrl }),
         ]);
 
         jest.spyOn(engine, 'readMany');
 
         engine.setMany(containerUrl, {
-            [musashiUrl]: stubPersonJsonLD(musashiUrl, 'Musashi'),
-            [kojiroUrl]: stubPersonJsonLD(kojiroUrl, 'Kojiro'),
+            [theLordOfTheRingsUrl]: stubMovieJsonLD(theLordOfTheRingsUrl, 'The Lord Of The Rings'),
+            [spiritedAwayUrl]: stubMovieJsonLD(spiritedAwayUrl, 'Spirited Away'),
         });
 
-        expect(group.members).toBeUndefined();
+        expect(collection.movies).toBeUndefined();
 
         // Act
-        await group.loadRelation('members');
+        await collection.loadRelation('movies');
 
         // Assert
-        const groupMembers = group.members as Person[];
-        expect(groupMembers).toHaveLength(2);
-        expect(groupMembers[0]).toBeInstanceOf(Person);
-        expect(groupMembers[0].url).toBe(musashiUrl);
-        expect(groupMembers[0].name).toBe('Musashi');
-        expect(groupMembers[1]).toBeInstanceOf(Person);
-        expect(groupMembers[1].url).toBe(kojiroUrl);
-        expect(groupMembers[1].name).toBe('Kojiro');
+        const collectionMovies = collection.movies as Movie[];
+        expect(collectionMovies).toHaveLength(2);
+        expect(collectionMovies[0]).toBeInstanceOf(Movie);
+        expect(collectionMovies[0].url).toBe(theLordOfTheRingsUrl);
+        expect(collectionMovies[0].title).toBe('The Lord Of The Rings');
+        expect(collectionMovies[1]).toBeInstanceOf(Movie);
+        expect(collectionMovies[1].url).toBe(spiritedAwayUrl);
+        expect(collectionMovies[1].title).toBe('Spirited Away');
 
         expect(engine.readMany).toHaveBeenCalledTimes(1);
         expect(engine.readMany).toHaveBeenCalledWith(
             containerUrl,
             {
                 '$in': [
-                    musashiUrl,
-                    kojiroUrl,
+                    theLordOfTheRingsUrl,
+                    spiritedAwayUrl,
                 ],
                 '@graph': {
                     $contains: {
                         '@type': {
                             $or: [
-                                { $contains: ['Person'] },
-                                { $contains: [IRI('foaf:Person')] },
-                                { $eq: 'Person' },
-                                { $eq: IRI('foaf:Person') },
+                                { $contains: ['Movie'] },
+                                { $contains: [IRI('schema:Movie')] },
+                                { $eq: 'Movie' },
+                                { $eq: IRI('schema:Movie') },
                             ],
                         },
                     },
@@ -234,10 +230,10 @@ describe('SolidContainerModel', () => {
     });
 
     it('empty documents relation gets initialized', async () => {
-        const group = await Group.create({ name: Faker.random.word() }) as Group;
+        const collection = await MoviesCollection.create({ name: Faker.random.word() }) as MoviesCollection;
 
-        expect(group.isRelationLoaded('documents')).toBe(true);
-        expect(group.documents).toEqual([]);
+        expect(collection.isRelationLoaded('documents')).toBe(true);
+        expect(collection.documents).toEqual([]);
     });
 
 });

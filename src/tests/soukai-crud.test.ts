@@ -19,13 +19,13 @@ describe('Soukai CRUD', () => {
 
     it('Creates models', async () => {
         // Arrange
-        const name = Faker.name.title();
+        const title = Faker.name.title();
 
         // Act
-        const movie = await Movie.create({ name });
+        const movie = await Movie.create({ title });
 
         // Assert
-        expect(movie.name).toBe(name);
+        expect(movie.title).toBe(title);
 
         await expect(engine.database[Movie.collection][movie.requireDocumentUrl()]).toEqualJsonLD({
             '@graph': [
@@ -33,7 +33,7 @@ describe('Soukai CRUD', () => {
                     '@context': { '@vocab': 'https://schema.org/' },
                     '@id': movie.url,
                     '@type': 'Movie',
-                    name,
+                    'name': title,
                 },
             ],
         });
@@ -41,28 +41,28 @@ describe('Soukai CRUD', () => {
 
     it('Reads models', async () => {
         // Arrange
-        const name = Faker.name.title();
-        const stub = createStub(name);
+        const title = Faker.name.title();
+        const stub = createStub(title);
 
         // Act
         const movie = await Movie.find(stub.url) as Movie;
 
         // Assert
         expect(movie).not.toBeNull();
-        expect(movie.name).toEqual(name);
+        expect(movie.title).toEqual(title);
     });
 
     it('Updates models', async () => {
         // Arrange
-        const name = Faker.name.title();
+        const title = Faker.name.title();
         const stub = createStub(Faker.name.title());
         const movie = new Movie(stub.getAttributes(), true);
 
         // Act
-        await movie.update({ name });
+        await movie.update({ title });
 
         // Assert
-        expect(movie.name).toBe(name);
+        expect(movie.title).toBe(title);
 
         await expect(engine.database[Movie.collection][stub.requireDocumentUrl()]).toEqualJsonLD({
             '@graph': [
@@ -70,7 +70,7 @@ describe('Soukai CRUD', () => {
                     '@context': { '@vocab': 'https://schema.org/' },
                     '@id': stub.url,
                     '@type': 'Movie',
-                    name,
+                    'name': title,
                 },
             ],
         });
@@ -91,8 +91,8 @@ describe('Soukai CRUD', () => {
 
 });
 
-function createStub(name?: string): Movie {
-    return tap(new Movie({ name: name ?? Faker.name.title() }), stub => {
+function createStub(title?: string): Movie {
+    return tap(new Movie({ title: title ?? Faker.name.title() }), stub => {
         stub.mintUrl();
 
         engine.database[Movie.collection] = {

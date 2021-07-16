@@ -22,7 +22,7 @@ import type { Fetch } from '@/solid/SolidClient';
 
 import SolidClientMock from '@/solid/__mocks__';
 
-import { jsonLDGraph, stubGroupJsonLD, stubPersonJsonLD } from '@/testing/lib/stubs/helpers';
+import { jsonLDGraph, stubMoviesCollectionJsonLD, stubPersonJsonLD } from '@/testing/lib/stubs/helpers';
 
 describe('SolidEngine', () => {
 
@@ -73,7 +73,7 @@ describe('SolidEngine', () => {
         // Act
         const id = await engine.create(
             urlParentDirectory(documentUrl),
-            stubGroupJsonLD(documentUrl, name),
+            stubMoviesCollectionJsonLD(documentUrl, name),
             documentUrl,
         );
 
@@ -88,9 +88,8 @@ describe('SolidEngine', () => {
 
         const properties = SolidClientMock.createDocumentSpy.mock.calls[0][2];
 
-        expect(properties).toHaveLength(3);
+        expect(properties).toHaveLength(2);
         expect(properties).toContainEqual(RDFResourceProperty.type(documentUrl, IRI('ldp:Container')));
-        expect(properties).toContainEqual(RDFResourceProperty.type(documentUrl, IRI('foaf:Group')));
         expect(properties).toContainEqual(RDFResourceProperty.literal(documentUrl, IRI('rdfs:label'), name));
     });
 
@@ -115,7 +114,6 @@ describe('SolidEngine', () => {
 
         await SolidClientMock.createDocument(parentUrl, documentUrl, [
             RDFResourceProperty.type(documentUrl, IRI('ldp:Container')),
-            RDFResourceProperty.type(documentUrl, IRI('foaf:Group')),
             RDFResourceProperty.literal(documentUrl, IRI('rdfs:label'), name),
         ]);
 
@@ -125,7 +123,7 @@ describe('SolidEngine', () => {
         // Assert
         expect(SolidClientMock.getDocument).toHaveBeenCalledWith(documentUrl);
 
-        await expect(document).toEqualJsonLD(stubGroupJsonLD(documentUrl, name));
+        await expect(document).toEqualJsonLD(stubMoviesCollectionJsonLD(documentUrl, name));
     });
 
     it('fails reading when document doesn\'t exist', async () => {

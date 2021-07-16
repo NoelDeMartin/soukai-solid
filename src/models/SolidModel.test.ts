@@ -9,7 +9,7 @@ import type { Equals, Expect } from '@noeldemartin/utils';
 import IRI from '@/solid/utils/IRI';
 import type { SolidModelOperation } from '@/models';
 
-import { stubGroupJsonLD, stubMovieJsonLD, stubPersonJsonLD, stubWatchActionJsonLD } from '@/testing/lib/stubs/helpers';
+import { stubMovieJsonLD, stubMoviesCollectionJsonLD, stubPersonJsonLD, stubWatchActionJsonLD } from '@/testing/lib/stubs/helpers';
 import Group from '@/testing/lib/stubs/Group';
 import Movie from '@/testing/lib/stubs/Movie';
 import MoviesCollection from '@/testing/lib/stubs/MoviesCollection';
@@ -267,7 +267,7 @@ describe('SolidModel', () => {
         action.setEngine(new InMemoryEngine);
 
         // Act
-        movie.name = Faker.lorem.sentence();
+        movie.title = Faker.lorem.sentence();
         action.startTime = new Date();
 
         await movie.save();
@@ -296,7 +296,7 @@ describe('SolidModel', () => {
                     {
                         $updateItems: {
                             $where: { '@id': movieUrl },
-                            $update: { [IRI('schema:name')]: movie.name },
+                            $update: { [IRI('schema:name')]: movie.title },
                         },
                     },
                 ],
@@ -430,12 +430,12 @@ describe('SolidModel', () => {
 
         const firstMovie = movies.find(movie => movie.url === firstMovieUrl) as Movie;
         expect(firstMovie).not.toBeNull();
-        expect(firstMovie.name).toEqual(firstMovieName);
+        expect(firstMovie.title).toEqual(firstMovieName);
         expect(firstMovie.actions).toHaveLength(0);
 
         const secondMovie = movies.find(movie => movie.url === secondMovieUrl) as Movie;
         expect(secondMovie).not.toBeNull();
-        expect(secondMovie.name).toEqual(secondMovieName);
+        expect(secondMovie.title).toEqual(secondMovieName);
         expect(secondMovie.actions).toHaveLength(1);
 
         const secondMovieActions = secondMovie.actions as WatchAction[];
@@ -444,7 +444,7 @@ describe('SolidModel', () => {
 
         const thirdMovie = movies.find(movie => movie.url === thirdMovieUrl) as Movie;
         expect(thirdMovie).not.toBeNull();
-        expect(thirdMovie.name).toEqual(thirdMovieName);
+        expect(thirdMovie.title).toEqual(thirdMovieName);
         expect(thirdMovie.actions).toHaveLength(1);
 
         const thirdMovieActions = thirdMovie.actions as WatchAction[];
@@ -642,7 +642,7 @@ describe('SolidModel', () => {
         const movieUrl = documentUrl + '#' + Faker.random.uuid();
         const movie = new Movie({ url: movieUrl }, true);
 
-        movie.name = movieName;
+        movie.title = movieName;
 
         jest.spyOn(engine, 'update');
 
@@ -953,25 +953,25 @@ describe('SolidModel', () => {
         // Arrange
         const name = Faker.random.word();
         const containerUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(name));
-        const person = new Person({
+        const movie = new Movie({
             url: urlResolve(containerUrl, Faker.random.uuid()),
         });
 
         jest.spyOn(engine, 'readOne');
         jest.spyOn(engine, 'readMany');
 
-        engine.setOne(stubGroupJsonLD(containerUrl, name));
+        engine.setOne(stubMoviesCollectionJsonLD(containerUrl, name));
 
-        expect(person.group).toBeUndefined();
+        expect(movie.collection).toBeUndefined();
 
         // Act
-        await person.loadRelation('group');
+        await movie.loadRelation('collection');
 
         // Assert
-        expect(person.group).toBeInstanceOf(Group);
+        expect(movie.collection).toBeInstanceOf(MoviesCollection);
 
-        const group = person.group as Group;
-        expect(group.name).toBe(name);
+        const collection = movie.collection as MoviesCollection;
+        expect(collection.name).toBe(name);
 
         expect(engine.readOne).toHaveBeenCalledWith(urlParentDirectory(containerUrl), containerUrl);
     });
@@ -1119,7 +1119,7 @@ describe('SolidModel', () => {
 
         // Assert
         expect(movie.exists()).toBe(false);
-        expect(movie.name).toEqual(name);
+        expect(movie.title).toEqual(name);
         expect(movie.url).toBeUndefined();
         expect(movie.actions).toHaveLength(1);
 

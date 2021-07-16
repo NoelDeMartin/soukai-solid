@@ -1,10 +1,11 @@
 import { FieldType } from 'soukai';
-import type { IModel, Relation } from 'soukai';
+import type { IModel, Relation , SingleModelRelation } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
 import type SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
 import type SolidHasOneRelation from '@/models/relations/SolidHasOneRelation';
 
+import MoviesCollection from '@/testing/lib/stubs/MoviesCollection';
 import Person from '@/testing/lib/stubs/Person';
 import WatchAction from '@/testing/lib/stubs/WatchAction';
 
@@ -19,13 +20,22 @@ export default class Movie extends SolidModel {
     public static rdfsClasses = ['schema:Movie'];
 
     public static fields = {
-        name: FieldType.String,
+        title: {
+            rdfProperty: 'schema:name',
+            type: FieldType.String,
+        },
+        externalUrls: {
+            type: FieldType.Array,
+            rdfProperty: 'schema:sameAs',
+            items: FieldType.Key,
+        },
     };
 
     public director: Person | undefined;
     public relatedDirector!: SolidHasOneRelation<Movie, Person, typeof Person>;
     public actions: WatchAction[] | undefined;
     public relatedActions!: SolidHasManyRelation<Movie, WatchAction, typeof WatchAction>;
+    public collection: MoviesCollection | undefined;
 
     public directorRelationship(): Relation {
         return this
@@ -39,6 +49,10 @@ export default class Movie extends SolidModel {
             .hasMany(WatchAction, 'object')
             .usingSameDocument()
             .onDelete('cascade');
+    }
+
+    public collectionRelationship(): SingleModelRelation {
+        return this.isContainedBy(MoviesCollection);
     }
 
 }

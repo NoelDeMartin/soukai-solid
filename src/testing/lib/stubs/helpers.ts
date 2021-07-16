@@ -55,15 +55,18 @@ export function stubPersonJsonLD(
     return jsonLDGraph(jsonld);
 }
 
-export function stubGroupJsonLD(url: string, name: string, contains: string[] = []): JsonLDGraph & EngineDocument {
+export function stubMoviesCollectionJsonLD(
+    url: string,
+    name: string,
+    contains: string[] = [],
+): JsonLDGraph & EngineDocument {
     const jsonld: JsonLDResource = {
         '@context': {
-            '@vocab': 'http://xmlns.com/foaf/0.1/',
-            'ldp': 'http://www.w3.org/ns/ldp#',
-            'rdfs': 'http://www.w3.org/2000/01/rdf-schema#',
+            ldp: 'http://www.w3.org/ns/ldp#',
+            rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
         },
         '@id': url,
-        '@type': ['ldp:Container', 'Group'],
+        '@type': 'ldp:Container',
         'rdfs:label': name,
     };
 
@@ -74,6 +77,15 @@ export function stubGroupJsonLD(url: string, name: string, contains: string[] = 
     }
 
     return jsonLDGraph(jsonld);
+}
+
+export function stubGroupJsonLD(url: string, name: string): JsonLDGraph & EngineDocument {
+    return jsonLDGraph({
+        '@context': { '@vocab': 'http://xmlns.com/foaf/0.1/' },
+        '@id': url,
+        '@type': 'Group',
+        'name': name,
+    });
 }
 
 export function stubMovieJsonLD(

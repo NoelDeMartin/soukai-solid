@@ -61,7 +61,7 @@ describe('SolidClient', () => {
 
         const body = StubFetcher.fetchSpy.mock.calls[0][1]?.body;
 
-        await expect(body).toEqualSPARQL(`
+        await expect(body).toEqualSparql(`
             INSERT DATA {
                 <> a <http://www.w3.org/ns/ldp#Document> .
                 <#it> <http://xmlns.com/foaf/0.1/name> "${name}" .
@@ -408,7 +408,7 @@ describe('SolidClient', () => {
 
         const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
 
-        await expect(body).toEqualSPARQL(`
+        await expect(body).toEqualSparql(`
             DELETE DATA {
                 <#it> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
                 <#it> <http://xmlns.com/foaf/0.1/surname> "Doe" .
@@ -458,7 +458,7 @@ describe('SolidClient', () => {
 
         const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
 
-        await expect(body).toEqualSPARQL(`
+        await expect(body).toEqualSparql(`
             DELETE DATA {
                 <${containerUrl}> a <http://www.w3.org/ns/ldp#Container> .
                 <${containerUrl}> <http://xmlns.com/foaf/0.1/name> "Jonathan" .
@@ -521,7 +521,7 @@ describe('SolidClient', () => {
 
         const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
 
-        await expect(body).toEqualSPARQL(`
+        await expect(body).toEqualSparql(`
             DELETE DATA {
                 <${firstResourceUrl}> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
                 <${firstResourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
@@ -567,7 +567,7 @@ describe('SolidClient', () => {
 
         const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
 
-        await expect(body).toEqualSPARQL(`
+        await expect(body).toEqualSparql(`
             INSERT DATA {
                 <> <http://xmlns.com/foaf/0.1/name> "John Doe" .
             }
@@ -605,7 +605,7 @@ describe('SolidClient', () => {
 
         const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
 
-        await expect(body).toEqualSPARQL(`
+        await expect(body).toEqualSparql(`
             DELETE DATA {
                 <#it> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
                 <#it> <http://xmlns.com/foaf/0.1/surname> "Doe" .
@@ -653,7 +653,7 @@ describe('SolidClient', () => {
 
         const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
 
-        await expect(body).toEqualSPARQL(`
+        await expect(body).toEqualSparql(`
             DELETE DATA {
                 <${documentUrl}> a <http://www.w3.org/ns/ldp#Container> .
                 <${documentUrl}>
