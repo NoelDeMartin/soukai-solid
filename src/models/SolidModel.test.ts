@@ -1,6 +1,7 @@
 /* eslint-disable max-len */
-import { FieldType, InMemoryEngine, bootModels, setEngine } from 'soukai';
-import { after, stringToSlug, tt, urlParentDirectory, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
+import { after, arrayWithout, stringToSlug, toString, tt, urlParentDirectory, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
+import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
+import { FieldType, InMemoryEngine, ModelKey, bootModels, setEngine } from 'soukai';
 import dayjs from 'dayjs';
 import Faker from 'faker';
 import type { EngineDocument } from 'soukai';
@@ -19,15 +20,38 @@ import WatchAction from '@/testing/lib/stubs/WatchAction';
 
 import { SolidModel } from './SolidModel';
 
+const expandIRI = (iri: string) => defaultExpandIRI(iri, {
+    extraContext: {
+        soukai: 'https://soukai.noeldemartin.com/vocab/',
+        foaf: 'http://xmlns.com/foaf/0.1/',
+    },
+});
+
 let engine: StubEngine;
+
+class PersonWithHistory extends Person {
+
+    public static timestamps = true;
+    public static history = true;
+
+}
+
+class GroupWithHistory extends Group {
+
+    public static timestamps = true;
+    public static history = true;
+
+}
 
 describe('SolidModel', () => {
 
     beforeAll(() => bootModels({
         Group,
+        GroupWithHistory,
         Movie,
         MoviesCollection,
         Person,
+        PersonWithHistory,
         WatchAction,
     }));
 
@@ -1153,13 +1177,6 @@ describe('SolidModel', () => {
 
     it('Tracks operations with history enabled', async () => {
         // Arrange
-        class PersonWithHistory extends Person {
-
-            public static timestamps = true;
-            public static history = true;
-
-        }
-
         const firstName = Faker.random.word();
         const secondName = Faker.random.word();
         const firstLastName = Faker.random.word();
@@ -1182,26 +1199,115 @@ describe('SolidModel', () => {
         operations.forEach(operation => expect(operation.resourceUrl).toEqual(person.url));
 
         expect(operations[0].property).toEqual(IRI('foaf:name'));
+        expect(operations[0].type).toBeUndefined();
         expect(operations[0].value).toEqual(firstName);
         expect(operations[0].date).toEqual(person.createdAt);
 
         expect(operations[1].property).toEqual(IRI('foaf:name'));
+        expect(operations[1].type).toBeUndefined();
         expect(operations[1].value).toEqual(secondName);
         expect(operations[1].date.getTime()).toBeGreaterThan(person.createdAt.getTime());
         expect(operations[1].date.getTime()).toBeLessThan(person.updatedAt.getTime());
 
         expect(operations[2].property).toEqual(IRI('foaf:lastName'));
+        expect(operations[2].type).toBeUndefined();
         expect(operations[2].value).toEqual(firstLastName);
         expect(operations[2].date.getTime()).toBeGreaterThan(person.createdAt.getTime());
         expect(operations[2].date.getTime()).toBeLessThan(person.updatedAt.getTime());
 
         expect(operations[3].property).toEqual(IRI('foaf:lastName'));
+        expect(operations[3].type).toBeUndefined();
         expect(operations[3].value).toEqual(secondLastName);
         expect(operations[3].date).toEqual(person.updatedAt);
     });
 
-    it.todo('tracks history properly for array fields');
-    it.todo('reads operation values with types');
+    it('Tracks history properly for array fields', async () => {
+        // Arrange
+        const firstName = Faker.random.word();
+        const secondName = Faker.random.word();
+        const initialMembers = [Faker.random.word(), Faker.random.word(), Faker.random.word()];
+        const firstAddedMembers = [Faker.random.word(), Faker.random.word()];
+        const secondAddedMember = Faker.random.word();
+        const removedMembers = [initialMembers[1], firstAddedMembers[1]];
+
+        // Act
+        const group = await GroupWithHistory.create({
+            name: firstName,
+            memberUrls: initialMembers,
+        });
+
+        await after({ ms: 100 });
+        await group.update({
+            name: secondName,
+            memberUrls: [
+                ...group.memberUrls,
+                ...firstAddedMembers,
+            ],
+        });
+
+        await after({ ms: 100 });
+        await group.update({
+            memberUrls: arrayWithout(
+                [
+                    ...group.memberUrls,
+                    secondAddedMember,
+                ],
+                removedMembers,
+            ),
+        });
+
+        // Assert
+        const operations = group.operations as SolidModelOperation[];
+
+        expect(operations).toHaveLength(6);
+
+        operations.forEach(operation => expect(operation.url.startsWith(group.url)).toBe(true));
+        operations.forEach(operation => expect(operation.resourceUrl).toEqual(group.url));
+
+        expect(operations[0].property).toEqual(expandIRI('foaf:name'));
+        expect(operations[0].type).toBeUndefined();
+        expect(operations[0].value).toEqual(firstName);
+        expect(operations[0].date).toEqual(group.createdAt);
+
+        expect(operations[1].property).toEqual(expandIRI('foaf:member'));
+        expect(operations[1].type).toBeUndefined();
+        expect(operations[1].value).toHaveLength(initialMembers.length);
+        initialMembers.forEach((memberUrl, index) => {
+            expect(operations[1].value[index]).toBeInstanceOf(ModelKey);
+            expect(toString(operations[1].value[index])).toEqual(memberUrl);
+        });
+        expect(operations[1].date).toEqual(group.createdAt);
+
+        expect(operations[2].property).toEqual(expandIRI('foaf:name'));
+        expect(operations[2].type).toBeUndefined();
+        expect(operations[2].value).toEqual(secondName);
+        expect(operations[2].date.getTime()).toBeGreaterThan(group.createdAt.getTime());
+        expect(operations[2].date.getTime()).toBeLessThan(group.updatedAt.getTime());
+
+        expect(operations[3].property).toEqual(expandIRI('foaf:member'));
+        expect(operations[3].type).toEqual(expandIRI('soukai:AddOperation'));
+        expect(operations[3].value).toHaveLength(firstAddedMembers.length);
+        firstAddedMembers.forEach((memberUrl, index) => {
+            expect(operations[3].value[index]).toBeInstanceOf(ModelKey);
+            expect(toString(operations[3].value[index])).toEqual(memberUrl);
+        });
+        expect(operations[3].date.getTime()).toEqual(operations[2].date.getTime());
+
+        expect(operations[4].property).toEqual(expandIRI('foaf:member'));
+        expect(operations[4].type).toEqual(expandIRI('soukai:AddOperation'));
+        expect(operations[4].value).toBeInstanceOf(ModelKey);
+        expect(toString(operations[4].value)).toEqual(secondAddedMember);
+        expect(operations[4].date.getTime()).toEqual(group.updatedAt.getTime());
+
+        expect(operations[5].property).toEqual(expandIRI('foaf:member'));
+        expect(operations[5].type).toEqual(expandIRI('soukai:RemoveOperation'));
+        expect(operations[5].value).toHaveLength(removedMembers.length);
+        removedMembers.forEach((memberUrl, index) => {
+            expect(operations[5].value[index]).toBeInstanceOf(ModelKey);
+            expect(toString(operations[5].value[index])).toEqual(memberUrl);
+        });
+        expect(operations[5].date.getTime()).toEqual(group.updatedAt.getTime());
+    });
 
     it('[legacy] parses legacy automatic timestamps from JsonLD', async () => {
         // Arrange

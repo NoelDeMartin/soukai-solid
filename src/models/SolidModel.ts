@@ -1,6 +1,7 @@
 import {
     arrayDiff,
     arrayFilter,
+    arrayFrom,
     arraySorted,
     arrayUnique,
     fail,
@@ -882,10 +883,27 @@ export class SolidModel extends Model {
     }
 
     protected castAttribute(value: unknown, definition?: BootedFieldDefinition): unknown {
-        if (definition?.type === FieldType.Array && !Array.isArray(value))
-            return super.castAttribute([value], definition);
+        const prepareValue = () => {
+            switch (definition?.type) {
+                case FieldType.Array:
+                    return arrayFrom(value);
+                case FieldType.Any:
+                    if (!Array.isArray(value))
+                        return value;
 
-        return super.castAttribute(value, definition);
+                    if (value.length === 0)
+                        return null;
+
+                    if (value.length === 1)
+                        return value[0];
+
+                    break;
+            }
+
+            return value;
+        };
+
+        return super.castAttribute(prepareValue(), definition);
     }
 
     protected newUrl(documentUrl?: string, resourceHash?: string): string {

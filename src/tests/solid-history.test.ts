@@ -1,12 +1,20 @@
-import { bootModels, setEngine } from 'soukai';
+import { arrayWithout, toString } from '@noeldemartin/utils';
+import { ModelKey, bootModels, setEngine } from 'soukai';
+import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
 
 import { SolidEngine } from '@/engines';
 
+import { loadFixture } from '@/testing/utils';
 import BaseGroup from '@/testing/lib/stubs/Group';
 import BasePerson from '@/testing/lib/stubs/Person';
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';
-import { loadFixture } from '@/testing/utils';
-import { arrayWithout } from '@noeldemartin/utils';
+
+const expandIRI = (iri: string) => defaultExpandIRI(iri, {
+    extraContext: {
+        soukai: 'https://soukai.noeldemartin.com/vocab/',
+        foaf: 'http://xmlns.com/foaf/0.1/',
+    },
+});
 
 class Person extends BasePerson {
 
@@ -119,6 +127,71 @@ describe('Solid history tracking', () => {
         expect(fetch.mock.calls[3][1]?.body).toEqualSparql(fixture('update-band-of-the-falcon-1.sparql'));
         expect(fetch.mock.calls[5][1]?.body).toEqualSparql(fixture('update-band-of-the-falcon-2.sparql'));
         expect(fetch.mock.calls[7][1]?.body).toEqualSparql(fixture('update-band-of-the-falcon-3.sparql'));
+    });
+
+    it('Reads operation values with explicit types', async () => {
+        // Arrange
+        StubFetcher.addFetchResponse(fixture('band-of-the-falcon-3.ttl'));
+
+        // Act
+        const band = await Group.find('solid://band-of-the-falcon#it') as Group;
+
+        // Assert
+        expect(band.name).toEqual('Band of the Falcon');
+        expect(band.memberUrls).toEqual([
+            'https://berserk.fandom.com/wiki/Griffith',
+            'https://berserk.fandom.com/wiki/Casca',
+            'https://berserk.fandom.com/wiki/Guts',
+        ]);
+        expect(band.metadata).not.toBeNull();
+        expect(band.operations).toHaveLength(4);
+
+        expect(band.metadata.resourceUrl).toEqual('solid://band-of-the-falcon#it');
+        expect(band.metadata.createdAt).toBeInstanceOf(Date);
+        expect(band.metadata.updatedAt).toBeInstanceOf(Date);
+
+        expect(band.operations[0].resourceUrl).toEqual('solid://band-of-the-falcon#it');
+        expect(band.operations[0].type).toBeUndefined();
+        expect(band.operations[0].date).toBeInstanceOf(Date);
+        expect(band.operations[0].property).toEqual(expandIRI('foaf:name'));
+        expect(band.operations[0].value).toEqual('Band of the Falcon');
+
+        expect(band.operations[1].resourceUrl).toEqual('solid://band-of-the-falcon#it');
+        expect(band.operations[1].type).toBeUndefined();
+        expect(band.operations[1].date).toBeInstanceOf(Date);
+        expect(band.operations[1].property).toEqual(expandIRI('foaf:member'));
+        expect(band.operations[1].value).toHaveLength(5);
+        [
+            'https://berserk.fandom.com/wiki/Griffith',
+            'https://berserk.fandom.com/wiki/Casca',
+            'https://berserk.fandom.com/wiki/Judeau',
+            'https://berserk.fandom.com/wiki/Pippin',
+            'https://berserk.fandom.com/wiki/Corkus',
+        ].forEach((memberUrl, index) => {
+            expect(band.operations[1].value[index]).toBeInstanceOf(ModelKey);
+            expect(toString(band.operations[1].value[index])).toEqual(memberUrl);
+        });
+
+        expect(band.operations[2].resourceUrl).toEqual('solid://band-of-the-falcon#it');
+        expect(band.operations[2].type).toEqual(expandIRI('soukai:AddOperation'));
+        expect(band.operations[2].date).toBeInstanceOf(Date);
+        expect(band.operations[2].property).toEqual(expandIRI('foaf:member'));
+        expect(band.operations[2].value).toBeInstanceOf(ModelKey);
+        expect(toString(band.operations[2].value)).toEqual('https://berserk.fandom.com/wiki/Guts');
+
+        expect(band.operations[3].resourceUrl).toEqual('solid://band-of-the-falcon#it');
+        expect(band.operations[3].type).toEqual(expandIRI('soukai:RemoveOperation'));
+        expect(band.operations[3].date).toBeInstanceOf(Date);
+        expect(band.operations[3].property).toEqual(expandIRI('foaf:member'));
+        expect(band.operations[3].value).toHaveLength(3);
+        [
+            'https://berserk.fandom.com/wiki/Judeau',
+            'https://berserk.fandom.com/wiki/Pippin',
+            'https://berserk.fandom.com/wiki/Corkus',
+        ].forEach((memberUrl, index) => {
+            expect(band.operations[3].value[index]).toBeInstanceOf(ModelKey);
+            expect(toString(band.operations[3].value[index])).toEqual(memberUrl);
+        });
     });
 
 });
