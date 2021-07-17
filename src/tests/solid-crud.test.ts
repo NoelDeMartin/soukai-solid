@@ -1,5 +1,5 @@
 import { bootModels, setEngine } from 'soukai';
-import { tap } from '@noeldemartin/utils';
+import { tap, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 import Faker from 'faker';
 
 import Movie from '@/testing/lib/stubs/Movie';
@@ -26,7 +26,41 @@ describe('Solid CRUD', () => {
         bootModels({ Movie, WatchAction });
     });
 
-    it.todo('Creates models');
+    it('Creates models', async () => {
+        // Arrange
+        const title = Faker.name.title();
+        const releaseDate = new Date('1997-07-21T23:42:00Z');
+        const watchDate = new Date('2002-09-15T23:42:00Z');
+
+        StubFetcher.addFetchResponse();
+        StubFetcher.addFetchResponse();
+
+        // Act
+        const movie = new Movie({ title, releaseDate });
+
+        movie.relatedActions.create({ startTime: watchDate });
+
+        await movie.save();
+
+        // Assert
+        expect(fetch).toHaveBeenCalledTimes(2);
+
+        await expect(fetch.mock.calls[1][1]?.body).toEqualSparql(`
+            INSERT DATA {
+                @prefix schema: <https://schema.org/>.
+
+                <#it>
+                    a schema:Movie ;
+                    schema:name "${title}" ;
+                    schema:datePublished "${releaseDate.toISOString()}"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+
+                <#[[.*]]>
+                    a schema:WatchAction ;
+                    schema:object <#it> ;
+                    schema:startTime "${watchDate.toISOString()}"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+            }
+        `);
+    });
 
     it('Updates models', async () => {
         // Arrange
@@ -60,7 +94,30 @@ describe('Solid CRUD', () => {
         `);
     });
 
-    it.todo('Reads models');
+    it('Reads models', async () => {
+        // Arrange
+        StubFetcher.addFetchResponse(fixture('spirited-away.ttl'));
+
+        // Act
+        const movie = await Movie.find('solid://spirited-away#it') as Movie;
+
+        // Assert
+        expect(movie).toBeInstanceOf(Movie);
+        expect(movie.url).toEqual('solid://spirited-away#it');
+        expect(movie.title).toEqual('Spirited Away');
+        expect(movie.releaseDate?.getFullYear()).toEqual(2001);
+        expect(movie.releaseDate?.getMonth()).toEqual(6);
+        expect(movie.releaseDate?.getDate()).toEqual(20);
+
+        expect(movie.actions).toHaveLength(1);
+
+        const action = movie.actions?.[0] as WatchAction;
+        expect(action).toBeInstanceOf(WatchAction);
+        expect(action.object).toEqual(movie.url);
+        expect(action.startTime?.getFullYear()).toEqual(2020);
+        expect(action.startTime?.getMonth()).toEqual(11);
+        expect(action.startTime?.getDate()).toEqual(10);
+    });
 
     it('Reads many models', async () => {
         // Arrange
@@ -86,7 +143,28 @@ describe('Solid CRUD', () => {
         expect(spiritedAway.actions).toHaveLength(1);
     });
 
-    it.todo('Deletes models');
+    it('Deletes models', async () => {
+        // Arrange
+        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const documentUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const url = `${documentUrl}#it`;
+        const movie = new Movie({ url }, true);
+
+        StubFetcher.addFetchResponse(); // GET to check if there are other models in document
+        StubFetcher.addFetchResponse(); // GET to see if document exists
+        StubFetcher.addFetchResponse(); // DELETE
+
+        // Act
+        await movie.delete();
+
+        // Assert
+        expect(movie.exists()).toBe(false);
+        expect(movie.documentExists()).toBe(false);
+
+        expect(fetch).toHaveBeenCalledTimes(3);
+        expect(fetch.mock.calls[2][0]).toEqual(documentUrl);
+        expect(fetch.mock.calls[2][1]?.method).toEqual('DELETE');
+    });
 
 });
 

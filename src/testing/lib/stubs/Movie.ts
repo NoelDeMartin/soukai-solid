@@ -29,6 +29,10 @@ export default class Movie extends SolidModel {
             rdfProperty: 'schema:sameAs',
             items: FieldType.Key,
         },
+        releaseDate: {
+            type: FieldType.Date,
+            rdfProperty: 'schema:datePublished',
+        },
     };
 
     public director: Person | undefined;

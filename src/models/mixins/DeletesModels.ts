@@ -87,6 +87,8 @@ export default class DeletesModels {
         if (!resources.some(resource => !modelUrls.some(url => url === resource['@id']))) {
             await this.requireEngine().delete(containerUrl, documentUrl);
 
+            models.forEach(model => model.setDocumentExists(false));
+
             return;
         }
 
