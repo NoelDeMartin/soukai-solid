@@ -9,5 +9,5 @@
 <#it-metadata>
     a soukai:Metadata ;
     soukai:resource <#it> ;
-    soukai:createdAt "1991-11-01T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:updatedAt "1991-11-01T00:00:00.000Z"^^xsd:dateTime .
+    soukai:createdAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:updatedAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime .

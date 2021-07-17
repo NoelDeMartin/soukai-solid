@@ -10,26 +10,26 @@
 <#it-metadata>
     a soukai:Metadata ;
     soukai:resource <#it> ;
-    soukai:createdAt "1991-11-01T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:updatedAt "1991-11-01T00:00:00.000Z"^^xsd:dateTime .
+    soukai:createdAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:updatedAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime .
 
 <#it-operation-1>
     a soukai:Operation ;
     soukai:resource <#it> ;
-    soukai:date "1991-11-01T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:date "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
     soukai:property foaf:name ;
     soukai:value "Griffith" .
 
 <#it-operation-2>
     a soukai:Operation ;
     soukai:resource <#it> ;
-    soukai:date "1996-09-08T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:date "1996-08-09T00:00:00.000Z"^^xsd:dateTime ;
     soukai:property foaf:name ;
     soukai:value "Femto" .
 
 <#it-operation-3>
     a soukai:Operation ;
     soukai:resource <#it> ;
-    soukai:date "1996-09-08T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:date "1996-08-09T00:00:00.000Z"^^xsd:dateTime ;
     soukai:property foaf:givenName ;
     soukai:value "Wings of Darkness" .
