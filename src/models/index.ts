@@ -8,7 +8,7 @@ import type SerializesToJsonLD from './mixins/SerializesToJsonLD';
 import SolidContainerModel from './SolidContainerModel';
 import SolidDocument from './SolidDocument';
 import SolidModelMetadata from './SolidModelMetadata';
-import SolidModelOperation from './SolidModelOperation';
+import SolidModelOperation, { SolidModelOperationType } from './SolidModelOperation';
 import SolidTypeRegistration from './SolidTypeRegistration';
 
 export * from './inference';
@@ -20,6 +20,7 @@ export {
     SolidDocument,
     SolidModelMetadata,
     SolidModelOperation,
+    SolidModelOperationType,
     SolidTypeRegistration,
 };
 

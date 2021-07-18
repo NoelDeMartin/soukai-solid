@@ -4,6 +4,7 @@ import {
     arrayFrom,
     arraySorted,
     arrayUnique,
+    arrayWithout,
     fail,
     invert,
     isPromise,
@@ -57,6 +58,7 @@ import type { JsonLD, JsonLDResource } from '@/solid/utils/RDF';
 import type RDFResource from '@/solid/RDFResource';
 
 import { inferFieldDefinition } from './fields';
+import { SolidModelOperationType } from './SolidModelOperation';
 import DeletesModels from './mixins/DeletesModels';
 import SerializesToJsonLD from './mixins/SerializesToJsonLD';
 import SolidBelongsToManyRelation from './relations/SolidBelongsToManyRelation';
@@ -486,8 +488,10 @@ export class SolidModel extends Model {
             if (!(operation.property in fields))
                 continue;
 
-            filledAttributes.delete(fields[operation.property]);
-            this.setAttributeValue(fields[operation.property], operation.value);
+            const field = fields[operation.property];
+
+            filledAttributes.delete(field);
+            this.applyOperation(field, operation);
         }
 
         for (const attribute of filledAttributes) {
@@ -755,7 +759,7 @@ export class SolidModel extends Model {
                 if (added.length > 0)
                     this.relatedOperations.add({
                         property: this.getFieldRdfProperty(field),
-                        type: IRI('soukai:AddOperation', this.static('rdfContexts')),
+                        type: SolidModelOperationType.Add,
                         date: this.metadata.updatedAt,
                         value: this.getOperationValue(field, added),
                     });
@@ -763,7 +767,7 @@ export class SolidModel extends Model {
                 if (removed.length > 0)
                     this.relatedOperations.add({
                         property: this.getFieldRdfProperty(field),
-                        type: IRI('soukai:RemoveOperation', this.static('rdfContexts')),
+                        type: SolidModelOperationType.Remove,
                         date: this.metadata.updatedAt,
                         value: this.getOperationValue(field, removed),
                     });
@@ -975,6 +979,41 @@ export class SolidModel extends Model {
             return new ModelKey(value);
 
         return value;
+    }
+
+    private applyOperation(field: string, operation: SolidModelOperation): void {
+        switch (operation.type) {
+            case SolidModelOperationType.Add: {
+                const value = this.getAttributeValue(field);
+
+                if (!Array.isArray(value))
+                    throw new SoukaiError('Can\'t apply Add operation to non-array field');
+
+                this.setAttributeValue(field, [...value, ...arrayFrom(operation.value)]);
+                break;
+            }
+            case SolidModelOperationType.Remove: {
+                const value = this.getAttributeValue(field);
+
+                if (!Array.isArray(value))
+                    throw new SoukaiError('Can\'t apply Remove operation to non-array field');
+
+                const removed = this.castAttribute(
+                    arrayFrom(operation.value),
+                    this.getFieldDefinition(field),
+                ) as typeof value;
+
+                this.setAttributeValue(field, arrayWithout(value, removed));
+                break;
+            }
+            case SolidModelOperationType.Unset:
+                // TODO
+                break;
+            case SolidModelOperationType.Set:
+            default:
+                this.setAttributeValue(field, operation.value);
+                break;
+        }
     }
 
     private prepareDirtyDocumentModels(): SolidModel[] {

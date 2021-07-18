@@ -7,6 +7,7 @@ import Faker from 'faker';
 import type { EngineDocument } from 'soukai';
 import type { Equals, Expect } from '@noeldemartin/utils';
 
+import { SolidModelOperationType } from '@/models/SolidModelOperation';
 import IRI from '@/solid/utils/IRI';
 import type { SolidModelOperation } from '@/models';
 
@@ -1285,7 +1286,7 @@ describe('SolidModel', () => {
         expect(operations[2].date.getTime()).toBeLessThan(group.updatedAt.getTime());
 
         expect(operations[3].property).toEqual(expandIRI('foaf:member'));
-        expect(operations[3].type).toEqual(expandIRI('soukai:AddOperation'));
+        expect(operations[3].type).toEqual(SolidModelOperationType.Add);
         expect(operations[3].value).toHaveLength(firstAddedMembers.length);
         firstAddedMembers.forEach((memberUrl, index) => {
             expect(operations[3].value[index]).toBeInstanceOf(ModelKey);
@@ -1294,13 +1295,13 @@ describe('SolidModel', () => {
         expect(operations[3].date.getTime()).toEqual(operations[2].date.getTime());
 
         expect(operations[4].property).toEqual(expandIRI('foaf:member'));
-        expect(operations[4].type).toEqual(expandIRI('soukai:AddOperation'));
+        expect(operations[4].type).toEqual(SolidModelOperationType.Add);
         expect(operations[4].value).toBeInstanceOf(ModelKey);
         expect(toString(operations[4].value)).toEqual(secondAddedMember);
         expect(operations[4].date.getTime()).toEqual(group.updatedAt.getTime());
 
         expect(operations[5].property).toEqual(expandIRI('foaf:member'));
-        expect(operations[5].type).toEqual(expandIRI('soukai:RemoveOperation'));
+        expect(operations[5].type).toEqual(SolidModelOperationType.Remove);
         expect(operations[5].value).toHaveLength(removedMembers.length);
         removedMembers.forEach((memberUrl, index) => {
             expect(operations[5].value[index]).toBeInstanceOf(ModelKey);
@@ -1339,9 +1340,17 @@ describe('SolidModel', () => {
         // Arrange
         const name = Faker.random.word();
         const lastName = Faker.random.word();
+        const initialFriends = [Faker.internet.url(), Faker.internet.url()];
+        const firstAddedFriends = [Faker.internet.url(), Faker.internet.url()];
+        const secondAddedFriend = Faker.internet.url();
+        const removedFriends = [initialFriends[1], firstAddedFriends[0]];
         const createdAt = Faker.date.between(
             dayjs().subtract(3, 'months').toDate(),
             dayjs().subtract(1, 'month').toDate(),
+        );
+        const firstUpdatedAt = Faker.date.between(
+            dayjs().subtract(1, 'month').toDate(),
+            dayjs().add(1, 'month').toDate(),
         );
         const updatedAt = Faker.date.between(
             dayjs().add(1, 'month').toDate(),
@@ -1351,6 +1360,10 @@ describe('SolidModel', () => {
             name: Faker.random.word(),
             lastName: Faker.random.word(),
             givenName: Faker.random.word(),
+            friendUrls: [
+                Faker.internet.url(),
+                Faker.internet.url(),
+            ],
         });
 
         // Arrange - initial operations
@@ -1366,21 +1379,45 @@ describe('SolidModel', () => {
             date: createdAt,
         });
 
-        // Arrange - second update operation
+        person.relatedOperations.add({
+            property: person.getFieldRdfProperty('friendUrls'),
+            value: initialFriends.map(url => new ModelKey(url)),
+            date: createdAt,
+        });
+
+        // Arrange - second update operation (use wrong order on purpose to test sorting)
         person.relatedOperations.add({
             property: person.getFieldRdfProperty('name'),
             value: name,
             date: updatedAt,
         });
 
-        // Arrange - first update operation
+        person.relatedOperations.add({
+            property: person.getFieldRdfProperty('friendUrls'),
+            type: SolidModelOperationType.Add,
+            value: new ModelKey(secondAddedFriend),
+            date: updatedAt,
+        });
+
+        person.relatedOperations.add({
+            property: person.getFieldRdfProperty('friendUrls'),
+            type: SolidModelOperationType.Remove,
+            value: removedFriends.map(url => new ModelKey(url)),
+            date: updatedAt,
+        });
+
+        // Arrange - first update operation (use wrong order on purpose to test sorting)
         person.relatedOperations.add({
             property: person.getFieldRdfProperty('name'),
             value: Faker.random.word(),
-            date: Faker.date.between(
-                dayjs().subtract(1, 'month').toDate(),
-                dayjs().add(1, 'month').toDate(),
-            ),
+            date: firstUpdatedAt,
+        });
+
+        person.relatedOperations.add({
+            property: person.getFieldRdfProperty('friendUrls'),
+            type: SolidModelOperationType.Add,
+            value: firstAddedFriends.map(url => new ModelKey(url)),
+            date: firstUpdatedAt,
         });
 
         // Act
@@ -1390,6 +1427,16 @@ describe('SolidModel', () => {
         expect(person.name).toEqual(name);
         expect(person.lastName).toEqual(lastName);
         expect(person.givenName).toBeUndefined();
+        expect(person.friendUrls).toEqual(
+            arrayWithout(
+                [
+                    ...initialFriends,
+                    ...firstAddedFriends,
+                    secondAddedFriend,
+                ],
+                removedFriends,
+            ),
+        );
         expect(person.createdAt).toEqual(createdAt);
         expect(person.updatedAt).toEqual(updatedAt);
     });

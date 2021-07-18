@@ -3,6 +3,7 @@ import { ModelKey, bootModels, setEngine } from 'soukai';
 import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
 
 import { SolidEngine } from '@/engines';
+import { SolidModelOperationType } from '@/models/SolidModelOperation';
 
 import { loadFixture } from '@/testing/utils';
 import BaseGroup from '@/testing/lib/stubs/Group';
@@ -173,14 +174,14 @@ describe('Solid history tracking', () => {
         });
 
         expect(band.operations[2].resourceUrl).toEqual('solid://band-of-the-falcon#it');
-        expect(band.operations[2].type).toEqual(expandIRI('soukai:AddOperation'));
+        expect(band.operations[2].type).toEqual(SolidModelOperationType.Add);
         expect(band.operations[2].date).toBeInstanceOf(Date);
         expect(band.operations[2].property).toEqual(expandIRI('foaf:member'));
         expect(band.operations[2].value).toBeInstanceOf(ModelKey);
         expect(toString(band.operations[2].value)).toEqual('https://berserk.fandom.com/wiki/Guts');
 
         expect(band.operations[3].resourceUrl).toEqual('solid://band-of-the-falcon#it');
-        expect(band.operations[3].type).toEqual(expandIRI('soukai:RemoveOperation'));
+        expect(band.operations[3].type).toEqual(SolidModelOperationType.Remove);
         expect(band.operations[3].date).toBeInstanceOf(Date);
         expect(band.operations[3].property).toEqual(expandIRI('foaf:member'));
         expect(band.operations[3].value).toHaveLength(3);

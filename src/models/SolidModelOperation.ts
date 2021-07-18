@@ -4,6 +4,13 @@ import type { IModel } from 'soukai';
 
 import { SolidModel } from './SolidModel';
 
+export const enum SolidModelOperationType {
+    Set = 'https://soukai.noeldemartin.com/vocab/SetOperation',
+    Unset = 'https://soukai.noeldemartin.com/vocab/UnsetOperation',
+    Add = 'https://soukai.noeldemartin.com/vocab/AddOperation',
+    Remove = 'https://soukai.noeldemartin.com/vocab/RemoveOperation',
+}
+
 export default class SolidModelOperation extends SolidModel {
 
     public static rdfContexts = {
