@@ -60,7 +60,7 @@ describe('Solid history tracking', () => {
         // Act
         const griffith = await Person.create({ name: 'Griffith' });
 
-        await griffith.update({ name: 'Femto', givenName: 'Wings of Darkness' });
+        await griffith.update({ name: 'Femto', givenName: 'Wings of Darkness', lastName: null });
         await griffith.update({ name: 'Griffith', givenName: 'Falcon of Light' });
 
         // Assert

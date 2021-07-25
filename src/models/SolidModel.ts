@@ -886,6 +886,13 @@ export class SolidModel extends Model {
         return this.convertJsonLDToAttributes(jsonld as JsonLDResource);
     }
 
+    protected attributeValueChanged(originalValue: unknown, newValue: unknown): boolean {
+        newValue = newValue ?? null;
+        originalValue = originalValue ?? null;
+
+        return super.attributeValueChanged(originalValue, newValue);
+    }
+
     protected castAttribute(value: unknown, definition?: BootedFieldDefinition): unknown {
         const prepareValue = () => {
             switch (definition?.type) {
