@@ -6,6 +6,7 @@ import { uuid } from '@noeldemartin/utils';
 import type {
     EngineDocument,
     EngineDocumentsCollection,
+    EngineFilters,
     EngineUpdates,
 } from 'soukai';
 
@@ -48,7 +49,8 @@ export default class StubEngine extends SolidEngine {
         return this.one;
     }
 
-    public async readMany(collection: string): Promise<EngineDocumentsCollection> {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    public async readMany(collection: string, filters?: EngineFilters): Promise<EngineDocumentsCollection> {
         return this.many[collection] || {};
     }
 

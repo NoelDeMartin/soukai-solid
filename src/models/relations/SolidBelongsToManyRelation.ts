@@ -24,22 +24,22 @@ export default class SolidBelongsToManyRelation<
         if (this.isEmpty())
             return this.related = [];
 
-        const idsByContainerUrl: Record<string, string[]> = {};
+        const idsByContainerUrl: Record<string, Set<string>> = {};
 
         for (const id of this.__modelsInOtherDocumentIds ?? []) {
             const containerUrl = urlParentDirectory(id);
 
             if (!(containerUrl in idsByContainerUrl)) {
-                idsByContainerUrl[containerUrl] = [];
+                idsByContainerUrl[containerUrl] = new Set;
             }
 
-            idsByContainerUrl[containerUrl].push(id);
+            idsByContainerUrl[containerUrl].add(urlRoute(id));
         }
 
         const results = await Promise.all(
             Object.keys(idsByContainerUrl).map(
                 containerUrl => this.relatedClass.from(containerUrl).all<Related>({
-                    $in: idsByContainerUrl[containerUrl],
+                    $in: [...idsByContainerUrl[containerUrl]],
                 }),
             ),
         );
