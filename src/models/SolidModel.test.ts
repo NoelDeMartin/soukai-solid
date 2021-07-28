@@ -56,11 +56,7 @@ describe('SolidModel', () => {
         WatchAction,
     }));
 
-    beforeEach(() => {
-        engine = new StubEngine();
-
-        setEngine(engine);
-    });
+    beforeEach(() => setEngine(engine = new StubEngine()));
 
     it('resolves contexts when booting', () => {
         class StubModel extends SolidModel {
@@ -1439,6 +1435,20 @@ describe('SolidModel', () => {
         );
         expect(person.createdAt).toEqual(createdAt);
         expect(person.updatedAt).toEqual(updatedAt);
+    });
+
+    it('casts nulls, undefined and empty arrays', () => {
+        const person = new Person({
+            name: null,
+            friendUrls: null,
+        });
+
+        expect(person.name).toBeUndefined();
+        expect(person.lastName).toBeUndefined();
+        expect(person.friendUrls).toEqual([]);
+
+        person.unsetAttribute('friendUrls');
+        expect(person.friendUrls).toEqual([]);
     });
 
 });

@@ -560,6 +560,13 @@ export class SolidModel extends Model {
         }
     }
 
+    public unsetAttribute(field: string): void {
+        if (this.static('fields')?.[field]?.type === FieldType.Array)
+            return this.setAttributeValue(field, []);
+
+        return super.unsetAttribute(field);
+    }
+
     public setCreatedAtAttribute(value: unknown): void {
         (this.metadata ?? this).setAttributeValue('createdAt', value);
     }
@@ -886,24 +893,19 @@ export class SolidModel extends Model {
         return this.convertJsonLDToAttributes(jsonld as JsonLDResource);
     }
 
-    protected attributeValueChanged(originalValue: unknown, newValue: unknown): boolean {
-        newValue = newValue ?? null;
-        originalValue = originalValue ?? null;
-
-        return super.attributeValueChanged(originalValue, newValue);
-    }
-
     protected castAttribute(value: unknown, definition?: BootedFieldDefinition): unknown {
         const prepareValue = () => {
+            const isNullOrUndefined = typeof value === 'undefined' || value === null;
+
             switch (definition?.type) {
                 case FieldType.Array:
-                    return arrayFrom(value);
+                    return isNullOrUndefined ? [] : arrayFrom(value);
                 case FieldType.Any:
                     if (!Array.isArray(value))
                         return value;
 
                     if (value.length === 0)
-                        return null;
+                        return undefined;
 
                     if (value.length === 1)
                         return value[0];
@@ -911,7 +913,7 @@ export class SolidModel extends Model {
                     break;
             }
 
-            return value;
+            return isNullOrUndefined ? undefined : value;
         };
 
         return super.castAttribute(prepareValue(), definition);
