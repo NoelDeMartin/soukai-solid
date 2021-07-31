@@ -7,7 +7,7 @@ import { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 import RDFDocument from '@/solid/RDFDocument';
 import type { JsonLD, JsonLDResource } from '@/solid/utils/RDF';
 
-import JsonLDModelSerializer from '../utils/JsonLDModelSerializer';
+import JsonLDModelSerializer from '@/models/internals/JsonLDModelSerializer';
 
 export default class SerializesToJsonLD {
 

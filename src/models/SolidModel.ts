@@ -60,7 +60,7 @@ import {
     hasBeforeParentCreateHook,
     isSolidMultiModelRelation,
     isSolidSingleModelRelation,
-} from './relations/internals_guards';
+} from './relations/internals/guards';
 import { inferFieldDefinition } from './fields';
 import { SolidModelOperationType } from './SolidModelOperation';
 import DeletesModels from './mixins/DeletesModels';

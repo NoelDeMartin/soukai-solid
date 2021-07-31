@@ -13,7 +13,7 @@ import type { SolidBootedFieldsDefinition } from '@/models/fields';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
-import { initializeInverseRelations } from './internals_utils';
+import { initializeInverseRelations } from './internals/utils';
 
 export default class SolidHasManyRelation<
     Parent extends SolidModel = SolidModel,

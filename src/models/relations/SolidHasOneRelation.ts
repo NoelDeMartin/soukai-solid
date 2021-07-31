@@ -14,7 +14,7 @@ import type { JsonLDResource } from '@/solid/utils/RDF';
 import type { SolidBootedFieldsDefinition } from '@/models/fields';
 import type { SolidModelConstructor } from '@/models/inference';
 
-import { initializeInverseRelations } from './internals_utils';
+import { initializeInverseRelations } from './internals/utils';
 
 export default class SolidHasOneRelation<
     Parent extends SolidModel = SolidModel,

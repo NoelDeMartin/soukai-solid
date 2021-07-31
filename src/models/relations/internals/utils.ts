@@ -1,7 +1,7 @@
 import { BelongsToManyRelation, BelongsToOneRelation } from 'soukai';
 import type { Relation } from 'soukai';
 
-import type { SolidModel } from '../SolidModel';
+import type { SolidModel } from '@/models/SolidModel';
 
 type SolidRelation = Relation<SolidModel, SolidModel, typeof SolidModel>;
 

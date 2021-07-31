@@ -1,8 +1,8 @@
 import type { Relation } from 'soukai';
 
-import SolidBelongsToManyRelation from './SolidBelongsToManyRelation';
-import SolidHasManyRelation from './SolidHasManyRelation';
-import SolidHasOneRelation from './SolidHasOneRelation';
+import SolidBelongsToManyRelation from '@/models/relations/SolidBelongsToManyRelation';
+import SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
+import SolidHasOneRelation from '@/models/relations/SolidHasOneRelation';
 
 export function hasBeforeParentCreateHook(
     relation: Relation,

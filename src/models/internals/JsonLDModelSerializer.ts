@@ -4,11 +4,11 @@ import type { Attributes, BootedArrayFieldDefinition } from 'soukai';
 
 import type { JsonLD } from '@/solid/utils/RDF';
 
-import { inferFieldDefinition } from '../fields';
-import SolidHasManyRelation from '../relations/SolidHasManyRelation';
-import SolidHasOneRelation from '../relations/SolidHasOneRelation';
-import type { SolidModel } from '../SolidModel';
-import type { SolidBootedFieldDefinition } from '../fields';
+import { inferFieldDefinition } from '@/models/fields';
+import SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
+import SolidHasOneRelation from '@/models/relations/SolidHasOneRelation';
+import type { SolidModel } from '@/models/SolidModel';
+import type { SolidBootedFieldDefinition } from '@/models/fields';
 
 class EmptyJsonLDValue {}
 
@@ -177,6 +177,7 @@ export default class JsonLDModelSerializer {
 
             if (
                 !relation.loaded || relation.isEmpty() || (
+                    // TODO should we filter by SolidBelongsToMany as well?
                     !(relation instanceof SolidHasManyRelation) &&
                     !(relation instanceof SolidHasOneRelation)
                 )
