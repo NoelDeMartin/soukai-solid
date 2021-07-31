@@ -44,7 +44,6 @@ import type {
     MagicAttributes,
     ModelConstructor,
     MultiModelRelation,
-    Relation,
     SingleModelRelation,
     TimestampFieldValue,
 } from 'soukai';
@@ -57,6 +56,11 @@ import RDFDocument from '@/solid/RDFDocument';
 import type { JsonLD, JsonLDResource } from '@/solid/utils/RDF';
 import type RDFResource from '@/solid/RDFResource';
 
+import {
+    hasBeforeParentCreateHook,
+    isSolidMultiModelRelation,
+    isSolidSingleModelRelation,
+} from './relations/internals_guards';
 import { inferFieldDefinition } from './fields';
 import { SolidModelOperationType } from './SolidModelOperation';
 import DeletesModels from './mixins/DeletesModels';
@@ -653,12 +657,6 @@ export class SolidModel extends Model {
 
     protected async loadDocumentModels(documentUrl: string, document: EngineDocument): Promise<void> {
         const engine = this.requireEngine();
-        const isSolidSingleModelRelation =
-            (relation: Relation): relation is SolidHasOneRelation => relation instanceof SolidHasOneRelation;
-        const isSolidMultiModelRelation =
-            (relation: Relation): relation is SolidHasManyRelation | SolidBelongsToManyRelation =>
-                relation instanceof SolidHasManyRelation ||
-                relation instanceof SolidBelongsToManyRelation;
 
         await Promise.all(
             Object
@@ -681,6 +679,15 @@ export class SolidModel extends Model {
 
     protected async beforeSave(): Promise<void> {
         await super.beforeSave();
+
+        if (!this.exists()) {
+            for (const relation of Object.values(this._relations)) {
+                if (!hasBeforeParentCreateHook(relation))
+                    continue;
+
+                relation.__beforeParentCreate();
+            }
+        }
 
         if (!this.url && this.static('mintsUrls'))
             this.mintUrl();

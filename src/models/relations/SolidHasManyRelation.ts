@@ -13,7 +13,7 @@ import type { SolidBootedFieldsDefinition } from '@/models/fields';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
-import { initializeInverseRelations } from './utils';
+import { initializeInverseRelations } from './internals_utils';
 
 export default class SolidHasManyRelation<
     Parent extends SolidModel = SolidModel,
@@ -29,14 +29,17 @@ export default class SolidHasManyRelation<
     private documentModelsLoaded: boolean = false;
 
     public isEmpty(): boolean | null {
-        return this.documentModelsLoaded
-            ? null
-            : (
-                (this.__modelsInSameDocument?.length || 0) +
-                (this.__modelsInOtherDocumentIds?.length || 0) +
-                this.__newModels.length +
-                (this.related?.length || 0)
-            ) === 0;
+        if (!this.documentModelsLoaded && this.parent.exists())
+            return null;
+
+        const modelsCount = (
+            (this.__modelsInSameDocument?.length || 0) +
+            (this.__modelsInOtherDocumentIds?.length || 0) +
+            this.__newModels.length +
+            (this.related?.length || 0)
+        );
+
+        return modelsCount === 0;
     }
 
     public async resolve(): Promise<Related[]> {
@@ -186,13 +189,13 @@ export default class SolidHasManyRelation<
                 urlRoute(resourceId) !== documentUrl,
         );
 
-        if (this.__modelsInOtherDocumentIds.length > 0) {
-            this.documentModelsLoaded = true;
+        if (this.__modelsInOtherDocumentIds.length === 0)
+            this.related = this.__modelsInSameDocument.slice(0);
 
-            return;
-        }
+        this.documentModelsLoaded = true;
+    }
 
-        this.related = this.__modelsInSameDocument.slice(0);
+    public __beforeParentCreate(): void {
         this.documentModelsLoaded = true;
     }
 

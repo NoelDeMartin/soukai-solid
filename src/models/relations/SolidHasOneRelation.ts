@@ -14,7 +14,7 @@ import type { JsonLDResource } from '@/solid/utils/RDF';
 import type { SolidBootedFieldsDefinition } from '@/models/fields';
 import type { SolidModelConstructor } from '@/models/inference';
 
-import { initializeInverseRelations } from './utils';
+import { initializeInverseRelations } from './internals_utils';
 
 export default class SolidHasOneRelation<
     Parent extends SolidModel = SolidModel,
@@ -30,14 +30,15 @@ export default class SolidHasOneRelation<
     private documentModelLoaded: boolean = false;
 
     public isEmpty(): boolean | null {
-        return !this.documentModelLoaded
-            ? null
-            : !!(
-                this.__modelInSameDocument ||
-                this.__modelInOtherDocumentId ||
-                this.__newModel ||
-                this.related
-            );
+        if (!this.documentModelLoaded && this.parent.exists())
+            return null;
+
+        return !(
+            this.__modelInSameDocument ||
+            this.__modelInOtherDocumentId ||
+            this.__newModel ||
+            this.related
+        );
     }
 
     public async resolve(): Promise<Related | null> {
@@ -199,6 +200,10 @@ export default class SolidHasOneRelation<
             return;
         }
 
+        this.documentModelLoaded = true;
+    }
+
+    public __beforeParentCreate(): void {
         this.documentModelLoaded = true;
     }
 
