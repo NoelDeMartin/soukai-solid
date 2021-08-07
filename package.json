@@ -9,7 +9,7 @@
     "build": "rm dist -rf && npm run build:js && npm run build:types",
     "build:js": "noeldemartin-build-javascript",
     "build:types": "noeldemartin-build-types",
-    "lint": "eslint src",
+    "lint": "eslint src && tsc --noEmit",
     "publish-next": "noeldemartin-publish-next",
     "test": "jest --verbose",
     "test:coverage": "jest --coverage"
