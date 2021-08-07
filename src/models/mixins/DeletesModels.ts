@@ -1,4 +1,4 @@
-import { requireUrlParentDirectory } from '@noeldemartin/utils';
+import { urlParentDirectory, urlRoot } from '@noeldemartin/utils';
 
 import type { SolidModel } from '@/models/SolidModel';
 
@@ -30,7 +30,7 @@ export default class DeletesModels {
         const documentModels = this.decantModelsByDocument(models);
 
         return Object.entries(documentModels).reduce((containerModels, [documentUrl, models]) => {
-            const containerUrl = requireUrlParentDirectory(documentUrl);
+            const containerUrl = urlParentDirectory(documentUrl) ?? urlRoot(documentUrl);
 
             if (!(containerUrl in containerModels))
                 containerModels[containerUrl] = [];

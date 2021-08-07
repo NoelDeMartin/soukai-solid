@@ -12,10 +12,10 @@ import {
     mixed,
     objectWithout,
     objectWithoutEmpty,
-    requireUrlParentDirectory,
     tap,
     urlParentDirectory,
     urlResolve,
+    urlRoot,
     urlRoute,
     uuid,
 } from '@noeldemartin/utils';
@@ -177,7 +177,7 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
     public static async find<T extends SolidModel>(this: SolidModelConstructor<T>, id: Key): Promise<T | null> {
         const resourceUrl = this.instance().serializeKey(id);
         const documentUrl = urlRoute(resourceUrl);
-        const containerUrl = requireUrlParentDirectory(documentUrl);
+        const containerUrl = urlParentDirectory(documentUrl) ?? urlRoot(documentUrl);
 
         this.ensureBooted();
 

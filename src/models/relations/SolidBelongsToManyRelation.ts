@@ -1,5 +1,5 @@
 import { BelongsToManyRelation, EngineHelper } from 'soukai';
-import { urlParentDirectory, urlRoute } from '@noeldemartin/utils';
+import { urlParentDirectory, urlRoot, urlRoute } from '@noeldemartin/utils';
 import type { EngineAttributeValue, EngineDocument , EngineDocumentsCollection } from 'soukai';
 
 import type { JsonLDResource } from '@/solid/utils/RDF';
@@ -27,7 +27,7 @@ export default class SolidBelongsToManyRelation<
         const idsByContainerUrl: Record<string, Set<string>> = {};
 
         for (const id of this.__modelsInOtherDocumentIds ?? []) {
-            const containerUrl = urlParentDirectory(id);
+            const containerUrl = urlParentDirectory(id) ?? urlRoot(id);
 
             if (!(containerUrl in idsByContainerUrl)) {
                 idsByContainerUrl[containerUrl] = new Set;

@@ -948,7 +948,7 @@ describe('SolidModel', () => {
 
     it('loads related models in the same document', async () => {
         // Arrange
-        const movieUrl = urlResolve(Faker.internet.url());
+        const movieUrl = urlResolve(Faker.internet.url(), stringToSlug(Faker.random.word()));
         const watchActionUrl = `${movieUrl}#${Faker.random.uuid()}`;
 
         engine.setOne({

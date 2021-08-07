@@ -1,5 +1,5 @@
 import { SingleModelRelation } from 'soukai';
-import { requireUrlParentDirectory } from '@noeldemartin/utils';
+import { requireUrlParentDirectory, urlParentDirectory, urlRoot } from '@noeldemartin/utils';
 
 import type { SolidModel } from '@/models/SolidModel';
 
@@ -25,7 +25,7 @@ export default class SolidIsContainedByRelation<
         const containerUrl = requireUrlParentDirectory(this.parent.url);
 
         this.related = await this.relatedClass
-            .from(requireUrlParentDirectory(containerUrl))
+            .from(urlParentDirectory(containerUrl) ?? urlRoot(containerUrl))
             .find(containerUrl);
 
         this.relatedClass.collection = oldCollection;
