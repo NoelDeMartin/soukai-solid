@@ -1,7 +1,7 @@
 import {
+    requireUrlParentDirectory,
     stringToSlug,
     urlDirectoryName,
-    urlParentDirectory,
     urlResolveDirectory,
     uuid,
 } from '@noeldemartin/utils';
@@ -79,7 +79,7 @@ export default class SolidContainerModel extends SolidModel {
 
         await typeRegistration.withEngine(
             this.requireEngine(),
-            () => typeRegistration.save(urlParentDirectory(typeIndexUrl)),
+            () => typeRegistration.save(requireUrlParentDirectory(typeIndexUrl)),
         );
     }
 
@@ -98,7 +98,7 @@ export default class SolidContainerModel extends SolidModel {
 
         const directoryName = urlDirectoryName(url);
 
-        return urlResolveDirectory(urlParentDirectory(url), `${directoryName}-${uuid()}`);
+        return urlResolveDirectory(requireUrlParentDirectory(url), `${directoryName}-${uuid()}`);
     }
 
 }

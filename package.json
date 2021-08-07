@@ -32,7 +32,7 @@
   "dependencies": {
     "@babel/runtime": "^7.13.8",
     "@noeldemartin/solid-utils": "0.0.0-next.dc85122f7bdaba7991c9fd71c19667225f8baf2f",
-    "@noeldemartin/utils": "0.1.0-next.0e0307d17a50feadaeb4e31f45dca52f11496bb4",
+    "@noeldemartin/utils": "0.1.0-next.91db52125db0aa90ad892d1af6b799602e1ee75e",
     "core-js": "^3.9.0",
     "jsonld": "^4.0.1",
     "n3": "^1.3.6"
@@ -52,7 +52,7 @@
     "eslint": "^7.20.0",
     "faker": "^4.1.0",
     "jest": "^26.6.3",
-    "soukai": "^0.4.1-next.d0901309bea24807517abc86c5532872dccff665",
+    "soukai": "^0.4.1-next.ca7ecc45f9bc391586e4c1c276b49dcd3eb08797",
     "ts-jest": "^26.5.2",
     "typescript": "^4.1.5"
   }

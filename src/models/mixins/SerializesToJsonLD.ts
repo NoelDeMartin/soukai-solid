@@ -9,13 +9,15 @@ import type { JsonLD, JsonLDResource } from '@/solid/utils/RDF';
 
 import JsonLDModelSerializer from '@/models/internals/JsonLDModelSerializer';
 
+type This = SolidModel;
+
 export default class SerializesToJsonLD {
 
-    protected serializeToJsonLD(this: SolidModel, includeRelations: boolean = true): JsonLD {
+    protected serializeToJsonLD(this: This, includeRelations: boolean = true): JsonLD {
         return JsonLDModelSerializer.forModel(this).serialize(this, { includeRelations });
     }
 
-    protected async convertJsonLDToAttributes(this: SolidModel, jsonld: JsonLDResource): Promise<Attributes> {
+    protected async convertJsonLDToAttributes(this: This, jsonld: JsonLDResource): Promise<Attributes> {
         // TODO this is probably wasteful because we've already parsed this in createManyFromEngineDocuments method
         const document = await RDFDocument.fromJsonLD(jsonld);
         const resource = document.requireResource(jsonld['@id']);
@@ -47,7 +49,7 @@ export default class SerializesToJsonLD {
     }
 
     protected convertEngineFiltersToJsonLD(
-        this: SolidModel,
+        this: This,
         filters: EngineFilters,
         compactIRIs: boolean,
     ): EngineFilters {
@@ -86,14 +88,14 @@ export default class SerializesToJsonLD {
     }
 
     protected convertEngineUpdatesToJsonLD(
-        this: SolidModel,
+        this: This,
         updates: EngineUpdates,
         compactIRIs: boolean,
     ): EngineUpdates {
         return this.convertAttributeValuesToJsonLD(updates, compactIRIs) as EngineUpdates;
     }
 
-    private convertAttributeValuesToJsonLD(this: SolidModel, attributes: Attributes, compactIRIs: boolean): JsonLD {
+    private convertAttributeValuesToJsonLD(this: This, attributes: Attributes, compactIRIs: boolean): JsonLD {
         const serializer = JsonLDModelSerializer.forModel(this, compactIRIs);
 
         return serializer.serialize(this, {

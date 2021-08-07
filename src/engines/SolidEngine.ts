@@ -1,4 +1,4 @@
-import { arrayFrom, arrayUnique, isObject, urlParentDirectory } from '@noeldemartin/utils';
+import { arrayFrom, arrayUnique, isObject, requireUrlParentDirectory } from '@noeldemartin/utils';
 import {
     DocumentAlreadyExists,
     DocumentNotFound,
@@ -151,7 +151,7 @@ export class SolidEngine implements Engine {
     private async getDocumentsFromUrls(urls: string[], rdfsClasses: string[]): Promise<RDFDocument[]> {
         const containerDocumentUrlsMap = urls
             .reduce((containerDocumentUrlsMap, documentUrl) => {
-                const containerUrl = urlParentDirectory(documentUrl);
+                const containerUrl = requireUrlParentDirectory(documentUrl);
 
                 return {
                     ...containerDocumentUrlsMap,

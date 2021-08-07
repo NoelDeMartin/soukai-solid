@@ -1,46 +1,24 @@
-import { EngineHelper, HasManyRelation, SoukaiError } from 'soukai';
-import { tap, urlRoute } from '@noeldemartin/utils';
-import type {
-    Attributes,
-    EngineAttributeValue,
-    EngineDocument,
-    EngineDocumentsCollection,
-} from 'soukai';
+import { EngineHelper, HasManyRelation } from 'soukai';
+import { mixedWithoutTypes, tap, urlRoute } from '@noeldemartin/utils';
+import type { EngineAttributeValue, EngineDocument, EngineDocumentsCollection } from 'soukai';
 
 import RDF from '@/solid/utils/RDF';
+import SolidMultiModelRelation from '@/models/relations/mixins/SolidMultiModelRelation';
 import type { JsonLDResource } from '@/solid/utils/RDF';
 import type { SolidBootedFieldsDefinition } from '@/models/fields';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
-import { initializeInverseRelations } from './internals/utils';
-
+export default interface SolidHasManyRelation<
+    Parent extends SolidModel = SolidModel,
+    Related extends SolidModel = SolidModel,
+    RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
+> extends SolidMultiModelRelation<Parent, Related, RelatedClass> {}
 export default class SolidHasManyRelation<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
-> extends HasManyRelation<Parent, Related, RelatedClass> {
-
-    public useSameDocument: boolean = false;
-    public __newModels: Related[] = [];
-    public __modelsInSameDocument?: Related[];
-    public __modelsInOtherDocumentIds?: string[];
-
-    private documentModelsLoaded: boolean = false;
-
-    public isEmpty(): boolean | null {
-        if (!this.documentModelsLoaded && this.parent.exists())
-            return null;
-
-        const modelsCount = (
-            (this.__modelsInSameDocument?.length || 0) +
-            (this.__modelsInOtherDocumentIds?.length || 0) +
-            this.__newModels.length +
-            (this.related?.length || 0)
-        );
-
-        return modelsCount === 0;
-    }
+> extends mixedWithoutTypes(HasManyRelation, [SolidMultiModelRelation])<Parent, Related, RelatedClass> {
 
     public async resolve(): Promise<Related[]> {
         if (this.isEmpty())
@@ -63,95 +41,10 @@ export default class SolidHasManyRelation<
         return this.related;
     }
 
-    /**
-     * This method will create an instance of the related model and call the [[save]] method.
-     *
-     * @param attributes Attributes to create the related instance.
-     */
-    public async create(attributes: Attributes = {}): Promise<Related> {
-        this.assertLoaded('create');
-
-        const model = this.relatedClass.newInstance<Related>(attributes);
-
-        await this.save(model);
-
-        return model;
-    }
-
-    /**
-     * This method will bind up all the relevant data (foreignKey, inverse relations, etc.) and save the model.
-     * If the parent model does not exist and both models will be stored in the same document, the model will
-     * be saved when the parent model is saved instead.
-     *
-     * @param model Related model instance to save.
-     */
-    public async save(model: Related): Promise<Related> {
-        this.assertLoaded('save');
-        this.add(model);
-
-        if (!this.useSameDocument)
-            await model.save();
-        else if (this.parent.exists())
-            await this.parent.save();
-
-        return model;
-    }
-
-    public add(model: Related): Related;
-    public add(attributes: Attributes): Related;
-    public add(modelOrAttributes: Related | Attributes): Related {
-        const model = modelOrAttributes instanceof this.relatedClass
-            ? modelOrAttributes as Related
-            : this.relatedClass.newInstance(modelOrAttributes);
-
-        if (!this.assertLoaded('add'))
-            return model;
-
-        if (this.related.includes(model) || this.__newModels.includes(model))
-            return model;
-
-        if (this.parent.exists())
-            this.initializeInverseRelations(model);
-
-        if (!model.exists())
-            this.__newModels.push(model);
-
-        this.related.push(model);
-
-        return model;
-    }
-
-    public usingSameDocument(useSameDocument: boolean = true): this {
-        this.useSameDocument = useSameDocument;
-
-        return this;
-    }
-
     public clone(): this {
-        const clone = super.clone();
-        const relatedClones = clone.related ?? [];
-
-        clone.useSameDocument = this.useSameDocument;
-        clone.documentModelsLoaded = this.documentModelsLoaded;
-        clone.__newModels = [];
-
-        for (const relatedModel of this.__newModels) {
-            clone.__newModels.push(
-                relatedClones.find(relatedClone => relatedClone.is(relatedModel)) ??
-                tap(relatedModel.clone(), relatedClone => relatedClones.push(relatedClone)),
-            );
-        }
-
-        if (this.__modelsInSameDocument)
-            clone.__modelsInSameDocument = this.__modelsInSameDocument.map(relatedModel => {
-                return relatedClones.find(relatedClone => relatedClone.is(relatedModel))
-                    ?? relatedModel.clone();
-            });
-
-        if (this.__modelsInOtherDocumentIds)
-            clone.__modelsInOtherDocumentIds = this.__modelsInOtherDocumentIds;
-
-        return clone;
+        return tap(super.clone(), clone => {
+            this.cloneSolidData(clone);
+        });
     }
 
     public async __loadDocumentModels(documentUrl: string, document: EngineDocument): Promise<void> {
@@ -174,7 +67,7 @@ export default class SolidHasManyRelation<
                 return documents;
             }, {} as EngineDocumentsCollection);
 
-        const modelsInSameDocument = this.__modelsInSameDocument = await Promise.all(
+        const modelsInSameDocument = await Promise.all(
             Object
                 .entries(helper.filterDocuments(documents, filters))
                 .map(
@@ -183,37 +76,13 @@ export default class SolidHasManyRelation<
                 ),
         );
 
-        this.__modelsInOtherDocumentIds = Object.keys(documents).filter(
+        const modelsInOtherDocumentIds = Object.keys(documents).filter(
             resourceId =>
                 !modelsInSameDocument.some(model => model.url === resourceId) &&
                 urlRoute(resourceId) !== documentUrl,
         );
 
-        if (this.__modelsInOtherDocumentIds.length === 0)
-            this.related = this.__modelsInSameDocument.slice(0);
-
-        this.documentModelsLoaded = true;
-    }
-
-    public __beforeParentCreate(): void {
-        this.documentModelsLoaded = true;
-    }
-
-    private initializeInverseRelations(model: Related): void {
-        initializeInverseRelations(this, model);
-    }
-
-    private assertLoaded(method: string): this is { related: Related[] } {
-        if (this.loaded)
-            return true;
-
-        if (!this.parent.exists()) {
-            this.related = [];
-
-            return true;
-        }
-
-        throw new SoukaiError(`The "${method}" method can't be called before loading the relationship`);
+        this.loadDocumentModels(modelsInSameDocument, modelsInOtherDocumentIds);
     }
 
 }

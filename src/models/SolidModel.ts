@@ -9,13 +9,14 @@ import {
     invert,
     isPromise,
     map,
+    mixed,
     objectWithout,
     objectWithoutEmpty,
+    requireUrlParentDirectory,
     tap,
     urlParentDirectory,
     urlResolve,
     urlRoute,
-    useMixins,
     uuid,
 } from '@noeldemartin/utils';
 import {
@@ -75,7 +76,7 @@ import type SolidContainerModel from './SolidContainerModel';
 import type SolidModelMetadata from './SolidModelMetadata';
 import type SolidModelOperation from './SolidModelOperation';
 
-export class SolidModel extends Model {
+export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]) {
 
     public static primaryKey: string = 'url';
 
@@ -176,7 +177,7 @@ export class SolidModel extends Model {
     public static async find<T extends SolidModel>(this: SolidModelConstructor<T>, id: Key): Promise<T | null> {
         const resourceUrl = this.instance().serializeKey(id);
         const documentUrl = urlRoute(resourceUrl);
-        const containerUrl = urlParentDirectory(documentUrl);
+        const containerUrl = requireUrlParentDirectory(documentUrl);
 
         this.ensureBooted();
 
@@ -943,7 +944,7 @@ export class SolidModel extends Model {
         if (!this.url)
             return;
 
-        return urlParentDirectory(this.url);
+        return urlParentDirectory(this.url) ?? undefined;
     }
 
     private getDirtyDocumentModels(): SolidModel[] {
@@ -1050,7 +1051,4 @@ export class SolidModel extends Model {
 
 }
 
-useMixins(SolidModel, [DeletesModels, SerializesToJsonLD]);
 export interface SolidModel extends IModel<typeof SolidModel> {}
-export interface SolidModel extends DeletesModels {}
-export interface SolidModel extends SerializesToJsonLD {}

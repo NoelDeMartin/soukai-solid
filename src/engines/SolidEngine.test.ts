@@ -2,8 +2,8 @@ import { DocumentAlreadyExists, DocumentNotFound, SoukaiError } from 'soukai';
 import {
     arrayZip,
     range,
+    requireUrlParentDirectory,
     stringToSlug,
-    urlParentDirectory,
     urlResolve,
     urlResolveDirectory,
 } from '@noeldemartin/utils';
@@ -72,7 +72,7 @@ describe('SolidEngine', () => {
 
         // Act
         const id = await engine.create(
-            urlParentDirectory(documentUrl),
+            requireUrlParentDirectory(documentUrl),
             stubMoviesCollectionJsonLD(documentUrl, name),
             documentUrl,
         );
@@ -118,7 +118,7 @@ describe('SolidEngine', () => {
         ]);
 
         // Act
-        const document = await engine.readOne(urlParentDirectory(documentUrl), documentUrl);
+        const document = await engine.readOne(requireUrlParentDirectory(documentUrl), documentUrl);
 
         // Assert
         expect(SolidClientMock.getDocument).toHaveBeenCalledWith(documentUrl);
@@ -129,7 +129,7 @@ describe('SolidEngine', () => {
     it('fails reading when document doesn\'t exist', async () => {
         const documentUrl = urlResolve(Faker.internet.url(), Faker.random.uuid());
 
-        await expect(engine.readOne(urlParentDirectory(documentUrl), documentUrl))
+        await expect(engine.readOne(requireUrlParentDirectory(documentUrl), documentUrl))
             .rejects
             .toBeInstanceOf(DocumentNotFound);
     });
@@ -559,7 +559,7 @@ describe('SolidEngine', () => {
     it('fails updating when document doesn\'t exist', async () => {
         const documentUrl = urlResolve(Faker.internet.url(), Faker.random.uuid());
 
-        await expect(engine.readOne(urlParentDirectory(documentUrl), documentUrl))
+        await expect(engine.readOne(requireUrlParentDirectory(documentUrl), documentUrl))
             .rejects
             .toBeInstanceOf(DocumentNotFound);
     });

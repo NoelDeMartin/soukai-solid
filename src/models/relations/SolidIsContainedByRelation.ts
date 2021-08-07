@@ -1,5 +1,5 @@
 import { SingleModelRelation } from 'soukai';
-import { urlParentDirectory } from '@noeldemartin/utils';
+import { requireUrlParentDirectory } from '@noeldemartin/utils';
 
 import type { SolidModel } from '@/models/SolidModel';
 
@@ -22,15 +22,19 @@ export default class SolidIsContainedByRelation<
 
     public async resolve(): Promise<Related | null> {
         const oldCollection = this.relatedClass.collection;
-        const containerUrl = urlParentDirectory(this.parent.url);
+        const containerUrl = requireUrlParentDirectory(this.parent.url);
 
         this.related = await this.relatedClass
-            .from(urlParentDirectory(containerUrl))
+            .from(requireUrlParentDirectory(containerUrl))
             .find(containerUrl);
 
         this.relatedClass.collection = oldCollection;
 
         return this.related;
+    }
+
+    protected initializeInverse(parent: Parent, related: Related): void {
+        this.related = related;
     }
 
 }

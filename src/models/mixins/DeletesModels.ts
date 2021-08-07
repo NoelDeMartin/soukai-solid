@@ -1,4 +1,4 @@
-import { urlParentDirectory } from '@noeldemartin/utils';
+import { requireUrlParentDirectory } from '@noeldemartin/utils';
 
 import type { SolidModel } from '@/models/SolidModel';
 
@@ -7,9 +7,11 @@ type DocumentModels = { documentUrl: string; models: SolidModel[] };
 type DecantedDocumentModels = Record<string, SolidModel[]>;
 type DecantedContainerDocuments = Record<string, DocumentModels[]>;
 
+type This = SolidModel;
+
 export default class DeletesModels {
 
-    protected async deleteModels(this: SolidModel, models: SolidModel[]): Promise<void> {
+    protected async deleteModels(this: This, models: SolidModel[]): Promise<void> {
         const containersDocuments = this.decantDocumentModelsByContainer(models);
 
         await Promise.all(
@@ -28,7 +30,7 @@ export default class DeletesModels {
         const documentModels = this.decantModelsByDocument(models);
 
         return Object.entries(documentModels).reduce((containerModels, [documentUrl, models]) => {
-            const containerUrl = urlParentDirectory(documentUrl);
+            const containerUrl = requireUrlParentDirectory(documentUrl);
 
             if (!(containerUrl in containerModels))
                 containerModels[containerUrl] = [];
@@ -53,7 +55,7 @@ export default class DeletesModels {
     }
 
     private async deleteContainerDocumentsModels(
-        this: SolidModel,
+        this: This,
         containerUrl: string,
         documentsModels: DocumentModels[],
     ): Promise<void> {
@@ -75,7 +77,7 @@ export default class DeletesModels {
     }
 
     private async deleteDocumentModels(
-        this: SolidModel,
+        this: This,
         engineDocuments: Record<string, ResourcesGraph>,
         containerUrl: string,
         documentUrl: string,

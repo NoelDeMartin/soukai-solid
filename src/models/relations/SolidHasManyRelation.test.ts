@@ -84,4 +84,20 @@ describe('SolidHasManyRelation', () => {
         );
     });
 
+    it('clones related models', () => {
+        // Arrange
+        const movie = new Movie();
+
+        movie.relatedActions.add({});
+        movie.relatedActions.add({});
+        movie.relatedActions.add({});
+
+        // Act
+        const relationClone = movie.relatedActions.clone();
+
+        // Assert
+        expect(relationClone.__newModels).toHaveLength(3);
+        expect(relationClone.useSameDocument).toBe(true);
+    });
+
 });
