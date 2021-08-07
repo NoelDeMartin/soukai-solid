@@ -3,22 +3,26 @@ import { mixedWithoutTypes, tap, urlRoute } from '@noeldemartin/utils';
 import type { EngineAttributeValue, EngineDocument, EngineDocumentsCollection } from 'soukai';
 
 import RDF from '@/solid/utils/RDF';
-import SolidMultiModelRelation from '@/models/relations/mixins/SolidMultiModelRelation';
 import type { JsonLDResource } from '@/solid/utils/RDF';
 import type { SolidBootedFieldsDefinition } from '@/models/fields';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
+import SolidMultiModelDocumentRelation from './mixins/SolidMultiModelDocumentRelation';
+import type { ISolidMultiModelDocumentRelation } from './mixins/SolidMultiModelDocumentRelation';
+
 export default interface SolidHasManyRelation<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
-> extends SolidMultiModelRelation<Parent, Related, RelatedClass> {}
+> extends SolidMultiModelDocumentRelation<Parent, Related, RelatedClass> {}
 export default class SolidHasManyRelation<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
-> extends mixedWithoutTypes(HasManyRelation, [SolidMultiModelRelation])<Parent, Related, RelatedClass> {
+>
+    extends mixedWithoutTypes(HasManyRelation, [SolidMultiModelDocumentRelation])<Parent, Related, RelatedClass>
+    implements ISolidMultiModelDocumentRelation {
 
     public async resolve(): Promise<Related[]> {
         if (this.isEmpty())

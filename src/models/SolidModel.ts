@@ -59,8 +59,9 @@ import type RDFResource from '@/solid/RDFResource';
 
 import {
     hasBeforeParentCreateHook,
-    isSolidMultiModelRelation,
-    isSolidSingleModelRelation,
+    isSolidDocumentRelation,
+    isSolidMultiModelDocumentRelation,
+    isSolidSingleModelDocumentRelation,
 } from './relations/internals/guards';
 import { inferFieldDefinition } from './fields';
 import { SolidModelOperationType } from './SolidModelOperation';
@@ -391,11 +392,7 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
 
         Object
             .values(this._relations)
-            .filter(
-                (relation): relation is SolidHasManyRelation | SolidHasOneRelation =>
-                    relation instanceof SolidHasManyRelation ||
-                    relation instanceof SolidHasOneRelation,
-            )
+            .filter(isSolidDocumentRelation)
             .filter(relation => relation.useSameDocument)
             .map(relation => relation.getLoadedModels())
             .flat()
@@ -420,27 +417,22 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
 
         Object
             .values(this._relations)
-            .filter<SolidHasManyRelation>(
-                (relation): relation is SolidHasManyRelation =>
-                    relation instanceof SolidHasManyRelation &&
-                    relation.useSameDocument,
-            )
+            .filter(isSolidMultiModelDocumentRelation)
+            .filter(relation => relation.useSameDocument)
             .forEach(relation => {
                 relation.__modelsInSameDocument = relation.__modelsInSameDocument || [];
                 relation.__modelsInSameDocument.push(...relation.__newModels);
+
                 relation.__newModels = [];
             });
 
         Object
             .values(this._relations)
-            .filter<SolidHasOneRelation>(
-                (relation): relation is SolidHasOneRelation =>
-                    relation instanceof SolidHasOneRelation &&
-                    relation.useSameDocument &&
-                    !!relation.__newModel,
-            )
+            .filter(isSolidSingleModelDocumentRelation)
+            .filter(relation => relation.useSameDocument && !!relation.__newModel)
             .forEach(relation => {
                 relation.__modelInSameDocument = relation.__newModel;
+
                 delete relation.__newModel;
             });
     }
@@ -663,13 +655,13 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
             Object
                 .values(this._relations)
                 .map(async relation => {
-                    if (isSolidMultiModelRelation(relation))
+                    if (isSolidMultiModelDocumentRelation(relation))
                         return relation.relatedClass.withEngine(
                             engine,
                             () => relation.__loadDocumentModels(documentUrl, document),
                         );
 
-                    if (isSolidSingleModelRelation(relation))
+                    if (isSolidSingleModelDocumentRelation(relation))
                         return relation.relatedClass.withEngine(
                             engine,
                             () => relation.__loadDocumentModel(documentUrl, document),
@@ -953,16 +945,12 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
 
         return Object
             .values(this._relations)
-            .filter<SolidHasManyRelation | SolidHasOneRelation>(
-                (relation): relation is SolidHasManyRelation | SolidHasOneRelation =>
-                    relation.loaded &&
-                    (relation instanceof SolidHasManyRelation || relation instanceof SolidHasOneRelation) &&
-                    relation.useSameDocument,
-            )
+            .filter(isSolidDocumentRelation)
+            .filter(relation => relation.loaded && relation.useSameDocument)
             .map(relation => {
-                const models = relation instanceof SolidHasManyRelation
-                    ? new Set(relation.__newModels)
-                    : new Set(arrayFilter([relation.__newModel])) as Set<SolidModel>;
+                const models = isSolidSingleModelDocumentRelation(relation)
+                    ? new Set(arrayFilter([relation.__newModel])) as Set<SolidModel>
+                    : new Set(relation.__newModels);
 
                 for (const relatedModel of relation.getLoadedModels()) {
                     if (

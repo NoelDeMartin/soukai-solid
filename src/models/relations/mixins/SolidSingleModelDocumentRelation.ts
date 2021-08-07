@@ -1,0 +1,176 @@
+import { SoukaiError } from 'soukai';
+import { tap } from '@noeldemartin/utils';
+import type { Attributes, EngineDocument , Relation , SingleModelRelation } from 'soukai';
+
+import type { SolidModel } from '@/models/SolidModel';
+import type { SolidModelConstructor } from '@/models/inference';
+
+import { SolidDocumentRelation } from './SolidDocumentRelation';
+
+// Workaround for https://github.com/microsoft/TypeScript/issues/16936
+type This<
+    Parent extends SolidModel = SolidModel,
+    Related extends SolidModel = SolidModel,
+    RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
+> =
+    SolidSingleModelDocumentRelation<Parent, Related, RelatedClass> &
+    SingleModelRelation<Parent, Related, RelatedClass> &
+    ISolidSingleModelDocumentRelation;
+
+// Workaround for https://github.com/microsoft/TypeScript/issues/29132
+interface ProtectedThis<
+    Parent extends SolidModel = SolidModel,
+    Related extends SolidModel = SolidModel,
+    RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
+> {
+    initializeInverseRelations: Relation<Parent, Related, RelatedClass>['initializeInverseRelations'];
+}
+
+// Workaround for https://github.com/microsoft/TypeScript/issues/35356
+export interface ISolidSingleModelDocumentRelation {
+    __loadDocumentModel(documentUrl: string, document: EngineDocument): Promise<void>;
+}
+
+export type SolidSingleModelDocumentRelationInstance<
+    Parent extends SolidModel = SolidModel,
+    Related extends SolidModel = SolidModel,
+    RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
+> = This<Parent, Related, RelatedClass>;
+
+export default class SolidSingleModelDocumentRelation<
+    Parent extends SolidModel = SolidModel,
+    Related extends SolidModel = SolidModel,
+    RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
+> extends SolidDocumentRelation<ProtectedThis<Parent, Related, RelatedClass>> {
+
+    public __newModel?: Related;
+    public __modelInSameDocument?: Related;
+    public __modelInOtherDocumentId?: string;
+
+    private documentModelLoaded: boolean = false;
+
+    public isEmpty(this: This): boolean | null {
+        if (!this.documentModelLoaded && this.parent.exists())
+            return null;
+
+        return !(
+            this.__modelInSameDocument ||
+            this.__modelInOtherDocumentId ||
+            this.__newModel ||
+            this.related
+        );
+    }
+
+    /**
+     * This method will create an instance of the related model and call the [[save]] method.
+     *
+     * @param attributes Attributes to create the related instance.
+     */
+    public async create(this: This<Parent, Related, RelatedClass>, attributes: Attributes = {}): Promise<Related> {
+        this.assertNotLoaded('create');
+
+        const model = this.relatedClass.newInstance<Related>(attributes);
+
+        await this.save(model);
+
+        return model;
+    }
+
+    /**
+     * This method will bind up all the relevant data (foreignKey, inverse relations, etc.) and save the model.
+     * If the parent model does not exist and both models will be stored in the same document, the model will
+     * be saved when the parent model is saved instead.
+     *
+     * @param model Related model instance to save.
+     */
+    public async save(this: This, model: Related): Promise<Related> {
+        this.assertNotLoaded('save');
+        this.set(model);
+
+        if (!this.useSameDocument)
+            await model.save();
+        else if (this.parent.exists())
+            await this.parent.save();
+
+        return model;
+    }
+
+    public set(model: Related): Related;
+    public set(attributes: Attributes): Related;
+    public set(this: This<Parent, Related, RelatedClass>, modelOrAttributes: Related | Attributes): Related {
+        const model = modelOrAttributes instanceof this.relatedClass
+            ? modelOrAttributes as Related
+            : this.relatedClass.newInstance(modelOrAttributes);
+
+        this.assertNotLoaded('set');
+
+        if (this.parent.exists())
+            this.protected.initializeInverseRelations(model);
+
+        if (!model.exists())
+            this.__newModel = model;
+
+        this.related = model;
+
+        return model;
+    }
+
+    public __beforeParentCreate(): void {
+        this.documentModelLoaded = true;
+    }
+
+    protected cloneSolidData(clone: This<Parent, Related, RelatedClass>): void {
+        let relatedClone = clone.related ?? null as Related | null;
+
+        clone.useSameDocument = this.useSameDocument;
+        clone.documentModelLoaded = this.documentModelLoaded;
+
+        if (this.__newModel)
+            this.__newModel = relatedClone ??
+                tap(this.__newModel.clone(), rClone => relatedClone = rClone);
+
+        if (this.__modelInSameDocument)
+            clone.__modelInSameDocument = relatedClone ?? this.__modelInSameDocument.clone();
+
+        if (this.__modelInOtherDocumentId)
+            clone.__modelInOtherDocumentId = this.__modelInOtherDocumentId;
+    }
+
+    protected loadDocumentModel(
+        this: This<Parent, Related, RelatedClass>,
+        modelsInSameDocument: Related[],
+        modelsInOtherDocumentIds: string[],
+    ): void {
+        if (modelsInSameDocument.length + modelsInOtherDocumentIds.length > 1)
+            console.warn(
+                `The ${this.name} relationship in ${this.parent.static('modelName')} has been declared as hasOne, ` +
+                'but more than one related model were found.',
+            );
+
+        if (modelsInSameDocument.length > 0) {
+            this.__modelInSameDocument = modelsInSameDocument[0];
+            this.related = this.__modelInSameDocument;
+            this.documentModelLoaded = true;
+
+            return;
+        }
+
+        if (modelsInOtherDocumentIds.length > 0) {
+            this.__modelInOtherDocumentId = modelsInOtherDocumentIds[0];
+            this.documentModelLoaded = true;
+
+            return;
+        }
+
+        this.documentModelLoaded = true;
+    }
+
+    private assertNotLoaded(this: This, method: string): void {
+        if (this.loaded)
+            throw new SoukaiError(
+                `The "${method}" method can't be called because a related model already exists, ` +
+                'use a hasMany relationship if you want to support multiple related models.',
+            );
+    }
+
+}

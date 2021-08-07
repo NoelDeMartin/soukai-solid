@@ -1,9 +1,11 @@
 import { SoukaiError } from 'soukai';
 import { tap } from '@noeldemartin/utils';
-import type { Attributes, MultiModelRelation } from 'soukai';
+import type { Attributes, EngineDocument , MultiModelRelation , Relation } from 'soukai';
 
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
+
+import { SolidDocumentRelation } from './SolidDocumentRelation';
 
 // Workaround for https://github.com/microsoft/TypeScript/issues/16936
 type This<
@@ -11,8 +13,9 @@ type This<
     Related extends SolidModel = SolidModel,
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
 > =
-    SolidMultiModelRelation<Parent, Related, RelatedClass> &
-    MultiModelRelation<Parent, Related, RelatedClass>;
+    SolidMultiModelDocumentRelation<Parent, Related, RelatedClass> &
+    MultiModelRelation<Parent, Related, RelatedClass> &
+    ISolidMultiModelDocumentRelation;
 
 // Workaround for https://github.com/microsoft/TypeScript/issues/29132
 interface ProtectedThis<
@@ -20,25 +23,31 @@ interface ProtectedThis<
     Related extends SolidModel = SolidModel,
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
 > {
-    initializeInverseRelations: MultiModelRelation<Parent, Related, RelatedClass>['initializeInverseRelations'];
+    initializeInverseRelations: Relation<Parent, Related, RelatedClass>['initializeInverseRelations'];
 }
 
-export default class SolidMultiModelRelation<
+// Workaround for https://github.com/microsoft/TypeScript/issues/35356
+export interface ISolidMultiModelDocumentRelation {
+    __loadDocumentModels(documentUrl: string, document: EngineDocument): Promise<void>;
+}
+
+export type SolidMultiModelDocumentRelationInstance<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
-> {
+> = This<Parent, Related, RelatedClass>;
 
-    public useSameDocument: boolean = false;
+export default class SolidMultiModelDocumentRelation<
+    Parent extends SolidModel = SolidModel,
+    Related extends SolidModel = SolidModel,
+    RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
+> extends SolidDocumentRelation<ProtectedThis<Parent, Related, RelatedClass>> {
+
     public __newModels: Related[] = [];
     public __modelsInSameDocument?: Related[];
     public __modelsInOtherDocumentIds?: string[];
 
     protected documentModelsLoaded: boolean = false;
-
-    private get protected(): ProtectedThis<Parent, Related, RelatedClass> {
-        return this as unknown as ProtectedThis<Parent, Related, RelatedClass>;
-    }
 
     public isEmpty(this: This): boolean | null {
         if (!this.documentModelsLoaded && this.parent.exists())
@@ -52,12 +61,6 @@ export default class SolidMultiModelRelation<
         );
 
         return modelsCount === 0;
-    }
-
-    public usingSameDocument(useSameDocument: boolean = true): this {
-        this.useSameDocument = useSameDocument;
-
-        return this;
     }
 
     /**
@@ -122,19 +125,6 @@ export default class SolidMultiModelRelation<
         this.documentModelsLoaded = true;
     }
 
-    private assertLoaded(this: This, method: string): this is { related: Related[] } {
-        if (this.loaded)
-            return true;
-
-        if (!this.parent.exists()) {
-            this.related = [];
-
-            return true;
-        }
-
-        throw new SoukaiError(`The "${method}" method can't be called before loading the relationship`);
-    }
-
     protected cloneSolidData(clone: This<Parent, Related, RelatedClass>): void {
         const relatedClones = clone.related ?? [];
 
@@ -171,6 +161,19 @@ export default class SolidMultiModelRelation<
             this.related = this.__modelsInSameDocument.slice(0);
 
         this.documentModelsLoaded = true;
+    }
+
+    private assertLoaded(this: This, method: string): this is { related: Related[] } {
+        if (this.loaded)
+            return true;
+
+        if (!this.parent.exists()) {
+            this.related = [];
+
+            return true;
+        }
+
+        throw new SoukaiError(`The "${method}" method can't be called before loading the relationship`);
     }
 
 }
