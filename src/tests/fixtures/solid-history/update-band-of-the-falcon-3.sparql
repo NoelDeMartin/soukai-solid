@@ -9,6 +9,9 @@ DELETE DATA {
             <https://berserk.fandom.com/wiki/Casca> .
 
     <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+
+    <#griffith> foaf:name "Femto" .
+    <#griffith-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
 } ;
 
 INSERT DATA {
@@ -36,5 +39,15 @@ INSERT DATA {
         soukai:property foaf:member ;
         soukai:type soukai:AddOperation ;
         soukai:value <https://berserk.fandom.com/wiki/Zodd> .
+
+    <#griffith> foaf:name "Griffith" .
+    <#griffith-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+
+    <#griffith-operation-[[.*]]>
+        a soukai:Operation ;
+        soukai:resource <#griffith> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:name ;
+        soukai:value "Griffith" .
 
 }

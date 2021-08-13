@@ -1,15 +1,15 @@
 import { ModelKey } from 'soukai';
 import type { Attributes, EngineAttributeFilter, EngineFilters, EngineUpdates } from 'soukai';
+import type { JsonLD, JsonLDResource } from '@noeldemartin/solid-utils';
 
 import type { SolidModel } from '@/models/SolidModel';
 
 import { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 import RDFDocument from '@/solid/RDFDocument';
-import type { JsonLD, JsonLDResource } from '@/solid/utils/RDF';
 
 import JsonLDModelSerializer from '@/models/internals/JsonLDModelSerializer';
 
-type This = SolidModel;
+export type This = SolidModel;
 
 export default class SerializesToJsonLD {
 

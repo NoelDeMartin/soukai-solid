@@ -1,6 +1,5 @@
 import type { Relation } from 'soukai';
 
-import SolidHasOneRelation from '@/models/relations/SolidHasOneRelation';
 import type {
     // eslint-fix
     SolidMultiModelDocumentRelationInstance,
@@ -9,6 +8,7 @@ import type {
     // eslint-fix
     SolidSingleModelDocumentRelationInstance,
 } from '@/models/relations/mixins/SolidSingleModelDocumentRelation';
+import type { SolidDocumentRelationInstance } from '@/models/relations/mixins/SolidDocumentRelation';
 
 interface BeforeParentCreateRelation extends Relation {
     __beforeParentCreate(): void;
@@ -20,19 +20,18 @@ export function hasBeforeParentCreateHook(relation: Relation): relation is Befor
 
 export function isSolidDocumentRelation(
     relation: Relation,
-): relation is SolidMultiModelDocumentRelationInstance | SolidSingleModelDocumentRelationInstance {
-    return isSolidSingleModelDocumentRelation(relation)
-        || isSolidMultiModelDocumentRelation(relation);
+): relation is SolidDocumentRelationInstance {
+    return 'useSameDocument' in relation;
 }
 
 export function isSolidMultiModelDocumentRelation(
     relation: Relation,
 ): relation is SolidMultiModelDocumentRelationInstance {
-    return '__loadDocumentModels' in relation;
+    return 'add' in relation;
 }
 
 export function isSolidSingleModelDocumentRelation(
     relation: Relation,
 ): relation is SolidSingleModelDocumentRelationInstance {
-    return relation instanceof SolidHasOneRelation;
+    return 'set' in relation;
 }

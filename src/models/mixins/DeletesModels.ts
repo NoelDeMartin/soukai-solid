@@ -7,7 +7,7 @@ type DocumentModels = { documentUrl: string; models: SolidModel[] };
 type DecantedDocumentModels = Record<string, SolidModel[]>;
 type DecantedContainerDocuments = Record<string, DocumentModels[]>;
 
-type This = SolidModel;
+export type This = SolidModel;
 
 export default class DeletesModels {
 

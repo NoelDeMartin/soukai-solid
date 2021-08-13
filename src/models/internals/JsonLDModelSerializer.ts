@@ -1,8 +1,7 @@
 import { isObject, tap, toString } from '@noeldemartin/utils';
 import { FieldType, SoukaiError } from 'soukai';
 import type { Attributes, BootedArrayFieldDefinition } from 'soukai';
-
-import type { JsonLD } from '@/solid/utils/RDF';
+import type { JsonLD } from '@noeldemartin/solid-utils';
 
 import { inferFieldDefinition } from '@/models/fields';
 import SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';

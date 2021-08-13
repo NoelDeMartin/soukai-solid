@@ -1,16 +1,8 @@
 import type { Quad } from 'rdf-js';
+import type { JsonLD, JsonLDGraph } from '@noeldemartin/solid-utils';
 
 import { fromRDF } from '@/solid/external';
 import IRI from '@/solid/utils/IRI';
-
-export type JsonLD = Partial<{
-    '@context': Record<string, unknown>;
-    '@id': string;
-    '@type': null | string | string[];
-}> & { [k: string]: unknown };
-
-export type JsonLDResource = Omit<JsonLD, '@id'> & { '@id': string };
-export type JsonLDGraph = { '@graph': JsonLDResource[] };
 
 class RDF {
 

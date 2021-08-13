@@ -1,8 +1,8 @@
 import { FieldType } from 'soukai';
-import type { IModel, MultiModelRelation } from 'soukai';
+import type { IModel, Relation } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
-import type { SolidBelongsToManyRelation } from '@/models';
+import type { SolidBelongsToManyRelation, SolidBelongsToOneRelation } from '@/models';
 
 import Person from '@/testing/lib/stubs/Person';
 
@@ -26,12 +26,25 @@ export default class Group extends SolidModel {
             rdfProperty: 'foaf:member',
             items: FieldType.Key,
         },
+        creatorUrl: {
+            type: FieldType.Key,
+            rdfProperty: 'foaf:maker',
+        },
     };
 
+    public creator?: Person;
     public members?: Person[];
+    public relatedCreator!: SolidBelongsToOneRelation<Group, Person, typeof Person>;
     public relatedMembers!: SolidBelongsToManyRelation<Group, Person, typeof Person>;
 
-    public membersRelationship(): MultiModelRelation {
+    public creatorRelationship(): Relation {
+        return this
+            .belongsToOne(Person, 'creatorUrl')
+            .usingSameDocument(true)
+            .onDelete('cascade');
+    }
+
+    public membersRelationship(): Relation {
         return this.belongsToMany(Person, 'memberUrls');
     }
 

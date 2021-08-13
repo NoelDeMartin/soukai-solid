@@ -1,7 +1,6 @@
 import Faker from 'faker';
 import { urlResolve } from '@noeldemartin/utils';
-
-import type { JsonLD } from '@/solid/utils/RDF';
+import type { JsonLD } from '@noeldemartin/solid-utils';
 
 import flattenJsonLD from './flattenJsonLD';
 

@@ -10,6 +10,9 @@ DELETE DATA {
             <https://berserk.fandom.com/wiki/Corkus> .
 
     <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+
+    <#griffith> foaf:name "Griffith" .
+    <#griffith-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
 } ;
 
 INSERT DATA {
@@ -30,4 +33,20 @@ INSERT DATA {
             <https://berserk.fandom.com/wiki/Pippin>,
             <https://berserk.fandom.com/wiki/Corkus> .
 
+    <#griffith> foaf:name "Femto" .
+    <#griffith-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+
+    <#griffith-operation-[[.*]]>
+        a soukai:Operation ;
+        soukai:resource <#griffith> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:name ;
+        soukai:value "Griffith" .
+
+    <#griffith-operation-[[.*]]>
+        a soukai:Operation ;
+        soukai:resource <#griffith> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:name ;
+        soukai:value "Femto" .
 }

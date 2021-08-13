@@ -10,10 +10,21 @@
         <https://berserk.fandom.com/wiki/Casca>,
         <https://berserk.fandom.com/wiki/Judeau>,
         <https://berserk.fandom.com/wiki/Pippin>,
-        <https://berserk.fandom.com/wiki/Corkus> .
+        <https://berserk.fandom.com/wiki/Corkus> ;
+    foaf:maker <#griffith> .
 
 <#it-metadata>
     a soukai:Metadata ;
     soukai:resource <#it> ;
+    soukai:createdAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:updatedAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime .
+
+<#griffith>
+    a foaf:Person ;
+    foaf:name "Griffith" .
+
+<#griffith-metadata>
+    a soukai:Metadata ;
+    soukai:resource <#griffith> ;
     soukai:createdAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
     soukai:updatedAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime .

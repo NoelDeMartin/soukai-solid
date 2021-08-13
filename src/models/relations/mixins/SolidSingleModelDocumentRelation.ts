@@ -1,35 +1,20 @@
 import { SoukaiError } from 'soukai';
 import { tap } from '@noeldemartin/utils';
-import type { Attributes, EngineDocument , Relation , SingleModelRelation } from 'soukai';
+import type { Attributes, SingleModelRelation } from 'soukai';
 
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
-import { SolidDocumentRelation } from './SolidDocumentRelation';
+import SolidDocumentRelation from './SolidDocumentRelation';
 
 // Workaround for https://github.com/microsoft/TypeScript/issues/16936
-type This<
+export type This<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
 > =
     SolidSingleModelDocumentRelation<Parent, Related, RelatedClass> &
-    SingleModelRelation<Parent, Related, RelatedClass> &
-    ISolidSingleModelDocumentRelation;
-
-// Workaround for https://github.com/microsoft/TypeScript/issues/29132
-interface ProtectedThis<
-    Parent extends SolidModel = SolidModel,
-    Related extends SolidModel = SolidModel,
-    RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
-> {
-    initializeInverseRelations: Relation<Parent, Related, RelatedClass>['initializeInverseRelations'];
-}
-
-// Workaround for https://github.com/microsoft/TypeScript/issues/35356
-export interface ISolidSingleModelDocumentRelation {
-    __loadDocumentModel(documentUrl: string, document: EngineDocument): Promise<void>;
-}
+    SingleModelRelation<Parent, Related, RelatedClass>;
 
 export type SolidSingleModelDocumentRelationInstance<
     Parent extends SolidModel = SolidModel,
@@ -41,16 +26,14 @@ export default class SolidSingleModelDocumentRelation<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
-> extends SolidDocumentRelation<ProtectedThis<Parent, Related, RelatedClass>> {
+> extends SolidDocumentRelation<Related> {
 
     public __newModel?: Related;
     public __modelInSameDocument?: Related;
     public __modelInOtherDocumentId?: string;
 
-    private documentModelLoaded: boolean = false;
-
     public isEmpty(this: This): boolean | null {
-        if (!this.documentModelLoaded && this.parent.exists())
+        if (!this.documentModelsLoaded && this.parent.exists())
             return null;
 
         return !(
@@ -102,28 +85,23 @@ export default class SolidSingleModelDocumentRelation<
             ? modelOrAttributes as Related
             : this.relatedClass.newInstance(modelOrAttributes);
 
-        this.assertNotLoaded('set');
+        return tap(model, () => {
+            this.assertNotLoaded('set');
 
-        if (this.parent.exists())
-            this.protected.initializeInverseRelations(model);
+            if (!model.exists())
+                this.__newModel = model;
 
-        if (!model.exists())
-            this.__newModel = model;
-
-        this.related = model;
-
-        return model;
-    }
-
-    public __beforeParentCreate(): void {
-        this.documentModelLoaded = true;
+            this.addRelated(model);
+            this.initializeInverseRelations(model);
+            this.setForeignAttributes(model);
+        });
     }
 
     protected cloneSolidData(clone: This<Parent, Related, RelatedClass>): void {
         let relatedClone = clone.related ?? null as Related | null;
 
         clone.useSameDocument = this.useSameDocument;
-        clone.documentModelLoaded = this.documentModelLoaded;
+        clone.documentModelsLoaded = this.documentModelsLoaded;
 
         if (this.__newModel)
             this.__newModel = relatedClone ??
@@ -136,7 +114,7 @@ export default class SolidSingleModelDocumentRelation<
             clone.__modelInOtherDocumentId = this.__modelInOtherDocumentId;
     }
 
-    protected loadDocumentModel(
+    protected loadDocumentModels(
         this: This<Parent, Related, RelatedClass>,
         modelsInSameDocument: Related[],
         modelsInOtherDocumentIds: string[],
@@ -150,19 +128,19 @@ export default class SolidSingleModelDocumentRelation<
         if (modelsInSameDocument.length > 0) {
             this.__modelInSameDocument = modelsInSameDocument[0];
             this.related = this.__modelInSameDocument;
-            this.documentModelLoaded = true;
+            this.documentModelsLoaded = true;
 
             return;
         }
 
         if (modelsInOtherDocumentIds.length > 0) {
             this.__modelInOtherDocumentId = modelsInOtherDocumentIds[0];
-            this.documentModelLoaded = true;
+            this.documentModelsLoaded = true;
 
             return;
         }
 
-        this.documentModelLoaded = true;
+        this.documentModelsLoaded = true;
     }
 
     private assertNotLoaded(this: This, method: string): void {

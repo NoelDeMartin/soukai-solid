@@ -1,6 +1,5 @@
 import {
     arrayDiff,
-    arrayFilter,
     arrayFrom,
     arraySorted,
     arrayUnique,
@@ -18,6 +17,7 @@ import {
     urlRoot,
     urlRoute,
     uuid,
+    when,
 } from '@noeldemartin/utils';
 import {
     DocumentAlreadyExists,
@@ -45,16 +45,17 @@ import type {
     MagicAttributes,
     ModelConstructor,
     MultiModelRelation,
+    Relation,
     SingleModelRelation,
     TimestampFieldValue,
 } from 'soukai';
 import type { Constructor } from '@noeldemartin/utils';
+import type { JsonLD, JsonLDGraph, JsonLDResource } from '@noeldemartin/solid-utils';
 
 import { SolidEngine } from '@/engines';
 
 import IRI from '@/solid/utils/IRI';
 import RDFDocument from '@/solid/RDFDocument';
-import type { JsonLD, JsonLDResource } from '@/solid/utils/RDF';
 import type RDFResource from '@/solid/RDFResource';
 
 import {
@@ -68,6 +69,7 @@ import { SolidModelOperationType } from './SolidModelOperation';
 import DeletesModels from './mixins/DeletesModels';
 import SerializesToJsonLD from './mixins/SerializesToJsonLD';
 import SolidBelongsToManyRelation from './relations/SolidBelongsToManyRelation';
+import SolidBelongsToOneRelation from './relations/SolidBelongsToOneRelation';
 import SolidHasManyRelation from './relations/SolidHasManyRelation';
 import SolidHasOneRelation from './relations/SolidHasOneRelation';
 import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
@@ -77,7 +79,9 @@ import type SolidContainerModel from './SolidContainerModel';
 import type SolidModelMetadata from './SolidModelMetadata';
 import type SolidModelOperation from './SolidModelOperation';
 
-export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]) {
+export const SolidModelBase = mixed(Model, [DeletesModels, SerializesToJsonLD]);
+
+export class SolidModel extends SolidModelBase {
 
     public static primaryKey: string = 'url';
 
@@ -248,28 +252,9 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
                 const relation = model._relations[relationName];
                 const models = relation.getLoadedModels() as SolidModel[];
 
+                when(relation, isSolidDocumentRelation).resetRemoteData(models);
+
                 models.forEach(model => model.resetEngineData());
-
-                if (relation instanceof SolidHasManyRelation) {
-                    models.forEach(model => {
-                        delete model[relation.foreignKeyName as keyof SolidModel];
-                        relation.__newModels.push(model);
-                    });
-
-                    relation.__modelsInSameDocument = [];
-
-                    continue;
-                }
-
-                if (relation instanceof SolidHasOneRelation) {
-                    if (models.length === 0)
-                        continue;
-
-                    relation.__newModel = models[0];
-                    delete relation.__modelInSameDocument;
-
-                    continue;
-                }
             }
         });
     }
@@ -411,7 +396,6 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
 
     public cleanDirty(): void {
         super.cleanDirty();
-        this.getDirtyDocumentModels().map(model => model.cleanDirty());
 
         this._documentExists = true;
 
@@ -652,25 +636,16 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
         const engine = this.requireEngine();
 
         await Promise.all(
-            Object
-                .values(this._relations)
-                .map(async relation => {
-                    if (isSolidMultiModelDocumentRelation(relation))
-                        return relation.relatedClass.withEngine(
-                            engine,
-                            () => relation.__loadDocumentModels(documentUrl, document),
-                        );
-
-                    if (isSolidSingleModelDocumentRelation(relation))
-                        return relation.relatedClass.withEngine(
-                            engine,
-                            () => relation.__loadDocumentModel(documentUrl, document),
-                        );
-                }),
+            Object.values(this._relations).filter(isSolidDocumentRelation).map(async relation => {
+                return relation.relatedClass.withEngine(
+                    engine,
+                    () => relation.__loadDocumentModels(documentUrl, document as JsonLDGraph),
+                );
+            }),
         );
     }
 
-    protected async beforeSave(): Promise<void> {
+    protected async beforeSave(sideEffect?: boolean): Promise<void> {
         await super.beforeSave();
 
         if (!this.exists()) {
@@ -682,14 +657,22 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
             }
         }
 
-        if (!this.url && this.static('mintsUrls'))
+        if (!sideEffect && !this.url && this.static('mintsUrls'))
             this.mintUrl();
 
         if (this.tracksHistory() && this.exists())
             this.addHistoryOperations();
+
+        this.getDirtyDocumentModels().forEach(model => model.beforeSave(true));
     }
 
-    protected async duringSave(): Promise<void> {
+    protected async duringSave(sideEffect?: boolean): Promise<void> {
+        if (sideEffect)
+            return;
+
+        const dirtyDocumentModelsExisted: [SolidModel, boolean][] =
+            this.getDirtyDocumentModels().map(model => [model, model.exists()]);
+
         try {
             await super.duringSave();
         } catch (error) {
@@ -700,6 +683,19 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
 
             await super.duringSave();
         }
+
+        dirtyDocumentModelsExisted.forEach(([model, existed]) => {
+            model._wasRecentlyCreated = model._wasRecentlyCreated || !existed;
+
+            model.duringSave(true);
+        });
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    protected async afterSave(sideEffect?: boolean): Promise<void> {
+        await super.afterSave();
+
+        this.getDirtyDocumentModels().forEach(model => model.afterSave(true));
     }
 
     protected async syncDirty(): Promise<string> {
@@ -809,6 +805,14 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
     /* eslint-enable max-len */
 
     /* eslint-disable max-len */
+    protected belongsToOne<T extends typeof SolidModel>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): SolidBelongsToOneRelation;
+    protected belongsToOne<T extends typeof Model>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): MultiModelRelation;
+    protected belongsToOne<T extends typeof Model | typeof SolidModel>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): MultiModelRelation | SolidBelongsToOneRelation {
+        return new SolidBelongsToOneRelation(this, relatedClass as typeof SolidModel, foreignKeyField, localKeyField);
+    }
+    /* eslint-enable max-len */
+
+    /* eslint-disable max-len */
     protected belongsToMany<T extends typeof SolidModel>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): SolidBelongsToManyRelation;
     protected belongsToMany<T extends typeof Model>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): MultiModelRelation;
     protected belongsToMany<T extends typeof Model | typeof SolidModel>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): MultiModelRelation | SolidBelongsToManyRelation {
@@ -825,10 +829,12 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
     }
 
     protected toEngineDocument(): EngineDocument {
+        const dirtyModels = this.prepareDirtyDocumentModels();
+
         return {
             '@graph': [
                 this.serializeToJsonLD(false),
-                ...this.prepareDirtyDocumentModels().map(model => model.serializeToJsonLD(true)),
+                ...dirtyModels.map(model => model.serializeToJsonLD(true)),
             ],
         } as EngineDocument;
     }
@@ -940,6 +946,10 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
     }
 
     private getDirtyDocumentModels(): SolidModel[] {
+        return this.getDirtyDocumentModelRelations().map(({ models }) => models).flat();
+    }
+
+    private getDirtyDocumentModelRelations(): { models: SolidModel[]; relation: Relation }[] {
         // TODO this should be recursive to take care of 2nd degree relations.
         const documentUrl = this.getDocumentUrl();
 
@@ -948,9 +958,13 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
             .filter(isSolidDocumentRelation)
             .filter(relation => relation.loaded && relation.useSameDocument)
             .map(relation => {
-                const models = isSolidSingleModelDocumentRelation(relation)
-                    ? new Set(arrayFilter([relation.__newModel])) as Set<SolidModel>
-                    : new Set(relation.__newModels);
+                const models = new Set<SolidModel>();
+
+                if (isSolidSingleModelDocumentRelation(relation) && relation.__newModel)
+                    models.add(relation.__newModel);
+
+                if (isSolidMultiModelDocumentRelation(relation))
+                    relation.__newModels.forEach(model => models.add(model));
 
                 for (const relatedModel of relation.getLoadedModels()) {
                     if (
@@ -963,11 +977,12 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
                     models.add(relatedModel);
                 }
 
-                models.forEach(model => model.setAttribute(relation.foreignKeyName, this.url));
-
-                return [...models];
+                return {
+                    relation,
+                    models: [...models],
+                };
             })
-            .flat();
+            .filter(({ models }) => models.length !== 0);
     }
 
     private getOperationValue(field: string, value?: unknown): unknown;
@@ -1022,9 +1037,9 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
     }
 
     private prepareDirtyDocumentModels(): SolidModel[] {
-        const dirtyModels = this.getDirtyDocumentModels();
+        const dirtyModelRelations = this.getDirtyDocumentModelRelations();
 
-        if (dirtyModels.length === 0)
+        if (dirtyModelRelations.length === 0)
             return [];
 
         if (!this.url)
@@ -1032,9 +1047,18 @@ export class SolidModel extends mixed(Model, [DeletesModels, SerializesToJsonLD]
 
         const documentUrl = this.requireDocumentUrl();
 
-        dirtyModels.forEach(model => !model.url && model.mintUrl(documentUrl, this._documentExists, uuid()));
+        for (const { models, relation } of dirtyModelRelations) {
+            for (const dirtyModel of models) {
+                relation.setForeignAttributes(dirtyModel);
 
-        return dirtyModels;
+                if (!dirtyModel.url)
+                    dirtyModel.mintUrl(documentUrl, this._documentExists, uuid());
+
+                relation.setForeignAttributes(dirtyModel);
+            }
+        }
+
+        return dirtyModelRelations.map(({ models }) => models).flat();
     }
 
 }

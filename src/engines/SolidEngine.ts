@@ -16,6 +16,7 @@ import type {
     EngineUpdateItemsOperatorData,
     EngineUpdates,
 } from 'soukai';
+import type { JsonLD } from '@noeldemartin/solid-utils';
 
 import ChangeUrlOperation from '@/solid/operations/ChangeUrlOperation';
 import RDFDocument from '@/solid/RDFDocument';
@@ -24,7 +25,6 @@ import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation'
 import SolidClient from '@/solid/SolidClient';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
 import type { Fetch } from '@/solid/SolidClient';
-import type { JsonLD } from '@/solid/utils/RDF';
 import type { LiteralValue } from '@/solid/RDFResourceProperty';
 import type { RDFDocumentMetadata } from '@/solid/RDFDocument';
 import type { UpdateOperation } from '@/solid/operations/Operation';

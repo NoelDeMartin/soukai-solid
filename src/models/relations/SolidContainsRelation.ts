@@ -1,3 +1,4 @@
+import { arrayUnique } from '@noeldemartin/utils';
 import { BelongsToManyRelation, SoukaiError } from 'soukai';
 import type { Attributes } from 'soukai';
 
@@ -15,6 +16,16 @@ export default class SolidContainsRelation<
 
     public constructor(parent: Parent, relatedClass: RelatedClass) {
         super(parent, relatedClass, 'resourceUrls', 'url');
+    }
+
+    public setForeignAttributes(related: Related): void {
+        if (!related.url)
+            return;
+
+        this.parent.resourceUrls = arrayUnique([
+            ...this.parent.resourceUrls,
+            related.url,
+        ]);
     }
 
     public async resolve(): Promise<Related[]> {

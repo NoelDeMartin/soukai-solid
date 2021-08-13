@@ -1,6 +1,5 @@
 import type { EngineDocument } from 'soukai';
-
-import type { JsonLDGraph, JsonLDResource } from '@/solid/utils/RDF';
+import type { JsonLDGraph, JsonLDResource } from '@noeldemartin/solid-utils';
 
 export function stubPersonJsonLD(
     url: string,

@@ -1,35 +1,20 @@
+import { arrayUnique, tap } from '@noeldemartin/utils';
 import { SoukaiError } from 'soukai';
-import { tap } from '@noeldemartin/utils';
-import type { Attributes, EngineDocument , MultiModelRelation , Relation } from 'soukai';
+import type { Attributes, MultiModelRelation } from 'soukai';
 
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
-import { SolidDocumentRelation } from './SolidDocumentRelation';
+import SolidDocumentRelation from './SolidDocumentRelation';
 
 // Workaround for https://github.com/microsoft/TypeScript/issues/16936
-type This<
+export type This<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
 > =
     SolidMultiModelDocumentRelation<Parent, Related, RelatedClass> &
-    MultiModelRelation<Parent, Related, RelatedClass> &
-    ISolidMultiModelDocumentRelation;
-
-// Workaround for https://github.com/microsoft/TypeScript/issues/29132
-interface ProtectedThis<
-    Parent extends SolidModel = SolidModel,
-    Related extends SolidModel = SolidModel,
-    RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
-> {
-    initializeInverseRelations: Relation<Parent, Related, RelatedClass>['initializeInverseRelations'];
-}
-
-// Workaround for https://github.com/microsoft/TypeScript/issues/35356
-export interface ISolidMultiModelDocumentRelation {
-    __loadDocumentModels(documentUrl: string, document: EngineDocument): Promise<void>;
-}
+    MultiModelRelation<Parent, Related, RelatedClass>;
 
 export type SolidMultiModelDocumentRelationInstance<
     Parent extends SolidModel = SolidModel,
@@ -41,13 +26,11 @@ export default class SolidMultiModelDocumentRelation<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
-> extends SolidDocumentRelation<ProtectedThis<Parent, Related, RelatedClass>> {
+> extends SolidDocumentRelation<Related> {
 
     public __newModels: Related[] = [];
     public __modelsInSameDocument?: Related[];
     public __modelsInOtherDocumentIds?: string[];
-
-    protected documentModelsLoaded: boolean = false;
 
     public isEmpty(this: This): boolean | null {
         if (!this.documentModelsLoaded && this.parent.exists())
@@ -104,25 +87,17 @@ export default class SolidMultiModelDocumentRelation<
             ? modelOrAttributes as Related
             : this.relatedClass.newInstance(modelOrAttributes);
 
-        if (!this.assertLoaded('add'))
-            return model;
+        return tap(model, () => {
+            if (!this.assertLoaded('add') || this.related.includes(model) || this.__newModels.includes(model))
+                return;
 
-        if (this.related.includes(model) || this.__newModels.includes(model))
-            return model;
+            if (!model.exists())
+                this.__newModels.push(model);
 
-        if (this.parent.exists())
-            this.protected.initializeInverseRelations(model);
-
-        if (!model.exists())
-            this.__newModels.push(model);
-
-        this.related.push(model);
-
-        return model;
-    }
-
-    public __beforeParentCreate(): void {
-        this.documentModelsLoaded = true;
+            this.addRelated(model);
+            this.initializeInverseRelations(model);
+            this.setForeignAttributes(model);
+        });
     }
 
     protected cloneSolidData(clone: This<Parent, Related, RelatedClass>): void {
@@ -158,7 +133,10 @@ export default class SolidMultiModelDocumentRelation<
         this.__modelsInOtherDocumentIds = modelsInOtherDocumentIds;
 
         if (this.__modelsInOtherDocumentIds.length === 0)
-            this.related = this.__modelsInSameDocument.slice(0);
+            this.related = arrayUnique([
+                ...this.related ?? [],
+                ...this.__modelsInSameDocument.slice(0),
+            ]);
 
         this.documentModelsLoaded = true;
     }

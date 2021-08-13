@@ -1,7 +1,5 @@
 import { bootModels } from 'soukai';
 
-import type { JsonLD, JsonLDResource } from '@/solid/utils/RDF';
-
 import type DeletesModels from './mixins/DeletesModels';
 import type SerializesToJsonLD from './mixins/SerializesToJsonLD';
 
@@ -24,12 +22,10 @@ export {
     SolidTypeRegistration,
 };
 
-export type {
-    DeletesModels,
-    JsonLD,
-    JsonLDResource,
-    SerializesToJsonLD,
-};
+export type { DeletesModels, SerializesToJsonLD };
+
+export type { This as DeletesModelsThis } from './mixins/DeletesModels';
+export type { This as SerializesToJsonLDThis } from './mixins/SerializesToJsonLD';
 
 export type {
     SolidBootedFieldDefinition,

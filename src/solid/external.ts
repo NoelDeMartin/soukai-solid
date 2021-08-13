@@ -1,8 +1,7 @@
+import type { JsonLD, JsonLDResource } from '@noeldemartin/solid-utils';
 import type { JsonLdObj } from 'jsonld/jsonld-spec';
-import type { Quad } from 'rdf-js';
 import type { ParserOptions } from 'n3';
-
-import type { JsonLD, JsonLDResource } from '@/solid/utils/RDF';
+import type { Quad } from 'rdf-js';
 
 // Some libraries need to be imported dynamically because they rely on `global` being defined, which is not available
 // in all environments (for example, it's not available in browsers). The `defineGlobal` method fixes that issue,

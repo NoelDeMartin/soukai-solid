@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import { after, arrayWithout, stringToSlug, toString, tt, urlParentDirectory, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
+import { after, arrayWithout, range, stringToSlug, toString, tt, urlParentDirectory, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
 import { FieldType, InMemoryEngine, ModelKey, bootModels, setEngine } from 'soukai';
 import dayjs from 'dayjs';
@@ -1117,43 +1117,129 @@ describe('SolidModel', () => {
     it('parses JSON-LD with related models', async () => {
         // Arrange
         const containerUrl = urlResolveDirectory(Faker.internet.url());
-        const name = Faker.random.word();
+        const movieName = Faker.random.word();
+        const directorName = Faker.random.word();
+        const groupName = Faker.random.word();
+        const creatorName = Faker.random.word();
+        const actions = range(2);
+        const memberNames = [
+            Faker.random.word(),
+            Faker.random.word(),
+        ];
         const documentUrl = urlResolve(containerUrl, Faker.random.uuid());
-        const url = `${documentUrl}#it`;
+        const movieUrl = `${documentUrl}#it`;
+        const groupUrl = `${documentUrl}#it`;
 
-        // Act
-        const movie = await Movie.newFromJsonLD<Movie>({
+        // Act - Create movie
+        const movie = await Movie.newFromJsonLD({
             '@context': {
                 '@vocab': 'https://schema.org/',
+                'foaf': 'http://xmlns.com/foaf/0.1/',
+                'director': { '@reverse': 'foaf:made' },
                 'actions': { '@reverse': 'object' },
             },
-            '@id': url,
+            '@id': movieUrl,
             '@type': 'Movie',
-            'name': name,
-            'actions': [
-                {
-                    '@id': `${documentUrl}#action`,
-                    '@type': 'WatchAction',
-                },
-            ],
+            'name': movieName,
+            'director': {
+                '@id': `${documentUrl}#director`,
+                '@type': 'foaf:Person',
+                'foaf:name': directorName,
+            },
+            'actions': actions.map(index => ({
+                '@id': `${documentUrl}#action-${index}`,
+                '@type': 'WatchAction',
+            })),
         });
 
-        // Assert
+        // Act - Create group
+        const group = await Group.newFromJsonLD({
+            '@context': {
+                '@vocab': 'http://xmlns.com/foaf/0.1/',
+            },
+            '@id': groupUrl,
+            '@type': 'Group',
+            'name': groupName,
+            'maker': {
+                '@id': `${documentUrl}#creator`,
+                '@type': 'Person',
+                'name': creatorName,
+            },
+            'member': memberNames.map((memberName, index) => ({
+                '@id': `${documentUrl}#member-${index}`,
+                '@type': 'Person',
+                'name': memberName,
+            })),
+        });
+
+        // Assert - Movie & Group (parent models)
         expect(movie.exists()).toBe(false);
-        expect(movie.title).toEqual(name);
+        expect(movie.title).toEqual(movieName);
         expect(movie.url).toBeUndefined();
-        expect(movie.actions).toHaveLength(1);
 
-        const action = movie.actions?.[0] as WatchAction;
-        expect(action).toBeInstanceOf(WatchAction);
-        expect(action.exists()).toBe(false);
-        expect(action.url).toBeUndefined();
-        expect(action.object).toBeUndefined();
+        expect(group.exists()).toBe(false);
+        expect(group.name).toEqual(groupName);
+        expect(group.url).toBeUndefined();
+        expect(group.creatorUrl).toBeUndefined();
+        expect(group.memberUrls).toHaveLength(0);
 
-        expect(movie.relatedActions.__modelsInSameDocument).toHaveLength(0);
+        // Assert - Director (hasOne relation)
+        const director = movie.director as Person;
+        expect(director).toBeInstanceOf(Person);
+        expect(director.exists()).toBe(false);
+        expect(director.name).toEqual(directorName);
+        expect(director.url).toBeUndefined();
+        expect(director.directed).toBeUndefined();
 
-        expect(movie.relatedActions.__newModels).toHaveLength(1);
-        expect(movie.relatedActions.__newModels[0]).toBe(action);
+        expect(movie.relatedDirector.__modelInSameDocument).toBeUndefined();
+        expect(movie.relatedDirector.__modelInOtherDocumentId).toBeUndefined();
+        expect(movie.relatedDirector.__newModel).toBe(director);
+
+        // Assert - Actions (hasMany relation)
+        expect(movie.actions).toHaveLength(actions.length);
+        expect(movie.relatedActions.__newModels).toHaveLength(actions.length);
+
+        actions.forEach(index => {
+            const action = (movie.actions as WatchAction[])[index];
+
+            expect(action).toBeInstanceOf(WatchAction);
+            expect(action.exists()).toBe(false);
+            expect(action.url).toBeUndefined();
+            expect(action.object).toBeUndefined();
+
+            expect(movie.relatedActions.__modelsInSameDocument).toHaveLength(0);
+            expect(movie.relatedActions.__modelsInOtherDocumentIds).toHaveLength(0);
+            expect(movie.relatedActions.__newModels[index]).toBe(action);
+        });
+
+        // Assert - Creator (belongsToOne relation)
+        const creator = group.creator as Person;
+
+        expect(creator).toBeInstanceOf(Person);
+        expect(creator.exists()).toBe(false);
+        expect(creator.name).toEqual(creatorName);
+        expect(creator.url).toBeUndefined();
+
+        expect(group.relatedCreator.__modelInSameDocument).toBeUndefined();
+        expect(group.relatedCreator.__modelInOtherDocumentId).toBeUndefined();
+        expect(group.relatedCreator.__newModel).toBe(creator);
+
+        // Assert - Members (belongsToMany relation)
+        expect(group.members).toHaveLength(memberNames.length);
+        expect(group.relatedMembers.__newModels).toHaveLength(memberNames.length);
+
+        memberNames.forEach((memberName, index) => {
+            const member = (group.members as Person[])[index];
+
+            expect(member).toBeInstanceOf(Person);
+            expect(member.exists()).toBe(false);
+            expect(member.url).toBeUndefined();
+            expect(member.name).toEqual(memberName);
+
+            expect(group.relatedMembers.__modelsInSameDocument).toHaveLength(0);
+            expect(group.relatedMembers.__modelsInOtherDocumentIds).toHaveLength(0);
+            expect(group.relatedMembers.__newModels[index]).toBe(member);
+        });
     });
 
     it('Does not create operations on create', async () => {

@@ -1,4 +1,5 @@
 import { FieldType, TimestampField } from 'soukai';
+import { stringToSlug } from '@noeldemartin/utils';
 import type { IModel, Relation, SingleModelRelation, TimestampFieldValue } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
@@ -39,6 +40,14 @@ export default class Person extends SolidModel {
 
     public groupRelationship(): SingleModelRelation {
         return this.hasOne(Group, 'memberUrls');
+    }
+
+    protected newUrl(documentUrl?: string, resourceHash?: string): string {
+        if (this.name && documentUrl && resourceHash !== this.static('defaultResourceHash')) {
+            return `${documentUrl}#${stringToSlug(this.name)}`;
+        }
+
+        return super.newUrl(documentUrl, resourceHash);
     }
 
 }

@@ -1,5 +1,5 @@
+import { arrayUnique, requireUrlParentDirectory, urlParentDirectory, urlRoot } from '@noeldemartin/utils';
 import { SingleModelRelation } from 'soukai';
-import { requireUrlParentDirectory, urlParentDirectory, urlRoot } from '@noeldemartin/utils';
 
 import type { SolidModel } from '@/models/SolidModel';
 
@@ -13,11 +13,21 @@ export default class SolidIsContainedByRelation<
 > extends SingleModelRelation<Parent, Related, RelatedClass> {
 
     public constructor(parent: Parent, relatedClass: RelatedClass) {
-        super(parent, relatedClass, 'url');
+        super(parent, relatedClass, 'resourceUrls', 'url');
     }
 
     public isEmpty(): false {
         return false;
+    }
+
+    public setForeignAttributes(related: Related): void {
+        if (!this.parent.url)
+            return;
+
+        related.resourceUrls = arrayUnique([
+            ...related.resourceUrls,
+            this.parent.url,
+        ]);
     }
 
     public async resolve(): Promise<Related | null> {
@@ -33,7 +43,7 @@ export default class SolidIsContainedByRelation<
         return this.related;
     }
 
-    protected initializeInverse(parent: Parent, related: Related): void {
+    public addRelated(related: Related): void {
         this.related = related;
     }
 

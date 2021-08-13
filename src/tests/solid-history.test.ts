@@ -1,6 +1,7 @@
 import { arrayWithout, toString } from '@noeldemartin/utils';
 import { ModelKey, bootModels, setEngine } from 'soukai';
 import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
+import type { Relation } from 'soukai';
 
 import { SolidEngine } from '@/engines';
 import { SolidModelOperationType } from '@/models/SolidModelOperation';
@@ -28,6 +29,17 @@ class Group extends BaseGroup {
 
     public static timestamps = true;
     public static history = true;
+
+    public creatorRelationship(): Relation {
+        return this
+            .belongsToOne(Person, 'creatorUrl')
+            .usingSameDocument(true)
+            .onDelete('cascade');
+    }
+
+    public membersRelationship(): Relation {
+        return this.belongsToMany(Person, 'memberUrls');
+    }
 
 }
 
@@ -88,7 +100,7 @@ describe('Solid history tracking', () => {
         StubFetcher.addFetchResponse();
 
         // Act - create band
-        const band = await Group.create({
+        const band = new Group({
             name: 'Band of the Falcon',
             memberUrls: [
                 'https://berserk.fandom.com/wiki/Griffith',
@@ -99,31 +111,40 @@ describe('Solid history tracking', () => {
             ],
         });
 
+        const griffith = band.relatedCreator.set({ name: 'Griffith' });
+
+        await band.save();
+
         // Act - Guts joins the band
         await band.update({ memberUrls: [...band.memberUrls, 'https://berserk.fandom.com/wiki/Guts'] });
 
-        // Act - Judeau, Pippin and Corkus are expelled from the band
-        await band.update({
-            memberUrls: arrayWithout(band.memberUrls, [
-                'https://berserk.fandom.com/wiki/Judeau',
-                'https://berserk.fandom.com/wiki/Pippin',
-                'https://berserk.fandom.com/wiki/Corkus',
-            ]),
-        });
+        // Act - Judeau, Pippin and Corkus are expelled from the band; Griffith becomes Femto
+        band.memberUrls = arrayWithout(band.memberUrls, [
+            'https://berserk.fandom.com/wiki/Judeau',
+            'https://berserk.fandom.com/wiki/Pippin',
+            'https://berserk.fandom.com/wiki/Corkus',
+        ]);
 
-        // Act - Guts and Casca leave the band, Zodd joins
-        await band.update({
-            memberUrls: [
-                ...arrayWithout(band.memberUrls, [
-                    'https://berserk.fandom.com/wiki/Guts',
-                    'https://berserk.fandom.com/wiki/Casca',
-                ]),
-                'https://berserk.fandom.com/wiki/Zodd',
-            ],
-        });
+        griffith.name = 'Femto';
+
+        await band.save();
+
+        // Act - Guts and Casca leave the band, Zodd joins; Femto becomes Griffith again
+        band.memberUrls = [
+            ...arrayWithout(band.memberUrls, [
+                'https://berserk.fandom.com/wiki/Guts',
+                'https://berserk.fandom.com/wiki/Casca',
+            ]),
+            'https://berserk.fandom.com/wiki/Zodd',
+        ];
+
+        griffith.name = 'Griffith';
+
+        await band.save();
 
         // Assert
         expect(fetch).toHaveBeenCalledTimes(8);
+
         expect(fetch.mock.calls[1][1]?.body).toEqualSparql(fixture('create-band-of-the-falcon.sparql'));
         expect(fetch.mock.calls[3][1]?.body).toEqualSparql(fixture('update-band-of-the-falcon-1.sparql'));
         expect(fetch.mock.calls[5][1]?.body).toEqualSparql(fixture('update-band-of-the-falcon-2.sparql'));
@@ -137,15 +158,16 @@ describe('Solid history tracking', () => {
         // Act
         const band = await Group.find('solid://band-of-the-falcon#it') as Group;
 
-        // Assert
+        // Assert - Band
         expect(band.name).toEqual('Band of the Falcon');
         expect(band.memberUrls).toEqual([
             'https://berserk.fandom.com/wiki/Griffith',
             'https://berserk.fandom.com/wiki/Casca',
             'https://berserk.fandom.com/wiki/Guts',
         ]);
+        expect(band.creatorUrl).toEqual('solid://band-of-the-falcon#griffith');
         expect(band.metadata).not.toBeNull();
-        expect(band.operations).toHaveLength(4);
+        expect(band.operations).toHaveLength(5);
 
         expect(band.metadata.resourceUrl).toEqual('solid://band-of-the-falcon#it');
         expect(band.metadata.createdAt).toBeInstanceOf(Date);
@@ -174,25 +196,55 @@ describe('Solid history tracking', () => {
         });
 
         expect(band.operations[2].resourceUrl).toEqual('solid://band-of-the-falcon#it');
-        expect(band.operations[2].type).toEqual(SolidModelOperationType.Add);
         expect(band.operations[2].date).toBeInstanceOf(Date);
-        expect(band.operations[2].property).toEqual(expandIRI('foaf:member'));
+        expect(band.operations[2].property).toEqual(expandIRI('foaf:maker'));
         expect(band.operations[2].value).toBeInstanceOf(ModelKey);
-        expect(toString(band.operations[2].value)).toEqual('https://berserk.fandom.com/wiki/Guts');
+        expect(toString(band.operations[2].value)).toEqual('solid://band-of-the-falcon#griffith');
 
         expect(band.operations[3].resourceUrl).toEqual('solid://band-of-the-falcon#it');
-        expect(band.operations[3].type).toEqual(SolidModelOperationType.Remove);
+        expect(band.operations[3].type).toEqual(SolidModelOperationType.Add);
         expect(band.operations[3].date).toBeInstanceOf(Date);
         expect(band.operations[3].property).toEqual(expandIRI('foaf:member'));
-        expect(band.operations[3].value).toHaveLength(3);
+        expect(band.operations[3].value).toBeInstanceOf(ModelKey);
+        expect(toString(band.operations[3].value)).toEqual('https://berserk.fandom.com/wiki/Guts');
+
+        expect(band.operations[4].resourceUrl).toEqual('solid://band-of-the-falcon#it');
+        expect(band.operations[4].type).toEqual(SolidModelOperationType.Remove);
+        expect(band.operations[4].date).toBeInstanceOf(Date);
+        expect(band.operations[4].property).toEqual(expandIRI('foaf:member'));
+        expect(band.operations[4].value).toHaveLength(3);
         [
             'https://berserk.fandom.com/wiki/Judeau',
             'https://berserk.fandom.com/wiki/Pippin',
             'https://berserk.fandom.com/wiki/Corkus',
         ].forEach((memberUrl, index) => {
-            expect(band.operations[3].value[index]).toBeInstanceOf(ModelKey);
-            expect(toString(band.operations[3].value[index])).toEqual(memberUrl);
+            expect(band.operations[4].value[index]).toBeInstanceOf(ModelKey);
+            expect(toString(band.operations[4].value[index])).toEqual(memberUrl);
         });
+
+        // Assert - Griffith
+        const griffith = band.creator as Person;
+        expect(griffith).not.toBeNull();
+        expect(griffith.name).toEqual('Femto');
+
+        expect(griffith.metadata).not.toBeNull();
+        expect(griffith.operations).toHaveLength(2);
+
+        expect(griffith.metadata.resourceUrl).toEqual('solid://band-of-the-falcon#griffith');
+        expect(griffith.metadata.createdAt).toBeInstanceOf(Date);
+        expect(griffith.metadata.updatedAt).toBeInstanceOf(Date);
+
+        expect(griffith.operations[0].resourceUrl).toEqual('solid://band-of-the-falcon#griffith');
+        expect(griffith.operations[0].type).toBeUndefined();
+        expect(griffith.operations[0].date).toBeInstanceOf(Date);
+        expect(griffith.operations[0].property).toEqual(expandIRI('foaf:name'));
+        expect(griffith.operations[0].value).toEqual('Griffith');
+
+        expect(griffith.operations[1].resourceUrl).toEqual('solid://band-of-the-falcon#griffith');
+        expect(griffith.operations[1].type).toBeUndefined();
+        expect(griffith.operations[1].date).toBeInstanceOf(Date);
+        expect(griffith.operations[1].property).toEqual(expandIRI('foaf:name'));
+        expect(griffith.operations[1].value).toEqual('Femto');
     });
 
 });

@@ -31,8 +31,8 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.13.8",
-    "@noeldemartin/solid-utils": "0.0.0-next.dc85122f7bdaba7991c9fd71c19667225f8baf2f",
-    "@noeldemartin/utils": "0.1.0-next.91db52125db0aa90ad892d1af6b799602e1ee75e",
+    "@noeldemartin/solid-utils": "0.0.0-next.a1b68bc42f8a4f951db18a82c9029bd6ff0185de",
+    "@noeldemartin/utils": "0.1.0-next.fce6bc1e138260f71239b0ece548414d8bb0d4a6",
     "core-js": "^3.9.0",
     "jsonld": "^4.0.1",
     "n3": "^1.3.6"
@@ -40,6 +40,7 @@
   "devDependencies": {
     "@babel/plugin-proposal-class-properties": "^7.13.0",
     "@babel/plugin-transform-runtime": "^7.13.8",
+    "@microsoft/api-extractor": "^7.18.5",
     "@noeldemartin/eslint-config-typescript": "0.0.0-next.bded47b9bf0a8721f5ac7317adea94f5002a10d3",
     "@noeldemartin/scripts": "0.0.0-next.fc10faa540c836a703b087e3bfe615dd68424745",
     "@types/faker": "^4.1.5",
@@ -52,7 +53,7 @@
     "eslint": "^7.20.0",
     "faker": "^4.1.0",
     "jest": "^26.6.3",
-    "soukai": "^0.4.1-next.ca7ecc45f9bc391586e4c1c276b49dcd3eb08797",
+    "soukai": "^0.4.1-next.21508738df68377018c48186ce4ea5656f39b857",
     "ts-jest": "^26.5.2",
     "typescript": "^4.1.5"
   }

@@ -35,6 +35,13 @@ INSERT DATA {
     <#it-operation-[[.*]]>
         a soukai:Operation ;
         soukai:resource <#it> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:maker ;
+        soukai:value <#griffith>.
+
+    <#it-operation-[[.*]]>
+        a soukai:Operation ;
+        soukai:resource <#it> ;
         soukai:type soukai:AddOperation ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:member ;

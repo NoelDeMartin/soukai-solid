@@ -1,11 +1,11 @@
 import { SoukaiError } from 'soukai';
 import { arrayWithout, urlResolve, urlRoute } from '@noeldemartin/utils';
+import type { JsonLD, JsonLDGraph } from '@noeldemartin/solid-utils';
 import type { Quad } from 'rdf-js';
 
 import { fromTurtle, toRDF } from '@/solid/external';
 import RDF from '@/solid/utils/RDF';
 import RDFResource from '@/solid/RDFResource';
-import type { JsonLD, JsonLDGraph } from '@/solid/utils/RDF';
 import type RDFResourceProperty from '@/solid/RDFResourceProperty';
 
 export interface TurtleParsingOptions {

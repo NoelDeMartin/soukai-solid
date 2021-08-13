@@ -1,19 +1,31 @@
-import { BelongsToManyRelation, EngineHelper } from 'soukai';
-import { urlParentDirectory, urlRoot, urlRoute } from '@noeldemartin/utils';
-import type { EngineAttributeValue, EngineDocument , EngineDocumentsCollection } from 'soukai';
+import { arrayRemove, mixedWithoutTypes, tap, urlParentDirectory, urlRoot, urlRoute } from '@noeldemartin/utils';
+import { BelongsToManyRelation } from 'soukai';
 
-import type { JsonLDResource } from '@/solid/utils/RDF';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
+import SolidBelongsToRelation from './mixins/SolidBelongsToRelation';
+import SolidMultiModelDocumentRelation from './mixins/SolidMultiModelDocumentRelation';
+import type { ISolidDocumentRelation } from './mixins/SolidDocumentRelation';
+
+export const SolidBelongsToManyRelationBase = mixedWithoutTypes(
+    BelongsToManyRelation,
+    [SolidMultiModelDocumentRelation, SolidBelongsToRelation],
+);
+
+export default interface SolidBelongsToManyRelation<
+    Parent extends SolidModel = SolidModel,
+    Related extends SolidModel = SolidModel,
+    RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
+> extends SolidMultiModelDocumentRelation<Parent, Related, RelatedClass>, SolidBelongsToRelation {}
 export default class SolidBelongsToManyRelation<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
-> extends BelongsToManyRelation<Parent, Related, RelatedClass> {
-
-    public __modelsInSameDocument?: Related[];
-    public __modelsInOtherDocumentIds?: string[];
+>
+    extends SolidBelongsToManyRelationBase<Parent, Related, RelatedClass>
+    implements ISolidDocumentRelation<Related>
+{
 
     public async resolve(): Promise<Related[]> {
         if (!this.__modelsInSameDocument || !this.__modelsInOtherDocumentIds) {
@@ -55,61 +67,38 @@ export default class SolidBelongsToManyRelation<
 
         this.related = [
             ...this.__modelsInSameDocument,
+            ...this.__newModels,
             ...modelsInOtherDocuments,
         ];
 
         return this.related;
     }
 
-    public async __loadDocumentModels(documentUrl: string, document: EngineDocument): Promise<void> {
-        const helper = new EngineHelper();
-        const modelIds = this.parent.getAttribute(this.foreignKeyName) as string[];
-        const filters = this.relatedClass.prepareEngineFilters();
-        const documents = (document['@graph'] as JsonLDResource[])
-            .filter(resource => modelIds.indexOf(resource['@id']) !== -1)
-            .reduce((documents, resource) => {
-                documents[resource['@id']] = { '@graph': [resource as EngineAttributeValue] };
+    public resetRemoteData(related: Related[]): void {
+        const foreignKeys = this.parent.getAttribute<string[]>(this.foreignKeyName);
 
-                return documents;
-            }, {} as EngineDocumentsCollection);
+        related.forEach(model => {
+            arrayRemove(foreignKeys, model.getAttribute(this.localKeyName));
 
-        const modelsInSameDocument = this.__modelsInSameDocument = await Promise.all(
-            Object
-                .entries(helper.filterDocuments(documents, filters))
-                .map(
-                    ([id, document]) =>
-                        this.relatedClass.createFromEngineDocument(documentUrl, document, id) as Promise<Related>,
-                ),
-        );
+            this.__newModels.push(model);
+        });
 
-        this.__modelsInOtherDocumentIds = modelIds.filter(
-            resourceId =>
-                !modelsInSameDocument.some(model => model.url === resourceId) &&
-                urlRoute(resourceId) !== documentUrl,
-        );
+        this.parent.setAttribute(this.foreignKeyName, foreignKeys);
 
-        if (this.__modelsInOtherDocumentIds.length > 0)
-            return;
-
-        this.related = this.__modelsInSameDocument.slice(0);
+        this.__modelsInSameDocument = [];
     }
 
     public clone(): this {
-        const clone = super.clone();
+        return tap(super.clone(), clone => {
+            this.cloneSolidData(clone);
+        });
+    }
 
-        if (this.__modelsInSameDocument) {
-            const relatedClones = clone.related ?? [];
+    public __beforeParentCreate(): void {
+        if (this.documentModelsLoaded)
+            return;
 
-            clone.__modelsInSameDocument = this.__modelsInSameDocument.map(relatedModel => {
-                return relatedClones.find(relatedClone => relatedClone.is(relatedModel))
-                    ?? relatedModel.clone();
-            });
-        }
-
-        if (this.__modelsInOtherDocumentIds)
-            clone.__modelsInOtherDocumentIds = this.__modelsInOtherDocumentIds;
-
-        return clone;
+        this.loadDocumentModels([], this.parent.getAttribute(this.foreignKeyName));
     }
 
 }
