@@ -45,7 +45,6 @@ import type {
     MagicAttributes,
     ModelConstructor,
     MultiModelRelation,
-    Relation,
     SingleModelRelation,
     TimestampFieldValue,
 } from 'soukai';
@@ -384,14 +383,16 @@ export class SolidModel extends SolidModelBase {
             .forEach(relatedModel => relatedModel.setDocumentExists(documentExists));
     }
 
-    public isDirty(field?: string): boolean {
+    public isDirty(field?: string, sideEffect?: boolean): boolean {
         if (field)
             return super.isDirty(field);
 
         if (super.isDirty())
             return true;
 
-        return this.getDirtyDocumentModels().length > 0;
+        return sideEffect
+            ? false
+            : this.getDocumentModels().filter(model => model.isDirty(undefined, true)).length > 0;
     }
 
     public cleanDirty(): void {
@@ -648,22 +649,49 @@ export class SolidModel extends SolidModelBase {
     protected async beforeSave(sideEffect?: boolean): Promise<void> {
         await super.beforeSave();
 
-        if (!this.exists()) {
-            for (const relation of Object.values(this._relations)) {
-                if (!hasBeforeParentCreateHook(relation))
-                    continue;
-
-                relation.__beforeParentCreate();
-            }
-        }
-
-        if (!sideEffect && !this.url && this.static('mintsUrls'))
+        if (!this.url && this.static('mintsUrls'))
             this.mintUrl();
 
-        if (this.tracksHistory() && this.exists())
-            this.addHistoryOperations();
+        await (this.exists() ? this.beforeUpdate() : this.beforeCreate());
+        await (sideEffect ? null : this.beforeDocumentSave());
+    }
 
-        this.getDirtyDocumentModels().forEach(model => model.beforeSave(true));
+    protected async beforeDocumentSave(): Promise<void> {
+        let unprocessedModels: SolidModel[] = [];
+        const processedModels = new Set<SolidModel>();
+        const hasUnprocessedModels = () => {
+            unprocessedModels = this.getDocumentModels().filter(model => !processedModels.has(model));
+
+            return unprocessedModels.length > 0;
+        };
+
+        while (hasUnprocessedModels()) {
+            if (this.static('mintsUrls'))
+                this.mintDocumentModelsKeys(unprocessedModels);
+
+            await Promise.all(unprocessedModels.map(async model => {
+                if (model !== this && model.isDirty())
+                    await model.beforeSave(true);
+
+                processedModels.add(model);
+            }));
+        }
+    }
+
+    protected async beforeCreate(): Promise<void> {
+        for (const relation of Object.values(this._relations)) {
+            if (!hasBeforeParentCreateHook(relation))
+                continue;
+
+            relation.__beforeParentCreate();
+        }
+    }
+
+    protected async beforeUpdate(): Promise<void> {
+        if (!this.tracksHistory())
+            return;
+
+        this.addHistoryOperations();
     }
 
     protected async duringSave(sideEffect?: boolean): Promise<void> {
@@ -687,15 +715,16 @@ export class SolidModel extends SolidModelBase {
         dirtyDocumentModelsExisted.forEach(([model, existed]) => {
             model._wasRecentlyCreated = model._wasRecentlyCreated || !existed;
 
-            model.duringSave(true);
+            if (!sideEffect)
+                model.duringSave(true);
         });
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     protected async afterSave(sideEffect?: boolean): Promise<void> {
         await super.afterSave();
 
-        this.getDirtyDocumentModels().forEach(model => model.afterSave(true));
+        if (!sideEffect)
+            this.getDirtyDocumentModels().forEach(model => model.afterSave(true));
     }
 
     protected async syncDirty(): Promise<string> {
@@ -829,38 +858,41 @@ export class SolidModel extends SolidModelBase {
     }
 
     protected toEngineDocument(): EngineDocument {
-        const dirtyModels = this.prepareDirtyDocumentModels();
-
         return {
             '@graph': [
                 this.serializeToJsonLD(false),
-                ...dirtyModels.map(model => model.serializeToJsonLD(true)),
+                ...this.getDirtyDocumentModels().map(model => model.serializeToJsonLD(true)),
             ],
         } as EngineDocument;
     }
 
-    protected getDirtyEngineDocumentUpdates(): EngineUpdates {
+    protected getDirtyEngineDocumentUpdates(sideEffect?: boolean): EngineUpdates {
         const graphUpdates: EngineAttributeUpdateOperation[] = [];
         const engine = this.requireEngine();
-        const relatedModels = this.prepareDirtyDocumentModels();
+        const documentModels = this.getDirtyDocumentModels();
 
-        for (const relatedModel of relatedModels) {
-            if (!relatedModel.exists()) {
-                graphUpdates.push({ $push: relatedModel.serializeToJsonLD(false) as EngineAttributeValue });
+        if (!sideEffect) {
+            for (const documentModel of documentModels) {
+                if (documentModel === this)
+                    continue;
 
-                continue;
+                if (!documentModel.exists()) {
+                    graphUpdates.push({ $push: documentModel.serializeToJsonLD(false) as EngineAttributeValue });
+
+                    continue;
+                }
+
+                const relatedDocumentUpdates = documentModel.withEngine(
+                    engine,
+                    model => model.getDirtyEngineDocumentUpdates(true),
+                ) as { '@graph': EngineAttributeUpdateOperation | { $apply: EngineAttributeUpdateOperation[] } };
+
+                const relatedGraphUpdates = relatedDocumentUpdates['@graph'];
+
+                '$apply' in relatedGraphUpdates
+                    ? graphUpdates.push(...relatedGraphUpdates.$apply)
+                    : graphUpdates.push(relatedGraphUpdates);
             }
-
-            const relatedDocumentUpdates = relatedModel.withEngine(
-                engine,
-                model => model.getDirtyEngineDocumentUpdates(),
-            ) as { '@graph': EngineAttributeUpdateOperation | { $apply: EngineAttributeUpdateOperation[] } };
-
-            const relatedGraphUpdates = relatedDocumentUpdates['@graph'];
-
-            '$apply' in relatedGraphUpdates
-                ? graphUpdates.push(...relatedGraphUpdates.$apply)
-                : graphUpdates.push(relatedGraphUpdates);
         }
 
         if (super.isDirty() && this.url) {
@@ -945,44 +977,68 @@ export class SolidModel extends SolidModelBase {
         return urlParentDirectory(this.url) ?? undefined;
     }
 
-    private getDirtyDocumentModels(): SolidModel[] {
-        return this.getDirtyDocumentModelRelations().map(({ models }) => models).flat();
+    protected mintDocumentModelsKeys(models: SolidModel[]): void {
+        const documentUrl = this.requireDocumentUrl();
+        const documentExists = this._documentExists;
+
+        // Mint primary keys
+        for (const documentModel of models) {
+            if (documentModel.url)
+                continue;
+
+            documentModel.mintUrl(documentUrl, documentExists, uuid());
+        }
+
+        // Set foreign keys
+        for (const documentModel of models) {
+            for (const relation of Object.values(documentModel._relations)) {
+                relation
+                    .getLoadedModels()
+                    .forEach(model => relation.setForeignAttributes(model));
+            }
+        }
     }
 
-    private getDirtyDocumentModelRelations(): { models: SolidModel[]; relation: Relation }[] {
-        // TODO this should be recursive to take care of 2nd degree relations.
+    private getDocumentModels(_documentModels?: Set<SolidModel>): SolidModel[] {
+        const documentModels = _documentModels ?? new Set();
+
+        if (documentModels.has(this))
+            return [...documentModels];
+
         const documentUrl = this.getDocumentUrl();
 
-        return Object
-            .values(this._relations)
-            .filter(isSolidDocumentRelation)
-            .filter(relation => relation.loaded && relation.useSameDocument)
-            .map(relation => {
-                const models = new Set<SolidModel>();
+        documentModels.add(this);
 
-                if (isSolidSingleModelDocumentRelation(relation) && relation.__newModel)
-                    models.add(relation.__newModel);
+        for (const relation of Object.values(this._relations)) {
+            if (!isSolidDocumentRelation(relation) || !relation.loaded || !relation.useSameDocument)
+                continue;
 
-                if (isSolidMultiModelDocumentRelation(relation))
-                    relation.__newModels.forEach(model => models.add(model));
+            const relatedDocumentModels = [
+                ...(
+                    (isSolidSingleModelDocumentRelation(relation) && relation.__newModel)
+                        ? relation.__newModel.getDocumentModels(documentModels)
+                        : []
+                ),
+                ...(
+                    isSolidMultiModelDocumentRelation(relation)
+                        ? relation.__newModels.map(model => model.getDocumentModels(documentModels)).flat()
+                        : []
+                ),
+                ...relation
+                    .getLoadedModels()
+                    .filter(model => model.getDocumentUrl() === documentUrl)
+                    .map(model => model.getDocumentModels(documentModels))
+                    .flat(),
+            ];
 
-                for (const relatedModel of relation.getLoadedModels()) {
-                    if (
-                        !relatedModel.isDirty() ||
-                        relatedModel.getDocumentUrl() !== documentUrl ||
-                        models.has(relatedModel)
-                    )
-                        continue;
+            relatedDocumentModels.forEach(model => documentModels.add(model));
+        }
 
-                    models.add(relatedModel);
-                }
+        return [...documentModels];
+    }
 
-                return {
-                    relation,
-                    models: [...models],
-                };
-            })
-            .filter(({ models }) => models.length !== 0);
+    private getDirtyDocumentModels(): SolidModel[] {
+        return this.getDocumentModels().filter(model => model.isDirty());
     }
 
     private getOperationValue(field: string, value?: unknown): unknown;
@@ -992,8 +1048,14 @@ export class SolidModel extends SolidModelBase {
 
         value = value ?? this.getAttributeValue(field as string);
 
-        if (isArrayFieldDefinition(definition))
+        if (isArrayFieldDefinition(definition)) {
+            if (!value)
+                value = [];
+            else if (!Array.isArray(value))
+                value = [value];
+
             return (value as unknown[]).map(item => this.getOperationValue(definition.items, item));
+        }
 
         if (definition.type === FieldType.Key)
             return new ModelKey(value);
@@ -1034,31 +1096,6 @@ export class SolidModel extends SolidModelBase {
                 this.setAttributeValue(field, operation.value);
                 break;
         }
-    }
-
-    private prepareDirtyDocumentModels(): SolidModel[] {
-        const dirtyModelRelations = this.getDirtyDocumentModelRelations();
-
-        if (dirtyModelRelations.length === 0)
-            return [];
-
-        if (!this.url)
-            this.mintUrl();
-
-        const documentUrl = this.requireDocumentUrl();
-
-        for (const { models, relation } of dirtyModelRelations) {
-            for (const dirtyModel of models) {
-                relation.setForeignAttributes(dirtyModel);
-
-                if (!dirtyModel.url)
-                    dirtyModel.mintUrl(documentUrl, this._documentExists, uuid());
-
-                relation.setForeignAttributes(dirtyModel);
-            }
-        }
-
-        return dirtyModelRelations.map(({ models }) => models).flat();
     }
 
 }

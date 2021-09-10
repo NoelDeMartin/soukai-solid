@@ -86,7 +86,8 @@ export default class SolidSingleModelDocumentRelation<
             : this.relatedClass.newInstance(modelOrAttributes);
 
         return tap(model, () => {
-            this.assertNotLoaded('set');
+            if (this.related)
+                this.assertNotLoaded('set');
 
             if (!model.exists())
                 this.__newModel = model;
