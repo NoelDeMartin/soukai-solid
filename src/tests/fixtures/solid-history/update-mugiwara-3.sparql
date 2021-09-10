@@ -1,0 +1,52 @@
+DELETE DATA {
+    @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+    <#luffy> foaf:givenName "Straw Hat Luffy" .
+    <#luffy-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+
+    <#roronoa-zoro> foaf:givenName "Pirate Hunter" .
+    <#roronoa-zoro-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+} ;
+
+INSERT DATA {
+    @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+    <#luffy> foaf:givenName "The King of Pirates" .
+    <#luffy-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+
+    <#roronoa-zoro> foaf:givenName "The Greatest Swordsman" .
+    <#roronoa-zoro-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+
+    <#luffy-operation-[[.*]]>
+        a soukai:Operation ;
+        soukai:resource <#luffy> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:givenName ;
+        soukai:value "The King of Pirates" .
+
+    <#roronoa-zoro-operation-[[.*]]>
+        a soukai:Operation ;
+        soukai:resource <#roronoa-zoro> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:name ;
+        soukai:value "Roronoa Zoro" .
+
+    <#roronoa-zoro-operation-[[.*]]>
+        a soukai:Operation ;
+        soukai:resource <#roronoa-zoro> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:givenName ;
+        soukai:value "Pirate Hunter" .
+
+    <#roronoa-zoro-operation-[[.*]]>
+        a soukai:Operation ;
+        soukai:resource <#roronoa-zoro> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:givenName ;
+        soukai:value "The Greatest Swordsman" .
+
+}

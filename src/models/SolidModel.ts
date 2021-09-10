@@ -384,14 +384,14 @@ export class SolidModel extends SolidModelBase {
             .forEach(relatedModel => relatedModel.setDocumentExists(documentExists));
     }
 
-    public isDirty(field?: string, sideEffect?: boolean): boolean {
+    public isDirty(field?: string, ignoreRelations?: boolean): boolean {
         if (field)
             return super.isDirty(field);
 
         if (super.isDirty())
             return true;
 
-        return sideEffect
+        return ignoreRelations
             ? false
             : this.getDocumentModels().filter(model => model.isDirty(undefined, true)).length > 0;
     }
@@ -647,21 +647,31 @@ export class SolidModel extends SolidModelBase {
         );
     }
 
-    protected async beforeSave(sideEffect?: boolean): Promise<void> {
+    protected async beforeSave(ignoreRelations?: boolean): Promise<void> {
+        const updatedAtWasDirty =
+            this.isDirty(TimestampField.UpdatedAt) ||
+            !!this.metadata?.isDirty(TimestampField.UpdatedAt);
+
         await super.beforeSave();
 
         if (!this.url && this.static('mintsUrls'))
             this.mintUrl();
 
-        await (this.exists() ? this.beforeUpdate() : this.beforeCreate());
-        await (sideEffect ? null : this.beforeDocumentSave());
+        if (ignoreRelations)
+            return;
+
+        await Promise.all(this.getDirtyDocumentModels().map(async model => model.exists() || model.beforeCreate()));
+        await this.beforeDocumentSave();
+        await Promise.all(this.getDirtyDocumentModels().map(async model => model.exists() && model.beforeUpdate()));
+
+        updatedAtWasDirty || this.resetUntouchedModelTimestamp();
     }
 
     protected async beforeDocumentSave(): Promise<void> {
         let unprocessedModels: SolidModel[] = [];
         const processedModels = new Set<SolidModel>();
         const hasUnprocessedModels = () => {
-            unprocessedModels = this.getDocumentModels().filter(model => !processedModels.has(model));
+            unprocessedModels = this.getDirtyDocumentModels().filter(model => !processedModels.has(model));
 
             return unprocessedModels.length > 0;
         };
@@ -692,40 +702,48 @@ export class SolidModel extends SolidModelBase {
         if (!this.tracksHistory())
             return;
 
-        this.addHistoryOperations();
+        if (this.isDirty(undefined, true)) {
+            this.addHistoryOperations();
+
+            await Promise.all(this.operations.map(async operation => {
+                if (operation.exists())
+                    return;
+
+                await operation.beforeCreate();
+                await operation.beforeSave(true);
+
+                this.mintDocumentModelsKeys([operation]);
+            }));
+        }
     }
 
-    protected async duringSave(sideEffect?: boolean): Promise<void> {
-        if (sideEffect)
-            return;
-
+    protected async performSave(): Promise<void> {
         const dirtyDocumentModelsExisted: [SolidModel, boolean][] =
             this.getDirtyDocumentModels().map(model => [model, model.exists()]);
 
         try {
-            await super.duringSave();
+            await super.performSave();
         } catch (error) {
             if (!(error instanceof DocumentAlreadyExists))
                 throw error;
 
             this.url = this.newUniqueUrl(this.url);
 
-            await super.duringSave();
+            await super.performSave();
         }
 
         dirtyDocumentModelsExisted.forEach(([model, existed]) => {
             model._wasRecentlyCreated = model._wasRecentlyCreated || !existed;
-
-            if (!sideEffect)
-                model.duringSave(true);
         });
     }
 
-    protected async afterSave(sideEffect?: boolean): Promise<void> {
+    protected async afterSave(ignoreRelations?: boolean): Promise<void> {
         await super.afterSave();
 
-        if (!sideEffect)
-            this.getDirtyDocumentModels().forEach(model => model.afterSave(true));
+        if (ignoreRelations)
+            return;
+
+        await Promise.all(this.getDirtyDocumentModels().map(model => model.afterSave(true)));
     }
 
     protected async syncDirty(): Promise<string> {
@@ -867,12 +885,12 @@ export class SolidModel extends SolidModelBase {
         } as EngineDocument;
     }
 
-    protected getDirtyEngineDocumentUpdates(sideEffect?: boolean): EngineUpdates {
+    protected getDirtyEngineDocumentUpdates(ignoreRelations?: boolean): EngineUpdates {
         const graphUpdates: EngineAttributeUpdateOperation[] = [];
         const engine = this.requireEngine();
         const documentModels = this.getDirtyDocumentModels();
 
-        if (!sideEffect) {
+        if (!ignoreRelations) {
             for (const documentModel of documentModels) {
                 if (documentModel === this)
                     continue;
@@ -1097,6 +1115,25 @@ export class SolidModel extends SolidModelBase {
                 this.setAttributeValue(field, operation.value);
                 break;
         }
+    }
+
+    private resetUntouchedModelTimestamp(): void {
+        const originalUpdatedAt =
+            this._originalAttributes[TimestampField.UpdatedAt]
+            ?? this.metadata?._originalAttributes[TimestampField.UpdatedAt];
+
+        if (!originalUpdatedAt)
+            return;
+
+        const dirtyAttributes = Object.keys(this._dirtyAttributes);
+
+        if (dirtyAttributes[1])
+            return;
+
+        if (dirtyAttributes[0] && dirtyAttributes[0] !== TimestampField.UpdatedAt)
+            return;
+
+        this.setAttribute(TimestampField.UpdatedAt, originalUpdatedAt);
     }
 
 }

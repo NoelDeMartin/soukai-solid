@@ -1,0 +1,50 @@
+DELETE DATA {
+    @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+    <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+} ;
+
+INSERT DATA {
+    @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+    <#it> foaf:member <#roronoa-zoro> .
+    <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+
+    <#roronoa-zoro>
+        a foaf:Person ;
+        foaf:name "Roronoa Zoro" ;
+        foaf:givenName "Pirate Hunter" .
+
+    <#roronoa-zoro-metadata>
+        a soukai:Metadata ;
+        soukai:resource <#roronoa-zoro> ;
+        soukai:createdAt "[[.*]]"^^xsd:dateTime ;
+        soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+
+    <#it-operation-[[.*]]>
+        a soukai:Operation ;
+        soukai:resource <#it> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:name ;
+        soukai:value "Straw Hat Pirates" .
+
+    <#it-operation-[[.*]]>
+        a soukai:Operation ;
+        soukai:resource <#it> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:member ;
+        soukai:value <#luffy> .
+
+    <#it-operation-[[.*]]>
+        a soukai:Operation ;
+        soukai:type soukai:AddOperation ;
+        soukai:resource <#it> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:member ;
+        soukai:value <#roronoa-zoro> .
+
+}

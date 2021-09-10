@@ -1,0 +1,72 @@
+@prefix foaf: <http://xmlns.com/foaf/0.1/> .
+@prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+<#it>
+    a foaf:Group ;
+    foaf:name "Straw Hat Pirates" ;
+    foaf:member <#luffy>, <#roronoa-zoro> .
+
+<#it-metadata>
+    a soukai:Metadata ;
+    soukai:resource <#it> ;
+    soukai:createdAt "1996-08-04T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:updatedAt "1997-09-01T00:00:00.000Z"^^xsd:dateTime .
+
+<#it-operation-1>
+    a soukai:Operation ;
+    soukai:resource <#it> ;
+    soukai:date "1996-08-04T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:property foaf:name ;
+    soukai:value "Straw Hat Pirates" .
+
+<#it-operation-2>
+    a soukai:Operation ;
+    soukai:resource <#it> ;
+    soukai:date "1996-08-04T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:property foaf:member ;
+    soukai:value <#luffy> .
+
+<#it-operation-3>
+    a soukai:Operation ;
+    soukai:type soukai:AddOperation ;
+    soukai:resource <#it> ;
+    soukai:date "1997-09-01T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:property foaf:member ;
+    soukai:value <#roronoa-zoro> .
+
+<#luffy>
+    a foaf:Person ;
+    foaf:name "Monkey D. Luffy" ;
+    foaf:givenName "Straw Hat Luffy" .
+
+<#luffy-metadata>
+    a soukai:Metadata ;
+    soukai:resource <#luffy> ;
+    soukai:createdAt "1996-08-04T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:updatedAt "1997-09-01T00:00:00.000Z"^^xsd:dateTime .
+
+<#luffy-operation-1>
+    a soukai:Operation ;
+    soukai:resource <#luffy> ;
+    soukai:date "1996-08-04T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:property foaf:name ;
+    soukai:value "Monkey D. Luffy" .
+
+<#luffy-operation-2>
+    a soukai:Operation ;
+    soukai:resource <#luffy> ;
+    soukai:date "1997-07-28T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:property foaf:givenName ;
+    soukai:value "Straw Hat Luffy" .
+
+<#roronoa-zoro>
+    a foaf:Person ;
+    foaf:name "Roronoa Zoro" ;
+    foaf:givenName "Pirate Hunter" .
+
+<#roronoa-zoro-metadata>
+    a soukai:Metadata ;
+    soukai:resource <#roronoa-zoro> ;
+    soukai:createdAt "1997-09-01T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:updatedAt "1997-09-01T00:00:00.000Z"^^xsd:dateTime .

@@ -38,7 +38,9 @@ class Group extends BaseGroup {
     }
 
     public membersRelationship(): Relation {
-        return this.belongsToMany(Person, 'memberUrls');
+        return this
+            .belongsToMany(Person, 'memberUrls')
+            .usingSameDocument(true);
     }
 
 }
@@ -245,6 +247,46 @@ describe('Solid history tracking', () => {
         expect(griffith.operations[1].date).toBeInstanceOf(Date);
         expect(griffith.operations[1].property).toEqual(expandIRI('foaf:name'));
         expect(griffith.operations[1].value).toEqual('Femto');
+    });
+
+    it('synchronizes relations history in different models', async () => {
+        // Arrange
+        StubFetcher.addFetchResponse(fixture('mugiwara-1.ttl'));
+        StubFetcher.addFetchResponse(fixture('mugiwara-1.ttl'));
+        StubFetcher.addFetchResponse();
+
+        StubFetcher.addFetchResponse(fixture('mugiwara-2.ttl'));
+        StubFetcher.addFetchResponse();
+
+        StubFetcher.addFetchResponse(fixture('mugiwara-3.ttl'));
+        StubFetcher.addFetchResponse();
+
+        // Act - Luffy becomes Straw Hat Luffy
+        const mugiwara = await Group.find('solid://mugiwara#it') as Group;
+        const luffy = mugiwara.members?.[0] as Person;
+
+        luffy.givenName = 'Straw Hat Luffy';
+
+        await mugiwara.save();
+
+        // Act - Zoro joins
+        const zoro = await mugiwara.relatedMembers.create({
+            name: 'Roronoa Zoro',
+            givenName: 'Pirate Hunter',
+        });
+
+        // Act - Zoro and Luffy make their dreams come true
+        luffy.givenName = 'The King of Pirates';
+        zoro.givenName = 'The Greatest Swordsman';
+
+        await mugiwara.save();
+
+        // Assert
+        expect(StubFetcher.fetch).toHaveBeenCalledTimes(7);
+
+        expect(fetch.mock.calls[2][1]?.body).toEqualSparql(fixture('update-mugiwara-1.sparql'));
+        expect(fetch.mock.calls[4][1]?.body).toEqualSparql(fixture('update-mugiwara-2.sparql'));
+        expect(fetch.mock.calls[6][1]?.body).toEqualSparql(fixture('update-mugiwara-3.sparql'));
     });
 
 });
