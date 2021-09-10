@@ -45,6 +45,7 @@ import type {
     MagicAttributes,
     ModelConstructor,
     MultiModelRelation,
+    Relation,
     SingleModelRelation,
     TimestampFieldValue,
 } from 'soukai';
@@ -565,7 +566,7 @@ export class SolidModel extends SolidModelBase {
         return this.metadata?.updatedAt ?? super.getAttributeValue('updatedAt');
     }
 
-    public metadataRelationship(): SingleModelRelation {
+    public metadataRelationship(): Relation {
         const metadataModelClass = requireBootedModel<typeof SolidModelMetadata>('SolidModelMetadata');
 
         return this
@@ -574,7 +575,7 @@ export class SolidModel extends SolidModelBase {
             .onDelete('cascade');
     }
 
-    public operationsRelationship(): MultiModelRelation {
+    public operationsRelationship(): Relation {
         const operationModelClass = requireBootedModel<typeof SolidModelOperation>('SolidModelOperation');
 
         return this
@@ -819,7 +820,7 @@ export class SolidModel extends SolidModelBase {
 
     /* eslint-disable max-len */
     protected hasOne<T extends typeof SolidModel>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): SolidHasOneRelation;
-    protected hasOne<T extends typeof Model>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): SingleModelRelation;
+    protected hasOne<T extends typeof Model>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): Relation;
     protected hasOne<T extends typeof Model | typeof SolidModel>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): SingleModelRelation | SolidHasOneRelation {
         return new SolidHasOneRelation(this, relatedClass as typeof SolidModel, foreignKeyField, localKeyField);
     }
@@ -827,7 +828,7 @@ export class SolidModel extends SolidModelBase {
 
     /* eslint-disable max-len */
     protected hasMany<T extends typeof SolidModel>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): SolidHasManyRelation;
-    protected hasMany<T extends typeof Model>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): MultiModelRelation;
+    protected hasMany<T extends typeof Model>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): Relation;
     protected hasMany<T extends typeof Model | typeof SolidModel>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): MultiModelRelation | SolidHasManyRelation {
         return new SolidHasManyRelation(this, relatedClass as typeof SolidModel, foreignKeyField, localKeyField);
     }
@@ -835,7 +836,7 @@ export class SolidModel extends SolidModelBase {
 
     /* eslint-disable max-len */
     protected belongsToOne<T extends typeof SolidModel>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): SolidBelongsToOneRelation;
-    protected belongsToOne<T extends typeof Model>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): MultiModelRelation;
+    protected belongsToOne<T extends typeof Model>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): Relation;
     protected belongsToOne<T extends typeof Model | typeof SolidModel>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): MultiModelRelation | SolidBelongsToOneRelation {
         return new SolidBelongsToOneRelation(this, relatedClass as typeof SolidModel, foreignKeyField, localKeyField);
     }
@@ -843,13 +844,13 @@ export class SolidModel extends SolidModelBase {
 
     /* eslint-disable max-len */
     protected belongsToMany<T extends typeof SolidModel>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): SolidBelongsToManyRelation;
-    protected belongsToMany<T extends typeof Model>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): MultiModelRelation;
+    protected belongsToMany<T extends typeof Model>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): Relation;
     protected belongsToMany<T extends typeof Model | typeof SolidModel>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): MultiModelRelation | SolidBelongsToManyRelation {
         return new SolidBelongsToManyRelation(this, relatedClass as typeof SolidModel, foreignKeyField, localKeyField);
     }
     /* eslint-enable max-len */
 
-    protected isContainedBy<T extends typeof SolidContainerModel>(model: T): SingleModelRelation {
+    protected isContainedBy<T extends typeof SolidContainerModel>(model: T): SolidIsContainedByRelation {
         return new SolidIsContainedByRelation(this, model);
     }
 

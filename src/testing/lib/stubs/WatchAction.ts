@@ -1,5 +1,5 @@
 import { FieldType } from 'soukai';
-import type { IModel, SingleModelRelation } from 'soukai';
+import type { IModel, Relation } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
 
@@ -20,7 +20,7 @@ export default class WatchAction extends SolidModel {
         startTime: FieldType.Date,
     };
 
-    public movieRelationship(): SingleModelRelation {
+    public movieRelationship(): Relation {
         return this.belongsToOne(Movie, 'object');
     }
 

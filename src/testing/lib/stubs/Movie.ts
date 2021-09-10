@@ -1,5 +1,5 @@
 import { FieldType } from 'soukai';
-import type { IModel, Relation , SingleModelRelation } from 'soukai';
+import type { IModel, Relation } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
 import type SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
@@ -55,7 +55,7 @@ export default class Movie extends SolidModel {
             .onDelete('cascade');
     }
 
-    public collectionRelationship(): SingleModelRelation {
+    public collectionRelationship(): Relation {
         return this.isContainedBy(MoviesCollection);
     }
 

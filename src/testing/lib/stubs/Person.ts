@@ -1,6 +1,6 @@
 import { FieldType, TimestampField } from 'soukai';
 import { stringToSlug } from '@noeldemartin/utils';
-import type { IModel, Relation, SingleModelRelation, TimestampFieldValue } from 'soukai';
+import type { IModel, Relation, TimestampFieldValue } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
 
@@ -38,7 +38,7 @@ export default class Person extends SolidModel {
         return this.belongsToMany(Person, 'friendUrls');
     }
 
-    public groupRelationship(): SingleModelRelation {
+    public groupRelationship(): Relation {
         return this.hasOne(Group, 'memberUrls');
     }
 

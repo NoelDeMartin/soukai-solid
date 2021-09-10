@@ -7,7 +7,7 @@ import {
 } from '@noeldemartin/utils';
 import { FieldType } from 'soukai';
 import { findContainerRegistration } from '@noeldemartin/solid-utils';
-import type { IModel , MultiModelRelation } from 'soukai';
+import type { IModel, Relation } from 'soukai';
 
 import { SolidEngine } from '@/engines';
 
@@ -63,9 +63,9 @@ export default class SolidContainerModel extends SolidModel {
 
     public resourceUrls!: string[];
     public documents!: SolidDocument[];
-    public relatedDocuments!: MultiModelRelation<SolidContainerModel, SolidDocument, typeof SolidDocument>;
+    public relatedDocuments!: SolidContainerDocumentsRelation;
 
-    public documentsRelationship(): MultiModelRelation {
+    public documentsRelationship(): Relation {
         return new SolidContainerDocumentsRelation(this);
     }
 
@@ -83,7 +83,7 @@ export default class SolidContainerModel extends SolidModel {
         );
     }
 
-    protected contains<T extends typeof SolidModel>(model: T): MultiModelRelation {
+    protected contains<T extends typeof SolidModel>(model: T): SolidContainsRelation {
         return new SolidContainsRelation(this, model);
     }
 
