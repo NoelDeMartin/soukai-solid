@@ -1,5 +1,10 @@
+import { usesMixin } from '@noeldemartin/utils';
 import type { Relation } from 'soukai';
 
+import SolidBelongsToRelation from '@/models/relations/mixins/SolidBelongsToRelation';
+import SolidHasRelation from '@/models/relations/mixins/SolidHasRelation';
+import SolidMultiModelDocumentRelation from '@/models/relations/mixins/SolidMultiModelDocumentRelation';
+import SolidSingleModelDocumentRelation from '@/models/relations/mixins/SolidSingleModelDocumentRelation';
 import type {
     // eslint-fix
     SolidMultiModelDocumentRelationInstance,
@@ -27,11 +32,19 @@ export function isSolidDocumentRelation(
 export function isSolidMultiModelDocumentRelation(
     relation: Relation,
 ): relation is SolidMultiModelDocumentRelationInstance {
-    return 'add' in relation;
+    return usesMixin(relation, SolidMultiModelDocumentRelation);
 }
 
 export function isSolidSingleModelDocumentRelation(
     relation: Relation,
 ): relation is SolidSingleModelDocumentRelationInstance {
-    return 'set' in relation;
+    return usesMixin(relation, SolidSingleModelDocumentRelation);
+}
+
+export function isSolidBelongsToRelation(relation: unknown): relation is SolidBelongsToRelation {
+    return usesMixin(relation, SolidBelongsToRelation);
+}
+
+export function isSolidHasRelation(relation: unknown): relation is SolidHasRelation {
+    return usesMixin(relation, SolidHasRelation);
 }

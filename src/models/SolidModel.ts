@@ -879,8 +879,7 @@ export class SolidModel extends SolidModelBase {
     protected toEngineDocument(): EngineDocument {
         return {
             '@graph': [
-                this.serializeToJsonLD(false),
-                ...this.getDirtyDocumentModels().map(model => model.serializeToJsonLD(true)),
+                ...this.getDirtyDocumentModels().map(model => model.serializeToJsonLD(false)),
             ],
         } as EngineDocument;
     }

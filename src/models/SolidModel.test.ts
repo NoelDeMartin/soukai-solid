@@ -4,7 +4,7 @@ import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
 import { FieldType, InMemoryEngine, ModelKey, bootModels, setEngine } from 'soukai';
 import dayjs from 'dayjs';
 import Faker from 'faker';
-import type { EngineDocument } from 'soukai';
+import type { EngineDocument, Relation } from 'soukai';
 import type { Equals, Expect } from '@noeldemartin/utils';
 
 import { SolidModelOperationType } from '@/models/SolidModelOperation';
@@ -44,11 +44,25 @@ class GroupWithHistory extends Group {
 
 }
 
+class GroupWithPersonsInSameDocument extends Group {
+
+    public static timestamps = true;
+
+    public membersRelationship(): Relation {
+        return this
+            .belongsToMany(Person, 'memberUrls')
+            .usingSameDocument(true)
+            .onDelete('cascade');
+    }
+
+}
+
 describe('SolidModel', () => {
 
     beforeAll(() => bootModels({
         Group,
         GroupWithHistory,
+        GroupWithPersonsInSameDocument,
         Movie,
         MoviesCollection,
         Person,
@@ -626,7 +640,12 @@ describe('SolidModel', () => {
             movieUrl,
             {
                 '@graph': {
-                    $push: action.toJsonLD(),
+                    $push: {
+                        '@context': { '@vocab': 'https://schema.org/' },
+                        '@id': action.url,
+                        '@type': 'WatchAction',
+                        'object': { '@id': movie.url },
+                    },
                 },
             },
         );
@@ -1077,6 +1096,73 @@ describe('SolidModel', () => {
                     },
                 },
             ],
+        });
+    });
+
+    it('serializes to JSON-LD with nested relations', async () => {
+        // Arrange
+        const mugiwara = new GroupWithPersonsInSameDocument({ name: 'Straw Hat Pirates' });
+        const luffy = mugiwara.relatedMembers.add({ name: 'Luffy', lastName: 'Monkey D.' });
+        const zoro = mugiwara.relatedMembers.add({ name: 'Zoro', lastName: 'Roronoa' });
+
+        await mugiwara.save();
+
+        // Act
+        const jsonLd = mugiwara.toJsonLD();
+
+        // Assert
+        expect(jsonLd).toEqual({
+            '@context': {
+                '@vocab': 'http://xmlns.com/foaf/0.1/',
+                'soukai': 'https://soukai.noeldemartin.com/vocab/',
+                'metadata': { '@reverse': 'soukai:resource' },
+                'members': { '@reverse': 'member' },
+            },
+            '@type': 'Group',
+            '@id': mugiwara.url,
+            'name': 'Straw Hat Pirates',
+            'members': [
+                {
+                    '@id': luffy.url,
+                    '@type': 'Person',
+                    'name': 'Luffy',
+                    'lastName': 'Monkey D.',
+                    'metadata': {
+                        '@id': `${luffy.url}-metadata`,
+                        '@type': 'soukai:Metadata',
+                        'soukai:createdAt': {
+                            '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+                            '@value': luffy.createdAt.toISOString(),
+                        },
+                    },
+                },
+                {
+                    '@id': zoro.url,
+                    '@type': 'Person',
+                    'name': 'Zoro',
+                    'lastName': 'Roronoa',
+                    'metadata': {
+                        '@id': `${zoro.url}-metadata`,
+                        '@type': 'soukai:Metadata',
+                        'soukai:createdAt': {
+                            '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+                            '@value': zoro.createdAt.toISOString(),
+                        },
+                    },
+                },
+            ],
+            'metadata': {
+                '@id': `${mugiwara.url}-metadata`,
+                '@type': 'soukai:Metadata',
+                'soukai:createdAt': {
+                    '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+                    '@value': mugiwara.createdAt.toISOString(),
+                },
+                'soukai:updatedAt': {
+                    '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+                    '@value': mugiwara.updatedAt.toISOString(),
+                },
+            },
         });
     });
 

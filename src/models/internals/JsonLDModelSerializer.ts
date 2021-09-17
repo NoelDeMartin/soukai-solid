@@ -4,10 +4,10 @@ import type { Attributes, BootedArrayFieldDefinition } from 'soukai';
 import type { JsonLD } from '@noeldemartin/solid-utils';
 
 import { inferFieldDefinition } from '@/models/fields';
-import SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
-import SolidHasOneRelation from '@/models/relations/SolidHasOneRelation';
-import type { SolidModel } from '@/models/SolidModel';
+import { isSolidBelongsToRelation, isSolidMultiModelDocumentRelation } from '@/models/relations/internals/guards';
 import type { SolidBootedFieldDefinition } from '@/models/fields';
+import type { SolidModel } from '@/models/SolidModel';
+import type { SolidRelation } from '@/models/relations/inference';
 
 class EmptyJsonLDValue {}
 
@@ -17,6 +17,14 @@ interface JsonLDContextTerm {
     value: string;
     used: boolean;
 }
+
+type SerializeOptions = Partial<{
+    includeRelations: boolean;
+    includeContext: boolean;
+    includeTypes: boolean;
+    attributes: Attributes;
+    ignoreModels: Set<SolidModel>;
+}>;
 
 enum IRIFormat {
     Compacted = 'compacted',
@@ -111,22 +119,17 @@ export default class JsonLDModelSerializer {
         this.iriFormat = iriFormat;
     }
 
-    public serialize(
-        model: SolidModel,
-        options: Partial<{
-            includeRelations: boolean;
-            includeContext: boolean;
-            includeTypes: boolean;
-            attributes: Attributes;
-        }> = {},
-    ): JsonLD {
+    public serialize(model: SolidModel, options: SerializeOptions = {}): JsonLD {
+        const ignoredModels = new Set(options.ignoreModels ?? []);
         const jsonld: JsonLD = { '@context': {}, '@type': null };
+
+        ignoredModels.add(model);
 
         for (const [field, value] of Object.entries(options.attributes ?? model.getAttributes()))
             this.setJsonLDField(jsonld, model, field, value);
 
         if (options.includeRelations ?? true)
-            this.setJsonLDRelations(jsonld, model);
+            this.setJsonLDRelations(jsonld, model, ignoredModels);
 
         if (options.includeTypes ?? true)
             this.setJsonLDTypes(jsonld, model);
@@ -170,38 +173,44 @@ export default class JsonLDModelSerializer {
         this.setJsonLDProperty(jsonld, model, this.processExpandedIRI(property), field, value);
     }
 
-    private setJsonLDRelations(jsonld: JsonLD, model: SolidModel): void {
+    private setJsonLDRelations(jsonld: JsonLD, model: SolidModel, ignoredModels: Set<SolidModel>): void {
         for (const relationName of model.static('relations')) {
-            const relation = model.requireRelation(relationName);
+            const relation = model.requireRelation<SolidRelation>(relationName);
 
-            if (
-                !relation.loaded || relation.isEmpty() || (
-                    // TODO should we filter by SolidBelongsToMany as well?
-                    !(relation instanceof SolidHasManyRelation) &&
-                    !(relation instanceof SolidHasOneRelation)
-                )
-            )
+            if (!relation.loaded || relation.isEmpty() || ignoredModels.has(relation.getLoadedModels()[0]))
                 continue;
 
-            this.context.addTerms(relation.relatedClass.rdfsClasses);
-            this.setJsonLDRelation(jsonld, relation);
+            this.context.addTerms(relation.relatedClass.rdfContexts);
+            this.setJsonLDRelation(jsonld, relation, ignoredModels);
         }
     }
 
-    private setJsonLDRelation(jsonld: JsonLD, relation: SolidHasManyRelation | SolidHasOneRelation): void {
+    private setJsonLDRelation(jsonld: JsonLD, relation: SolidRelation, ignoredModels: Set<SolidModel>): void {
         const relatedInstance = relation.relatedClass.instance() as SolidModel;
-        const expandedForeignProperty = relatedInstance.getFieldRdfProperty(relation.foreignKeyName);
+        const belongsTo = isSolidBelongsToRelation(relation);
+        const expandedForeignProperty =
+            belongsTo
+                ? relation.parent.getFieldRdfProperty(relation.foreignKeyName)
+                : relatedInstance.getFieldRdfProperty(relation.foreignKeyName);
         const foreignProperty = this.processExpandedIRI(expandedForeignProperty as string);
+        const serializeOptions: SerializeOptions = {
+            ignoreModels: ignoredModels,
+            includeRelations: true,
+            includeContext: false,
+        };
         const serializeRelatedModel = (model: SolidModel) =>
-            tap(this.serialize(model, { includeRelations: false, includeContext: false }), jsonld => {
+            tap(this.serialize(model, serializeOptions), jsonld => {
                 delete jsonld[foreignProperty];
             });
 
         this.context.addReverseProperty(relation.name, foreignProperty);
 
-        jsonld[relation.name] = relation instanceof SolidHasManyRelation
+        jsonld[relation.name] = isSolidMultiModelDocumentRelation(relation)
             ? relation.getLoadedModels().map(model => serializeRelatedModel(model))
             : serializeRelatedModel(relation.related as SolidModel);
+
+        if (belongsTo)
+            delete jsonld[foreignProperty];
     }
 
     private setJsonLDTypes(jsonld: JsonLD, model: SolidModel): void {

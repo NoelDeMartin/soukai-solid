@@ -24,6 +24,7 @@ export type { SolidBelongsToOneRelationBase } from './SolidBelongsToOneRelation'
 export type { SolidHasManyRelationBase } from './SolidHasManyRelation';
 export type { SolidHasOneRelationBase } from './SolidHasOneRelation';
 
+export type { SolidRelation } from './inference';
 export type {
     default as SolidBelongsToRelation,
     ProtectedThis as SolidBelongsToRelationProtectedThis,
