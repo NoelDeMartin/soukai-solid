@@ -47,7 +47,7 @@ export default class SolidHasManyRelation<
         return this.related;
     }
 
-    public resetRemoteData(related: Related[]): void {
+    public reset(related: Related[]): void {
         related.forEach(model => {
             model.unsetAttribute(this.foreignKeyName);
 

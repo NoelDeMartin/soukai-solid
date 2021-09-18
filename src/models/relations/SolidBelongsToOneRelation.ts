@@ -41,7 +41,7 @@ export default class SolidBelongsToOneRelation<
         return this.related = related;
     }
 
-    public resetRemoteData(related: Related[]): void {
+    public reset(related: Related[]): void {
         if (related.length === 0)
             return;
 

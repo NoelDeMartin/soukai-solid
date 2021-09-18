@@ -245,16 +245,16 @@ export class SolidModel extends SolidModelBase {
         return tap(this.newInstance(objectWithoutEmpty(attributes)), async (model) => {
             await model.loadDocumentModels(documentUrl, flatJsonLD as EngineDocument);
 
-            model.resetEngineData();
+            model.reset();
 
             // TODO this should be recursive to take care of 2nd degree relations.
             for (const relationName of this.relations) {
                 const relation = model._relations[relationName];
                 const models = relation.getLoadedModels() as SolidModel[];
 
-                when(relation, isSolidDocumentRelation).resetRemoteData(models);
+                when(relation, isSolidDocumentRelation).reset(models);
 
-                models.forEach(model => model.resetEngineData());
+                models.forEach(model => model.reset());
             }
         });
     }

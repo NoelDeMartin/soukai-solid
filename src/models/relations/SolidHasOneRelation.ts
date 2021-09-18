@@ -50,7 +50,7 @@ export default class SolidHasOneRelation<
         return this.related;
     }
 
-    public resetRemoteData(related: Related[]): void {
+    public reset(related: Related[]): void {
         if (related.length === 0)
             return;
 

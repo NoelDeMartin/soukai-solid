@@ -74,7 +74,7 @@ export default class SolidBelongsToManyRelation<
         return this.related;
     }
 
-    public resetRemoteData(related: Related[]): void {
+    public reset(related: Related[]): void {
         const foreignKeys = this.parent.getAttribute<string[]>(this.foreignKeyName);
 
         related.forEach(model => {
