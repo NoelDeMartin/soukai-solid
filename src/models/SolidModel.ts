@@ -703,8 +703,7 @@ export class SolidModel extends SolidModelBase {
             return;
 
         if (this.isDirty(undefined, true)) {
-            this.addHistoryOperations();
-
+            await this.addHistoryOperations();
             await Promise.all(this.operations.map(async operation => {
                 if (operation.exists())
                     return;
@@ -785,7 +784,9 @@ export class SolidModel extends SolidModelBase {
         await this.deleteModels(models);
     }
 
-    protected addHistoryOperations(): void {
+    protected async addHistoryOperations(): Promise<void> {
+        await this.loadRelationIfUnloaded('operations');
+
         if (this.operations.length === 0) {
             const originalAttributes = objectWithoutEmpty(
                 objectWithout(this._originalAttributes, [this.static('primaryKey')]),
@@ -805,14 +806,22 @@ export class SolidModel extends SolidModelBase {
 
         for (const [field, value] of Object.entries(this._dirtyAttributes)) {
             if (Array.isArray(value)) {
-                const { added, removed } = arrayDiff(this._originalAttributes[field], value);
+                const originalValues = this.getOperationValue<unknown[]>(field, this._originalAttributes[field]);
+                const dirtyValues = this.getOperationValue<unknown[]>(field, value);
+                const { added, removed } = arrayDiff(
+                    originalValues,
+                    dirtyValues,
+                    originalValues[0] instanceof ModelKey
+                        ? (a, b) => (a as ModelKey).equals(b as ModelKey)
+                        : undefined,
+                );
 
                 if (added.length > 0)
                     this.relatedOperations.add({
                         property: this.getFieldRdfProperty(field),
                         type: SolidModelOperationType.Add,
                         date: this.metadata.updatedAt,
-                        value: this.getOperationValue(field, added),
+                        value: added,
                     });
 
                 if (removed.length > 0)
@@ -820,7 +829,7 @@ export class SolidModel extends SolidModelBase {
                         property: this.getFieldRdfProperty(field),
                         type: SolidModelOperationType.Remove,
                         date: this.metadata.updatedAt,
-                        value: this.getOperationValue(field, removed),
+                        value: removed,
                     });
 
                 continue;
@@ -1059,8 +1068,9 @@ export class SolidModel extends SolidModelBase {
         return this.getDocumentModels().filter(model => model.isDirty());
     }
 
-    private getOperationValue(field: string, value?: unknown): unknown;
-    private getOperationValue(field: Omit<BootedFieldDefinition, 'required'>, value: unknown): unknown;
+    private getOperationValue<T = unknown>(field: string): T;
+    private getOperationValue<T = unknown>(field: string, value: unknown): T;
+    private getOperationValue<T = unknown>(field: Omit<BootedFieldDefinition, 'required'>, value: unknown): T;
     private getOperationValue(field: string | Omit<BootedFieldDefinition, 'required'>, value?: unknown): unknown {
         const definition = typeof field === 'string' ? this.getFieldDefinition(field, value) : field;
 

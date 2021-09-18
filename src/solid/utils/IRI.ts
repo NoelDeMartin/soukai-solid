@@ -11,6 +11,7 @@ const KNOWN_NAMESPACES: IRINamespacesMap = {
     schema: 'https://schema.org/',
     solid: 'http://www.w3.org/ns/solid/terms#',
     xsd: 'http://www.w3.org/2001/XMLSchema#',
+    soukai: 'https://soukai.noeldemartin.com/vocab/',
 };
 
 export default function IRI(value: string, namespaces: IRINamespacesMap = {}, defaultNamespace: string = ''): string {

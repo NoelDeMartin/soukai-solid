@@ -11,6 +11,7 @@ import { SolidModelOperationType } from '@/models/SolidModelOperation';
 import IRI from '@/solid/utils/IRI';
 import type { SolidModelOperation } from '@/models';
 
+import { fakeResourceUrl } from '@/testing/utils';
 import { stubMovieJsonLD, stubMoviesCollectionJsonLD, stubPersonJsonLD, stubWatchActionJsonLD } from '@/testing/lib/stubs/helpers';
 import Group from '@/testing/lib/stubs/Group';
 import Movie from '@/testing/lib/stubs/Movie';
@@ -1502,6 +1503,42 @@ describe('SolidModel', () => {
         // Assert
         expect(person.createdAt).toBeInstanceOf(Date);
         expect(person.createdAt.toISOString()).toEqual(date.toISOString());
+    });
+
+    it('Tracks history properly for equivalent attributes', async () => {
+        // Arrange
+        const initialPersonUrl = fakeResourceUrl();
+        const newPersonUrl = fakeResourceUrl();
+        const person = new PersonWithHistory({
+            url: fakeResourceUrl(),
+            friendUrls: [new ModelKey(initialPersonUrl)],
+        }, true);
+
+        const updateSpy = jest.spyOn(engine, 'update');
+        const readManySpy = jest.spyOn(engine, 'readMany');
+        const readOneSpy = jest.spyOn(engine, 'readOne');
+
+        // Act
+        person.friendUrls = [initialPersonUrl, newPersonUrl];
+
+        await person.save();
+
+        // Assert
+        const operations = person.operations;
+
+        expect(operations).toHaveLength(2);
+
+        expect(operations[0].property).toEqual(IRI('foaf:knows'));
+        expect(operations[0].type).toBeUndefined();
+        expect(operations[0].value).toEqual(new ModelKey(initialPersonUrl));
+
+        expect(operations[1].property).toEqual(IRI('foaf:knows'));
+        expect(operations[1].type).toEqual(IRI('soukai:AddOperation'));
+        expect(operations[1].value).toEqual(new ModelKey(newPersonUrl));
+
+        expect(readOneSpy).not.toHaveBeenCalled();
+        expect(readManySpy).not.toHaveBeenCalled();
+        expect(updateSpy).toHaveBeenCalledTimes(1);
     });
 
     it('Rebuilds attributes from history', () => {

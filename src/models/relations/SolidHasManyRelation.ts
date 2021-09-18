@@ -33,7 +33,7 @@ export default class SolidHasManyRelation<
         if (!this.__modelsInSameDocument || !this.__modelsInOtherDocumentIds)
             // Solid hasMany relation only finds related models that have been
             // declared in the same document.
-            return [];
+            return this.related = [];
 
         const modelsInOtherDocuments = await this.relatedClass.all<Related>({
             $in: this.__modelsInOtherDocumentIds,

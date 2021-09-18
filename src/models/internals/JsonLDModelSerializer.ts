@@ -1,4 +1,4 @@
-import { isObject, tap, toString } from '@noeldemartin/utils';
+import { tap, toString } from '@noeldemartin/utils';
 import { FieldType, SoukaiError } from 'soukai';
 import type { Attributes, BootedArrayFieldDefinition } from 'soukai';
 import type { JsonLD } from '@noeldemartin/solid-utils';
@@ -224,13 +224,7 @@ export default class JsonLDModelSerializer {
     }
 
     private setJsonLDProperty(jsonld: JsonLD, model: SolidModel, name: string, field: string, value: unknown): void {
-        if (
-            !isObject(value) ||
-            Array.isArray(value) ||
-            Object.keys(value).length !== 1 ||
-            Object.keys(value)[0].startsWith('$')
-        )
-            value = this.castJsonLDValue(value, model.getFieldDefinition(field, value));
+        value = this.castJsonLDValue(value, model.getFieldDefinition(field, value));
 
         if (value instanceof EmptyJsonLDValue)
             return;

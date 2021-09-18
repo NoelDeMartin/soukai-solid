@@ -33,7 +33,7 @@ export default class SolidHasOneRelation<
         if (!(this.__modelInSameDocument || this.__modelInOtherDocumentId))
             // Solid hasOne relation only finds related models that have been
             // declared in the same document.
-            return null;
+            return this.related = null;
 
         const resolveModel = async (): Promise<Related | null> => {
             if (this.__modelInSameDocument)
