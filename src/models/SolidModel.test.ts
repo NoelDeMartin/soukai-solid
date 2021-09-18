@@ -1,5 +1,5 @@
 /* eslint-disable max-len */
-import { after, arrayWithout, range, stringToSlug, toString, tt, urlParentDirectory, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
+import { after, arrayWithout, range, stringToSlug, toString, tt, urlParentDirectory, urlResolve, urlResolveDirectory, uuid } from '@noeldemartin/utils';
 import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
 import { FieldType, InMemoryEngine, ModelKey, bootModels, setEngine } from 'soukai';
 import dayjs from 'dayjs';
@@ -1644,6 +1644,29 @@ describe('SolidModel', () => {
         );
         expect(person.createdAt).toEqual(createdAt);
         expect(person.updatedAt).toEqual(updatedAt);
+    });
+
+    it('History tracking for new arrays uses set operation', async () => {
+        // Arrange
+        const person = await PersonWithHistory.create();
+        const friendUrls = range(3).map(() => fakeResourceUrl(uuid()));
+
+        // Act
+        await person.update({ friendUrls });
+
+        // Assert
+        expect(person.operations).toHaveLength(1);
+
+        const operation = person.operations[0];
+        expect(operation.resourceUrl).toEqual(person.url);
+        expect(operation.property).toEqual(IRI('foaf:knows'));
+        expect(operation.type).toBeUndefined();
+        expect(operation.value).toHaveLength(friendUrls.length);
+
+        (operation.value as ModelKey[]).forEach((url, index) => {
+            expect(url).toBeInstanceOf(ModelKey);
+            expect(new ModelKey(friendUrls[index]).equals(url));
+        });
     });
 
     it('casts nulls, undefined and empty arrays', () => {

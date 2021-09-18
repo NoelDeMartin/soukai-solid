@@ -806,31 +806,7 @@ export class SolidModel extends SolidModelBase {
 
         for (const [field, value] of Object.entries(this._dirtyAttributes)) {
             if (Array.isArray(value)) {
-                const originalValues = this.getOperationValue<unknown[]>(field, this._originalAttributes[field]);
-                const dirtyValues = this.getOperationValue<unknown[]>(field, value);
-                const { added, removed } = arrayDiff(
-                    originalValues,
-                    dirtyValues,
-                    originalValues[0] instanceof ModelKey
-                        ? (a, b) => (a as ModelKey).equals(b as ModelKey)
-                        : undefined,
-                );
-
-                if (added.length > 0)
-                    this.relatedOperations.add({
-                        property: this.getFieldRdfProperty(field),
-                        type: SolidModelOperationType.Add,
-                        date: this.metadata.updatedAt,
-                        value: added,
-                    });
-
-                if (removed.length > 0)
-                    this.relatedOperations.add({
-                        property: this.getFieldRdfProperty(field),
-                        type: SolidModelOperationType.Remove,
-                        date: this.metadata.updatedAt,
-                        value: removed,
-                    });
+                this.addArrayHistoryOperations(field, value, this._originalAttributes[field]);
 
                 continue;
             }
@@ -1089,6 +1065,45 @@ export class SolidModel extends SolidModelBase {
             return new ModelKey(value);
 
         return value;
+    }
+
+    private addArrayHistoryOperations(field: string, dirtyValue: unknown, originalValue: unknown): void {
+        const originalValues = this.getOperationValue<unknown[]>(field, originalValue);
+        const dirtyValues = this.getOperationValue<unknown[]>(field, dirtyValue);
+
+        if (originalValues.length === 0) {
+            this.relatedOperations.add({
+                property: this.getFieldRdfProperty(field),
+                date: this.metadata.updatedAt,
+                value: dirtyValues,
+            });
+
+            return;
+        }
+
+        const { added, removed } = arrayDiff(
+            originalValues,
+            dirtyValues,
+            originalValues[0] instanceof ModelKey
+                ? (a, b) => (a as ModelKey).equals(b as ModelKey)
+                : undefined,
+        );
+
+        if (added.length > 0)
+            this.relatedOperations.add({
+                property: this.getFieldRdfProperty(field),
+                type: SolidModelOperationType.Add,
+                date: this.metadata.updatedAt,
+                value: added,
+            });
+
+        if (removed.length > 0)
+            this.relatedOperations.add({
+                property: this.getFieldRdfProperty(field),
+                type: SolidModelOperationType.Remove,
+                date: this.metadata.updatedAt,
+                value: removed,
+            });
     }
 
     private applyOperation(field: string, operation: SolidModelOperation): void {
