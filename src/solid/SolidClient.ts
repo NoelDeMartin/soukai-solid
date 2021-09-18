@@ -3,7 +3,6 @@ import {
     arrayDiff,
     arrayFilter,
     arrayRemove,
-    arrayRemoveIndex,
     objectWithoutEmpty,
     urlClean,
     urlDirectoryName,
@@ -419,7 +418,7 @@ export default class SolidClient {
     // SetPropertyOperation and RemovePropertyOperation
     private processUpdatePropertyOperations(document: RDFDocument, operations: UpdateOperation[]): void {
         // Diff arrays
-        const arrayOperationsIndexes: number[] = [];
+        const arrayOperations: UpdateOperation[] = [];
         const arrayProperties: string[] = [];
 
         for (let index = 0; index < operations.length; index++) {
@@ -468,11 +467,11 @@ export default class SolidClient {
                 ),
             ));
 
-            arrayOperationsIndexes.push(index);
+            arrayOperations.push(operation);
             arrayProperties.push(`${operation.propertyResourceUrl}-${operation.propertyName}`);
         }
 
-        arrayOperationsIndexes.forEach(index => arrayRemoveIndex(operations, index));
+        arrayOperations.forEach(operation => arrayRemove(operations, operation));
 
         // Properties that are going to be updated have to be deleted or they'll end up duplicated.
         const updateOperations = operations.filter(

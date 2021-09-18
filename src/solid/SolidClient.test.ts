@@ -1,5 +1,5 @@
 import Faker from 'faker';
-import { stringToSlug, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
+import { range, stringToSlug, urlResolve, urlResolveDirectory, urlRoute, uuid } from '@noeldemartin/utils';
 
 import MalformedDocumentError from '@/errors/MalformedDocumentError';
 
@@ -12,6 +12,7 @@ import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation'
 import type RDFDocument from '@/solid/RDFDocument';
 
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';
+import { fakeResourceUrl } from '@/testing/utils';
 
 describe('SolidClient', () => {
 
@@ -687,6 +688,37 @@ describe('SolidClient', () => {
         await client.updateDocument(Faker.internet.url(), []);
 
         expect(StubFetcher.fetch).not.toHaveBeenCalled();
+    });
+
+    it('updates array properties', async () => {
+        // Arrange
+        const personUrl = fakeResourceUrl();
+        const memberUrls = range(3).map(() => fakeResourceUrl(uuid()));
+        const friendUrls = range(2).map(() => fakeResourceUrl(uuid()));
+        const fetchSpy = jest.spyOn(StubFetcher, 'fetch');
+
+        StubFetcher.addFetchResponse();
+        StubFetcher.addFetchResponse();
+
+        // Act
+        await client.updateDocument(urlRoute(personUrl), [
+            new UpdatePropertyOperation(
+                memberUrls.map(url => RDFResourceProperty.reference(personUrl, IRI('foaf:member'), url)),
+            ),
+            new UpdatePropertyOperation(
+                friendUrls.map(url => RDFResourceProperty.reference(personUrl, IRI('foaf:knows'), url)),
+            ),
+        ]);
+
+        // Assert
+        expect(fetchSpy.mock.calls[1][1]?.body).toEqualSparql(`
+            INSERT DATA {
+                @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+
+                ${memberUrls.map(url => `<#it> foaf:member <${url}> .`).join('\n')}
+                ${friendUrls.map(url => `<#it> foaf:knows <${url}> .`).join('\n')}
+            }
+        `);
     });
 
     it('deletes non-container documents', async () => {
