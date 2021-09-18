@@ -20,6 +20,15 @@ class RDFResourcePropertyVariable {
 
 }
 
+const DataTypes = {
+    dateTime: IRI('xsd:dateTime'),
+    integer: IRI('xsd:integer'),
+    boolean: IRI('xsd:boolean'),
+    decimal: IRI('xsd:decimal'),
+    float: IRI('xsd:float'),
+    double: IRI('xsd:double'),
+};
+
 abstract class RDFResourceProperty {
 
     public readonly resourceUrl: string | null;
@@ -55,9 +64,7 @@ abstract class RDFResourceProperty {
         return this.literal(
             resourceUrl,
             statement.predicate.value,
-            (statement.object as Literal).datatype.value === IRI('xsd:dateTime')
-                ? new Date(statement.object.value)
-                : statement.object.value,
+            this.castLiteralValue(statement.object.value, (statement.object as Literal).datatype.value),
         );
     }
 
@@ -85,6 +92,23 @@ abstract class RDFResourceProperty {
         return properties
             .map(property => property.toTurtle(documentUrl) + ' .')
             .join('\n');
+    }
+
+    private static castLiteralValue(value: string, datatype: string): LiteralValue {
+        switch (datatype) {
+            case DataTypes.dateTime:
+                return new Date(value);
+            case DataTypes.integer:
+            case DataTypes.decimal:
+                return parseInt(value);
+            case DataTypes.boolean:
+                return value === 'true' || value === '1';
+            case DataTypes.float:
+            case DataTypes.double:
+                return parseFloat(value);
+        }
+
+        return value;
     }
 
     protected constructor(resourceUrl: string | null, name: string, value: unknown) {

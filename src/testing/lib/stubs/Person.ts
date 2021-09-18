@@ -20,6 +20,7 @@ export default class Person extends SolidModel {
         name: FieldType.String,
         lastName: FieldType.String,
         givenName: FieldType.String,
+        age: FieldType.Number,
         directed: {
             type: FieldType.Key,
             rdfProperty: 'foaf:made',

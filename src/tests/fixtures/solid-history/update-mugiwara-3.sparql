@@ -46,6 +46,13 @@ INSERT DATA {
         a soukai:Operation ;
         soukai:resource <#roronoa-zoro> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:age ;
+        soukai:value 19 .
+
+    <#roronoa-zoro-operation-[[.*]]>
+        a soukai:Operation ;
+        soukai:resource <#roronoa-zoro> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:givenName ;
         soukai:value "The Greatest Swordsman" .
 

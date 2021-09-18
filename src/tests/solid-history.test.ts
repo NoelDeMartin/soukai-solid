@@ -273,6 +273,7 @@ describe('Solid history tracking', () => {
         const zoro = await mugiwara.relatedMembers.create({
             name: 'Roronoa Zoro',
             givenName: 'Pirate Hunter',
+            age: 19,
         });
 
         // Act - Zoro and Luffy make their dreams come true

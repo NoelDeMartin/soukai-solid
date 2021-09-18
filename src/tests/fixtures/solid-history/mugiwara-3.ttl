@@ -62,6 +62,7 @@
 
 <#roronoa-zoro>
     a foaf:Person ;
+    foaf:age 19 ;
     foaf:name "Roronoa Zoro" ;
     foaf:givenName "Pirate Hunter" .
 
