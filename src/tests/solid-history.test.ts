@@ -297,6 +297,8 @@ describe('Solid history tracking', () => {
     });
 
     it('synchronizes models with related models', async () => {
+        // -------------- Part I --------------
+
         // Arrange - prepare network stubs
         StubFetcher.addFetchResponse(fixture('mugiwara-2.ttl'));
         StubFetcher.addFetchResponse(fixture('mugiwara-2.ttl'));
@@ -370,6 +372,10 @@ describe('Solid history tracking', () => {
             expect(model.memberUrls).toHaveLength(3);
         });
 
+        let localHistoryHash = localMugiwara.getHistoryHash();
+        expect(localHistoryHash).not.toBeNull();
+        expect(localHistoryHash).toEqual(remoteMugiwara.getHistoryHash());
+
         expect(StubFetcher.fetch).toHaveBeenCalledTimes(5);
 
         const getUpdateVersion = () => {
@@ -394,6 +400,8 @@ describe('Solid history tracking', () => {
         await expect(localEngine.database['solid://bands/']['solid://bands/mugiwara'])
             .toEqualJsonLD(fixture('mugiwara-4.jsonld'));
 
+        // -------------- Part II --------------
+
         // Arrange - update member
         StubFetcher.addFetchResponse(fixture('mugiwara-4.ttl'));
         StubFetcher.addFetchResponse();
@@ -406,6 +414,12 @@ describe('Solid history tracking', () => {
         await remoteMugiwara.save();
 
         // Assert
+        expect(localMugiwara.getHistoryHash()).not.toEqual(localHistoryHash);
+
+        localHistoryHash = localMugiwara.getHistoryHash();
+        expect(localHistoryHash).not.toBeNull();
+        expect(localHistoryHash).toEqual(remoteMugiwara.getHistoryHash());
+
         expect(StubFetcher.fetch).toHaveBeenCalledTimes(7);
 
         expect(fetch.mock.calls[6][1]?.body).toEqualSparql(fixture('update-mugiwara-5.sparql'));
@@ -414,6 +428,8 @@ describe('Solid history tracking', () => {
         await expect(localMugiwara.toJsonLD()).toEqualJsonLD(fixture('mugiwara-5.jsonld'));
         await expect(localEngine.database['solid://bands/']['solid://bands/mugiwara'])
             .toEqualJsonLD(fixture('mugiwara-5.jsonld'));
+
+        // -------------- Part III --------------
 
         // Arrange - remove member
         StubFetcher.addFetchResponse(fixture('mugiwara-5.ttl'));
@@ -427,6 +443,12 @@ describe('Solid history tracking', () => {
         await remoteMugiwara.save();
 
         // Assert
+        expect(localMugiwara.getHistoryHash()).not.toEqual(localHistoryHash);
+
+        localHistoryHash = localMugiwara.getHistoryHash();
+        expect(localHistoryHash).not.toBeNull();
+        expect(localHistoryHash).toEqual(remoteMugiwara.getHistoryHash());
+
         expect(StubFetcher.fetch).toHaveBeenCalledTimes(9);
 
         expect(fetch.mock.calls[8][1]?.body).toEqualSparql(fixture('update-mugiwara-6.sparql'));

@@ -77,11 +77,12 @@ import SolidBelongsToOneRelation from './relations/SolidBelongsToOneRelation';
 import SolidHasManyRelation from './relations/SolidHasManyRelation';
 import SolidHasOneRelation from './relations/SolidHasOneRelation';
 import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
-import type { SolidModelConstructor } from './inference';
-import type { SolidBootedFieldDefinition, SolidBootedFieldsDefinition, SolidFieldsDefinition } from './fields';
 import type SolidContainerModel from './SolidContainerModel';
 import type SolidModelMetadata from './SolidModelMetadata';
 import type SolidModelOperation from './SolidModelOperation';
+import type { SolidBootedFieldDefinition, SolidBootedFieldsDefinition, SolidFieldsDefinition } from './fields';
+import type { SolidModelConstructor } from './inference';
+import type { SolidRelation } from './relations/inference';
 
 export const SolidModelBase = mixed(Model, [DeletesModels, SerializesToJsonLD]);
 
@@ -324,6 +325,7 @@ export class SolidModel extends SolidModelBase {
     protected _sourceDocumentUrl!: string | null;
     protected _trackedDirtyAttributes!: Attributes;
     protected _removedResourceUrls!: string[];
+    declare protected _relations: Record<string, SolidRelation>;
 
     private _history?: boolean;
 
@@ -492,10 +494,11 @@ export class SolidModel extends SolidModelBase {
     }
 
     public getHistoryHash(): string | null {
-        if (this.operations.length === 0)
-            return null;
+        const relatedOperations = this.getRelatedModels().map(model => model.operations ?? []).flat();
 
-        return md5(this.operations.reduce((digest, operation) => digest + operation.url, ''));
+        return relatedOperations.length === 0
+            ? null
+            : md5(arraySorted(relatedOperations, 'url').reduce((digest, operation) => digest + operation.url, ''));
     }
 
     public rebuildAttributesFromHistory(): void {
@@ -1178,6 +1181,38 @@ export class SolidModel extends SolidModelBase {
 
     private getDirtyDocumentModels(): SolidModel[] {
         return this.getDocumentModels().filter(model => model.isDirty());
+    }
+
+    private getRelatedModels(_relatedModels?: Set<SolidModel>): SolidModel[] {
+        const relatedModels = _relatedModels ?? new Set();
+
+        if (relatedModels.has(this))
+            return [...relatedModels];
+
+        relatedModels.add(this);
+
+        for (const relation of Object.values(this._relations)) {
+            const relationModels = [
+                ...(
+                    (isSolidSingleModelDocumentRelation(relation) && relation.__newModel)
+                        ? relation.__newModel.getRelatedModels(relatedModels)
+                        : []
+                ),
+                ...(
+                    isSolidMultiModelDocumentRelation(relation)
+                        ? relation.__newModels.map(model => model.getRelatedModels(relatedModels)).flat()
+                        : []
+                ),
+                ...relation
+                    .getLoadedModels()
+                    .map(model => model.getRelatedModels(relatedModels))
+                    .flat(),
+            ];
+
+            relationModels.forEach(model => relatedModels.add(model));
+        }
+
+        return [...relatedModels];
     }
 
     private getOperationValue<T = unknown>(field: string): T;
