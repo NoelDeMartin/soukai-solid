@@ -14,6 +14,7 @@ import {
     objectWithoutEmpty,
     requireUrlParentDirectory,
     tap,
+    urlClean,
     urlParentDirectory,
     urlResolve,
     urlRoot,
@@ -664,7 +665,7 @@ export class SolidModel extends SolidModelBase {
 
         await model.loadDocumentModels(id, document);
 
-        return tap(model, m => m._sourceDocumentUrl = id);
+        return tap(model, m => m._sourceDocumentUrl = urlClean(id, { fragment: false }));
     }
 
     protected async createManyFromEngineDocuments(documents: Record<string, EngineDocument>): Promise<this[]> {
