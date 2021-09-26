@@ -8,6 +8,7 @@ import {
     invert,
     isPromise,
     map,
+    md5,
     mixed,
     objectWithout,
     objectWithoutEmpty,
@@ -487,6 +488,13 @@ export class SolidModel extends SolidModelBase {
         return isPromise(result)
             ? result.then(result => restoreHistoryTracking() && result)
             : restoreHistoryTracking() && result;
+    }
+
+    public getHistoryHash(): string | null {
+        if (this.operations.length === 0)
+            return null;
+
+        return md5(this.operations.reduce((digest, operation) => digest + operation.url, ''));
     }
 
     public rebuildAttributesFromHistory(): void {

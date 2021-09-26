@@ -1679,6 +1679,8 @@ describe('SolidModel', () => {
 
         // Assert
         expect(versionA.getAttributes()).toEqual(versionB.getAttributes());
+        expect(versionA.getHistoryHash()).not.toBeNull();
+        expect(versionA.getHistoryHash()).toEqual(versionB.getHistoryHash());
 
         expect(versionA.isDirty('name')).toBe(false);
         expect(versionA.isDirty('lastName')).toBe(true);
@@ -1801,6 +1803,8 @@ describe('SolidModel', () => {
 
         // Assert
         expect(versionA.getAttributes()).toEqual(versionB.getAttributes());
+        expect(versionA.getHistoryHash()).not.toBeNull();
+        expect(versionA.getHistoryHash()).toEqual(versionB.getHistoryHash());
 
         expect(versionA.isDirty('name')).toBe(false);
         expect(versionA.isDirty('lastName')).toBe(true);
