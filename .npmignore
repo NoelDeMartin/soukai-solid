@@ -1,4 +1,9 @@
 __mocks__
+.eslintrc.js
+.vscode
+*.tgz
+api-extractor.json
+coverage
 jest.config.js
 scripts
 src/**/*.test.ts
