@@ -272,7 +272,9 @@ export class SolidEngine implements Engine {
 
         if ($unset) {
             const filters = $where['@id'] as EngineRootFilter;
-            const ids = filters.$in as string[];
+            const ids = typeof filters === 'string'
+                ? [filters]
+                : filters.$in as string[];
 
             return ids.map(url => new RemovePropertyOperation(url));
         }

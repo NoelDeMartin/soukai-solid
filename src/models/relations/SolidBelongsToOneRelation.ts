@@ -1,5 +1,6 @@
 import { BelongsToOneRelation } from 'soukai';
 import { mixedWithoutTypes, tap } from '@noeldemartin/utils';
+import type { RelationCloneOptions } from 'soukai';
 
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
@@ -51,8 +52,8 @@ export default class SolidBelongsToOneRelation<
         delete this.__modelInSameDocument;
     }
 
-    public clone(): this {
-        return tap(super.clone(), clone => {
+    public clone(options: RelationCloneOptions = {}): this {
+        return tap(super.clone(options), clone => {
             this.cloneSolidData(clone);
         });
     }

@@ -1,15 +1,18 @@
-import { arrayWithout, toString } from '@noeldemartin/utils';
-import { ModelKey, bootModels, setEngine } from 'soukai';
+import { arrayWithout, toString, urlParse } from '@noeldemartin/utils';
 import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
+import { InMemoryEngine, ModelKey, bootModels, setEngine } from 'soukai';
 import type { Relation } from 'soukai';
 
+import IRI from '@/solid/utils/IRI';
 import { SolidEngine } from '@/engines';
+import { SolidModel } from '@/models';
 import { SolidModelOperationType } from '@/models/SolidModelOperation';
+import type { SolidBelongsToManyRelation } from '@/models';
 
-import { loadFixture } from '@/testing/utils';
 import BaseGroup from '@/testing/lib/stubs/Group';
 import BasePerson from '@/testing/lib/stubs/Person';
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';
+import { loadFixture } from '@/testing/utils';
 
 const expandIRI = (iri: string) => defaultExpandIRI(iri, {
     extraContext: {
@@ -30,6 +33,9 @@ class Group extends BaseGroup {
     public static timestamps = true;
     public static history = true;
 
+    declare public relatedMembers: SolidBelongsToManyRelation<Group, Person, typeof Person>;
+    declare public members?: Person[];
+
     public creatorRelationship(): Relation {
         return this
             .belongsToOne(Person, 'creatorUrl')
@@ -45,7 +51,7 @@ class Group extends BaseGroup {
 
 }
 
-const fixture = (name: string) => loadFixture(`solid-history/${name}`);
+const fixture = <T=string>(name: string) => loadFixture<T>(`solid-history/${name}`);
 
 describe('Solid history tracking', () => {
 
@@ -113,7 +119,7 @@ describe('Solid history tracking', () => {
             ],
         });
 
-        const griffith = band.relatedCreator.set({ name: 'Griffith' });
+        const griffith = band.relatedCreator.attach({ name: 'Griffith' });
 
         await band.save();
 
@@ -262,7 +268,7 @@ describe('Solid history tracking', () => {
         StubFetcher.addFetchResponse();
 
         // Act - Luffy becomes Straw Hat Luffy
-        const mugiwara = await Group.find('solid://mugiwara#it') as Group;
+        const mugiwara = await Group.find('solid://bands/mugiwara#it') as Group;
         const luffy = mugiwara.members?.[0] as Person;
 
         luffy.givenName = 'Straw Hat Luffy';
@@ -288,6 +294,147 @@ describe('Solid history tracking', () => {
         expect(fetch.mock.calls[2][1]?.body).toEqualSparql(fixture('update-mugiwara-1.sparql'));
         expect(fetch.mock.calls[4][1]?.body).toEqualSparql(fixture('update-mugiwara-2.sparql'));
         expect(fetch.mock.calls[6][1]?.body).toEqualSparql(fixture('update-mugiwara-3.sparql'));
+    });
+
+    it('synchronizes models with related models', async () => {
+        // Arrange - prepare network stubs
+        StubFetcher.addFetchResponse(fixture('mugiwara-2.ttl'));
+        StubFetcher.addFetchResponse(fixture('mugiwara-2.ttl'));
+        StubFetcher.addFetchResponse();
+
+        // Arrange - prepare models
+        const localEngine = new InMemoryEngine();
+
+        class LocalGroup extends Group {
+
+            public creatorRelationship(): Relation {
+                return this
+                    .belongsToOne(LocalPerson, 'creatorUrl')
+                    .usingSameDocument(true)
+                    .onDelete('cascade');
+            }
+
+            public membersRelationship(): Relation {
+                return this
+                    .belongsToMany(LocalPerson, 'memberUrls')
+                    .usingSameDocument(true);
+            }
+
+        }
+
+        class LocalPerson extends Person {}
+
+        bootModels({ LocalGroup, LocalPerson });
+
+        LocalGroup.setEngine(localEngine);
+        LocalPerson.setEngine(localEngine);
+
+        const remoteMugiwara = await Group.find('solid://bands/mugiwara#it') as Group;
+        const localMugiwara = remoteMugiwara.clone({
+            constructors: [
+                [Group, LocalGroup],
+                [Person, LocalPerson],
+            ],
+        });
+
+        await localMugiwara.save();
+
+        // Arrange - add member
+        await remoteMugiwara.relatedMembers.create({
+            name: 'Roronoa Zoro',
+            givenName: 'Pirate Hunter',
+            age: 19,
+        });
+
+        const nami = await localMugiwara.relatedMembers.create({ name: 'Nami' });
+
+        const inceptionRemoteOperationUrls = remoteMugiwara.operations.slice(0, 2).map(operation => operation.url);
+
+        // Arrange - prepare network stubs
+        StubFetcher.addFetchResponse(
+            fixture('mugiwara-3.ttl')
+                .replace(/it-operation-1/g, urlParse(remoteMugiwara.operations[0].url)?.fragment ?? '')
+                .replace(/it-operation-2/g, urlParse(remoteMugiwara.operations[1].url)?.fragment ?? ''),
+        );
+        StubFetcher.addFetchResponse();
+
+        // Act
+        await SolidModel.synchronize(localMugiwara, remoteMugiwara);
+        await localMugiwara.save();
+        await remoteMugiwara.save();
+
+        // Assert
+        [localMugiwara, remoteMugiwara].forEach(model => {
+            expect(model.isDirty()).toBe(false);
+            expect(model.members).toHaveLength(3);
+            expect(model.memberUrls).toHaveLength(3);
+        });
+
+        expect(StubFetcher.fetch).toHaveBeenCalledTimes(5);
+
+        const getUpdateVersion = () => {
+            const regeneratedOperationUrls = remoteMugiwara
+                .operations
+                .slice(0, 2)
+                .filter(operation => !inceptionRemoteOperationUrls.includes(operation.url));
+
+            if (regeneratedOperationUrls.length === 0)
+                return 'v1';
+
+            if (regeneratedOperationUrls.length === 2)
+                return 'v4';
+
+            return regeneratedOperationUrls[0].property === IRI('foaf:member') ? 'v2' : 'v3';
+        };
+
+        expect(fetch.mock.calls[4][1]?.body).toEqualSparql(fixture(`update-mugiwara-4-${getUpdateVersion()}.sparql`));
+
+        await expect(remoteMugiwara.toJsonLD()).toEqualJsonLD(fixture('mugiwara-4.jsonld'));
+        await expect(localMugiwara.toJsonLD()).toEqualJsonLD(fixture('mugiwara-4.jsonld'));
+        await expect(localEngine.database['solid://bands/']['solid://bands/mugiwara'])
+            .toEqualJsonLD(fixture('mugiwara-4.jsonld'));
+
+        // Arrange - update member
+        StubFetcher.addFetchResponse(fixture('mugiwara-4.ttl'));
+        StubFetcher.addFetchResponse();
+
+        await nami.update({ givenName: 'Cat Burglar' });
+
+        // Act
+        await SolidModel.synchronize(localMugiwara, remoteMugiwara);
+        await localMugiwara.save();
+        await remoteMugiwara.save();
+
+        // Assert
+        expect(StubFetcher.fetch).toHaveBeenCalledTimes(7);
+
+        expect(fetch.mock.calls[6][1]?.body).toEqualSparql(fixture('update-mugiwara-5.sparql'));
+
+        await expect(remoteMugiwara.toJsonLD()).toEqualJsonLD(fixture('mugiwara-5.jsonld'));
+        await expect(localMugiwara.toJsonLD()).toEqualJsonLD(fixture('mugiwara-5.jsonld'));
+        await expect(localEngine.database['solid://bands/']['solid://bands/mugiwara'])
+            .toEqualJsonLD(fixture('mugiwara-5.jsonld'));
+
+        // Arrange - remove member
+        StubFetcher.addFetchResponse(fixture('mugiwara-5.ttl'));
+        StubFetcher.addFetchResponse();
+
+        await localMugiwara.relatedMembers.remove(nami);
+
+        // Act
+        await SolidModel.synchronize(localMugiwara, remoteMugiwara);
+        await localMugiwara.save();
+        await remoteMugiwara.save();
+
+        // Assert
+        expect(StubFetcher.fetch).toHaveBeenCalledTimes(9);
+
+        expect(fetch.mock.calls[8][1]?.body).toEqualSparql(fixture('update-mugiwara-6.sparql'));
+
+        await expect(remoteMugiwara.toJsonLD()).toEqualJsonLD(fixture('mugiwara-6.jsonld'));
+        await expect(localMugiwara.toJsonLD()).toEqualJsonLD(fixture('mugiwara-6.jsonld'));
+        await expect(localEngine.database['solid://bands/']['solid://bands/mugiwara'])
+            .toEqualJsonLD(fixture('mugiwara-6-document.jsonld'));
     });
 
 });

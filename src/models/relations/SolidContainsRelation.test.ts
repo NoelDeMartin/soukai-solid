@@ -5,6 +5,7 @@ import { urlResolveDirectory } from '@noeldemartin/utils';
 import MoviesCollection from '@/testing/lib/stubs/MoviesCollection';
 import Movie from '@/testing/lib/stubs/Movie';
 import StubEngine from '@/testing/lib/stubs/StubEngine';
+import { fakeContainerUrl, fakeDocumentUrl } from '@/testing/utils';
 
 describe('SolidContainsRelation', () => {
 
@@ -37,9 +38,8 @@ describe('SolidContainsRelation', () => {
         // Arrange
         setEngine(new InMemoryEngine());
 
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
         const movieTitle = Faker.name.title();
-        const collection = await MoviesCollection.create({ url: containerUrl });
+        const collection = await MoviesCollection.create({ url: fakeContainerUrl({ baseUrl: fakeDocumentUrl() }) });
 
         // Act
         const person = await collection.relatedMovies.create({ title: movieTitle });

@@ -88,9 +88,9 @@ describe('SolidHasManyRelation', () => {
         // Arrange
         const movie = new Movie();
 
-        movie.relatedActions.add({});
-        movie.relatedActions.add({});
-        movie.relatedActions.add({});
+        movie.relatedActions.attach({});
+        movie.relatedActions.attach({});
+        movie.relatedActions.attach({});
 
         // Act
         const relationClone = movie.relatedActions.clone();

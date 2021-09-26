@@ -1,0 +1,64 @@
+DELETE DATA {
+    @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+    <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+
+    <#it-operation-[[operation-1][.*]]>
+        a soukai:Operation ;
+        soukai:resource <#it> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:member ;
+        soukai:value <#luffy> .
+
+    <#it-operation-[[operation-2][.*]]>
+        a soukai:Operation ;
+        soukai:resource <#it> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:name ;
+        soukai:value "Straw Hat Pirates" .
+
+} ;
+
+INSERT DATA {
+    @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+    <#it> foaf:member <#nami> .
+    <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+
+    <#nami>
+        a foaf:Person ;
+        foaf:name "Nami" .
+
+    <#nami-metadata>
+        a soukai:Metadata ;
+        soukai:resource <#nami> ;
+        soukai:createdAt "[[.*]]"^^xsd:dateTime ;
+        soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+
+    <#it-operation-[[operation-3][.*]]>
+        a soukai:Operation ;
+        soukai:resource <#it> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:member ;
+        soukai:value <#luffy> .
+
+    <#it-operation-[[operation-4][.*]]>
+        a soukai:Operation ;
+        soukai:resource <#it> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:name ;
+        soukai:value "Straw Hat Pirates" .
+
+    <#it-operation-[[operation-5][.*]]>
+        a soukai:Operation ;
+        soukai:type soukai:AddOperation ;
+        soukai:resource <#it> ;
+        soukai:date "[[.*]]"^^xsd:dateTime ;
+        soukai:property foaf:member ;
+        soukai:value <#nami> .
+
+}

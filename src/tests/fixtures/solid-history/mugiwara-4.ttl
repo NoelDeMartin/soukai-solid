@@ -5,7 +5,7 @@
 <#it>
     a foaf:Group ;
     foaf:name "Straw Hat Pirates" ;
-    foaf:member <#luffy>, <#roronoa-zoro> .
+    foaf:member <#luffy>, <#roronoa-zoro>, <#nami> .
 
 <#it-metadata>
     a soukai:Metadata ;
@@ -34,6 +34,14 @@
     soukai:date "1997-09-01T00:00:00.000Z"^^xsd:dateTime ;
     soukai:property foaf:member ;
     soukai:value <#roronoa-zoro> .
+
+<#it-operation-4>
+    a soukai:Operation ;
+    soukai:type soukai:AddOperation ;
+    soukai:resource <#it> ;
+    soukai:date "1997-09-15T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:property foaf:member ;
+    soukai:value <#nami> .
 
 <#luffy>
     a foaf:Person ;
@@ -71,3 +79,13 @@
     soukai:resource <#roronoa-zoro> ;
     soukai:createdAt "1997-09-01T00:00:00.000Z"^^xsd:dateTime ;
     soukai:updatedAt "1997-09-01T00:00:00.000Z"^^xsd:dateTime .
+
+<#nami>
+    a foaf:Person ;
+    foaf:name "Nami" .
+
+<#nami-metadata>
+    a soukai:Metadata ;
+    soukai:resource <#nami> ;
+    soukai:createdAt "1997-09-15T00:00:00.000Z"^^xsd:dateTime ;
+    soukai:updatedAt "1997-09-15T00:00:00.000Z"^^xsd:dateTime .

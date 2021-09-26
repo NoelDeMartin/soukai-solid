@@ -1,24 +1,25 @@
 /* eslint-disable max-len */
-import { after, arrayWithout, range, stringToSlug, toString, tt, urlParentDirectory, urlResolve, urlResolveDirectory, uuid } from '@noeldemartin/utils';
+import { after, arrayWithout, range, stringToSlug, tap, toString, tt, urlParentDirectory, urlResolve, urlResolveDirectory, uuid } from '@noeldemartin/utils';
 import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
 import { FieldType, InMemoryEngine, ModelKey, bootModels, setEngine } from 'soukai';
 import dayjs from 'dayjs';
 import Faker from 'faker';
 import type { EngineDocument, Relation } from 'soukai';
 import type { Equals, Expect } from '@noeldemartin/utils';
+import type { JsonLDResource } from '@noeldemartin/solid-utils';
 
-import { SolidModelOperationType } from '@/models/SolidModelOperation';
 import IRI from '@/solid/utils/IRI';
+import { SolidModelOperationType } from '@/models/SolidModelOperation';
 import type { SolidModelOperation } from '@/models';
 
-import { fakeResourceUrl } from '@/testing/utils';
-import { stubMovieJsonLD, stubMoviesCollectionJsonLD, stubPersonJsonLD, stubWatchActionJsonLD } from '@/testing/lib/stubs/helpers';
 import Group from '@/testing/lib/stubs/Group';
 import Movie from '@/testing/lib/stubs/Movie';
 import MoviesCollection from '@/testing/lib/stubs/MoviesCollection';
 import Person from '@/testing/lib/stubs/Person';
 import StubEngine from '@/testing/lib/stubs/StubEngine';
 import WatchAction from '@/testing/lib/stubs/WatchAction';
+import { fakeContainerUrl, fakeResourceUrl } from '@/testing/utils';
+import { stubMovieJsonLD, stubMoviesCollectionJsonLD, stubPersonJsonLD, stubWatchActionJsonLD } from '@/testing/lib/stubs/helpers';
 
 import { SolidModel } from './SolidModel';
 
@@ -58,12 +59,27 @@ class GroupWithPersonsInSameDocument extends Group {
 
 }
 
+class GroupWithHistoryAndPersonsInSameDocument extends Group {
+
+    public static timestamps = true;
+    public static history = true;
+
+    public membersRelationship(): Relation {
+        return this
+            .belongsToMany(Person, 'memberUrls')
+            .usingSameDocument(true)
+            .onDelete('cascade');
+    }
+
+}
+
 describe('SolidModel', () => {
 
     beforeAll(() => bootModels({
         Group,
         GroupWithHistory,
         GroupWithPersonsInSameDocument,
+        GroupWithHistoryAndPersonsInSameDocument,
         Movie,
         MoviesCollection,
         Person,
@@ -1019,7 +1035,7 @@ describe('SolidModel', () => {
 
     it('serializes to JSON-LD', () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const containerUrl = fakeContainerUrl();
         const name = Faker.random.word();
         const person = new Person({
             name,
@@ -1103,8 +1119,8 @@ describe('SolidModel', () => {
     it('serializes to JSON-LD with nested relations', async () => {
         // Arrange
         const mugiwara = new GroupWithPersonsInSameDocument({ name: 'Straw Hat Pirates' });
-        const luffy = mugiwara.relatedMembers.add({ name: 'Luffy', lastName: 'Monkey D.' });
-        const zoro = mugiwara.relatedMembers.add({ name: 'Zoro', lastName: 'Roronoa' });
+        const luffy = mugiwara.relatedMembers.attach({ name: 'Luffy', lastName: 'Monkey D.' });
+        const zoro = mugiwara.relatedMembers.attach({ name: 'Zoro', lastName: 'Roronoa' });
 
         await mugiwara.save();
 
@@ -1117,12 +1133,11 @@ describe('SolidModel', () => {
                 '@vocab': 'http://xmlns.com/foaf/0.1/',
                 'soukai': 'https://soukai.noeldemartin.com/vocab/',
                 'metadata': { '@reverse': 'soukai:resource' },
-                'members': { '@reverse': 'member' },
             },
             '@type': 'Group',
             '@id': mugiwara.url,
             'name': 'Straw Hat Pirates',
-            'members': [
+            'member': [
                 {
                     '@id': luffy.url,
                     '@type': 'Person',
@@ -1572,39 +1587,39 @@ describe('SolidModel', () => {
         });
 
         // Arrange - initial operations
-        person.relatedOperations.add({
+        person.relatedOperations.attach({
             property: person.getFieldRdfProperty('name'),
             value: Faker.random.word(),
             date: createdAt,
         });
 
-        person.relatedOperations.add({
+        person.relatedOperations.attach({
             property: person.getFieldRdfProperty('lastName'),
             value: lastName,
             date: createdAt,
         });
 
-        person.relatedOperations.add({
+        person.relatedOperations.attach({
             property: person.getFieldRdfProperty('friendUrls'),
             value: initialFriends.map(url => new ModelKey(url)),
             date: createdAt,
         });
 
         // Arrange - second update operation (use wrong order on purpose to test sorting)
-        person.relatedOperations.add({
+        person.relatedOperations.attach({
             property: person.getFieldRdfProperty('name'),
             value: name,
             date: updatedAt,
         });
 
-        person.relatedOperations.add({
+        person.relatedOperations.attach({
             property: person.getFieldRdfProperty('friendUrls'),
             type: SolidModelOperationType.Add,
             value: new ModelKey(secondAddedFriend),
             date: updatedAt,
         });
 
-        person.relatedOperations.add({
+        person.relatedOperations.attach({
             property: person.getFieldRdfProperty('friendUrls'),
             type: SolidModelOperationType.Remove,
             value: removedFriends.map(url => new ModelKey(url)),
@@ -1612,13 +1627,13 @@ describe('SolidModel', () => {
         });
 
         // Arrange - first update operation (use wrong order on purpose to test sorting)
-        person.relatedOperations.add({
+        person.relatedOperations.attach({
             property: person.getFieldRdfProperty('name'),
             value: Faker.random.word(),
             date: firstUpdatedAt,
         });
 
-        person.relatedOperations.add({
+        person.relatedOperations.attach({
             property: person.getFieldRdfProperty('friendUrls'),
             type: SolidModelOperationType.Add,
             value: firstAddedFriends.map(url => new ModelKey(url)),
@@ -1646,10 +1661,344 @@ describe('SolidModel', () => {
         expect(person.updatedAt).toEqual(updatedAt);
     });
 
-    it('History tracking for new arrays uses set operation', async () => {
+    it('Synchronizes models history', async () => {
+        // Arrange
+        const inception = await PersonWithHistory.create({ name: 'Initial Name', lastName: 'Initial last name' });
+
+        await inception.update({ name: 'Second name' });
+
+        const versionA = inception.clone({ clean: true });
+        const versionB = inception.clone({ clean: true });
+
+        await versionA.update({ name: 'Name A' });
+        await after({ ms: 100 });
+        await versionB.update({ lastName: 'Last name B' });
+
+        // Act
+        await SolidModel.synchronize(versionA, versionB);
+
+        // Assert
+        expect(versionA.getAttributes()).toEqual(versionB.getAttributes());
+
+        expect(versionA.isDirty('name')).toBe(false);
+        expect(versionA.isDirty('lastName')).toBe(true);
+        expect(versionB.isDirty('name')).toBe(true);
+        expect(versionB.isDirty('lastName')).toBe(false);
+
+        expect(versionA.operations).toHaveLength(5);
+        expect(versionB.operations).toHaveLength(5);
+
+        expect(versionA.updatedAt).toEqual(versionA.operations[4].date);
+        expect(versionB.updatedAt).toEqual(versionB.operations[4].date);
+
+        expect(versionA.operations[0].exists()).toBe(true);
+        expect(versionA.operations[1].exists()).toBe(true);
+        expect(versionA.operations[2].exists()).toBe(true);
+        expect(versionA.operations[3].exists()).toBe(true);
+        expect(versionA.operations[4].exists()).toBe(false);
+        expect(versionA.operations[4].property).toBe(IRI('foaf:lastName'));
+        expect(versionA.operations[4].value).toBe('Last name B');
+
+        expect(versionB.operations[0].exists()).toBe(true);
+        expect(versionB.operations[1].exists()).toBe(true);
+        expect(versionB.operations[2].exists()).toBe(true);
+        expect(versionB.operations[3].exists()).toBe(false);
+        expect(versionB.operations[3].property).toBe(IRI('foaf:name'));
+        expect(versionB.operations[3].value).toBe('Name A');
+        expect(versionB.operations[4].exists()).toBe(true);
+
+        range(5).forEach(index => {
+            expect(versionA.operations[index].url).toEqual(versionB.operations[index].url);
+            expect(versionA.operations[index].property).toEqual(versionB.operations[index].property);
+            expect(versionA.operations[index].type).toEqual(versionB.operations[index].type);
+            expect(versionA.operations[index].value).toEqual(versionB.operations[index].value);
+            expect(versionA.operations[index].date).toEqual(versionB.operations[index].date);
+        });
+    });
+
+    it('Does not recreate operations for synchronized changes', async () => {
+        // Arrange
+        const inception = await PersonWithHistory.create({ name: 'Initial Name', lastName: 'Initial last name' });
+
+        await inception.update({ name: 'Second name' });
+
+        const versionA = inception.clone({ clean: true });
+        const versionB = inception.clone({ clean: true });
+
+        await versionA.update({ name: 'Name A' });
+        await after({ ms: 100 });
+        await versionB.update({ lastName: 'Last name B' });
+        await SolidModel.synchronize(versionA, versionB);
+        await after({ ms: 100 });
+
+        const updateSpy = jest.spyOn(engine, 'update');
+
+        // Act
+        await versionA.save();
+        await versionB.save();
+
+        // Assert
+        [versionA, versionB].forEach(model => {
+            expect(model.isDirty()).toBe(false);
+            expect(model.updatedAt).toEqual(model.operations[4].date);
+            expect(model.operations).toHaveLength(5);
+
+            model.operations.forEach(operation => expect(operation.exists()).toBe(true));
+        });
+
+        expect(updateSpy).toHaveBeenCalledTimes(2);
+        expect(updateSpy.mock.calls[0][2]).toEqual({
+            '@graph': {
+                $apply: [
+                    {
+                        $updateItems: {
+                            $where: { '@id': versionA.metadata.url },
+                            $update: {
+                                [IRI('soukai:updatedAt')]: {
+                                    '@value': versionA.updatedAt.toISOString(),
+                                    '@type': IRI('xsd:dateTime'),
+                                },
+                            },
+                        },
+                    },
+                    { $push: versionA.operations[4].toJsonLD() },
+                    {
+                        $updateItems: {
+                            $where: { '@id': versionA.url },
+                            $update: { [IRI('foaf:lastName')]: 'Last name B' },
+                        },
+                    },
+                ],
+            },
+        });
+        expect(updateSpy.mock.calls[1][2]).toEqual({
+            '@graph': {
+                $apply: [
+                    { $push: versionB.operations[3].toJsonLD() },
+                    {
+                        $updateItems: {
+                            $where: { '@id': versionB.url },
+                            $update: { [IRI('foaf:name')]: 'Name A' },
+                        },
+                    },
+                ],
+            },
+        });
+    });
+
+    it('Avoids duplicating inception operations when synchronizing models', async () => {
+        // Arrange
+        const inception = await PersonWithHistory.create({ name: 'Initial Name', lastName: 'Initial last name' });
+        const versionA = inception.clone({ clean: true });
+        const versionB = inception.clone({ clean: true });
+
+        await versionA.update({ name: 'Name A' });
+        await after({ ms: 100 });
+        await versionB.update({ lastName: 'Last name B' });
+
+        // Act
+        await SolidModel.synchronize(versionA, versionB);
+
+        // Assert
+        expect(versionA.getAttributes()).toEqual(versionB.getAttributes());
+
+        expect(versionA.isDirty('name')).toBe(false);
+        expect(versionA.isDirty('lastName')).toBe(true);
+        expect(versionB.isDirty('name')).toBe(true);
+        expect(versionB.isDirty('lastName')).toBe(false);
+
+        expect(versionA.operations).toHaveLength(4);
+        expect(versionB.operations).toHaveLength(4);
+
+        expect(versionA.updatedAt).toEqual(versionA.operations[3].date);
+        expect(versionB.updatedAt).toEqual(versionB.operations[3].date);
+
+        expect(versionA.operations[0].exists()).not.toBe(versionB.operations[0].exists());
+        expect(versionA.operations[1].exists()).not.toBe(versionB.operations[1].exists());
+
+        expect(versionA.operations[2].exists()).toBe(true);
+        expect(versionA.operations[3].exists()).toBe(false);
+        expect(versionA.operations[3].property).toBe(IRI('foaf:lastName'));
+        expect(versionA.operations[3].value).toBe('Last name B');
+
+        expect(versionB.operations[2].exists()).toBe(false);
+        expect(versionB.operations[2].property).toBe(IRI('foaf:name'));
+        expect(versionB.operations[2].value).toBe('Name A');
+        expect(versionB.operations[3].exists()).toBe(true);
+
+        range(4).forEach(index => {
+            expect(versionA.operations[index].url).toEqual(versionB.operations[index].url);
+            expect(versionA.operations[index].property).toEqual(versionB.operations[index].property);
+            expect(versionA.operations[index].type).toEqual(versionB.operations[index].type);
+            expect(versionA.operations[index].value).toEqual(versionB.operations[index].value);
+            expect(versionA.operations[index].date).toEqual(versionB.operations[index].date);
+        });
+    });
+
+    it('Reconciles synchronized operations on save', async () => {
+        // Arrange
+        const inception = await PersonWithHistory.create({ name: 'Initial Name', lastName: 'Initial last name' });
+        const versionA = inception.clone({ clean: true });
+        const versionB = inception.clone({ clean: true });
+
+        await after({ ms: 100 });
+        await versionA.update({ name: 'Name A' });
+        await after({ ms: 100 });
+        await versionB.update({ lastName: 'Last name B' });
+
+        const originalInceptionOperationUrls = new WeakMap<PersonWithHistory, Record<string, string>>();
+
+        [versionA, versionB].forEach(model => originalInceptionOperationUrls.set(
+            model,
+            model.operations
+                .filter(operation => operation.date.getTime() === model.createdAt.getTime())
+                .reduce((map, operation) => ({ ...map, [operation.property]: operation.url }), {}),
+        ));
+
+        await SolidModel.synchronize(versionA, versionB);
+
+        const reconciliatedOperationModels = [IRI('foaf:name'), IRI('foaf:lastName')].reduce((map, property) => {
+            map[property] = versionA.operations.find(operation => operation.property === property)?.exists()
+                ? versionB
+                : versionA;
+
+            return map;
+        }, {} as Record<string, PersonWithHistory>);
+        const updateSpy = jest.spyOn(engine, 'update');
+
+        // Act
+        await versionA.save();
+        await versionB.save();
+
+        // Assert
+        [versionA, versionB].forEach(model => {
+            expect(model.isDirty()).toBe(false);
+            expect(model.updatedAt).toEqual(model.operations[3].date);
+            expect(model.operations).toHaveLength(4);
+
+            model.operations.forEach(operation => expect(operation.exists()).toBe(true));
+        });
+
+        const getNewInceptionUpdates = (model: PersonWithHistory) => {
+            type Update = { $push: JsonLDResource };
+
+            return tap(
+                Object.entries(reconciliatedOperationModels).reduce((updated, [property, reconciliatedModel]) => {
+                    if (reconciliatedModel === model)
+                        updated.push({ $push: model.operations.find(operation => operation.property === property)?.toJsonLD() } as Update);
+
+                    return updated;
+                }, [] as Update[]),
+                updates => updates.sort((a, b) => a.$push['@id'] > b.$push['@id'] ? 1 : -1),
+            );
+        };
+        const getDeletedInceptionUpdates = (model: PersonWithHistory) => {
+            type Update = {
+                $updateItems: {
+                    $where: { '@id': string};
+                    $unset: true;
+                };
+            };
+
+            return tap(
+                Object.entries(reconciliatedOperationModels).reduce((updated, [property, reconciliatedModel]) => {
+                    if (reconciliatedModel === model)
+                        updated.push({
+                            $updateItems: {
+                                $where: { '@id': originalInceptionOperationUrls.get(model)?.[property] },
+                                $unset: true,
+                            },
+                        } as Update);
+
+                    return updated;
+                }, [] as Update[])
+                , updates => updates.sort((a, b) => a.$updateItems.$where['@id'] > b.$updateItems.$where['@id'] ? 1 : -1),
+            );
+        };
+
+        expect(updateSpy).toHaveBeenCalledTimes(2);
+
+        const updatesA = updateSpy.mock.calls[0][2];
+        const updatesB = updateSpy.mock.calls[1][2];
+
+        expect(updatesA).toEqual({
+            '@graph': {
+                $apply: [
+                    {
+                        $updateItems: {
+                            $where: { '@id': versionA.metadata.url },
+                            $update: {
+                                [IRI('soukai:updatedAt')]: {
+                                    '@value': versionA.updatedAt.toISOString(),
+                                    '@type': IRI('xsd:dateTime'),
+                                },
+                            },
+                        },
+                    },
+                    ...getNewInceptionUpdates(versionA),
+                    { $push: versionA.operations[3].toJsonLD() },
+                    {
+                        $updateItems: {
+                            $where: { '@id': versionA.url },
+                            $update: { [IRI('foaf:lastName')]: 'Last name B' },
+                        },
+                    },
+                    ...getDeletedInceptionUpdates(versionA),
+                ],
+            },
+        });
+
+        expect(updatesB).toEqual({
+            '@graph': {
+                $apply: [
+                    ...getNewInceptionUpdates(versionB),
+                    { $push: versionB.operations[2].toJsonLD() },
+                    {
+                        $updateItems: {
+                            $where: { '@id': versionB.url },
+                            $update: { [IRI('foaf:name')]: 'Name A' },
+                        },
+                    },
+                    ...getDeletedInceptionUpdates(versionB),
+                ],
+            },
+        });
+    });
+
+    it('Synchronizes models history with relations', async () => {
+        // Arrange
+        const group = await GroupWithHistoryAndPersonsInSameDocument.create({ name: 'Group' });
+
+        const versionA = group.clone({ clean: true });
+        const versionB = group.clone({ clean: true });
+
+        await after({ ms: 100 });
+        await versionA.relatedMembers.create({ name: 'John' });
+        await after({ ms: 100 });
+        await versionB.relatedMembers.create({ name: 'Amy' });
+
+        // Act
+        await SolidModel.synchronize(versionA, versionB);
+
+        // Assert
+        [versionA, versionB].forEach(model => {
+            expect(model.memberUrls).toHaveLength(2);
+            expect(model.members).toHaveLength(2);
+            expect(model.members?.[0].name).toEqual('John');
+            expect(model.members?.[1].name).toEqual('Amy');
+        });
+
+        expect(versionA.members?.[0].exists()).toBe(true);
+        expect(versionA.members?.[1].exists()).toBe(false);
+
+        expect(versionB.members?.[0].exists()).toBe(false);
+        expect(versionB.members?.[1].exists()).toBe(true);
+    });
+
+    it('History tracking for new arrays uses add operation', async () => {
         // Arrange
         const person = await PersonWithHistory.create();
-        const friendUrls = range(3).map(() => fakeResourceUrl(uuid()));
+        const friendUrls = range(3).map(() => fakeResourceUrl({ hash: uuid() }));
 
         // Act
         await person.update({ friendUrls });
@@ -1660,7 +2009,7 @@ describe('SolidModel', () => {
         const operation = person.operations[0];
         expect(operation.resourceUrl).toEqual(person.url);
         expect(operation.property).toEqual(IRI('foaf:knows'));
-        expect(operation.type).toBeUndefined();
+        expect(operation.type).toEqual(IRI('soukai:AddOperation'));
         expect(operation.value).toHaveLength(friendUrls.length);
 
         (operation.value as ModelKey[]).forEach((url, index) => {

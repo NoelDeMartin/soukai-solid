@@ -1,5 +1,6 @@
-import { arrayRemove, mixedWithoutTypes, tap, urlParentDirectory, urlRoot, urlRoute } from '@noeldemartin/utils';
-import { BelongsToManyRelation } from 'soukai';
+import { arrayRemove, map, mixedWithoutTypes, tap, urlParentDirectory, urlRoot, urlRoute } from '@noeldemartin/utils';
+import { BelongsToManyRelation, ModelKey } from 'soukai';
+import type { Model, RelationCloneOptions } from 'soukai';
 
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
@@ -88,8 +89,8 @@ export default class SolidBelongsToManyRelation<
         this.__modelsInSameDocument = [];
     }
 
-    public clone(): this {
-        return tap(super.clone(), clone => {
+    public clone(options: RelationCloneOptions = {}): this {
+        return tap(super.clone(options), clone => {
             this.cloneSolidData(clone);
         });
     }
@@ -99,6 +100,50 @@ export default class SolidBelongsToManyRelation<
             return;
 
         this.loadDocumentModels([], this.parent.getAttribute(this.foreignKeyName));
+    }
+
+    public __synchronizeRelated(other: this): void {
+        const foreignProperty = this.parent.getFieldRdfProperty(this.foreignKeyName);
+        const localKeyName = this.localKeyName as keyof Related;
+        const thisRelatedMap = map(this.related ?? [], localKeyName);
+        const otherRelatedMap = map(other.related ?? [], localKeyName);
+        const clones = tap(new WeakMap<Model, Model>(), clones => clones.set(other.parent, this.parent));
+
+        this.parent.operations
+            .filter(operation => !operation.exists() && operation.property === foreignProperty)
+            .map(operation => otherRelatedMap.get(
+                operation.value instanceof ModelKey
+                    ? operation.value.toString()
+                    : operation.value,
+            ))
+            .filter((model): model is Related => !!model)
+            .forEach(model => {
+                if (thisRelatedMap.hasKey(model.getAttribute(localKeyName as string)))
+                    return;
+
+                const newRelated = model.clone({ clones });
+
+                this.related?.push(newRelated);
+                thisRelatedMap.add(newRelated);
+            });
+
+        this.related = [
+            ...this.parent
+                .getAttribute<string[]>(this.foreignKeyName)
+                .map(foreignValue => {
+                    const thisRelated = thisRelatedMap.get(foreignValue);
+                    const otherRelated = otherRelatedMap.get(foreignValue);
+
+                    if (!thisRelated || !otherRelated)
+                        return thisRelated;
+
+                    thisRelated.static().synchronize(thisRelated, otherRelated);
+
+                    return thisRelated;
+                })
+                .filter((model): model is Related => !!model),
+            ...this.__newModels,
+        ];
     }
 
 }

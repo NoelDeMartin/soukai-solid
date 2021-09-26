@@ -693,8 +693,8 @@ describe('SolidClient', () => {
     it('updates array properties', async () => {
         // Arrange
         const personUrl = fakeResourceUrl();
-        const memberUrls = range(3).map(() => fakeResourceUrl(uuid()));
-        const friendUrls = range(2).map(() => fakeResourceUrl(uuid()));
+        const memberUrls = range(3).map(() => fakeResourceUrl({ hash: uuid() }));
+        const friendUrls = range(2).map(() => fakeResourceUrl({ hash: uuid() }));
         const fetchSpy = jest.spyOn(StubFetcher, 'fetch');
 
         StubFetcher.addFetchResponse();

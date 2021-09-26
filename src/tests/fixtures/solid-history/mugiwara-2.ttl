@@ -22,7 +22,7 @@
     a soukai:Metadata ;
     soukai:resource <#luffy> ;
     soukai:createdAt "1996-08-04T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:updatedAt "1997-09-01T00:00:00.000Z"^^xsd:dateTime .
+    soukai:updatedAt "1997-07-28T00:00:00.000Z"^^xsd:dateTime .
 
 <#luffy-operation-1>
     a soukai:Operation ;

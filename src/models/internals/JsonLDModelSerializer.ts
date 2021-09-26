@@ -4,7 +4,7 @@ import type { Attributes, BootedArrayFieldDefinition } from 'soukai';
 import type { JsonLD } from '@noeldemartin/solid-utils';
 
 import { inferFieldDefinition } from '@/models/fields';
-import { isSolidBelongsToRelation, isSolidMultiModelDocumentRelation } from '@/models/relations/internals/guards';
+import { isSolidHasRelation, isSolidMultiModelDocumentRelation } from '@/models/relations/internals/guards';
 import type { SolidBootedFieldDefinition } from '@/models/fields';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidRelation } from '@/models/relations/inference';
@@ -187,30 +187,29 @@ export default class JsonLDModelSerializer {
 
     private setJsonLDRelation(jsonld: JsonLD, relation: SolidRelation, ignoredModels: Set<SolidModel>): void {
         const relatedInstance = relation.relatedClass.instance() as SolidModel;
-        const belongsTo = isSolidBelongsToRelation(relation);
+        const solidHasRelation = isSolidHasRelation(relation);
         const expandedForeignProperty =
-            belongsTo
-                ? relation.parent.getFieldRdfProperty(relation.foreignKeyName)
-                : relatedInstance.getFieldRdfProperty(relation.foreignKeyName);
+            solidHasRelation
+                ? relatedInstance.getFieldRdfProperty(relation.foreignKeyName)
+                : relation.parent.getFieldRdfProperty(relation.foreignKeyName);
         const foreignProperty = this.processExpandedIRI(expandedForeignProperty as string);
         const serializeOptions: SerializeOptions = {
             ignoreModels: ignoredModels,
             includeRelations: true,
             includeContext: false,
         };
-        const serializeRelatedModel = (model: SolidModel) =>
-            tap(this.serialize(model, serializeOptions), jsonld => {
+        const serializeRelatedModel = !solidHasRelation
+            ? (model: SolidModel) => this.serialize(model, serializeOptions)
+            : (model: SolidModel) => tap(this.serialize(model, serializeOptions), jsonld => {
                 delete jsonld[foreignProperty];
             });
 
-        this.context.addReverseProperty(relation.name, foreignProperty);
+        if (solidHasRelation)
+            this.context.addReverseProperty(relation.name, foreignProperty);
 
-        jsonld[relation.name] = isSolidMultiModelDocumentRelation(relation)
+        jsonld[solidHasRelation ? relation.name : foreignProperty] = isSolidMultiModelDocumentRelation(relation)
             ? relation.getLoadedModels().map(model => serializeRelatedModel(model))
             : serializeRelatedModel(relation.related as SolidModel);
-
-        if (belongsTo)
-            delete jsonld[foreignProperty];
     }
 
     private setJsonLDTypes(jsonld: JsonLD, model: SolidModel): void {

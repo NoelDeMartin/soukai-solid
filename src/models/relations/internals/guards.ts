@@ -19,6 +19,10 @@ interface BeforeParentCreateRelation extends Relation {
     __beforeParentCreate(): void;
 }
 
+interface SynchronizesRelatedModels extends Relation {
+    __synchronizeRelated(other: Relation): void;
+}
+
 export function hasBeforeParentCreateHook(relation: Relation): relation is BeforeParentCreateRelation {
     return '__beforeParentCreate' in relation;
 }
@@ -47,4 +51,8 @@ export function isSolidBelongsToRelation(relation: unknown): relation is SolidBe
 
 export function isSolidHasRelation(relation: unknown): relation is SolidHasRelation {
     return usesMixin(relation, SolidHasRelation);
+}
+
+export function synchronizesRelatedModels(relation: Relation): relation is SynchronizesRelatedModels {
+    return '__synchronizeRelated' in relation;
 }

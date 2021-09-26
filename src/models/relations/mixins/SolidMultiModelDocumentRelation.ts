@@ -1,6 +1,6 @@
 import { arrayUnique, tap } from '@noeldemartin/utils';
 import { SoukaiError } from 'soukai';
-import type { Attributes, MultiModelRelation } from 'soukai';
+import type { Attributes, Key, MultiModelRelation } from 'soukai';
 
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
@@ -70,7 +70,7 @@ export default class SolidMultiModelDocumentRelation<
      */
     public async save(this: This, model: Related): Promise<Related> {
         this.assertLoaded('save');
-        this.add(model);
+        this.attach(model);
 
         if (!this.useSameDocument)
             await model.save();
@@ -80,9 +80,9 @@ export default class SolidMultiModelDocumentRelation<
         return model;
     }
 
-    public add(model: Related): Related;
-    public add(attributes: Attributes): Related;
-    public add(this: This<Parent, Related, RelatedClass>, modelOrAttributes: Related | Attributes): Related {
+    public attach(model: Related): Related;
+    public attach(attributes: Attributes): Related;
+    public attach(this: This<Parent, Related, RelatedClass>, modelOrAttributes: Related | Attributes): Related {
         const model = modelOrAttributes instanceof this.relatedClass
             ? modelOrAttributes as Related
             : this.relatedClass.newInstance(modelOrAttributes);
@@ -98,6 +98,28 @@ export default class SolidMultiModelDocumentRelation<
             this.initializeInverseRelations(model);
             this.setForeignAttributes(model);
         });
+    }
+
+    public async remove(this: This<Parent, Related, RelatedClass>, keyOrModel: Key | Related): Promise<void> {
+        this.detach(keyOrModel);
+
+        await this.parent.save();
+    }
+
+    public detach(this: This<Parent, Related, RelatedClass>, keyOrModel: string | Related): void {
+        const localKey = typeof keyOrModel === 'string' ? keyOrModel : keyOrModel.getAttribute(this.localKeyName);
+
+        this.related = this.related?.filter(model => model.getAttribute(this.localKeyName) !== localKey);
+        this.__newModels = this.__newModels.filter(model => model.getAttribute(this.localKeyName) !== localKey);
+        this.__modelsInSameDocument = this.__modelsInSameDocument
+            ?.filter(model => model.getAttribute(this.localKeyName) !== localKey);
+        this.__modelsInOtherDocumentIds =
+            this.__modelsInOtherDocumentIds?.filter(id => id !== localKey);
+
+        this.parent.setAttribute(
+            this.foreignKeyName,
+            this.parent.getAttribute<Key[]>(this.foreignKeyName).filter(key => key !== localKey),
+        );
     }
 
     protected cloneSolidData(clone: This<Parent, Related, RelatedClass>): void {

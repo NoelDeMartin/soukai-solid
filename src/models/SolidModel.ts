@@ -11,6 +11,7 @@ import {
     mixed,
     objectWithout,
     objectWithoutEmpty,
+    requireUrlParentDirectory,
     tap,
     urlParentDirectory,
     urlResolve,
@@ -63,6 +64,7 @@ import {
     isSolidDocumentRelation,
     isSolidMultiModelDocumentRelation,
     isSolidSingleModelDocumentRelation,
+    synchronizesRelatedModels,
 } from './relations/internals/guards';
 import { inferFieldDefinition } from './fields';
 import { SolidModelOperationType } from './SolidModelOperation';
@@ -259,6 +261,31 @@ export class SolidModel extends SolidModelBase {
         });
     }
 
+    public static async synchronize<T extends SolidModel>(this: SolidModelConstructor<T>, a: T, b: T): Promise<void> {
+        if (this !== a.static())
+            return a.static().synchronize(a, b);
+
+        if (a.getPrimaryKey() !== b.getPrimaryKey())
+            throw new SoukaiError('Can\'t synchronize different models');
+
+        await a.loadRelationIfUnloaded('operations');
+        await b.loadRelationIfUnloaded('operations');
+
+        if (a.operations.length === 0 && b.operations.length === 0)
+            return;
+
+        a.addHistoryOperations(b.operations);
+        b.addHistoryOperations(a.operations);
+
+        for (const relation of arrayWithout(this.relations, ['metadata', 'operations'])) {
+            const relationA = a.requireRelation(relation);
+            const relationB = b.requireRelation(relation);
+
+            when(relationA, synchronizesRelatedModels).__synchronizeRelated(relationB);
+            when(relationB, synchronizesRelatedModels).__synchronizeRelated(relationA);
+        }
+    }
+
     protected static async withCollection<Result>(
         collection: string | undefined | (() => Result | Promise<Result>) = '',
         operation?: () => Result | Promise<Result>,
@@ -293,12 +320,16 @@ export class SolidModel extends SolidModelBase {
 
     protected _documentExists!: boolean;
     protected _sourceDocumentUrl!: string | null;
+    protected _trackedDirtyAttributes!: Attributes;
+    protected _removedResourceUrls!: string[];
 
     private _history?: boolean;
 
     protected initialize(attributes: Attributes, exists: boolean): void {
         this._documentExists = exists;
         this._sourceDocumentUrl = this._sourceDocumentUrl ?? null;
+        this._trackedDirtyAttributes = {};
+        this._removedResourceUrls = [];
 
         super.initialize(attributes, exists);
     }
@@ -323,7 +354,7 @@ export class SolidModel extends SolidModelBase {
         }), this._exists);
 
         metadataModel.resourceUrl && metadataModel.mintUrl(this.getDocumentUrl() || undefined, this._documentExists);
-        metadataRelation.set(metadataModel);
+        metadataRelation.attach(metadataModel);
 
         delete this._attributes.createdAt;
         delete this._attributes.updatedAt;
@@ -386,7 +417,9 @@ export class SolidModel extends SolidModelBase {
 
     public isDirty(field?: string, ignoreRelations?: boolean): boolean {
         if (field)
-            return super.isDirty(field);
+            return this.static('timestamps').includes(field as TimestampFieldValue)
+                ? this.metadata?.isDirty(field) || super.isDirty(field)
+                : super.isDirty(field);
 
         if (super.isDirty())
             return true;
@@ -396,10 +429,12 @@ export class SolidModel extends SolidModelBase {
             : this.getDocumentModels().filter(model => model.isDirty(undefined, true)).length > 0;
     }
 
-    public cleanDirty(): void {
+    public cleanDirty(ignoreRelations?: boolean): void {
         super.cleanDirty();
 
         this._documentExists = true;
+        this._trackedDirtyAttributes = {};
+        this._removedResourceUrls = [];
 
         Object
             .values(this._relations)
@@ -421,6 +456,9 @@ export class SolidModel extends SolidModelBase {
 
                 delete relation.__newModel;
             });
+
+        if (!ignoreRelations)
+            this.getDocumentModels().forEach(model => model.cleanDirty(true));
     }
 
     public tracksHistory(): boolean {
@@ -466,6 +504,13 @@ export class SolidModel extends SolidModelBase {
         filledAttributes.delete(this.static('primaryKey'));
         filledAttributes.delete(TimestampField.CreatedAt);
         filledAttributes.delete(TimestampField.UpdatedAt);
+
+        Object.entries(this.static('fields')).forEach(([name, definition]) => {
+            if (definition.type !== FieldType.Array)
+                return;
+
+            this.setAttribute(name, []);
+        });
 
         for (const operation of operations) {
             if (!(operation.property in fields))
@@ -522,6 +567,10 @@ export class SolidModel extends SolidModelBase {
 
         return fieldDefinition?.rdfProperty
             ?? this.getDefaultRdfContext() + field;
+    }
+
+    public requireFieldRdfProperty(field: string): string {
+        return this.getFieldRdfProperty(field) ?? fail(`Couldn't get required property for rdf field '${field}'`);
     }
 
     public setAttribute(field: string, value: unknown): void {
@@ -648,7 +697,7 @@ export class SolidModel extends SolidModelBase {
     }
 
     protected async beforeSave(ignoreRelations?: boolean): Promise<void> {
-        const updatedAtWasDirty =
+        const wasTouched =
             this.isDirty(TimestampField.UpdatedAt) ||
             !!this.metadata?.isDirty(TimestampField.UpdatedAt);
 
@@ -664,7 +713,7 @@ export class SolidModel extends SolidModelBase {
         await this.beforeDocumentSave();
         await Promise.all(this.getDirtyDocumentModels().map(async model => model.exists() && model.beforeUpdate()));
 
-        updatedAtWasDirty || this.resetUntouchedModelTimestamp();
+        this.reconcileModelTimestamps(wasTouched);
     }
 
     protected async beforeDocumentSave(): Promise<void> {
@@ -703,7 +752,7 @@ export class SolidModel extends SolidModelBase {
             return;
 
         if (this.isDirty(undefined, true)) {
-            await this.addHistoryOperations();
+            await this.addDirtyHistoryOperations();
             await Promise.all(this.operations.map(async operation => {
                 if (operation.exists())
                     return;
@@ -749,19 +798,19 @@ export class SolidModel extends SolidModelBase {
         const documentUrl = this.getDocumentUrl();
 
         const createDocument = () => this.requireEngine().create(
-            this.static('collection'),
+            documentUrl ? requireUrlParentDirectory(documentUrl) : this.static('collection'),
             this.toEngineDocument(),
             documentUrl || undefined,
         );
         const addToDocument = () => this.requireEngine().update(
-            this.static('collection'),
+            requireUrlParentDirectory(documentUrl as string),
             documentUrl as string,
             {
                 '@graph': { $push: this.serializeToJsonLD(false) as EngineDocument },
             },
         );
         const updateDocument = () => this.requireEngine().update(
-            this.static('collection'),
+            requireUrlParentDirectory(documentUrl as string),
             documentUrl as string,
             this.getDirtyEngineDocumentUpdates(),
         );
@@ -784,7 +833,7 @@ export class SolidModel extends SolidModelBase {
         await this.deleteModels(models);
     }
 
-    protected async addHistoryOperations(): Promise<void> {
+    protected async addDirtyHistoryOperations(): Promise<void> {
         await this.loadRelationIfUnloaded('operations');
 
         if (this.operations.length === 0) {
@@ -796,7 +845,10 @@ export class SolidModel extends SolidModelBase {
                 if (value === null || Array.isArray(value) && value.length === 0)
                     continue;
 
-                this.relatedOperations.add({
+                if (field in this._trackedDirtyAttributes && this._trackedDirtyAttributes[field] === value)
+                    continue;
+
+                this.relatedOperations.attach({
                     property: this.getFieldRdfProperty(field),
                     date: this.metadata.createdAt,
                     value: this.getOperationValue(field, value),
@@ -805,6 +857,9 @@ export class SolidModel extends SolidModelBase {
         }
 
         for (const [field, value] of Object.entries(this._dirtyAttributes)) {
+            if (field in this._trackedDirtyAttributes && this._trackedDirtyAttributes[field] === value)
+                continue;
+
             if (Array.isArray(value)) {
                 this.addArrayHistoryOperations(field, value, this._originalAttributes[field]);
 
@@ -813,12 +868,77 @@ export class SolidModel extends SolidModelBase {
 
             // TODO handle unset operations
 
-            this.relatedOperations.add({
+            this.relatedOperations.attach({
                 property: this.getFieldRdfProperty(field),
                 date: this.metadata.updatedAt,
                 value: this.getOperationValue(field, value),
             });
         }
+    }
+
+    protected addHistoryOperations(operations: SolidModelOperation[]): void {
+        const knownOperationUrls = new Set(this.operations.map(operation => operation.url));
+        const newOperations: SolidModelOperation[] = [];
+        const trackedDirtyProperties: Set<string> = new Set();
+        const fieldPropertiesMap = Object
+            .keys(this.static('fields'))
+            .reduce((fieldProperties, field) => {
+                const rdfProperty = this.getFieldRdfProperty(field);
+
+                if (rdfProperty)
+                    fieldProperties[rdfProperty] = field;
+
+                return fieldProperties;
+            }, {} as Record<string, string>);
+
+        for (const operation of operations) {
+            if (knownOperationUrls.has(operation.url))
+                continue;
+
+            const newOperation = operation.clone();
+
+            newOperation.reset();
+            newOperation.url = operation.url;
+
+            newOperations.push(newOperation);
+
+            if (operation.property in fieldPropertiesMap)
+                trackedDirtyProperties.add(operation.property);
+        }
+
+        this.setRelationModels('operations', arraySorted([...this.operations, ...newOperations], ['date', 'url']));
+        this.removeDuplicatedHistoryOperations();
+        this.rebuildAttributesFromHistory();
+
+        for (const trackedDirtyProperty of trackedDirtyProperties) {
+            const field = fieldPropertiesMap[trackedDirtyProperty];
+
+            this._trackedDirtyAttributes[field] = this._dirtyAttributes[field];
+        }
+    }
+
+    protected removeDuplicatedHistoryOperations(): void {
+        const inceptionProperties: string[] = [];
+        const duplicatedOperationUrls: string[] = [];
+        const inceptionOperations = this.operations
+            .filter(operation => operation.date.getTime() === this.createdAt.getTime());
+        const isNotDuplicated = (operation: SolidModelOperation): boolean =>
+            !duplicatedOperationUrls.includes(operation.url);
+
+        for (const inceptionOperation of inceptionOperations) {
+            if (!inceptionProperties.includes(inceptionOperation.property)) {
+                inceptionProperties.push(inceptionOperation.property);
+
+                continue;
+            }
+
+            duplicatedOperationUrls.push(inceptionOperation.url);
+
+            if (inceptionOperation.exists())
+                this._removedResourceUrls.push(inceptionOperation.url);
+        }
+
+        this.setRelationModels('operations', this.operations.filter(isNotDuplicated));
     }
 
     /* eslint-disable max-len */
@@ -913,6 +1033,13 @@ export class SolidModel extends SolidModelBase {
                 },
             });
         }
+
+        this._removedResourceUrls.forEach(removedResourceUrl => graphUpdates.push({
+            $updateItems: {
+                $where: { '@id': removedResourceUrl },
+                $unset: true,
+            },
+        }));
 
         return graphUpdates.length === 1
             ? { '@graph': graphUpdates[0] }
@@ -1071,16 +1198,6 @@ export class SolidModel extends SolidModelBase {
         const originalValues = this.getOperationValue<unknown[]>(field, originalValue);
         const dirtyValues = this.getOperationValue<unknown[]>(field, dirtyValue);
 
-        if (originalValues.length === 0) {
-            this.relatedOperations.add({
-                property: this.getFieldRdfProperty(field),
-                date: this.metadata.updatedAt,
-                value: dirtyValues,
-            });
-
-            return;
-        }
-
         const { added, removed } = arrayDiff(
             originalValues,
             dirtyValues,
@@ -1090,7 +1207,7 @@ export class SolidModel extends SolidModelBase {
         );
 
         if (added.length > 0)
-            this.relatedOperations.add({
+            this.relatedOperations.attach({
                 property: this.getFieldRdfProperty(field),
                 type: SolidModelOperationType.Add,
                 date: this.metadata.updatedAt,
@@ -1098,7 +1215,7 @@ export class SolidModel extends SolidModelBase {
             });
 
         if (removed.length > 0)
-            this.relatedOperations.add({
+            this.relatedOperations.attach({
                 property: this.getFieldRdfProperty(field),
                 type: SolidModelOperationType.Remove,
                 date: this.metadata.updatedAt,
@@ -1141,7 +1258,18 @@ export class SolidModel extends SolidModelBase {
         }
     }
 
-    private resetUntouchedModelTimestamp(): void {
+    private reconcileModelTimestamps(wasTouchedBeforeSaving: boolean): void {
+        const operationsLength = this.operations?.length ?? 0;
+
+        if (operationsLength > 0) {
+            this.setAttribute(TimestampField.UpdatedAt, this.operations[operationsLength - 1].date);
+
+            return;
+        }
+
+        if (wasTouchedBeforeSaving)
+            return;
+
         const originalUpdatedAt =
             this._originalAttributes[TimestampField.UpdatedAt]
             ?? this.metadata?._originalAttributes[TimestampField.UpdatedAt];

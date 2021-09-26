@@ -68,7 +68,7 @@ export default class SolidSingleModelDocumentRelation<
      */
     public async save(this: This, model: Related): Promise<Related> {
         this.assertNotLoaded('save');
-        this.set(model);
+        this.attach(model);
 
         if (!this.useSameDocument)
             await model.save();
@@ -78,9 +78,9 @@ export default class SolidSingleModelDocumentRelation<
         return model;
     }
 
-    public set(model: Related): Related;
-    public set(attributes: Attributes): Related;
-    public set(this: This<Parent, Related, RelatedClass>, modelOrAttributes: Related | Attributes): Related {
+    public attach(model: Related): Related;
+    public attach(attributes: Attributes): Related;
+    public attach(this: This<Parent, Related, RelatedClass>, modelOrAttributes: Related | Attributes): Related {
         const model = modelOrAttributes instanceof this.relatedClass
             ? modelOrAttributes as Related
             : this.relatedClass.newInstance(modelOrAttributes);
