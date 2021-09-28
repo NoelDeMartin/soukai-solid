@@ -3,6 +3,7 @@ import { stringToSlug } from '@noeldemartin/utils';
 import type { IModel, Relation, TimestampFieldValue } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
+import type { SolidHasManyRelation } from '@/models';
 
 import Group from '@/testing/lib/stubs/Group';
 
@@ -33,6 +34,7 @@ export default class Person extends SolidModel {
     } as const;
 
     public friends?: Person[];
+    public relatedFriends!: SolidHasManyRelation<Person, Person, typeof Person>;
     public group?: Group;
 
     public friendsRelationship(): Relation {

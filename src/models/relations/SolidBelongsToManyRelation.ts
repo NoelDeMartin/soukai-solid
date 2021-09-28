@@ -1,4 +1,13 @@
-import { arrayRemove, map, mixedWithoutTypes, tap, urlParentDirectory, urlRoot, urlRoute } from '@noeldemartin/utils';
+import {
+    arrayFrom,
+    arrayRemove,
+    map,
+    mixedWithoutTypes,
+    tap,
+    urlParentDirectory,
+    urlRoot,
+    urlRoute,
+} from '@noeldemartin/utils';
 import { BelongsToManyRelation, ModelKey } from 'soukai';
 import type { Model, RelationCloneOptions } from 'soukai';
 
@@ -111,11 +120,9 @@ export default class SolidBelongsToManyRelation<
 
         this.parent.operations
             .filter(operation => !operation.exists() && operation.property === foreignProperty)
-            .map(operation => otherRelatedMap.get(
-                operation.value instanceof ModelKey
-                    ? operation.value.toString()
-                    : operation.value,
-            ))
+            .map(operation => arrayFrom(operation.value))
+            .flat()
+            .map(foreignKey => otherRelatedMap.get(foreignKey instanceof ModelKey ? foreignKey.toString() : foreignKey))
             .filter((model): model is Related => !!model)
             .forEach(model => {
                 if (thisRelatedMap.hasKey(model.getAttribute(localKeyName as string)))
