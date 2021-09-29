@@ -277,6 +277,9 @@ export class SolidModel extends SolidModelBase {
         if (a.operations.length === 0 && b.operations.length === 0)
             return;
 
+        if (a.getHistoryHash() === b.getHistoryHash())
+            return;
+
         a.addHistoryOperations(b.operations);
         b.addHistoryOperations(a.operations);
 
