@@ -627,6 +627,80 @@ export class SolidModel extends SolidModelBase {
         return this.metadata?.updatedAt ?? super.getAttributeValue('updatedAt');
     }
 
+    public getDocumentModels(_documentModels?: Set<SolidModel>): SolidModel[] {
+        const documentModels = _documentModels ?? new Set();
+
+        if (documentModels.has(this))
+            return [...documentModels];
+
+        const documentUrl = this.getDocumentUrl();
+
+        documentModels.add(this);
+
+        for (const relation of Object.values(this._relations)) {
+            if (!isSolidDocumentRelation(relation) || !relation.loaded || !relation.useSameDocument)
+                continue;
+
+            const relatedDocumentModels = [
+                ...(
+                    (isSolidSingleModelDocumentRelation(relation) && relation.__newModel)
+                        ? relation.__newModel.getDocumentModels(documentModels)
+                        : []
+                ),
+                ...(
+                    isSolidMultiModelDocumentRelation(relation)
+                        ? relation.__newModels.map(model => model.getDocumentModels(documentModels)).flat()
+                        : []
+                ),
+                ...relation
+                    .getLoadedModels()
+                    .filter(model => model.getDocumentUrl() === documentUrl)
+                    .map(model => model.getDocumentModels(documentModels))
+                    .flat(),
+            ];
+
+            relatedDocumentModels.forEach(model => documentModels.add(model));
+        }
+
+        return [...documentModels];
+    }
+
+    public getDirtyDocumentModels(): SolidModel[] {
+        return this.getDocumentModels().filter(model => model.isDirty());
+    }
+
+    public getRelatedModels(_relatedModels?: Set<SolidModel>): SolidModel[] {
+        const relatedModels = _relatedModels ?? new Set();
+
+        if (relatedModels.has(this))
+            return [...relatedModels];
+
+        relatedModels.add(this);
+
+        for (const relation of Object.values(this._relations)) {
+            const relationModels = [
+                ...(
+                    (isSolidSingleModelDocumentRelation(relation) && relation.__newModel)
+                        ? relation.__newModel.getRelatedModels(relatedModels)
+                        : []
+                ),
+                ...(
+                    isSolidMultiModelDocumentRelation(relation)
+                        ? relation.__newModels.map(model => model.getRelatedModels(relatedModels)).flat()
+                        : []
+                ),
+                ...relation
+                    .getLoadedModels()
+                    .map(model => model.getRelatedModels(relatedModels))
+                    .flat(),
+            ];
+
+            relationModels.forEach(model => relatedModels.add(model));
+        }
+
+        return [...relatedModels];
+    }
+
     public metadataRelationship(): Relation {
         const metadataModelClass = requireBootedModel<typeof SolidModelMetadata>('SolidModelMetadata');
 
@@ -1139,80 +1213,6 @@ export class SolidModel extends SolidModelBase {
                     .forEach(model => relation.setForeignAttributes(model));
             }
         }
-    }
-
-    private getDocumentModels(_documentModels?: Set<SolidModel>): SolidModel[] {
-        const documentModels = _documentModels ?? new Set();
-
-        if (documentModels.has(this))
-            return [...documentModels];
-
-        const documentUrl = this.getDocumentUrl();
-
-        documentModels.add(this);
-
-        for (const relation of Object.values(this._relations)) {
-            if (!isSolidDocumentRelation(relation) || !relation.loaded || !relation.useSameDocument)
-                continue;
-
-            const relatedDocumentModels = [
-                ...(
-                    (isSolidSingleModelDocumentRelation(relation) && relation.__newModel)
-                        ? relation.__newModel.getDocumentModels(documentModels)
-                        : []
-                ),
-                ...(
-                    isSolidMultiModelDocumentRelation(relation)
-                        ? relation.__newModels.map(model => model.getDocumentModels(documentModels)).flat()
-                        : []
-                ),
-                ...relation
-                    .getLoadedModels()
-                    .filter(model => model.getDocumentUrl() === documentUrl)
-                    .map(model => model.getDocumentModels(documentModels))
-                    .flat(),
-            ];
-
-            relatedDocumentModels.forEach(model => documentModels.add(model));
-        }
-
-        return [...documentModels];
-    }
-
-    private getDirtyDocumentModels(): SolidModel[] {
-        return this.getDocumentModels().filter(model => model.isDirty());
-    }
-
-    private getRelatedModels(_relatedModels?: Set<SolidModel>): SolidModel[] {
-        const relatedModels = _relatedModels ?? new Set();
-
-        if (relatedModels.has(this))
-            return [...relatedModels];
-
-        relatedModels.add(this);
-
-        for (const relation of Object.values(this._relations)) {
-            const relationModels = [
-                ...(
-                    (isSolidSingleModelDocumentRelation(relation) && relation.__newModel)
-                        ? relation.__newModel.getRelatedModels(relatedModels)
-                        : []
-                ),
-                ...(
-                    isSolidMultiModelDocumentRelation(relation)
-                        ? relation.__newModels.map(model => model.getRelatedModels(relatedModels)).flat()
-                        : []
-                ),
-                ...relation
-                    .getLoadedModels()
-                    .map(model => model.getRelatedModels(relatedModels))
-                    .flat(),
-            ];
-
-            relationModels.forEach(model => relatedModels.add(model));
-        }
-
-        return [...relatedModels];
     }
 
     private getOperationValue<T = unknown>(field: string): T;
