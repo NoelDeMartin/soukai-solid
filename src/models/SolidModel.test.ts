@@ -1,12 +1,12 @@
 /* eslint-disable max-len */
-import { after, arrayWithout, range, stringToSlug, tap, toString, tt, urlParentDirectory, urlResolve, urlResolveDirectory, uuid } from '@noeldemartin/utils';
+import { after, arrayWithout, range, stringToSlug, tap, toString, tt, urlParentDirectory, urlResolve, urlResolveDirectory, urlRoute, uuid } from '@noeldemartin/utils';
 import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
 import { FieldType, InMemoryEngine, ModelKey, bootModels, setEngine } from 'soukai';
 import dayjs from 'dayjs';
 import Faker from 'faker';
 import type { EngineDocument, Relation } from 'soukai';
 import type { Equals, Expect } from '@noeldemartin/utils';
-import type { JsonLDResource } from '@noeldemartin/solid-utils';
+import type { JsonLDGraph , JsonLDResource } from '@noeldemartin/solid-utils';
 
 import IRI from '@/solid/utils/IRI';
 import { SolidModelOperationType } from '@/models/SolidModelOperation';
@@ -580,9 +580,11 @@ describe('SolidModel', () => {
         // Arrange
         class StubModel extends SolidModel {}
 
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const containerUrl = fakeContainerUrl();
         const escapedContainerUrl = containerUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const resourceUrl = urlResolve(containerUrl, stringToSlug(Faker.random.word()));
+        const resourceUrl = fakeResourceUrl({ containerUrl });
+
+        urlResolve(containerUrl, stringToSlug(Faker.random.word()));
 
         engine.setOne({ url: resourceUrl });
         jest.spyOn(engine, 'create');
@@ -597,19 +599,79 @@ describe('SolidModel', () => {
         // Assert
         expect(typeof model.url).toEqual('string');
         expect(model.url).not.toEqual(resourceUrl);
-        expect(model.url).toMatch(new RegExp(`^${escapedContainerUrl}[\\d\\w-]+$`));
+        expect(model.url).toMatch(new RegExp(`^${escapedContainerUrl}[\\d\\w-]+#it$`));
         expect(model.url.startsWith(containerUrl)).toBe(true);
 
         expect(engine.create).toHaveBeenCalledWith(
             containerUrl,
             expect.anything(),
-            resourceUrl,
+            urlRoute(resourceUrl),
         );
         expect(engine.create).toHaveBeenCalledWith(
             containerUrl,
             expect.anything(),
-            model.url,
+            urlRoute(model.url),
         );
+    });
+
+    it('minted unique urls update relations', async () => {
+        // Arrange
+        const containerUrl = fakeContainerUrl();
+        const escapedContainerUrl = containerUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        const resourceUrl = fakeResourceUrl({ containerUrl });
+        const createSpy = jest.spyOn(engine, 'create');
+
+        engine.setOne({ url: resourceUrl });
+
+        // Act
+        const movie = new Movie({ url: resourceUrl });
+
+        movie.relatedActions.create({});
+        movie.relatedActors.create({});
+        movie.relatedActors.create({});
+
+        await movie.save();
+
+        // Assert
+        expect(movie.url).not.toEqual(resourceUrl);
+        expect(movie.url).toMatch(new RegExp(`^${escapedContainerUrl}[\\d\\w-]+#it$`));
+        expect(movie.url.startsWith(containerUrl)).toBe(true);
+
+        const actions = movie.actions as WatchAction[];
+        expect(actions).toHaveLength(1);
+        expect(actions[0].object).toEqual(movie.url);
+
+        const actors = movie.actors as Person[];
+        expect(actors).toHaveLength(2);
+        expect(actors[0].starred).toHaveLength(1);
+        expect(actors[0].starred[0]).toEqual(movie.url);
+        expect(actors[1].starred).toHaveLength(1);
+        expect(actors[1].starred[0]).toEqual(movie.url);
+
+        expect(engine.create).toHaveBeenCalledWith(
+            containerUrl,
+            expect.anything(),
+            urlRoute(resourceUrl),
+        );
+        expect(engine.create).toHaveBeenCalledWith(
+            containerUrl,
+            expect.anything(),
+            urlRoute(movie.url),
+        );
+
+        const graph = createSpy.mock.calls[1][1] as JsonLDGraph;
+
+        const actionJsonLD = graph['@graph'].find(resource => resource['@id'] === actions[0].url) as JsonLDResource;
+        const actionMovieJsonLD = actionJsonLD['object'] as JsonLDResource;
+        expect(actionMovieJsonLD['@id']).toEqual(movie.url);
+
+        const firstActorJsonLD = graph['@graph'].find(resource => resource['@id'] === actors[0].url) as JsonLDResource;
+        const firstActorMovieJsonLd = firstActorJsonLD['pastProject'] as JsonLDResource;
+        expect(firstActorMovieJsonLd['@id']).toEqual(movie.url);
+
+        const secondActorJsonLD = graph['@graph'].find(resource => resource['@id'] === actors[1].url) as JsonLDResource;
+        const secondActorMovieJsonLd = secondActorJsonLD['pastProject'] as JsonLDResource;
+        expect(secondActorMovieJsonLd['@id']).toEqual(movie.url);
     });
 
     it('uses explicit containerUrl for minting url on save', async () => {

@@ -2,7 +2,7 @@ import {
     DocumentAlreadyExists,
     DocumentNotFound,
 } from 'soukai';
-import { uuid } from '@noeldemartin/utils';
+import { urlRoute, uuid } from '@noeldemartin/utils';
 import type {
     EngineDocument,
     EngineDocumentsCollection,
@@ -31,7 +31,7 @@ export default class StubEngine extends SolidEngine {
     }
 
     public async create(collection: string, attributes: EngineDocument, id?: string): Promise<string> {
-        if (id && this.one && this.one.url === id)
+        if (id && this.one?.url && urlRoute(this.one.url as string) === id)
             throw new DocumentAlreadyExists(id);
 
         if (id && this.many && this.many[collection] && this.many[collection][id])

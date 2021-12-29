@@ -1,6 +1,7 @@
 import {
     arrayDiff,
     arrayFrom,
+    arrayReplace,
     arraySorted,
     arrayUnique,
     arrayWithout,
@@ -16,6 +17,7 @@ import {
     tap,
     urlClean,
     urlParentDirectory,
+    urlParse,
     urlResolve,
     urlRoot,
     urlRoute,
@@ -64,6 +66,7 @@ import type RDFResource from '@/solid/RDFResource';
 import {
     hasBeforeParentCreateHook,
     isSolidDocumentRelation,
+    isSolidHasRelation,
     isSolidMultiModelDocumentRelation,
     isSolidSingleModelDocumentRelation,
     synchronizesRelatedModels,
@@ -589,22 +592,14 @@ export class SolidModel extends SolidModelBase {
     }
 
     public setAttribute(field: string, value: unknown): void {
-        const url = this.getPrimaryKey();
+        const oldPrimaryKey = this.getPrimaryKey();
 
         super.setAttribute(field, value);
 
-        if (url !== this.getPrimaryKey()) {
-            const url = this.getAttribute(field);
-            const documentUrl = this.getDocumentUrl() || undefined;
-            const documentExists = this.documentExists();
+        const primaryKey = this.getPrimaryKey();
 
-            this.metadata?.setAttribute('resourceUrl', url);
-            this.metadata?.mintUrl(documentUrl, documentExists);
-            this.operations?.map(operation => {
-                operation.setAttribute('resourceUrl', url);
-                operation.mintUrl(documentUrl, documentExists);
-            });
-        }
+        if (oldPrimaryKey !== primaryKey)
+            this.onPrimaryKeyUpdated(primaryKey, oldPrimaryKey);
     }
 
     public unsetAttribute(field: string): void {
@@ -881,6 +876,31 @@ export class SolidModel extends SolidModelBase {
             return;
 
         await Promise.all(this.getDirtyDocumentModels().map(model => model.afterSave(true)));
+    }
+
+    protected onPrimaryKeyUpdated(value: Key | null, oldValue: Key | null): void {
+        const documentUrl = this.getDocumentUrl() || undefined;
+        const documentExists = this.documentExists();
+        const hasRelations = Object.values(this._relations).filter(isSolidHasRelation);
+
+        for (const relation of hasRelations) {
+            relation.getLoadedModels().forEach(model => {
+                const foreignValue = model.getAttribute(relation.foreignKeyName);
+
+                model.setAttribute(
+                    relation.foreignKeyName,
+                    !Array.isArray(foreignValue)
+                        ? value
+                        : tap(
+                            foreignValue.slice(0),
+                            newForeignValue => arrayReplace(newForeignValue, oldValue, value),
+                        ),
+                );
+            });
+        }
+
+        this.metadata?.mintUrl(documentUrl, documentExists);
+        this.operations?.map(operation => operation.mintUrl(documentUrl, documentExists));
     }
 
     protected async syncDirty(): Promise<string> {
@@ -1186,7 +1206,10 @@ export class SolidModel extends SolidModelBase {
     protected newUniqueUrl(url?: string): string {
         url = url ?? this.newUrl();
 
-        return `${url}-${uuid()}`;
+        const fragment = urlParse(url)?.fragment;
+        const documentUrl = urlRoute(url);
+
+        return `${documentUrl}-${uuid()}${fragment ? `#${fragment}` : ''}`;
     }
 
     protected guessCollection(): string | undefined {

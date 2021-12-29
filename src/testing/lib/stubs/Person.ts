@@ -3,9 +3,10 @@ import { stringToSlug } from '@noeldemartin/utils';
 import type { IModel, Relation, TimestampFieldValue } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
-import type { SolidHasManyRelation } from '@/models';
+import type { SolidBelongsToManyRelation } from '@/models';
 
 import Group from '@/testing/lib/stubs/Group';
+import Movie from '@/testing/lib/stubs/Movie';
 
 export default class Person extends SolidModel {
 
@@ -26,6 +27,11 @@ export default class Person extends SolidModel {
             type: FieldType.Key,
             rdfProperty: 'foaf:made',
         },
+        starred: {
+            type: FieldType.Array,
+            rdfProperty: 'foaf:pastProject',
+            items: FieldType.Key,
+        },
         friendUrls: {
             type: FieldType.Array,
             rdfProperty: 'foaf:knows',
@@ -34,7 +40,8 @@ export default class Person extends SolidModel {
     } as const;
 
     public friends?: Person[];
-    public relatedFriends!: SolidHasManyRelation<Person, Person, typeof Person>;
+    public relatedFriends!: SolidBelongsToManyRelation<Person, Person, typeof Person>;
+    public relatedStarredMovies!: SolidBelongsToManyRelation<Person, Movie, typeof Movie>;
     public group?: Group;
 
     public friendsRelationship(): Relation {
@@ -43,6 +50,10 @@ export default class Person extends SolidModel {
 
     public groupRelationship(): Relation {
         return this.hasOne(Group, 'memberUrls');
+    }
+
+    public starredMovies(): Relation {
+        return this.belongsToMany(Movie, 'starred');
     }
 
     protected newUrl(documentUrl?: string, resourceHash?: string): string {

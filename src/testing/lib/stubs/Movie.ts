@@ -39,11 +39,20 @@ export default class Movie extends SolidModel {
     public relatedDirector!: SolidHasOneRelation<Movie, Person, typeof Person>;
     public actions: WatchAction[] | undefined;
     public relatedActions!: SolidHasManyRelation<Movie, WatchAction, typeof WatchAction>;
+    public actors: Person[] | undefined;
+    public relatedActors!: SolidHasManyRelation<Movie, Person, typeof Person>;
     public collection: MoviesCollection | undefined;
 
     public directorRelationship(): Relation {
         return this
             .hasOne(Person, 'directed')
+            .usingSameDocument()
+            .onDelete('cascade');
+    }
+
+    public actorsRelationship(): Relation {
+        return this
+            .hasMany(Person, 'starred')
             .usingSameDocument()
             .onDelete('cascade');
     }
