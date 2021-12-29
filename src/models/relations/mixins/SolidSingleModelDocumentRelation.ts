@@ -121,6 +121,7 @@ export default class SolidSingleModelDocumentRelation<
         modelsInOtherDocumentIds: string[],
     ): void {
         if (modelsInSameDocument.length + modelsInOtherDocumentIds.length > 1)
+            // eslint-disable-next-line no-console
             console.warn(
                 `The ${this.name} relationship in ${this.parent.static('modelName')} has been declared as hasOne, ` +
                 'but more than one related model were found.',

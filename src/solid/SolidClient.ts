@@ -61,7 +61,7 @@ export default class SolidClient {
             } catch (error) {
                 const url = typeof input === 'object' ? input.url : input;
 
-                throw new NetworkError(`Error fetching ${url}`, error);
+                throw new NetworkError(`Error fetching ${url}`, (error as Error));
             }
         };
         this.config = {
@@ -117,7 +117,7 @@ export default class SolidClient {
 
             return document;
         } catch (error) {
-            throw new MalformedDocumentError(url, DocumentFormat.RDF, error.message);
+            throw new MalformedDocumentError(url, DocumentFormat.RDF, (error as Error)?.message);
         }
     }
 
@@ -133,6 +133,7 @@ export default class SolidClient {
             if (this.config.useGlobbing) {
                 // Due to an existing bug, empty containers return 404
                 // see: https://github.com/solid/node-solid-server/issues/900
+                // eslint-disable-next-line no-console
                 console.error(error);
 
                 return [];
