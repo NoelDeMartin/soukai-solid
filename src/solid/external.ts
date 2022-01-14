@@ -33,12 +33,12 @@ export async function fromRDF(dataset: Quad[]): Promise<JsonLDResource[]> {
     return fromRDF(dataset) as Promise<JsonLDResource[]>;
 }
 
-export async function toRDF(input: JsonLD): Promise<Quad[]> {
+export async function toRDF(input: JsonLD, baseUrl?: string): Promise<Quad[]> {
     defineGlobal();
 
     const { toRDF } = await import('./external.chunk');
 
-    return toRDF(input as JsonLdObj) as Promise<Quad[]>;
+    return toRDF(input as JsonLdObj, { base: baseUrl }) as Promise<Quad[]>;
 }
 
 export async function fromTurtle(turtle: string, options: ParserOptions = {}): Promise<DocumentData> {

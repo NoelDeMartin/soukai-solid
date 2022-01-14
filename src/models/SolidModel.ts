@@ -35,6 +35,7 @@ import {
     isArrayFieldDefinition,
     requireBootedModel,
 } from 'soukai';
+import { parseResourceSubject } from '@noeldemartin/solid-utils';
 import type {
     Attributes,
     BootedFieldDefinition,
@@ -55,7 +56,7 @@ import type {
     TimestampFieldValue,
 } from 'soukai';
 import type { Constructor } from '@noeldemartin/utils';
-import type { JsonLD, JsonLDGraph, JsonLDResource } from '@noeldemartin/solid-utils';
+import type { JsonLD, JsonLDGraph, JsonLDResource, SubjectParts } from '@noeldemartin/solid-utils';
 
 import { SolidEngine } from '@/engines';
 
@@ -230,12 +231,17 @@ export class SolidModel extends SolidModelBase {
 
     public static async newFromJsonLD<T extends SolidModel>(
         this: SolidModelConstructor<T>,
-        jsonld: Omit<JsonLD, '@id'> & { '@id': string },
+        jsonld: JsonLD,
         baseUrl?: string,
     ): Promise<T> {
-        const rdfDocument = await RDFDocument.fromJsonLD(jsonld);
+        const originalId = jsonld['@id'];
+
+        baseUrl = baseUrl ?? this.collection;
+        jsonld['@id'] = originalId ?? `${uuid()}/${this.defaultResourceHash}`;
+
+        const rdfDocument = await RDFDocument.fromJsonLD(jsonld, baseUrl);
         const flatJsonLD = await rdfDocument.toJsonLD();
-        const resourceId = jsonld['@id'];
+        const resourceId = urlResolve(baseUrl, jsonld['@id']);
         const resource = rdfDocument.resource(resourceId);
         const documentUrl = baseUrl || urlRoute(resourceId);
         const attributes = await this.instance().parseEngineDocumentAttributes(
@@ -254,6 +260,7 @@ export class SolidModel extends SolidModelBase {
             await model.loadDocumentModels(documentUrl, flatJsonLD as EngineDocument);
 
             model.reset();
+            model._sourceSubject = originalId ? parseResourceSubject(originalId) : {};
 
             // TODO this should be recursive to take care of 2nd degree relations.
             for (const relationName of this.relations) {
@@ -265,6 +272,14 @@ export class SolidModel extends SolidModelBase {
                 models.forEach(model => model.reset());
             }
         });
+    }
+
+    public static async createFromJsonLD<T extends SolidModel>(
+        this: SolidModelConstructor<T>,
+        jsonld: JsonLD,
+        baseUrl?: string,
+    ): Promise<T> {
+        return tap(await this.newFromJsonLD(jsonld, baseUrl), model => model.save(baseUrl));
     }
 
     public static async synchronize<T extends SolidModel>(this: SolidModelConstructor<T>, a: T, b: T): Promise<void> {
@@ -333,7 +348,8 @@ export class SolidModel extends SolidModelBase {
     protected _removedResourceUrls!: string[];
     declare protected _relations: Record<string, SolidRelation>;
 
-    private _history?: boolean;
+    private _sourceSubject: SubjectParts = {};
+    declare private _history?: boolean;
 
     protected initialize(attributes: Attributes, exists: boolean): void {
         this._documentExists = exists;
@@ -1197,8 +1213,8 @@ export class SolidModel extends SolidModelBase {
     }
 
     protected newUrl(documentUrl?: string, resourceHash?: string): string {
-        documentUrl = documentUrl ?? urlResolve(this.static('collection'), uuid());
-        resourceHash = resourceHash ?? this.static('defaultResourceHash');
+        documentUrl = documentUrl ?? urlResolve(this.static('collection'), this._sourceSubject?.documentName ?? uuid());
+        resourceHash = resourceHash ?? this._sourceSubject?.resourceHash ?? this.static('defaultResourceHash');
 
         return `${documentUrl}#${resourceHash}`;
     }

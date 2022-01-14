@@ -35,12 +35,12 @@ export default class RDFDocument {
                 describedBy: getDescribedBy(options),
             });
         } catch (error) {
-            throw new RDFParsingError(error.message);
+            throw new RDFParsingError((error as Error).message);
         }
     }
 
-    public static async fromJsonLD(json: JsonLD): Promise<RDFDocument> {
-        const quads = await toRDF(json);
+    public static async fromJsonLD(json: JsonLD, baseUrl?: string): Promise<RDFDocument> {
+        const quads = await toRDF(json, baseUrl);
 
         return new RDFDocument(json['@id'] ? urlRoute(json['@id']) : null, quads);
     }

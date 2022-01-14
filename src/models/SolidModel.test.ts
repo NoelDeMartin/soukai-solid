@@ -184,9 +184,10 @@ describe('SolidModel', () => {
         bootModels({ StubModel });
 
         // Assert
-        expect(StubModel.classFields).toHaveLength(3);
+        expect(StubModel.classFields).toHaveLength(4);
         expect(StubModel.classFields).toContain('_history');
         expect(StubModel.classFields).toContain('_engine');
+        expect(StubModel.classFields).toContain('_sourceSubject');
         expect(StubModel.classFields).toContain('stubField');
     });
 
@@ -1404,6 +1405,41 @@ describe('SolidModel', () => {
             expect(group.relatedMembers.__modelsInOtherDocumentIds).toHaveLength(0);
             expect(group.relatedMembers.__newModels[index]).toBe(member);
         });
+    });
+
+    it('imports from JSON-LD', async () => {
+        // Arrange
+        const name = Faker.random.word();
+
+        // Act
+        const person = await Person.createFromJsonLD({
+            '@context': { '@vocab': 'http://xmlns.com/foaf/0.1/' },
+            '@id': 'john#it',
+            '@type': 'Person',
+            'name': name,
+        });
+
+        // Assert
+        expect(person.url).toEqual(`${Person.collection}john#it`);
+        expect(person.name).toEqual(name);
+        expect(person.createdAt).toBeInstanceOf(Date);
+    });
+
+    it('imports from JSON-LD without and @id', async () => {
+        // Arrange
+        const name = Faker.random.word();
+
+        // Act
+        const person = await Person.createFromJsonLD({
+            '@context': { '@vocab': 'http://xmlns.com/foaf/0.1/' },
+            '@type': 'Person',
+            'name': name,
+        });
+
+        // Assert
+        expect(person.url.startsWith(Person.collection)).toBe(true);
+        expect(person.name).toEqual(name);
+        expect(person.createdAt).toBeInstanceOf(Date);
     });
 
     it('Does not create operations on create', async () => {
