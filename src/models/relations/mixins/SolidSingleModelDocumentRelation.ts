@@ -28,9 +28,9 @@ export default class SolidSingleModelDocumentRelation<
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
 > extends SolidDocumentRelation<Related> {
 
-    public __newModel?: Related;
-    public __modelInSameDocument?: Related;
-    public __modelInOtherDocumentId?: string;
+    declare public __newModel?: Related;
+    declare public __modelInSameDocument?: Related;
+    declare public __modelInOtherDocumentId?: string;
 
     public isEmpty(this: This): boolean | null {
         if (!this.documentModelsLoaded && this.parent.exists())

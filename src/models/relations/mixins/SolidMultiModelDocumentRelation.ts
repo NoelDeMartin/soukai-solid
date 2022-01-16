@@ -29,8 +29,8 @@ export default class SolidMultiModelDocumentRelation<
 > extends SolidDocumentRelation<Related> {
 
     public __newModels: Related[] = [];
-    public __modelsInSameDocument?: Related[];
-    public __modelsInOtherDocumentIds?: string[];
+    declare public __modelsInSameDocument?: Related[];
+    declare public __modelsInOtherDocumentIds?: string[];
 
     public isEmpty(this: This): boolean | null {
         if (!this.documentModelsLoaded && this.parent.exists())

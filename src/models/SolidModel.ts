@@ -35,7 +35,7 @@ import {
     isArrayFieldDefinition,
     requireBootedModel,
 } from 'soukai';
-import { parseResourceSubject } from '@noeldemartin/solid-utils';
+import { mintJsonLDIdentifiers, parseResourceSubject } from '@noeldemartin/solid-utils';
 import type {
     Attributes,
     BootedFieldDefinition,
@@ -231,14 +231,12 @@ export class SolidModel extends SolidModelBase {
 
     public static async newFromJsonLD<T extends SolidModel>(
         this: SolidModelConstructor<T>,
-        jsonld: JsonLD,
+        sourceJsonLD: JsonLD,
         baseUrl?: string,
     ): Promise<T> {
-        const originalId = jsonld['@id'];
-
         baseUrl = baseUrl ?? this.collection;
-        jsonld['@id'] = originalId ?? `${uuid()}/${this.defaultResourceHash}`;
 
+        const jsonld = mintJsonLDIdentifiers(sourceJsonLD);
         const rdfDocument = await RDFDocument.fromJsonLD(jsonld, baseUrl);
         const flatJsonLD = await rdfDocument.toJsonLD();
         const resourceId = urlResolve(baseUrl, jsonld['@id']);
@@ -260,7 +258,7 @@ export class SolidModel extends SolidModelBase {
             await model.loadDocumentModels(documentUrl, flatJsonLD as EngineDocument);
 
             model.reset();
-            model._sourceSubject = originalId ? parseResourceSubject(originalId) : {};
+            model._sourceSubject = sourceJsonLD['@id'] ? parseResourceSubject(sourceJsonLD['@id']) : {};
 
             // TODO this should be recursive to take care of 2nd degree relations.
             for (const relationName of this.relations) {
