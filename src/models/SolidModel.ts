@@ -409,8 +409,37 @@ export class SolidModel extends SolidModelBase {
             this._documentExists = documentExists ?? true;
     }
 
-    public toJsonLD(): Record<string, unknown> {
-        return this.serializeToJsonLD();
+    public toJsonLD(
+        options: Partial<{ ids: boolean; timestamps: boolean; history: boolean}> = {},
+    ): Record<string, unknown> {
+        options = {
+            ids: true,
+            timestamps: true,
+            history: true,
+            ...options,
+        };
+        const model = this.clone();
+
+        if (!options.ids)
+            model.getRelatedModels().forEach(relatedModel => relatedModel.setAttribute('url', null));
+
+        if (!options.timestamps)
+            model.getRelatedModels().forEach(relatedModel => {
+                relatedModel.relatedMetadata.related = null;
+                delete relatedModel.relatedMetadata.__modelInSameDocument;
+                delete relatedModel.relatedMetadata.__modelInOtherDocumentId;
+                delete relatedModel.relatedMetadata.__newModel;
+            });
+
+        if (!options.history)
+            model.getRelatedModels().forEach(relatedModel => {
+                relatedModel.relatedOperations.related = [];
+                relatedModel.relatedOperations.__newModels = [];
+                delete relatedModel.relatedOperations.__modelsInSameDocument;
+                delete relatedModel.relatedOperations.__modelsInOtherDocumentIds;
+            });
+
+        return model.serializeToJsonLD();
     }
 
     public getIdAttribute(): string {

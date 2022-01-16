@@ -1245,6 +1245,41 @@ describe('SolidModel', () => {
         });
     });
 
+    it('serializes to minimal JSON-LD', async () => {
+        // Arrange
+        const mugiwara = await GroupWithHistoryAndPersonsInSameDocument.create({ name: 'Straw Hat Pirates' });
+
+        await mugiwara.relatedMembers.create({ name: 'Luffy', lastName: 'Monkey D.' });
+        await mugiwara.relatedMembers.create({ name: 'Zoro', lastName: 'Roronoa' });
+        await mugiwara.update({ name: 'Mugiwara' });
+
+        // Act
+        const jsonLd = mugiwara.toJsonLD({
+            ids: false,
+            timestamps: false,
+            history: false,
+        });
+
+        // Assert
+        expect(jsonLd).toEqual({
+            '@context': { '@vocab': 'http://xmlns.com/foaf/0.1/' },
+            '@type': 'Group',
+            'name': 'Mugiwara',
+            'member': [
+                {
+                    '@type': 'Person',
+                    'name': 'Luffy',
+                    'lastName': 'Monkey D.',
+                },
+                {
+                    '@type': 'Person',
+                    'name': 'Zoro',
+                    'lastName': 'Roronoa',
+                },
+            ],
+        });
+    });
+
     it('parses JSON-LD', async () => {
         // Arrange
         const containerUrl = urlResolveDirectory(Faker.internet.url());
