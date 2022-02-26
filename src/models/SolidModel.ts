@@ -239,7 +239,7 @@ export class SolidModel extends SolidModelBase {
         const jsonld = mintJsonLDIdentifiers(sourceJsonLD);
         const rdfDocument = await RDFDocument.fromJsonLD(jsonld, baseUrl);
         const flatJsonLD = await rdfDocument.toJsonLD();
-        const resourceId = urlResolve(baseUrl, jsonld['@id']);
+        const resourceId = this.findResourceId(rdfDocument, baseUrl);
         const resource = rdfDocument.resource(resourceId);
         const documentUrl = baseUrl || urlRoute(resourceId);
         const attributes = await this.instance().parseEngineDocumentAttributes(
@@ -329,6 +329,29 @@ export class SolidModel extends SolidModelBase {
         this.collection = oldCollection;
 
         return result;
+    }
+
+    protected static findResourceId(rdfDocument: RDFDocument, baseUrl: string): string {
+        const resourcesTypes = rdfDocument.statements.reduce(
+            (resourcesTypes, statement) => {
+                if (statement.predicate.value === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') {
+                    resourcesTypes[statement.subject.value] = resourcesTypes[statement.subject.value] ?? [];
+
+                    resourcesTypes[statement.subject.value].push(statement.object.value);
+                }
+
+                return resourcesTypes;
+            },
+            {} as Record<string, string[]>,
+        );
+        const resourceId = Object
+            .entries(resourcesTypes)
+            .find(([_, types]) => !this.rdfsClasses.some(rdfsClass => !types.includes(rdfsClass)))?.[0];
+
+        if (!resourceId)
+            throw new SoukaiError('Couldn\'t find matching resource in JSON-LD');
+
+        return urlResolve(baseUrl, resourceId);
     }
 
     // TODO this should be optional

@@ -18,7 +18,7 @@ import MoviesCollection from '@/testing/lib/stubs/MoviesCollection';
 import Person from '@/testing/lib/stubs/Person';
 import StubEngine from '@/testing/lib/stubs/StubEngine';
 import WatchAction from '@/testing/lib/stubs/WatchAction';
-import { fakeContainerUrl, fakeResourceUrl } from '@/testing/utils';
+import { fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@/testing/utils';
 import { stubMovieJsonLD, stubMoviesCollectionJsonLD, stubPersonJsonLD, stubWatchActionJsonLD } from '@/testing/lib/stubs/helpers';
 
 import { SolidModel } from './SolidModel';
@@ -1477,6 +1477,17 @@ describe('SolidModel', () => {
         expect(person.createdAt).toBeInstanceOf(Date);
     });
 
+    it('fails importing from an invalid JSON-LD', async () => {
+        const promisedPerson = Person.newFromJsonLD({
+            '@context': { '@vocab': 'https://schema.org/' },
+            '@type': 'Movie',
+            '@id': fakeDocumentUrl(),
+            'name': Faker.random.word(),
+        });
+
+        await expect(promisedPerson).rejects.toThrowError('Couldn\'t find matching resource in JSON-LD');
+    });
+
     it('Does not create operations on create', async () => {
         // Arrange
         class TrackedPerson extends Person {
@@ -2185,7 +2196,9 @@ describe('SolidModel types', () => {
         // Act
         const instance = StubModel.newInstance();
         const jsonldInstance = await StubModel.newFromJsonLD({
+            '@context': { '@vocab': 'http://www.w3.org/ns/solid/terms#' },
             '@id': 'https://example.org/alice',
+            '@type': 'StubModel',
             'https://example.org/name': 'Alice',
         });
 
