@@ -5,6 +5,7 @@ import {
     arraySorted,
     arrayUnique,
     arrayWithout,
+    assert,
     fail,
     invert,
     isPromise,
@@ -421,6 +422,20 @@ export class SolidModel extends SolidModelBase {
         return this.static().withCollection(collection || this.guessCollection(), () => super.save());
     }
 
+    public async saveInDocument(documentUrl: string, resourceHash?: string): Promise<this> {
+        this.exists()
+            ? assert(
+                this.getDocumentUrl() === documentUrl,
+                SoukaiError,
+                'Model already exists and is not stored in the given document',
+            )
+            : this.mintUrl(documentUrl, true, resourceHash);
+
+        await this.save();
+
+        return this;
+    }
+
     public delete(): Promise<this> {
         return this.static().withCollection(this.guessCollection(), () => super.delete());
     }
@@ -624,6 +639,10 @@ export class SolidModel extends SolidModelBase {
 
     public getSourceDocumentUrl(): string | null {
         return this._sourceDocumentUrl;
+    }
+
+    public requireContainerUrl(): string {
+        return this.getContainerUrl() ?? fail(SoukaiError, 'Failed getting required container url');
     }
 
     public getContainerUrl(): string | null {
@@ -981,7 +1000,7 @@ export class SolidModel extends SolidModelBase {
             requireUrlParentDirectory(documentUrl as string),
             documentUrl as string,
             {
-                '@graph': { $push: this.serializeToJsonLD(false) as EngineDocument },
+                '@graph': { $push: this.serializeToJsonLD() as EngineDocument },
             },
         );
         const updateDocument = () => this.requireEngine().update(

@@ -6,7 +6,7 @@ import Movie from '@/testing/lib/stubs/Movie';
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';
 import WatchAction from '@/testing/lib/stubs/WatchAction';
 
-import { loadFixture } from '@/testing/utils';
+import { fakeDocumentUrl, loadFixture } from '@/testing/utils';
 import { SolidEngine } from '@/engines';
 import IRI from '@/solid/utils/IRI';
 import RDFDocument from '@/solid/RDFDocument';
@@ -45,7 +45,7 @@ describe('Solid CRUD', () => {
         // Assert
         expect(fetch).toHaveBeenCalledTimes(2);
 
-        await expect(fetch.mock.calls[1][1]?.body).toEqualSparql(`
+        expect(fetch.mock.calls[1][1]?.body).toEqualSparql(`
             INSERT DATA {
                 @prefix schema: <https://schema.org/>.
 
@@ -57,6 +57,45 @@ describe('Solid CRUD', () => {
                 <#[[.*]]>
                     a schema:WatchAction ;
                     schema:object <#it> ;
+                    schema:startTime "${watchDate.toISOString()}"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+            }
+        `);
+    });
+
+    it('Creates models in existing documents', async () => {
+        // Arrange
+        const title = Faker.name.title();
+        const watchDate = new Date('2002-09-15T23:42:00Z');
+        const movie = new Movie({ title });
+        const documentUrl = fakeDocumentUrl();
+
+        await movie.relatedActions.create({ startTime: watchDate });
+
+        StubFetcher.addFetchResponse(`
+            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+
+            <#it> rdfs:label "Movies" .
+        `);
+        StubFetcher.addFetchResponse();
+
+        // Act
+        await movie.saveInDocument(documentUrl, 'movie');
+
+        // Assert
+        expect(fetch).toHaveBeenCalledTimes(2);
+
+        expect(fetch.mock.calls[1][0]).toEqual(documentUrl);
+        expect(fetch.mock.calls[1][1]?.body).toEqualSparql(`
+            INSERT DATA {
+                @prefix schema: <https://schema.org/>.
+
+                <#movie>
+                    a schema:Movie ;
+                    schema:name "${title}" .
+
+                <#[[.*]]>
+                    a schema:WatchAction ;
+                    schema:object <#movie> ;
                     schema:startTime "${watchDate.toISOString()}"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
             }
         `);
@@ -84,7 +123,7 @@ describe('Solid CRUD', () => {
         expect(movie.title).toBe(title);
         expect(fetch).toHaveBeenCalledTimes(2);
 
-        await expect(fetch.mock.calls[1][1]?.body).toEqualSparql(`
+        expect(fetch.mock.calls[1][1]?.body).toEqualSparql(`
             DELETE DATA { <#it> <${IRI('schema:name')}> "${stub.title}" . } ;
             INSERT DATA {
                 <#it>
@@ -164,6 +203,61 @@ describe('Solid CRUD', () => {
         expect(fetch).toHaveBeenCalledTimes(3);
         expect(fetch.mock.calls[2][0]).toEqual(documentUrl);
         expect(fetch.mock.calls[2][1]?.method).toEqual('DELETE');
+    });
+
+    it('Deletes models in existing documents', async () => {
+        // Arrange
+        const documentUrl = fakeDocumentUrl();
+        const title = Faker.name.title();
+        const watchDate = new Date('2002-09-15T23:42:00Z');
+        const movie = new Movie({ url: `${documentUrl}#movie`, title }, true);
+        const action = new WatchAction({ url: `${documentUrl}#action`, startTime: watchDate }, true);
+
+        movie.setRelationModels('actions', [action]);
+
+        const documentTurtle = `
+            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+            @prefix schema: <https://schema.org/>.
+
+            <#it> rdfs:label "Movies" .
+
+            <#movie>
+                a schema:Movie ;
+                schema:name "${title}" .
+
+            <#action>
+                a schema:WatchAction ;
+                schema:object <#movie> ;
+                schema:startTime "${watchDate.toISOString()}"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+        `;
+
+        // TODO this could be improved to fetch only once
+        StubFetcher.addFetchResponse(documentTurtle); // Fetch document to see if it can be deleted entirely
+        StubFetcher.addFetchResponse(documentTurtle); // Fetch document under SolidClient.update to prepare PATCH
+        StubFetcher.addFetchResponse(); // PATCH document
+
+        // Act
+        await movie.delete();
+
+        // Assert
+        expect(fetch).toHaveBeenCalledTimes(3);
+
+        expect(fetch.mock.calls[2][0]).toEqual(documentUrl);
+        expect(fetch.mock.calls[2][1]?.method).toEqual('PATCH');
+        expect(fetch.mock.calls[2][1]?.body).toEqualSparql(`
+            DELETE DATA {
+                @prefix schema: <https://schema.org/>.
+
+                <#movie>
+                    a schema:Movie ;
+                    schema:name "${title}" .
+
+                <#action>
+                    a schema:WatchAction ;
+                    schema:object <#movie> ;
+                    schema:startTime "${watchDate.toISOString()}"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+            } ;
+        `);
     });
 
 });
