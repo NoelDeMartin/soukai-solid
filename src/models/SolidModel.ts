@@ -36,7 +36,7 @@ import {
     isArrayFieldDefinition,
     requireBootedModel,
 } from 'soukai';
-import { mintJsonLDIdentifiers, parseResourceSubject } from '@noeldemartin/solid-utils';
+import { expandIRI, mintJsonLDIdentifiers, parseResourceSubject } from '@noeldemartin/solid-utils';
 import type {
     Attributes,
     BootedFieldDefinition,
@@ -58,6 +58,7 @@ import type {
 } from 'soukai';
 import type { Constructor } from '@noeldemartin/utils';
 import type { JsonLD, JsonLDGraph, JsonLDResource, SubjectParts } from '@noeldemartin/solid-utils';
+import type { Quad } from 'rdf-js';
 
 import { SolidEngine } from '@/engines';
 
@@ -74,7 +75,9 @@ import {
     synchronizesRelatedModels,
 } from './relations/internals/guards';
 import DeletesModels from './mixins/DeletesModels';
+import ManagesPermissions from './mixins/ManagesPermissions';
 import SerializesToJsonLD from './mixins/SerializesToJsonLD';
+import SolidACLAuthorizationsRelation from './relations/SolidACLAuthorizationsRelation';
 import SolidBelongsToManyRelation from './relations/SolidBelongsToManyRelation';
 import SolidBelongsToOneRelation from './relations/SolidBelongsToOneRelation';
 import SolidHasManyRelation from './relations/SolidHasManyRelation';
@@ -82,6 +85,7 @@ import SolidHasOneRelation from './relations/SolidHasOneRelation';
 import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
 import { inferFieldDefinition } from './fields';
 import { SolidModelOperationType } from './SolidModelOperation';
+import type SolidACLAuthorization from './SolidACLAuthorization';
 import type SolidContainerModel from './SolidContainerModel';
 import type SolidModelMetadata from './SolidModelMetadata';
 import type SolidModelOperation from './SolidModelOperation';
@@ -89,7 +93,7 @@ import type { SolidBootedFieldDefinition, SolidBootedFieldsDefinition, SolidFiel
 import type { SolidModelConstructor } from './inference';
 import type { SolidRelation } from './relations/inference';
 
-export const SolidModelBase = mixed(Model, [DeletesModels, SerializesToJsonLD]);
+export const SolidModelBase = mixed(Model, [DeletesModels, SerializesToJsonLD, ManagesPermissions]);
 
 export class SolidModel extends SolidModelBase {
 
@@ -97,7 +101,7 @@ export class SolidModel extends SolidModelBase {
 
     public static fields: SolidFieldsDefinition;
 
-    public static classFields = ['_history'];
+    public static classFields = ['_history', '_publicPermissions'];
 
     public static rdfContexts: Record<string, string> = {};
 
@@ -222,6 +226,13 @@ export class SolidModel extends SolidModelBase {
         return this.instance().convertEngineFiltersToJsonLD(filters, compactIRIs);
     }
 
+    public static rdfProperty(property: string): string {
+        return expandIRI(property, {
+            extraContext: this.rdfContexts,
+            defaultPrefix: Object.values(this.rdfContexts).shift(),
+        });
+    }
+
     /* eslint-disable max-len */
     public static schema<T extends SolidModel, F extends SolidFieldsDefinition>(this: SolidModelConstructor<T>, fields: F): Constructor<MagicAttributes<F>> & SolidModelConstructor<T>;
     public static schema<T extends Model, F extends FieldsDefinition>(this: ModelConstructor<T>, fields: F): Constructor<MagicAttributes<F>> & ModelConstructor<T>;
@@ -234,13 +245,14 @@ export class SolidModel extends SolidModelBase {
         this: SolidModelConstructor<T>,
         sourceJsonLD: JsonLD,
         baseUrl?: string,
+        sourceResourceId?: string,
     ): Promise<T> {
         baseUrl = baseUrl ?? this.collection;
 
         const jsonld = mintJsonLDIdentifiers(sourceJsonLD);
         const rdfDocument = await RDFDocument.fromJsonLD(jsonld, baseUrl);
         const flatJsonLD = await rdfDocument.toJsonLD();
-        const resourceId = this.findResourceId(rdfDocument, baseUrl);
+        const resourceId = sourceResourceId ?? this.findResourceId(rdfDocument.statements, baseUrl);
         const resource = rdfDocument.resource(resourceId);
         const documentUrl = baseUrl || urlRoute(resourceId);
         const attributes = await this.instance().parseEngineDocumentAttributes(
@@ -277,8 +289,18 @@ export class SolidModel extends SolidModelBase {
         this: SolidModelConstructor<T>,
         jsonld: JsonLD,
         baseUrl?: string,
+        resourceId?: string,
     ): Promise<T> {
-        return tap(await this.newFromJsonLD(jsonld, baseUrl), model => model.save(baseUrl));
+        return tap(await this.newFromJsonLD(jsonld, baseUrl, resourceId), model => model.save(baseUrl));
+    }
+
+    public static async createInDocument<T extends SolidModel>(
+        this: SolidModelConstructor<T>,
+        attributes: Attributes,
+        documentUrl: string,
+        resourceHash?: string,
+    ): Promise<T> {
+        return tap(new this(attributes) as T, instance => instance.saveInDocument(documentUrl, resourceHash));
     }
 
     public static async synchronize<T extends SolidModel>(this: SolidModelConstructor<T>, a: T, b: T): Promise<void> {
@@ -332,13 +354,13 @@ export class SolidModel extends SolidModelBase {
         return result;
     }
 
-    protected static findResourceId(rdfDocument: RDFDocument, baseUrl: string): string {
-        const resourcesTypes = rdfDocument.statements.reduce(
-            (resourcesTypes, statement) => {
-                if (statement.predicate.value === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') {
-                    resourcesTypes[statement.subject.value] = resourcesTypes[statement.subject.value] ?? [];
+    protected static findResourceId(quads: Quad[], baseUrl?: string): string {
+        const resourcesTypes = quads.reduce(
+            (resourcesTypes, quad) => {
+                if (quad.predicate.value === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') {
+                    resourcesTypes[quad.subject.value] = resourcesTypes[quad.subject.value] ?? [];
 
-                    resourcesTypes[statement.subject.value]?.push(statement.object.value);
+                    resourcesTypes[quad.subject.value]?.push(quad.object.value);
                 }
 
                 return resourcesTypes;
@@ -358,8 +380,10 @@ export class SolidModel extends SolidModelBase {
     // TODO this should be optional
     public url!: string;
 
+    public authorizations?: SolidACLAuthorization[];
     public metadata!: SolidModelMetadata;
     public operations!: SolidModelOperation[];
+    public relatedAuthorizations!: SolidACLAuthorizationsRelation<this>;
     public relatedMetadata!: SolidHasOneRelation<this, SolidModelMetadata, SolidModelConstructor<SolidModelMetadata>>;
     public relatedOperations!:
         SolidHasManyRelation<this, SolidModelOperation, SolidModelConstructor<SolidModelOperation>>;
@@ -800,6 +824,10 @@ export class SolidModel extends SolidModelBase {
             .hasMany(operationModelClass, 'resourceUrl')
             .usingSameDocument(true)
             .onDelete('cascade');
+    }
+
+    public authorizationsRelationship(): Relation {
+        return new SolidACLAuthorizationsRelation(this);
     }
 
     protected getDefaultCollection(): string {
