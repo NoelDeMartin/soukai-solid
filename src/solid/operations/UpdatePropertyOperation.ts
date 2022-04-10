@@ -7,17 +7,24 @@ import type Operation from './Operation';
 export default class UpdatePropertyOperation implements Operation {
 
     public type: OperationType.UpdateProperty = OperationType.UpdateProperty;
+    public propertyOrProperties: RDFResourceProperty | ([RDFResourceProperty] & RDFResourceProperty[]);
 
-    constructor(public propertyOrProperties: RDFResourceProperty | RDFResourceProperty[]) {
+    constructor(propertyOrProperties: RDFResourceProperty | RDFResourceProperty[]) {
+        this.propertyOrProperties = propertyOrProperties as
+            RDFResourceProperty | ([RDFResourceProperty] & RDFResourceProperty[]);
+
         if (!Array.isArray(propertyOrProperties))
             return;
 
-        if (propertyOrProperties.length === 0)
+        const [firstProperty, ...otherProperties] = propertyOrProperties;
+
+        if (!firstProperty)
             throw new Error('Cannot create an UpdatePropertyOperation with an empty array');
 
-        const { resourceUrl, name, type } = propertyOrProperties[0];
+        const { resourceUrl, name, type } = firstProperty;
+
         if (
-            propertyOrProperties.slice(1).some(
+            otherProperties.some(
                 p => p.resourceUrl !== resourceUrl || p.name !== name || p.type !== type,
             )
         )

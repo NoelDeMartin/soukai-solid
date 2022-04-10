@@ -191,6 +191,9 @@ export class SolidEngine implements Engine {
                 for (const [name, properties] of Object.entries(resource.propertiesIndex)) {
                     const [firstProperty, ...otherProperties] = properties;
 
+                    if (!firstProperty)
+                        continue;
+
                     let key: string = name;
                     let cast: (value: unknown) => unknown = value => value;
 
@@ -385,7 +388,7 @@ export class SolidEngine implements Engine {
         return !operations.some(update => {
             const keys = Object.keys(update);
 
-            return keys.length !== 1 || !['$updateItems', '$push'].includes(keys[0]);
+            return keys.length !== 1 || !['$updateItems', '$push'].includes(keys[0] ?? '');
         });
     }
 

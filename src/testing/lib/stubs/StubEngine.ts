@@ -34,7 +34,7 @@ export default class StubEngine extends SolidEngine {
         if (id && this.one?.url && urlRoute(this.one.url as string) === id)
             throw new DocumentAlreadyExists(id);
 
-        if (id && this.many && this.many[collection] && this.many[collection][id])
+        if (id && this.many?.[collection]?.[id])
             throw new DocumentAlreadyExists(id);
 
         return id ?? uuid();

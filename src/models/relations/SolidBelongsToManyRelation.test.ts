@@ -3,6 +3,7 @@ import { bootModels, setEngine } from 'soukai';
 import { expandIRI } from '@noeldemartin/solid-utils';
 import { stringToSlug, urlResolve } from '@noeldemartin/utils';
 import type { Relation } from 'soukai';
+import type { Tuple } from '@noeldemartin/utils';
 
 import { SolidModel } from '@/models/SolidModel';
 
@@ -70,7 +71,7 @@ describe('SolidHasManyRelation', () => {
         // Assert
         expect(person.friends).toHaveLength(3);
 
-        const friends = person.friends as Person[];
+        const friends = person.friends as Tuple<Person, 3>;
         expect(friends[0].url).toEqual(firstFriendUrl);
         expect(friends[0].name).toEqual(firstFriendName);
         expect(friends[1].url).toEqual(secondFriendUrl);
@@ -94,11 +95,11 @@ describe('SolidHasManyRelation', () => {
                 },
             },
         };
-        expect(readSpy.mock.calls[0][1]).toEqual({
+        expect(readSpy.mock.calls[0]?.[1]).toEqual({
             $in: [firstDocumentUrl],
             ...personFilters,
         });
-        expect(readSpy.mock.calls[1][1]).toEqual({
+        expect(readSpy.mock.calls[1]?.[1]).toEqual({
             $in: [secondDocumentUrl, thirdDocumentUrl],
             ...personFilters,
         });
@@ -121,9 +122,9 @@ describe('SolidHasManyRelation', () => {
         // Assert
         expect(target.friends).toHaveLength(3);
 
-        expect(target.friends?.[0].name).toEqual('Zoro');
-        expect(target.friends?.[1].name).toEqual('Nami');
-        expect(target.friends?.[2].name).toEqual('Usopp');
+        expect(target.friends?.[0]?.name).toEqual('Zoro');
+        expect(target.friends?.[1]?.name).toEqual('Nami');
+        expect(target.friends?.[2]?.name).toEqual('Usopp');
     });
 
 });

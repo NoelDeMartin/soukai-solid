@@ -56,7 +56,7 @@ describe('SolidEngine', () => {
             expect.anything(),
         );
 
-        const properties = SolidClientMock.createDocumentSpy.mock.calls[0][2];
+        const properties = SolidClientMock.createDocumentSpy.mock.calls[0]?.[2];
 
         expect(properties).toHaveLength(3);
         expect(properties).toContainEqual(RDFResourceProperty.type(personUrl, IRI('foaf:Person')));
@@ -86,7 +86,7 @@ describe('SolidEngine', () => {
             expect.anything(),
         );
 
-        const properties = SolidClientMock.createDocumentSpy.mock.calls[0][2];
+        const properties = SolidClientMock.createDocumentSpy.mock.calls[0]?.[2];
 
         expect(properties).toHaveLength(2);
         expect(properties).toContainEqual(RDFResourceProperty.type(documentUrl, IRI('ldp:Container')));
@@ -330,7 +330,8 @@ describe('SolidEngine', () => {
 
         await Promise.all(
             arrayZip(urls, names).map(
-                ([url, name]) => expect(documents[url]).toEqualJsonLD(stubPersonJsonLD(url, name)),
+                ([url, name]) => expect(documents[url as string])
+                    .toEqualJsonLD(stubPersonJsonLD(url as string, name as string)),
             ),
         );
     });
@@ -584,8 +585,8 @@ function modelFilters(types: string[], extraFilters: Record<string, unknown> = {
                         ...(
                             types.length === 1
                                 ? [
-                                    { $eq: types[0] },
-                                    { $eq: expandedTypes[0] },
+                                    { $eq: types[0] as string },
+                                    { $eq: expandedTypes[0] as string },
                                 ]
                                 : []
                         ),

@@ -45,7 +45,7 @@ describe('Solid CRUD', () => {
         // Assert
         expect(fetch).toHaveBeenCalledTimes(2);
 
-        expect(fetch.mock.calls[1][1]?.body).toEqualSparql(`
+        expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(`
             INSERT DATA {
                 @prefix schema: <https://schema.org/>.
 
@@ -84,8 +84,8 @@ describe('Solid CRUD', () => {
         // Assert
         expect(fetch).toHaveBeenCalledTimes(2);
 
-        expect(fetch.mock.calls[1][0]).toEqual(documentUrl);
-        expect(fetch.mock.calls[1][1]?.body).toEqualSparql(`
+        expect(fetch.mock.calls[1]?.[0]).toEqual(documentUrl);
+        expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(`
             INSERT DATA {
                 @prefix schema: <https://schema.org/>.
 
@@ -123,7 +123,7 @@ describe('Solid CRUD', () => {
         expect(movie.title).toBe(title);
         expect(fetch).toHaveBeenCalledTimes(2);
 
-        expect(fetch.mock.calls[1][1]?.body).toEqualSparql(`
+        expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(`
             DELETE DATA { <#it> <${IRI('schema:name')}> "${stub.title}" . } ;
             INSERT DATA {
                 <#it>
@@ -201,8 +201,8 @@ describe('Solid CRUD', () => {
         expect(movie.documentExists()).toBe(false);
 
         expect(fetch).toHaveBeenCalledTimes(3);
-        expect(fetch.mock.calls[2][0]).toEqual(documentUrl);
-        expect(fetch.mock.calls[2][1]?.method).toEqual('DELETE');
+        expect(fetch.mock.calls[2]?.[0]).toEqual(documentUrl);
+        expect(fetch.mock.calls[2]?.[1]?.method).toEqual('DELETE');
     });
 
     it('Deletes models in existing documents', async () => {
@@ -242,9 +242,9 @@ describe('Solid CRUD', () => {
         // Assert
         expect(fetch).toHaveBeenCalledTimes(3);
 
-        expect(fetch.mock.calls[2][0]).toEqual(documentUrl);
-        expect(fetch.mock.calls[2][1]?.method).toEqual('PATCH');
-        expect(fetch.mock.calls[2][1]?.body).toEqualSparql(`
+        expect(fetch.mock.calls[2]?.[0]).toEqual(documentUrl);
+        expect(fetch.mock.calls[2]?.[1]?.method).toEqual('PATCH');
+        expect(fetch.mock.calls[2]?.[1]?.body).toEqualSparql(`
             DELETE DATA {
                 @prefix schema: <https://schema.org/>.
 

@@ -46,7 +46,7 @@ export default class SolidContainerModel extends SolidModel {
         const fetch = engine instanceof SolidEngine ? engine.getFetch() : undefined;
         const containerRegistration = await findContainerRegistration(
             typeIndexUrl,
-            childrenModelClass.rdfsClasses[0],
+            childrenModelClass.rdfsClasses[0] as string,
             fetch,
         );
 

@@ -9,8 +9,8 @@ export default class StubHeaders implements Headers {
     private constructor(data: Record<string, string>) {
         this.data = {};
 
-        for (const name in data) {
-            this.set(name, data[name]);
+        for (const [name, value] of Object.entries(data)) {
+            this.set(name, value);
         }
     }
 
@@ -39,7 +39,7 @@ export default class StubHeaders implements Headers {
     }
 
     public get(name: string): string | null {
-        return this.data[this.normalizeHeader(name)];
+        return this.data[this.normalizeHeader(name)] ?? null;
     }
 
     public has(name: string): boolean {
@@ -50,9 +50,9 @@ export default class StubHeaders implements Headers {
         this.data[this.normalizeHeader(name)] = value;
     }
 
-    public forEach(callbackfn: (value: string, key: string, parent: Headers) => void): void {
-        for (const key in this.data) {
-            callbackfn(this.data[key], key, this);
+    public forEach(callbackfn: (value: string, name: string, parent: Headers) => void): void {
+        for (const [name, value] of Object.entries(this.data)) {
+            callbackfn(value, name, this);
         }
     }
 

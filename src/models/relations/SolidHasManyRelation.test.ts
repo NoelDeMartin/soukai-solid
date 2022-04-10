@@ -2,6 +2,7 @@ import Faker from 'faker';
 import { bootModels, setEngine } from 'soukai';
 import { urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 import type { EngineDocument } from 'soukai';
+import type { Tuple } from '@noeldemartin/utils';
 
 import IRI from '@/solid/utils/IRI';
 
@@ -51,7 +52,7 @@ describe('SolidHasManyRelation', () => {
         await movie.loadRelation('actions');
 
         // Assert
-        const movieActions = movie.actions as WatchAction[];
+        const movieActions = movie.actions as Tuple<WatchAction, 2>;
         expect(movieActions).toHaveLength(2);
 
         expect(movieActions[0].url).toEqual(firstActionUrl);

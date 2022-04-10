@@ -52,10 +52,10 @@ export default class SolidHasOneRelation<
     }
 
     public reset(related: Related[]): void {
-        if (related.length === 0)
-            return;
-
         const model = related[0];
+
+        if (!model)
+            return;
 
         model.unsetAttribute(this.foreignKeyName);
 

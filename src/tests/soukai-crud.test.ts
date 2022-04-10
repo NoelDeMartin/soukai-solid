@@ -1,7 +1,7 @@
 import { InMemoryEngine, bootModels, setEngine } from 'soukai';
 import { tap } from '@noeldemartin/utils';
 import Faker from 'faker';
-import type { EngineDocument } from 'soukai';
+import type { EngineDocument, InMemoryEngineCollection } from 'soukai';
 
 import Movie from '@/testing/lib/stubs/Movie';
 import WatchAction from '@/testing/lib/stubs/WatchAction';
@@ -27,7 +27,7 @@ describe('Soukai CRUD', () => {
         // Assert
         expect(movie.title).toBe(title);
 
-        await expect(engine.database[Movie.collection][movie.requireDocumentUrl()]).toEqualJsonLD({
+        await expect(engine.database[Movie.collection]?.[movie.requireDocumentUrl()]).toEqualJsonLD({
             '@graph': [
                 {
                     '@context': { '@vocab': 'https://schema.org/' },
@@ -64,7 +64,7 @@ describe('Soukai CRUD', () => {
         // Assert
         expect(movie.title).toBe(title);
 
-        await expect(engine.database[Movie.collection][stub.requireDocumentUrl()]).toEqualJsonLD({
+        await expect(engine.database[Movie.collection]?.[stub.requireDocumentUrl()]).toEqualJsonLD({
             '@graph': [
                 {
                     '@context': { '@vocab': 'https://schema.org/' },
@@ -86,7 +86,7 @@ describe('Soukai CRUD', () => {
 
         // Assert
         expect(movie.exists()).toBe(false);
-        expect(Object.values(engine.database[Movie.collection])).toHaveLength(0);
+        expect(Object.values(engine.database[Movie.collection] as InMemoryEngineCollection)).toHaveLength(0);
     });
 
 });

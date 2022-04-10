@@ -304,11 +304,9 @@ export default class SolidClient {
         const statementsByUrl = globbingDocument.statements.reduce(
             (statementsByUrl, statement) => {
                 const baseUrl = urlClean(statement.subject.value, { fragment: false });
+                const urlStatements = statementsByUrl[baseUrl] = statementsByUrl[baseUrl] ?? [];
 
-                if (!(baseUrl in statementsByUrl))
-                    statementsByUrl[baseUrl] = [];
-
-                statementsByUrl[baseUrl].push(statement);
+                urlStatements.push(statement);
 
                 return statementsByUrl;
             },
@@ -393,7 +391,10 @@ export default class SolidClient {
 
             updatePropertyOperations.forEach(operation => {
                 operation.propertyOrProperties = Array.isArray(operation.propertyOrProperties)
-                    ? operation.propertyOrProperties.map(property => property.clone(changeUrlOperation.newResourceUrl))
+                    ? operation
+                        .propertyOrProperties
+                        .map(property => property.clone(changeUrlOperation.newResourceUrl)) as
+                            RDFResourceProperty | ([RDFResourceProperty] & RDFResourceProperty[])
                     : operation.propertyOrProperties.clone(changeUrlOperation.newResourceUrl);
             });
             removePropertyOperations.forEach(operation => operation.resourceUrl = changeUrlOperation.newResourceUrl);
@@ -423,7 +424,7 @@ export default class SolidClient {
         const arrayProperties: string[] = [];
 
         for (let index = 0; index < operations.length; index++) {
-            const operation = operations[index];
+            const operation = operations[index] as UpdateOperation;
 
             if (operation.type !== OperationType.UpdateProperty)
                 continue;
@@ -431,14 +432,16 @@ export default class SolidClient {
             if (!Array.isArray(operation.propertyOrProperties) || operation.propertyResourceUrl === null)
                 continue;
 
-            const documentProperties = document.statements.filter(
-                statement =>
-                    statement.subject.value === operation.propertyResourceUrl &&
-                    statement.predicate.value === operation.propertyName,
-            );
-            const documentValues = documentProperties.map(statement => statement.object.value);
 
-            const sampleProperty = operation.propertyOrProperties[0] ?? documentProperties[0];
+            const documentValues = document
+                .statements
+                .filter(
+                    statement =>
+                        statement.subject.value === operation.propertyResourceUrl &&
+                    statement.predicate.value === operation.propertyName,
+                )
+                .map(statement => statement.object.value);
+            const isLiteralProperty = operation.propertyOrProperties[0].type === RDFResourcePropertyType.Literal;
             const { added, removed } = arrayDiff(
                 documentValues,
                 operation.propertyOrProperties.map(property => property.value),
@@ -446,7 +449,7 @@ export default class SolidClient {
 
             added.forEach(value => operations.push(
                 new UpdatePropertyOperation(
-                    sampleProperty.type === RDFResourcePropertyType.Literal
+                    isLiteralProperty
                         ? RDFResourceProperty.literal(
                             operation.propertyResourceUrl,
                             operation.propertyName,

@@ -31,11 +31,9 @@ export default class DeletesModels {
 
         return Object.entries(documentModels).reduce((containerModels, [documentUrl, models]) => {
             const containerUrl = urlParentDirectory(documentUrl) ?? urlRoot(documentUrl);
+            const urlModels = containerModels[containerUrl] = containerModels[containerUrl] ?? [];
 
-            if (!(containerUrl in containerModels))
-                containerModels[containerUrl] = [];
-
-            containerModels[containerUrl].push({ documentUrl, models });
+            urlModels.push({ documentUrl, models });
 
             return containerModels;
         }, {} as DecantedContainerDocuments);
@@ -44,11 +42,9 @@ export default class DeletesModels {
     private decantModelsByDocument(models: SolidModel[]): DecantedDocumentModels {
         return models.reduce((documentModels, model) => {
             const documentUrl = model.requireDocumentUrl();
+            const sameDocumentModels = documentModels[documentUrl] = documentModels[documentUrl] ?? [];
 
-            if (!(documentUrl in documentModels))
-                documentModels[documentUrl] = [];
-
-            documentModels[documentUrl].push(model);
+            sameDocumentModels.push(model);
 
             return documentModels;
         }, {} as DecantedDocumentModels);
@@ -83,10 +79,14 @@ export default class DeletesModels {
         documentUrl: string,
         models: SolidModel[],
     ): Promise<void> {
-        const modelUrls = models.filter(model => model.exists()).map(model => model.url);
-        const { '@graph': resources } = engineDocuments[documentUrl];
+        const document = engineDocuments[documentUrl];
 
-        if (!resources.some(resource => !modelUrls.some(url => url === resource['@id']))) {
+        if (!document)
+            return;
+
+        const modelUrls = models.filter(model => model.exists()).map(model => model.url);
+
+        if (!document['@graph'].some(resource => !modelUrls.some(url => url === resource['@id']))) {
             await this.requireEngine().delete(containerUrl, documentUrl);
 
             models.forEach(model => model.setDocumentExists(false));

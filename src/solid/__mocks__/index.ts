@@ -40,7 +40,7 @@ export class SolidClientMock {
     }
 
     public async getDocument(url: string): Promise<RDFDocument | null> {
-        return url in this.documents ? this.documents[url][0] : null;
+        return this.documents[url]?.[0] ?? null;
     }
 
     public async getDocuments(containerUrl: string): Promise<RDFDocument[]> {
@@ -73,17 +73,13 @@ export class SolidClientMock {
     }
 
     public async documentExists(url: string): Promise<boolean> {
-        return Object.keys(this.documents).some(documentUrl => {
-            if (!url.startsWith(documentUrl))
-                return false;
-
-            for (const document of this.documents[documentUrl]) {
-                if (document.url === url)
-                    return true;
-            }
-
-            return false;
-        });
+        return Object
+            .entries(this.documents)
+            .some(
+                ([documentUrl, urlDocuments]) =>
+                    url.startsWith(documentUrl) &&
+                    urlDocuments.some(document => document.url === url),
+            );
     }
 
 }

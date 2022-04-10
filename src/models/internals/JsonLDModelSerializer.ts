@@ -44,7 +44,7 @@ class JsonLDContext {
         terms.unshift({
             name: '@vocab',
             compactingPrefix: '',
-            value: terms[0].value,
+            value: terms[0]?.value as string,
             used: false,
         });
 
@@ -176,8 +176,9 @@ export default class JsonLDModelSerializer {
     private setJsonLDRelations(jsonld: JsonLD, model: SolidModel, ignoredModels: Set<SolidModel>): void {
         for (const relationName of model.static('relations')) {
             const relation = model.requireRelation<SolidRelation>(relationName);
+            const loadedModel = relation.getLoadedModels()[0];
 
-            if (!relation.loaded || relation.isEmpty() || ignoredModels.has(relation.getLoadedModels()[0]))
+            if (!relation.loaded || relation.isEmpty() || (loadedModel && ignoredModels.has(loadedModel)))
                 continue;
 
             this.context.addTerms(relation.relatedClass.rdfContexts);

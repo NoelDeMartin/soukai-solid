@@ -1,5 +1,6 @@
 import Faker from 'faker';
 import { range, stringToSlug, urlResolve, urlResolveDirectory, urlRoute, uuid } from '@noeldemartin/utils';
+import type { Tuple } from '@noeldemartin/utils';
 
 import MalformedDocumentError from '@/errors/MalformedDocumentError';
 
@@ -60,9 +61,7 @@ describe('SolidClient', () => {
             body: expect.anything(),
         });
 
-        const body = StubFetcher.fetchSpy.mock.calls[0][1]?.body;
-
-        await expect(body).toEqualSparql(`
+        expect(StubFetcher.fetchSpy.mock.calls[0]?.[1]?.body).toEqualSparql(`
             INSERT DATA {
                 <> a <http://www.w3.org/ns/ldp#Document> .
                 <#it> <http://xmlns.com/foaf/0.1/name> "${name}" .
@@ -213,7 +212,7 @@ describe('SolidClient', () => {
         StubFetcher.addFetchResponse('<another-container> a <http://www.w3.org/ns/ldp#Container> .');
 
         // Act
-        const documents = await client.getDocuments(containerUrl);
+        const documents = await client.getDocuments(containerUrl) as Tuple<RDFDocument, 2>;
 
         // Assert
         expect(documents).toHaveLength(2);
@@ -259,7 +258,7 @@ describe('SolidClient', () => {
         StubFetcher.addFetchResponse(data);
 
         // Act
-        const documents = await client.getDocuments(containerUrl);
+        const documents = await client.getDocuments(containerUrl) as Tuple<RDFDocument, 2>;
 
         // Assert
         expect(documents).toHaveLength(2);
@@ -286,7 +285,7 @@ describe('SolidClient', () => {
 
         expect(documents[1].resources).toHaveLength(2);
         expect(documents[1].requireResource(`${containerUrl}/bar`).url).toEqual(`${containerUrl}/bar`);
-        expect(documents[1].resources[1].url).toEqual(`${containerUrl}/bar#baz`);
+        expect(documents[1].resources[1]?.url).toEqual(`${containerUrl}/bar#baz`);
 
         const barProperties = documents[1].properties;
         expect(Object.values(barProperties)).toHaveLength(4);
@@ -346,7 +345,7 @@ describe('SolidClient', () => {
         `);
 
         // Act
-        const documents = await client.getDocuments(containerUrl, true);
+        const documents = await client.getDocuments(containerUrl, true) as Tuple<RDFDocument, 2>;
 
         // Assert
         expect(documents).toHaveLength(2);
@@ -407,9 +406,7 @@ describe('SolidClient', () => {
             },
         );
 
-        const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
-
-        await expect(body).toEqualSparql(`
+        expect(StubFetcher.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             DELETE DATA {
                 <#it> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
                 <#it> <http://xmlns.com/foaf/0.1/surname> "Doe" .
@@ -457,9 +454,7 @@ describe('SolidClient', () => {
             },
         );
 
-        const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
-
-        await expect(body).toEqualSparql(`
+        expect(StubFetcher.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             DELETE DATA {
                 <${containerUrl}> a <http://www.w3.org/ns/ldp#Container> .
                 <${containerUrl}> <http://xmlns.com/foaf/0.1/name> "Jonathan" .
@@ -520,9 +515,7 @@ describe('SolidClient', () => {
             },
         );
 
-        const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
-
-        await expect(body).toEqualSparql(`
+        expect(StubFetcher.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             DELETE DATA {
                 <${firstResourceUrl}> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
                 <${firstResourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
@@ -566,9 +559,7 @@ describe('SolidClient', () => {
             },
         );
 
-        const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
-
-        await expect(body).toEqualSparql(`
+        expect(StubFetcher.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             INSERT DATA {
                 <> <http://xmlns.com/foaf/0.1/name> "John Doe" .
             }
@@ -604,9 +595,7 @@ describe('SolidClient', () => {
             },
         );
 
-        const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
-
-        await expect(body).toEqualSparql(`
+        expect(StubFetcher.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             DELETE DATA {
                 <#it> <http://xmlns.com/foaf/0.1/name> "Johnathan" .
                 <#it> <http://xmlns.com/foaf/0.1/surname> "Doe" .
@@ -652,9 +641,7 @@ describe('SolidClient', () => {
             body: expect.anything(),
         });
 
-        const body = StubFetcher.fetchSpy.mock.calls[1][1]?.body;
-
-        await expect(body).toEqualSparql(`
+        expect(StubFetcher.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             DELETE DATA {
                 <${documentUrl}> a <http://www.w3.org/ns/ldp#Container> .
                 <${documentUrl}>
@@ -711,7 +698,7 @@ describe('SolidClient', () => {
         ]);
 
         // Assert
-        expect(fetchSpy.mock.calls[1][1]?.body).toEqualSparql(`
+        expect(fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             INSERT DATA {
                 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
@@ -799,7 +786,7 @@ describe('SolidClient', () => {
 
     it('handles malformed document errors', async () => {
         // Arrange
-        let error;
+        let error!: MalformedDocumentError;
         const url = Faker.internet.url();
 
         StubFetcher.addFetchResponse('this is not turtle');
@@ -808,7 +795,7 @@ describe('SolidClient', () => {
         try {
             await client.getDocument(url);
         } catch (e) {
-            error = e;
+            error = e as MalformedDocumentError;
         }
 
         // Assert
@@ -818,7 +805,7 @@ describe('SolidClient', () => {
 
     it('handles malformed document errors reading containers', async () => {
         // Arrange
-        let error;
+        let error!: MalformedDocumentError;
         const containerUrl = urlResolveDirectory(
             Faker.internet.url(),
             stringToSlug(Faker.random.word()),
@@ -830,7 +817,7 @@ describe('SolidClient', () => {
         try {
             await client.getDocuments(containerUrl);
         } catch (e) {
-            error = e;
+            error = e as MalformedDocumentError;
         }
 
         // Assert

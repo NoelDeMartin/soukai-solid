@@ -67,8 +67,8 @@ export default class SerializesToJsonLD {
         }
 
         if (expandedTypes.length === 1) {
-            typeFilters.push({ $eq: compactedTypes[0] });
-            typeFilters.push({ $eq: expandedTypes[0] });
+            typeFilters.push({ $eq: compactedTypes[0] as string });
+            typeFilters.push({ $eq: expandedTypes[0] as string });
         }
 
         if (filters.$in) {

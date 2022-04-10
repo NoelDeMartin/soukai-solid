@@ -5,7 +5,7 @@ import { FieldType, InMemoryEngine, ModelKey, bootModels, setEngine } from 'souk
 import dayjs from 'dayjs';
 import Faker from 'faker';
 import type { EngineDocument, Relation } from 'soukai';
-import type { Equals, Expect } from '@noeldemartin/utils';
+import type { Equals, Expect, Tuple } from '@noeldemartin/utils';
 import type { JsonLDGraph , JsonLDResource } from '@noeldemartin/solid-utils';
 
 import IRI from '@/solid/utils/IRI';
@@ -168,7 +168,7 @@ describe('SolidModel', () => {
 
         await StubModel.at(containerUrl).create({ nickname: 'Johnny' });
 
-        const document = createSpy.mock.calls[0][1] as { '@graph': { nickname: string }[] };
+        const document = createSpy.mock.calls[0]?.[1] as { '@graph': [{ nickname: string }] };
 
         expect(document['@graph'][0].nickname).toEqual('Johnny');
     });
@@ -200,7 +200,7 @@ describe('SolidModel', () => {
 
         await StubModel.create({});
 
-        const document = createSpy.mock.calls[0][1] as { '@graph': { '@type': string }[] };
+        const document = createSpy.mock.calls[0]?.[1] as { '@graph': [{ '@type': string }] };
 
         expect(document['@graph'][0]['@type']).not.toBeUndefined();
     });
@@ -232,7 +232,7 @@ describe('SolidModel', () => {
             movieUrl,
         );
 
-        const document = createSpy.mock.calls[0][1];
+        const document = createSpy.mock.calls[0]?.[1];
         await expect(document).toEqualJsonLD({
             '@graph': [
                 ...stubMovieJsonLD(movieUrl, movieName)['@graph'],
@@ -246,7 +246,7 @@ describe('SolidModel', () => {
 
         expect(movie.exists()).toBe(true);
 
-        const actions = movie.actions as WatchAction[];
+        const actions = movie.actions as Tuple<WatchAction, 1>;
         expect(typeof actions[0].url).toEqual('string');
         expect(actions[0].exists()).toBe(true);
 
@@ -280,7 +280,7 @@ describe('SolidModel', () => {
             expect.anything(),
             movie.getDocumentUrl(),
         );
-        expect(createSpy.mock.calls[0][1]).toEqualJsonLD({
+        expect(createSpy.mock.calls[0]?.[1]).toEqualJsonLD({
             '@graph': [
                 ...stubMovieJsonLD(movieUrl, movieName)['@graph'],
                 ...stubWatchActionJsonLD(action.url as string, movieUrl, '1997-07-21T23:42:00.000Z')['@graph'],
@@ -291,7 +291,7 @@ describe('SolidModel', () => {
         expect(movie.documentExists()).toBe(true);
         expect(movieUrl.startsWith(containerUrl)).toBe(true);
 
-        const actions = movie.actions as WatchAction[];
+        const actions = movie.actions as Tuple<WatchAction, 1>;
         expect(actions[0].exists()).toBe(true);
         expect(actions[0].documentExists()).toBe(true);
 
@@ -332,7 +332,7 @@ describe('SolidModel', () => {
             expect.anything(),
         );
 
-        expect(updateSpy.mock.calls[0][2]).toEqual({
+        expect(updateSpy.mock.calls[0]?.[2]).toEqual({
             '@graph': {
                 $apply: [
                     {
@@ -369,7 +369,7 @@ describe('SolidModel', () => {
         jest.spyOn(engine, 'readMany');
 
         // Act
-        const people = await Person.from(peopleUrl).all({ name: 'Alice' });
+        const people = await Person.from(peopleUrl).all({ name: 'Alice' }) as Tuple<Person, 1>;
 
         // Assert
         expect(people).toHaveLength(1);
@@ -491,7 +491,7 @@ describe('SolidModel', () => {
         expect(secondMovie.title).toEqual(secondMovieName);
         expect(secondMovie.actions).toHaveLength(1);
 
-        const secondMovieActions = secondMovie.actions as WatchAction[];
+        const secondMovieActions = secondMovie.actions as Tuple<WatchAction, 1>;
         expect(secondMovieActions[0].url).toEqual(firstWatchActionUrl);
         expect(secondMovieActions[0].getSourceDocumentUrl()).toEqual(secondDocumentUrl);
 
@@ -500,7 +500,7 @@ describe('SolidModel', () => {
         expect(thirdMovie.title).toEqual(thirdMovieName);
         expect(thirdMovie.actions).toHaveLength(1);
 
-        const thirdMovieActions = thirdMovie.actions as WatchAction[];
+        const thirdMovieActions = thirdMovie.actions as Tuple<WatchAction, 1>;
         expect(thirdMovieActions[0].url).toEqual(secondWatchActionUrl);
         expect(thirdMovieActions[0].getSourceDocumentUrl()).toEqual(secondDocumentUrl);
     });
@@ -638,11 +638,11 @@ describe('SolidModel', () => {
         expect(movie.url).toMatch(new RegExp(`^${escapedContainerUrl}[\\d\\w-]+#it$`));
         expect(movie.url.startsWith(containerUrl)).toBe(true);
 
-        const actions = movie.actions as WatchAction[];
+        const actions = movie.actions as Tuple<WatchAction, 1>;
         expect(actions).toHaveLength(1);
         expect(actions[0].object).toEqual(movie.url);
 
-        const actors = movie.actors as Person[];
+        const actors = movie.actors as Tuple<Person, 2>;
         expect(actors).toHaveLength(2);
         expect(actors[0].starred).toHaveLength(1);
         expect(actors[0].starred[0]).toEqual(movie.url);
@@ -660,7 +660,7 @@ describe('SolidModel', () => {
             urlRoute(movie.url),
         );
 
-        const graph = createSpy.mock.calls[1][1] as JsonLDGraph;
+        const graph = createSpy.mock.calls[1]?.[1] as JsonLDGraph;
 
         const actionJsonLD = graph['@graph'].find(resource => resource['@id'] === actions[0].url) as JsonLDResource;
         const actionMovieJsonLD = actionJsonLD['object'] as JsonLDResource;
@@ -794,7 +794,7 @@ describe('SolidModel', () => {
 
         await StubModel.find(urlResolve(containerUrl, Faker.random.uuid()));
 
-        const collection = readOneSpy.mock.calls[0][0];
+        const collection = readOneSpy.mock.calls[0]?.[0];
 
         expect(collection).toEqual(containerUrl);
     });
@@ -994,7 +994,7 @@ describe('SolidModel', () => {
         // Assert
         expect(john.friends).toHaveLength(2);
 
-        const friends = john.friends as Person[];
+        const friends = john.friends as Tuple<Person, 2>;
         expect(friends[0]).toBeInstanceOf(Person);
         expect(friends[0].url).toBe('https://example.com/alice');
         expect(friends[0].name).toBe('Alice');
@@ -1400,7 +1400,7 @@ describe('SolidModel', () => {
         expect(movie.relatedActions.__newModels).toHaveLength(actions.length);
 
         actions.forEach(index => {
-            const action = (movie.actions as WatchAction[])[index];
+            const action = movie.actions?.[index] as WatchAction;
 
             expect(action).toBeInstanceOf(WatchAction);
             expect(action.exists()).toBe(false);
@@ -1429,7 +1429,7 @@ describe('SolidModel', () => {
         expect(group.relatedMembers.__newModels).toHaveLength(memberNames.length);
 
         memberNames.forEach((memberName, index) => {
-            const member = (group.members as Person[])[index];
+            const member = group.members?.[index] as Person;
 
             expect(member).toBeInstanceOf(Person);
             expect(member.exists()).toBe(false);
@@ -1520,7 +1520,7 @@ describe('SolidModel', () => {
         await person.update({ lastName: secondLastName });
 
         // Assert
-        const operations = person.operations as SolidModelOperation[];
+        const operations = person.operations as Tuple<SolidModelOperation, 4>;
 
         expect(operations).toHaveLength(4);
 
@@ -1586,7 +1586,7 @@ describe('SolidModel', () => {
         });
 
         // Assert
-        const operations = group.operations as SolidModelOperation[];
+        const operations = group.operations as Tuple<SolidModelOperation, 6>;
 
         expect(operations).toHaveLength(6);
 
@@ -1683,7 +1683,7 @@ describe('SolidModel', () => {
         await person.save();
 
         // Assert
-        const operations = person.operations;
+        const operations = person.operations as Tuple<SolidModelOperation, 2>;
 
         expect(operations).toHaveLength(2);
 
@@ -1834,31 +1834,31 @@ describe('SolidModel', () => {
         expect(versionA.operations).toHaveLength(5);
         expect(versionB.operations).toHaveLength(5);
 
-        expect(versionA.updatedAt).toEqual(versionA.operations[4].date);
-        expect(versionB.updatedAt).toEqual(versionB.operations[4].date);
+        expect(versionA.updatedAt).toEqual(versionA.operations[4]?.date);
+        expect(versionB.updatedAt).toEqual(versionB.operations[4]?.date);
 
-        expect(versionA.operations[0].exists()).toBe(true);
-        expect(versionA.operations[1].exists()).toBe(true);
-        expect(versionA.operations[2].exists()).toBe(true);
-        expect(versionA.operations[3].exists()).toBe(true);
-        expect(versionA.operations[4].exists()).toBe(false);
-        expect(versionA.operations[4].property).toBe(IRI('foaf:lastName'));
-        expect(versionA.operations[4].value).toBe('Last name B');
+        expect(versionA.operations[0]?.exists()).toBe(true);
+        expect(versionA.operations[1]?.exists()).toBe(true);
+        expect(versionA.operations[2]?.exists()).toBe(true);
+        expect(versionA.operations[3]?.exists()).toBe(true);
+        expect(versionA.operations[4]?.exists()).toBe(false);
+        expect(versionA.operations[4]?.property).toBe(IRI('foaf:lastName'));
+        expect(versionA.operations[4]?.value).toBe('Last name B');
 
-        expect(versionB.operations[0].exists()).toBe(true);
-        expect(versionB.operations[1].exists()).toBe(true);
-        expect(versionB.operations[2].exists()).toBe(true);
-        expect(versionB.operations[3].exists()).toBe(false);
-        expect(versionB.operations[3].property).toBe(IRI('foaf:name'));
-        expect(versionB.operations[3].value).toBe('Name A');
-        expect(versionB.operations[4].exists()).toBe(true);
+        expect(versionB.operations[0]?.exists()).toBe(true);
+        expect(versionB.operations[1]?.exists()).toBe(true);
+        expect(versionB.operations[2]?.exists()).toBe(true);
+        expect(versionB.operations[3]?.exists()).toBe(false);
+        expect(versionB.operations[3]?.property).toBe(IRI('foaf:name'));
+        expect(versionB.operations[3]?.value).toBe('Name A');
+        expect(versionB.operations[4]?.exists()).toBe(true);
 
         range(5).forEach(index => {
-            expect(versionA.operations[index].url).toEqual(versionB.operations[index].url);
-            expect(versionA.operations[index].property).toEqual(versionB.operations[index].property);
-            expect(versionA.operations[index].type).toEqual(versionB.operations[index].type);
-            expect(versionA.operations[index].value).toEqual(versionB.operations[index].value);
-            expect(versionA.operations[index].date).toEqual(versionB.operations[index].date);
+            expect(versionA.operations[index]?.url).toEqual(versionB.operations[index]?.url);
+            expect(versionA.operations[index]?.property).toEqual(versionB.operations[index]?.property);
+            expect(versionA.operations[index]?.type).toEqual(versionB.operations[index]?.type);
+            expect(versionA.operations[index]?.value).toEqual(versionB.operations[index]?.value);
+            expect(versionA.operations[index]?.date).toEqual(versionB.operations[index]?.date);
         });
     });
 
@@ -1886,14 +1886,14 @@ describe('SolidModel', () => {
         // Assert
         [versionA, versionB].forEach(model => {
             expect(model.isDirty()).toBe(false);
-            expect(model.updatedAt).toEqual(model.operations[4].date);
+            expect(model.updatedAt).toEqual(model.operations[4]?.date);
             expect(model.operations).toHaveLength(5);
 
             model.operations.forEach(operation => expect(operation.exists()).toBe(true));
         });
 
         expect(updateSpy).toHaveBeenCalledTimes(2);
-        expect(updateSpy.mock.calls[0][2]).toEqual({
+        expect(updateSpy.mock.calls[0]?.[2]).toEqual({
             '@graph': {
                 $apply: [
                     {
@@ -1907,7 +1907,7 @@ describe('SolidModel', () => {
                             },
                         },
                     },
-                    { $push: versionA.operations[4].toJsonLD() },
+                    { $push: versionA.operations[4]?.toJsonLD() },
                     {
                         $updateItems: {
                             $where: { '@id': versionA.url },
@@ -1917,10 +1917,10 @@ describe('SolidModel', () => {
                 ],
             },
         });
-        expect(updateSpy.mock.calls[1][2]).toEqual({
+        expect(updateSpy.mock.calls[1]?.[2]).toEqual({
             '@graph': {
                 $apply: [
-                    { $push: versionB.operations[3].toJsonLD() },
+                    { $push: versionB.operations[3]?.toJsonLD() },
                     {
                         $updateItems: {
                             $where: { '@id': versionB.url },
@@ -1958,28 +1958,28 @@ describe('SolidModel', () => {
         expect(versionA.operations).toHaveLength(4);
         expect(versionB.operations).toHaveLength(4);
 
-        expect(versionA.updatedAt).toEqual(versionA.operations[3].date);
-        expect(versionB.updatedAt).toEqual(versionB.operations[3].date);
+        expect(versionA.updatedAt).toEqual(versionA.operations[3]?.date);
+        expect(versionB.updatedAt).toEqual(versionB.operations[3]?.date);
 
-        expect(versionA.operations[0].exists()).not.toBe(versionB.operations[0].exists());
-        expect(versionA.operations[1].exists()).not.toBe(versionB.operations[1].exists());
+        expect(versionA.operations[0]?.exists()).not.toBe(versionB.operations[0]?.exists());
+        expect(versionA.operations[1]?.exists()).not.toBe(versionB.operations[1]?.exists());
 
-        expect(versionA.operations[2].exists()).toBe(true);
-        expect(versionA.operations[3].exists()).toBe(false);
-        expect(versionA.operations[3].property).toBe(IRI('foaf:lastName'));
-        expect(versionA.operations[3].value).toBe('Last name B');
+        expect(versionA.operations[2]?.exists()).toBe(true);
+        expect(versionA.operations[3]?.exists()).toBe(false);
+        expect(versionA.operations[3]?.property).toBe(IRI('foaf:lastName'));
+        expect(versionA.operations[3]?.value).toBe('Last name B');
 
-        expect(versionB.operations[2].exists()).toBe(false);
-        expect(versionB.operations[2].property).toBe(IRI('foaf:name'));
-        expect(versionB.operations[2].value).toBe('Name A');
-        expect(versionB.operations[3].exists()).toBe(true);
+        expect(versionB.operations[2]?.exists()).toBe(false);
+        expect(versionB.operations[2]?.property).toBe(IRI('foaf:name'));
+        expect(versionB.operations[2]?.value).toBe('Name A');
+        expect(versionB.operations[3]?.exists()).toBe(true);
 
         range(4).forEach(index => {
-            expect(versionA.operations[index].url).toEqual(versionB.operations[index].url);
-            expect(versionA.operations[index].property).toEqual(versionB.operations[index].property);
-            expect(versionA.operations[index].type).toEqual(versionB.operations[index].type);
-            expect(versionA.operations[index].value).toEqual(versionB.operations[index].value);
-            expect(versionA.operations[index].date).toEqual(versionB.operations[index].date);
+            expect(versionA.operations[index]?.url).toEqual(versionB.operations[index]?.url);
+            expect(versionA.operations[index]?.property).toEqual(versionB.operations[index]?.property);
+            expect(versionA.operations[index]?.type).toEqual(versionB.operations[index]?.type);
+            expect(versionA.operations[index]?.value).toEqual(versionB.operations[index]?.value);
+            expect(versionA.operations[index]?.date).toEqual(versionB.operations[index]?.date);
         });
     });
 
@@ -2021,7 +2021,7 @@ describe('SolidModel', () => {
         // Assert
         [versionA, versionB].forEach(model => {
             expect(model.isDirty()).toBe(false);
-            expect(model.updatedAt).toEqual(model.operations[3].date);
+            expect(model.updatedAt).toEqual(model.operations[3]?.date);
             expect(model.operations).toHaveLength(4);
 
             model.operations.forEach(operation => expect(operation.exists()).toBe(true));
@@ -2066,8 +2066,8 @@ describe('SolidModel', () => {
 
         expect(updateSpy).toHaveBeenCalledTimes(2);
 
-        const updatesA = updateSpy.mock.calls[0][2];
-        const updatesB = updateSpy.mock.calls[1][2];
+        const updatesA = updateSpy.mock.calls[0]?.[2];
+        const updatesB = updateSpy.mock.calls[1]?.[2];
 
         expect(updatesA).toEqual({
             '@graph': {
@@ -2084,7 +2084,7 @@ describe('SolidModel', () => {
                         },
                     },
                     ...getNewInceptionUpdates(versionA),
-                    { $push: versionA.operations[3].toJsonLD() },
+                    { $push: versionA.operations[3]?.toJsonLD() },
                     {
                         $updateItems: {
                             $where: { '@id': versionA.url },
@@ -2100,7 +2100,7 @@ describe('SolidModel', () => {
             '@graph': {
                 $apply: [
                     ...getNewInceptionUpdates(versionB),
-                    { $push: versionB.operations[2].toJsonLD() },
+                    { $push: versionB.operations[2]?.toJsonLD() },
                     {
                         $updateItems: {
                             $where: { '@id': versionB.url },
@@ -2132,15 +2132,15 @@ describe('SolidModel', () => {
         [versionA, versionB].forEach(model => {
             expect(model.memberUrls).toHaveLength(2);
             expect(model.members).toHaveLength(2);
-            expect(model.members?.[0].name).toEqual('John');
-            expect(model.members?.[1].name).toEqual('Amy');
+            expect(model.members?.[0]?.name).toEqual('John');
+            expect(model.members?.[1]?.name).toEqual('Amy');
         });
 
-        expect(versionA.members?.[0].exists()).toBe(true);
-        expect(versionA.members?.[1].exists()).toBe(false);
+        expect(versionA.members?.[0]?.exists()).toBe(true);
+        expect(versionA.members?.[1]?.exists()).toBe(false);
 
-        expect(versionB.members?.[0].exists()).toBe(false);
-        expect(versionB.members?.[1].exists()).toBe(true);
+        expect(versionB.members?.[0]?.exists()).toBe(false);
+        expect(versionB.members?.[1]?.exists()).toBe(true);
     });
 
     it('History tracking for new arrays uses add operation', async () => {
@@ -2154,7 +2154,7 @@ describe('SolidModel', () => {
         // Assert
         expect(person.operations).toHaveLength(1);
 
-        const operation = person.operations[0];
+        const operation = person.operations[0] as SolidModelOperation;
         expect(operation.resourceUrl).toEqual(person.url);
         expect(operation.property).toEqual(IRI('foaf:knows'));
         expect(operation.type).toEqual(IRI('soukai:AddOperation'));

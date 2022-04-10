@@ -2,11 +2,13 @@ import { arrayWithout, toString, urlParse } from '@noeldemartin/utils';
 import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
 import { InMemoryEngine, ModelKey, bootModels, setEngine } from 'soukai';
 import type { Relation } from 'soukai';
+import type { Tuple } from '@noeldemartin/utils';
 
 import IRI from '@/solid/utils/IRI';
 import { SolidEngine } from '@/engines';
 import { SolidModel } from '@/models';
 import { SolidModelOperationType } from '@/models/SolidModelOperation';
+import type SolidModelOperation from '@/models/SolidModelOperation';
 import type { SolidBelongsToManyRelation } from '@/models';
 
 import BaseGroup from '@/testing/lib/stubs/Group';
@@ -85,9 +87,9 @@ describe('Solid history tracking', () => {
 
         // Assert
         expect(fetch).toHaveBeenCalledTimes(6);
-        expect(fetch.mock.calls[1][1]?.body).toEqualSparql(fixture('create-griffith.sparql'));
-        expect(fetch.mock.calls[3][1]?.body).toEqualSparql(fixture('update-griffith-1.sparql'));
-        expect(fetch.mock.calls[5][1]?.body).toEqualSparql(fixture('update-griffith-2.sparql'));
+        expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(fixture('create-griffith.sparql'));
+        expect(fetch.mock.calls[3]?.[1]?.body).toEqualSparql(fixture('update-griffith-1.sparql'));
+        expect(fetch.mock.calls[5]?.[1]?.body).toEqualSparql(fixture('update-griffith-2.sparql'));
     });
 
     it('Tracks list operations', async () => {
@@ -153,10 +155,10 @@ describe('Solid history tracking', () => {
         // Assert
         expect(fetch).toHaveBeenCalledTimes(8);
 
-        expect(fetch.mock.calls[1][1]?.body).toEqualSparql(fixture('create-band-of-the-falcon.sparql'));
-        expect(fetch.mock.calls[3][1]?.body).toEqualSparql(fixture('update-band-of-the-falcon-1.sparql'));
-        expect(fetch.mock.calls[5][1]?.body).toEqualSparql(fixture('update-band-of-the-falcon-2.sparql'));
-        expect(fetch.mock.calls[7][1]?.body).toEqualSparql(fixture('update-band-of-the-falcon-3.sparql'));
+        expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(fixture('create-band-of-the-falcon.sparql'));
+        expect(fetch.mock.calls[3]?.[1]?.body).toEqualSparql(fixture('update-band-of-the-falcon-1.sparql'));
+        expect(fetch.mock.calls[5]?.[1]?.body).toEqualSparql(fixture('update-band-of-the-falcon-2.sparql'));
+        expect(fetch.mock.calls[7]?.[1]?.body).toEqualSparql(fixture('update-band-of-the-falcon-3.sparql'));
     });
 
     it('Reads operation values with explicit types', async () => {
@@ -167,6 +169,7 @@ describe('Solid history tracking', () => {
         const band = await Group.find('solid://band-of-the-falcon#it') as Group;
 
         // Assert - Band
+        const bandOperations = band.operations as Tuple<SolidModelOperation, 5>;
         expect(band.name).toEqual('Band of the Falcon');
         expect(band.memberUrls).toEqual([
             'https://berserk.fandom.com/wiki/Griffith',
@@ -181,17 +184,17 @@ describe('Solid history tracking', () => {
         expect(band.metadata.createdAt).toBeInstanceOf(Date);
         expect(band.metadata.updatedAt).toBeInstanceOf(Date);
 
-        expect(band.operations[0].resourceUrl).toEqual('solid://band-of-the-falcon#it');
-        expect(band.operations[0].type).toBeUndefined();
-        expect(band.operations[0].date).toBeInstanceOf(Date);
-        expect(band.operations[0].property).toEqual(expandIRI('foaf:name'));
-        expect(band.operations[0].value).toEqual('Band of the Falcon');
+        expect(bandOperations[0].resourceUrl).toEqual('solid://band-of-the-falcon#it');
+        expect(bandOperations[0].type).toBeUndefined();
+        expect(bandOperations[0].date).toBeInstanceOf(Date);
+        expect(bandOperations[0].property).toEqual(expandIRI('foaf:name'));
+        expect(bandOperations[0].value).toEqual('Band of the Falcon');
 
-        expect(band.operations[1].resourceUrl).toEqual('solid://band-of-the-falcon#it');
-        expect(band.operations[1].type).toBeUndefined();
-        expect(band.operations[1].date).toBeInstanceOf(Date);
-        expect(band.operations[1].property).toEqual(expandIRI('foaf:member'));
-        expect(band.operations[1].value).toHaveLength(5);
+        expect(bandOperations[1].resourceUrl).toEqual('solid://band-of-the-falcon#it');
+        expect(bandOperations[1].type).toBeUndefined();
+        expect(bandOperations[1].date).toBeInstanceOf(Date);
+        expect(bandOperations[1].property).toEqual(expandIRI('foaf:member'));
+        expect(bandOperations[1].value).toHaveLength(5);
         [
             'https://berserk.fandom.com/wiki/Griffith',
             'https://berserk.fandom.com/wiki/Casca',
@@ -199,39 +202,40 @@ describe('Solid history tracking', () => {
             'https://berserk.fandom.com/wiki/Pippin',
             'https://berserk.fandom.com/wiki/Corkus',
         ].forEach((memberUrl, index) => {
-            expect(band.operations[1].value[index]).toBeInstanceOf(ModelKey);
-            expect(toString(band.operations[1].value[index])).toEqual(memberUrl);
+            expect(bandOperations[1].value[index]).toBeInstanceOf(ModelKey);
+            expect(toString(bandOperations[1].value[index])).toEqual(memberUrl);
         });
 
-        expect(band.operations[2].resourceUrl).toEqual('solid://band-of-the-falcon#it');
-        expect(band.operations[2].date).toBeInstanceOf(Date);
-        expect(band.operations[2].property).toEqual(expandIRI('foaf:maker'));
-        expect(band.operations[2].value).toBeInstanceOf(ModelKey);
-        expect(toString(band.operations[2].value)).toEqual('solid://band-of-the-falcon#griffith');
+        expect(bandOperations[2].resourceUrl).toEqual('solid://band-of-the-falcon#it');
+        expect(bandOperations[2].date).toBeInstanceOf(Date);
+        expect(bandOperations[2].property).toEqual(expandIRI('foaf:maker'));
+        expect(bandOperations[2].value).toBeInstanceOf(ModelKey);
+        expect(toString(bandOperations[2].value)).toEqual('solid://band-of-the-falcon#griffith');
 
-        expect(band.operations[3].resourceUrl).toEqual('solid://band-of-the-falcon#it');
-        expect(band.operations[3].type).toEqual(SolidModelOperationType.Add);
-        expect(band.operations[3].date).toBeInstanceOf(Date);
-        expect(band.operations[3].property).toEqual(expandIRI('foaf:member'));
-        expect(band.operations[3].value).toBeInstanceOf(ModelKey);
-        expect(toString(band.operations[3].value)).toEqual('https://berserk.fandom.com/wiki/Guts');
+        expect(bandOperations[3].resourceUrl).toEqual('solid://band-of-the-falcon#it');
+        expect(bandOperations[3].type).toEqual(SolidModelOperationType.Add);
+        expect(bandOperations[3].date).toBeInstanceOf(Date);
+        expect(bandOperations[3].property).toEqual(expandIRI('foaf:member'));
+        expect(bandOperations[3].value).toBeInstanceOf(ModelKey);
+        expect(toString(bandOperations[3].value)).toEqual('https://berserk.fandom.com/wiki/Guts');
 
-        expect(band.operations[4].resourceUrl).toEqual('solid://band-of-the-falcon#it');
-        expect(band.operations[4].type).toEqual(SolidModelOperationType.Remove);
-        expect(band.operations[4].date).toBeInstanceOf(Date);
-        expect(band.operations[4].property).toEqual(expandIRI('foaf:member'));
-        expect(band.operations[4].value).toHaveLength(3);
+        expect(bandOperations[4].resourceUrl).toEqual('solid://band-of-the-falcon#it');
+        expect(bandOperations[4].type).toEqual(SolidModelOperationType.Remove);
+        expect(bandOperations[4].date).toBeInstanceOf(Date);
+        expect(bandOperations[4].property).toEqual(expandIRI('foaf:member'));
+        expect(bandOperations[4].value).toHaveLength(3);
         [
             'https://berserk.fandom.com/wiki/Judeau',
             'https://berserk.fandom.com/wiki/Pippin',
             'https://berserk.fandom.com/wiki/Corkus',
         ].forEach((memberUrl, index) => {
-            expect(band.operations[4].value[index]).toBeInstanceOf(ModelKey);
-            expect(toString(band.operations[4].value[index])).toEqual(memberUrl);
+            expect(bandOperations[4].value[index]).toBeInstanceOf(ModelKey);
+            expect(toString(bandOperations[4].value[index])).toEqual(memberUrl);
         });
 
         // Assert - Griffith
         const griffith = band.creator as Person;
+        const griffithOperations = griffith.operations as Tuple<SolidModelOperation, 2>;
         expect(griffith).not.toBeNull();
         expect(griffith.name).toEqual('Femto');
 
@@ -242,17 +246,17 @@ describe('Solid history tracking', () => {
         expect(griffith.metadata.createdAt).toBeInstanceOf(Date);
         expect(griffith.metadata.updatedAt).toBeInstanceOf(Date);
 
-        expect(griffith.operations[0].resourceUrl).toEqual('solid://band-of-the-falcon#griffith');
-        expect(griffith.operations[0].type).toBeUndefined();
-        expect(griffith.operations[0].date).toBeInstanceOf(Date);
-        expect(griffith.operations[0].property).toEqual(expandIRI('foaf:name'));
-        expect(griffith.operations[0].value).toEqual('Griffith');
+        expect(griffithOperations[0].resourceUrl).toEqual('solid://band-of-the-falcon#griffith');
+        expect(griffithOperations[0].type).toBeUndefined();
+        expect(griffithOperations[0].date).toBeInstanceOf(Date);
+        expect(griffithOperations[0].property).toEqual(expandIRI('foaf:name'));
+        expect(griffithOperations[0].value).toEqual('Griffith');
 
-        expect(griffith.operations[1].resourceUrl).toEqual('solid://band-of-the-falcon#griffith');
-        expect(griffith.operations[1].type).toBeUndefined();
-        expect(griffith.operations[1].date).toBeInstanceOf(Date);
-        expect(griffith.operations[1].property).toEqual(expandIRI('foaf:name'));
-        expect(griffith.operations[1].value).toEqual('Femto');
+        expect(griffithOperations[1].resourceUrl).toEqual('solid://band-of-the-falcon#griffith');
+        expect(griffithOperations[1].type).toBeUndefined();
+        expect(griffithOperations[1].date).toBeInstanceOf(Date);
+        expect(griffithOperations[1].property).toEqual(expandIRI('foaf:name'));
+        expect(griffithOperations[1].value).toEqual('Femto');
     });
 
     it('synchronizes relations history in different models', async () => {
@@ -291,9 +295,9 @@ describe('Solid history tracking', () => {
         // Assert
         expect(StubFetcher.fetch).toHaveBeenCalledTimes(7);
 
-        expect(fetch.mock.calls[2][1]?.body).toEqualSparql(fixture('update-mugiwara-1.sparql'));
-        expect(fetch.mock.calls[4][1]?.body).toEqualSparql(fixture('update-mugiwara-2.sparql'));
-        expect(fetch.mock.calls[6][1]?.body).toEqualSparql(fixture('update-mugiwara-3.sparql'));
+        expect(fetch.mock.calls[2]?.[1]?.body).toEqualSparql(fixture('update-mugiwara-1.sparql'));
+        expect(fetch.mock.calls[4]?.[1]?.body).toEqualSparql(fixture('update-mugiwara-2.sparql'));
+        expect(fetch.mock.calls[6]?.[1]?.body).toEqualSparql(fixture('update-mugiwara-3.sparql'));
     });
 
     it('synchronizes models with related models', async () => {
@@ -355,8 +359,8 @@ describe('Solid history tracking', () => {
         // Arrange - prepare network stubs
         StubFetcher.addFetchResponse(
             fixture('mugiwara-3.ttl')
-                .replace(/it-operation-1/g, urlParse(remoteMugiwara.operations[0].url)?.fragment ?? '')
-                .replace(/it-operation-2/g, urlParse(remoteMugiwara.operations[1].url)?.fragment ?? ''),
+                .replace(/it-operation-1/g, urlParse(remoteMugiwara.operations[0]?.url ?? '')?.fragment ?? '')
+                .replace(/it-operation-2/g, urlParse(remoteMugiwara.operations[1]?.url ?? '')?.fragment ?? ''),
         );
         StubFetcher.addFetchResponse();
 
@@ -379,25 +383,25 @@ describe('Solid history tracking', () => {
         expect(StubFetcher.fetch).toHaveBeenCalledTimes(5);
 
         const getUpdateVersion = () => {
-            const regeneratedOperationUrls = remoteMugiwara
+            const [firstRegeneratedOperationUrl, ...regeneratedOperationUrls] = remoteMugiwara
                 .operations
                 .slice(0, 2)
                 .filter(operation => !inceptionRemoteOperationUrls.includes(operation.url));
 
-            if (regeneratedOperationUrls.length === 0)
+            if (!firstRegeneratedOperationUrl)
                 return 'v1';
 
-            if (regeneratedOperationUrls.length === 2)
+            if (regeneratedOperationUrls.length === 1)
                 return 'v4';
 
-            return regeneratedOperationUrls[0].property === IRI('foaf:member') ? 'v2' : 'v3';
+            return firstRegeneratedOperationUrl.property === IRI('foaf:member') ? 'v2' : 'v3';
         };
 
-        expect(fetch.mock.calls[4][1]?.body).toEqualSparql(fixture(`update-mugiwara-4-${getUpdateVersion()}.sparql`));
+        expect(fetch.mock.calls[4]?.[1]?.body).toEqualSparql(fixture(`update-mugiwara-4-${getUpdateVersion()}.sparql`));
 
         await expect(remoteMugiwara.toJsonLD()).toEqualJsonLD(fixture('mugiwara-4.jsonld'));
         await expect(localMugiwara.toJsonLD()).toEqualJsonLD(fixture('mugiwara-4.jsonld'));
-        await expect(localEngine.database['solid://bands/']['solid://bands/mugiwara'])
+        await expect(localEngine.database['solid://bands/']?.['solid://bands/mugiwara'])
             .toEqualJsonLD(fixture('mugiwara-4.jsonld'));
 
         // -------------- Part II --------------
@@ -422,11 +426,11 @@ describe('Solid history tracking', () => {
 
         expect(StubFetcher.fetch).toHaveBeenCalledTimes(7);
 
-        expect(fetch.mock.calls[6][1]?.body).toEqualSparql(fixture('update-mugiwara-5.sparql'));
+        expect(fetch.mock.calls[6]?.[1]?.body).toEqualSparql(fixture('update-mugiwara-5.sparql'));
 
         await expect(remoteMugiwara.toJsonLD()).toEqualJsonLD(fixture('mugiwara-5.jsonld'));
         await expect(localMugiwara.toJsonLD()).toEqualJsonLD(fixture('mugiwara-5.jsonld'));
-        await expect(localEngine.database['solid://bands/']['solid://bands/mugiwara'])
+        await expect(localEngine.database['solid://bands/']?.['solid://bands/mugiwara'])
             .toEqualJsonLD(fixture('mugiwara-5.jsonld'));
 
         // -------------- Part III --------------
@@ -451,11 +455,11 @@ describe('Solid history tracking', () => {
 
         expect(StubFetcher.fetch).toHaveBeenCalledTimes(9);
 
-        expect(fetch.mock.calls[8][1]?.body).toEqualSparql(fixture('update-mugiwara-6.sparql'));
+        expect(fetch.mock.calls[8]?.[1]?.body).toEqualSparql(fixture('update-mugiwara-6.sparql'));
 
         await expect(remoteMugiwara.toJsonLD()).toEqualJsonLD(fixture('mugiwara-6.jsonld'));
         await expect(localMugiwara.toJsonLD()).toEqualJsonLD(fixture('mugiwara-6.jsonld'));
-        await expect(localEngine.database['solid://bands/']['solid://bands/mugiwara'])
+        await expect(localEngine.database['solid://bands/']?.['solid://bands/mugiwara'])
             .toEqualJsonLD(fixture('mugiwara-6-document.jsonld'));
     });
 

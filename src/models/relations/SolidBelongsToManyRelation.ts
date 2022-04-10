@@ -55,15 +55,13 @@ export default class SolidBelongsToManyRelation<
                 idsByContainerUrl[containerUrl] = new Set;
             }
 
-            idsByContainerUrl[containerUrl].add(urlRoute(id));
+            idsByContainerUrl[containerUrl]?.add(urlRoute(id));
         }
 
         const results = await Promise.all(
-            Object.keys(idsByContainerUrl).map(
-                containerUrl => this.relatedClass.from(containerUrl).all<Related>({
-                    $in: [...idsByContainerUrl[containerUrl]],
-                }),
-            ),
+            Object
+                .entries(idsByContainerUrl)
+                .map(([containerUrl, ids]) => this.relatedClass.from(containerUrl).all<Related>({ $in: [...ids] })),
         );
 
         const modelsInOtherDocuments = results.reduce(

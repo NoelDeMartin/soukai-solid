@@ -73,8 +73,6 @@ import {
     isSolidSingleModelDocumentRelation,
     synchronizesRelatedModels,
 } from './relations/internals/guards';
-import { inferFieldDefinition } from './fields';
-import { SolidModelOperationType } from './SolidModelOperation';
 import DeletesModels from './mixins/DeletesModels';
 import SerializesToJsonLD from './mixins/SerializesToJsonLD';
 import SolidBelongsToManyRelation from './relations/SolidBelongsToManyRelation';
@@ -82,6 +80,8 @@ import SolidBelongsToOneRelation from './relations/SolidBelongsToOneRelation';
 import SolidHasManyRelation from './relations/SolidHasManyRelation';
 import SolidHasOneRelation from './relations/SolidHasOneRelation';
 import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
+import { inferFieldDefinition } from './fields';
+import { SolidModelOperationType } from './SolidModelOperation';
 import type SolidContainerModel from './SolidContainerModel';
 import type SolidModelMetadata from './SolidModelMetadata';
 import type SolidModelOperation from './SolidModelOperation';
@@ -166,15 +166,15 @@ export class SolidModel extends SolidModelBase {
         if (modelClass.rdfsClasses.length === 0)
             modelClass.rdfsClasses = [defaultRdfContext + modelClass.modelName];
 
-        for (const field in fields) {
-            fields[field].rdfProperty = IRI(
-                fields[field].rdfProperty ?? `${defaultRdfContext}${field}`,
+        for (const [name, field] of Object.entries(fields)) {
+            field.rdfProperty = IRI(
+                field.rdfProperty ?? `${defaultRdfContext}${name}`,
                 modelClass.rdfContexts,
                 defaultRdfContext,
             );
         }
 
-        delete fields[modelClass.primaryKey].rdfProperty;
+        delete fields[modelClass.primaryKey]?.rdfProperty;
 
         modelClass.fields = fields;
     }
@@ -263,7 +263,7 @@ export class SolidModel extends SolidModelBase {
 
             // TODO this should be recursive to take care of 2nd degree relations.
             for (const relationName of this.relations) {
-                const relation = model._relations[relationName];
+                const relation = model._relations[relationName] as Relation;
                 const models = relation.getLoadedModels() as SolidModel[];
 
                 when(relation, isSolidDocumentRelation).reset(models);
@@ -338,7 +338,7 @@ export class SolidModel extends SolidModelBase {
                 if (statement.predicate.value === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') {
                     resourcesTypes[statement.subject.value] = resourcesTypes[statement.subject.value] ?? [];
 
-                    resourcesTypes[statement.subject.value].push(statement.object.value);
+                    resourcesTypes[statement.subject.value]?.push(statement.object.value);
                 }
 
                 return resourcesTypes;
@@ -352,7 +352,7 @@ export class SolidModel extends SolidModelBase {
         if (!resourceId)
             throw new SoukaiError('Couldn\'t find matching resource in JSON-LD');
 
-        return urlResolve(baseUrl, resourceId);
+        return baseUrl ? urlResolve(baseUrl, resourceId) : resourceId;
     }
 
     // TODO this should be optional
@@ -612,10 +612,10 @@ export class SolidModel extends SolidModelBase {
         });
 
         for (const operation of operations) {
-            if (!(operation.property in fields))
-                continue;
-
             const field = fields[operation.property];
+
+            if (!field)
+                continue;
 
             filledAttributes.delete(field);
             this.applyOperation(field, operation);
@@ -625,8 +625,8 @@ export class SolidModel extends SolidModelBase {
             this.unsetAttribute(attribute);
         }
 
-        this.setAttribute('createdAt', operations[0].date);
-        this.setAttribute('updatedAt', operations.slice(-1)[0].date);
+        this.setAttribute('createdAt', operations[0]?.date);
+        this.setAttribute('updatedAt', operations.slice(-1)[0]?.date);
     }
 
     public getDocumentUrl(): string | null {
@@ -1105,7 +1105,7 @@ export class SolidModel extends SolidModelBase {
         this.rebuildAttributesFromHistory();
 
         for (const trackedDirtyProperty of trackedDirtyProperties) {
-            const field = fieldPropertiesMap[trackedDirtyProperty];
+            const field = fieldPropertiesMap[trackedDirtyProperty] as string;
 
             this._trackedDirtyAttributes[field] = this._dirtyAttributes[field];
         }
@@ -1236,7 +1236,7 @@ export class SolidModel extends SolidModelBase {
         }));
 
         return graphUpdates.length === 1
-            ? { '@graph': graphUpdates[0] }
+            ? { '@graph': graphUpdates[0] as EngineAttributeUpdateOperation }
             : { '@graph': { $apply: graphUpdates } };
     }
 
@@ -1417,7 +1417,10 @@ export class SolidModel extends SolidModelBase {
         const operationsLength = this.operations?.length ?? 0;
 
         if (operationsLength > 0) {
-            this.setAttribute(TimestampField.UpdatedAt, this.operations[operationsLength - 1].date);
+            this.setAttribute(
+                TimestampField.UpdatedAt,
+                this.operations[operationsLength - 1]?.date,
+            );
 
             return;
         }

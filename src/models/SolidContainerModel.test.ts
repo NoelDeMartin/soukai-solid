@@ -2,6 +2,7 @@ import Faker from 'faker';
 import { FieldType, bootModels, setEngine } from 'soukai';
 import { stringToSlug, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 import type { EngineDocument } from 'soukai';
+import type { Tuple } from '@noeldemartin/utils';
 
 import IRI from '@/solid/utils/IRI';
 
@@ -84,13 +85,15 @@ describe('SolidContainerModel', () => {
         const collection = await MoviesCollection.find(containerUrl) as MoviesCollection;
 
         // Assert
+        const documents = collection.documents as Tuple<SolidDocument, 2>;
+
         expect(collection.documents).toHaveLength(2);
 
-        expect(collection.documents[0].url).toEqual(firstDocumentUrl);
-        expect(collection.documents[0].updatedAt).toEqual(new Date('1997-07-21T23:42:00.000Z'));
+        expect(documents[0].url).toEqual(firstDocumentUrl);
+        expect(documents[0].updatedAt).toEqual(new Date('1997-07-21T23:42:00.000Z'));
 
-        expect(collection.documents[1].url).toEqual(secondDocumentUrl);
-        expect(collection.documents[1].updatedAt).toEqual(new Date('2010-02-15T23:42:00.000Z'));
+        expect(documents[1].url).toEqual(secondDocumentUrl);
+        expect(documents[1].updatedAt).toEqual(new Date('2010-02-15T23:42:00.000Z'));
     });
 
     it('implements contains relationship', async () => {
@@ -124,7 +127,7 @@ describe('SolidContainerModel', () => {
         await collection.loadRelation('movies');
 
         // Assert
-        const collectionMovies = collection.movies as Movie[];
+        const collectionMovies = collection.movies as Tuple<Movie, 2>;
         expect(collectionMovies).toHaveLength(2);
         expect(collectionMovies[0]).toBeInstanceOf(Movie);
         expect(collectionMovies[0].url).toBe(theLordOfTheRingsUrl);

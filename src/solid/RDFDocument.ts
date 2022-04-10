@@ -59,11 +59,9 @@ export default class RDFDocument {
 
         this.resourcesIndex = this.statements.reduce((resourcesIndex, statement) => {
             const resourceUrl = statement.subject.value;
+            const resource = resourcesIndex[resourceUrl] = resourcesIndex[resourceUrl] ?? new RDFResource(resourceUrl);
 
-            if (!(resourceUrl in resourcesIndex))
-                resourcesIndex[resourceUrl] = new RDFResource(resourceUrl);
-
-            resourcesIndex[resourceUrl].addStatement(statement);
+            resource.addStatement(statement);
 
             return resourcesIndex;
         }, {} as Record<string, RDFResource>);
@@ -81,7 +79,9 @@ export default class RDFDocument {
     }
 
     public hasProperty(resourceUrl: string, name: string): boolean {
-        return resourceUrl in this.resourcesIndex && name in this.resourcesIndex[resourceUrl].propertiesIndex;
+        const resource = this.resourcesIndex[resourceUrl];
+
+        return !!resource && name in resource.propertiesIndex;
     }
 
     public async toJsonLD(): Promise<JsonLDGraph> {
@@ -128,5 +128,5 @@ function getDescribedBy(options: TurtleParsingOptions): string | undefined {
     if (!matches)
         return undefined;
 
-    return urlResolve(options.baseUrl || '', matches[1]);
+    return urlResolve(options.baseUrl || '', matches[1] as string);
 }
