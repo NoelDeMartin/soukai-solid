@@ -17,7 +17,9 @@ export default class ManagesPermissions {
     }
 
     public get isPrivate(): boolean | null {
-        return !this.isPublic;
+        return this._publicPermissions
+            ? !this._publicPermissions.includes(SolidDocumentPermission.Read)
+            : null;
     }
 
     public async fetchPublicPermissionsIfMissing(this: This): Promise<void> {
