@@ -464,6 +464,12 @@ export class SolidModel extends SolidModelBase {
         return this.static().withCollection(this.guessCollection(), () => super.delete());
     }
 
+    public async softDelete(): Promise<this> {
+        await this.metadata?.update({ deletedAt: new Date() });
+
+        return this;
+    }
+
     public mintUrl(documentUrl?: string, documentExists?: boolean, resourceHash?: string): void {
         this.setAttribute(this.static('primaryKey'), this.newUrl(documentUrl, resourceHash));
 
@@ -542,6 +548,10 @@ export class SolidModel extends SolidModelBase {
         return ignoreRelations
             ? false
             : this.getDocumentModels().filter(model => model.isDirty(undefined, true)).length > 0;
+    }
+
+    public isSoftDeleted(): boolean {
+        return !!this.metadata?.deletedAt;
     }
 
     public cleanDirty(ignoreRelations?: boolean): void {

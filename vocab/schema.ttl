@@ -42,6 +42,12 @@
     rdfs:range xsd:dateTime ;
     rdfs:domain :Metadata .
 
+:deletedAt a rdf:Property ;
+    rdfs:label "deletedAt" ;
+    rdfs:comment "Time at which the resource was soft deleted." ;
+    rdfs:range xsd:dateTime ;
+    rdfs:domain :Metadata .
+
 :type a rdf:Property ;
     rdfs:label "type" ;
     rdfs:comment "Type of the operation. If this property is missing, :SetOperation will be assumed." ;

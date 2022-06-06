@@ -956,6 +956,17 @@ describe('SolidModel', () => {
         });
     });
 
+    it('soft deletes', async () => {
+        // Arrange
+        const person = await Person.create();
+
+        // Act
+        await person.softDelete();
+
+        // Assert
+        expect(person.isSoftDeleted()).toBe(true);
+    });
+
     it('aliases url attribute as id', async () => {
         class StubModel extends SolidModel {}
 

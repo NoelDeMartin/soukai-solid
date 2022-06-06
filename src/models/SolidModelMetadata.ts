@@ -21,6 +21,7 @@ export default class SolidModelMetadata extends SolidModel {
         },
         createdAt: FieldType.Date,
         updatedAt: FieldType.Date,
+        deletedAt: FieldType.Date,
     } as const;
 
     public getCreatedAtAttribute(): Date {
