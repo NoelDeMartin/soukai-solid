@@ -33,6 +33,10 @@ export default class Movie extends SolidModel {
             type: FieldType.Date,
             rdfProperty: 'schema:datePublished',
         },
+        rating: {
+            type: FieldType.String,
+            rdfProperty: 'schema:contentRating',
+        },
     };
 
     public director: Person | undefined;

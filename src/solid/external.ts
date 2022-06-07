@@ -1,4 +1,5 @@
-import type { JsonLD, JsonLDResource } from '@noeldemartin/solid-utils';
+import type { JsonLD, JsonLDGraph, JsonLDResource } from '@noeldemartin/solid-utils';
+import type { JsonLdDocument } from 'jsonld';
 import type { JsonLdObj } from 'jsonld/jsonld-spec';
 import type { ParserOptions } from 'n3';
 import type { Quad } from 'rdf-js';
@@ -24,6 +25,23 @@ export type DocumentData = {
     quads: Quad[];
     containsRelativeIRIs: boolean;
 };
+
+export async function compactJsonLDGraph(jsonld: JsonLDGraph): Promise<JsonLDGraph> {
+    defineGlobal();
+
+    const { compact } = await import('./external.chunk');
+    const compactedJsonLD = await compact(jsonld as JsonLdDocument, {});
+
+    if ('@graph' in compactedJsonLD) {
+        return compactedJsonLD as JsonLDGraph;
+    }
+
+    if ('@id' in compactedJsonLD) {
+        return { '@graph': [compactedJsonLD] } as JsonLDGraph;
+    }
+
+    return { '@graph': [] };
+}
 
 export async function fromRDF(dataset: Quad[]): Promise<JsonLDResource[]> {
     defineGlobal();

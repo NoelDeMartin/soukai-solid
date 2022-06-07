@@ -8,7 +8,8 @@
     terms:created "2021-01-30T11:47:00Z"^^XML:dateTime;
     terms:modified "2021-01-30T11:47:00Z"^^XML:dateTime;
     schema:datePublished "2001-07-20T00:00:00Z"^^XML:dateTime;
-    schema:name "Spirited Away".
+    schema:name "Spirited Away";
+    schema:contentRating "PG".
 
 :59344285-7e11-4b88-aea0-544a2044a7e8
     a schema:WatchAction;

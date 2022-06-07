@@ -1,4 +1,5 @@
 import { arrayFrom, arrayUnique, isObject, urlParentDirectory, urlRoot } from '@noeldemartin/utils';
+import { quadsToJsonLD } from '@noeldemartin/solid-utils';
 import {
     DocumentAlreadyExists,
     DocumentNotFound,
@@ -8,7 +9,6 @@ import {
 import type {
     Engine,
     EngineAttributeLeafValue,
-    EngineAttributeValue,
     EngineDocument,
     EngineDocumentsCollection,
     EngineFilters,
@@ -20,7 +20,7 @@ import type { JsonLD } from '@noeldemartin/solid-utils';
 
 import ChangeUrlOperation from '@/solid/operations/ChangeUrlOperation';
 import RDFDocument from '@/solid/RDFDocument';
-import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
+import RDFResourceProperty from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import SolidClient from '@/solid/SolidClient';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
@@ -30,6 +30,7 @@ import type { RDFDocumentMetadata } from '@/solid/RDFDocument';
 import type { UpdateOperation } from '@/solid/operations/Operation';
 
 import IRI from '@/solid/utils/IRI';
+import { compactJsonLDGraph } from '@/solid/external';
 
 export interface SolidEngineConfig {
     useGlobbing: boolean;
@@ -90,7 +91,7 @@ export class SolidEngine implements Engine {
         if (rdfDocument === null)
             throw new DocumentNotFound(id);
 
-        const document = this.convertToEngineDocument(rdfDocument);
+        const document = await this.convertToEngineDocument(rdfDocument);
 
         this.emit('onRDFDocumentLoaded', rdfDocument.url as string, rdfDocument.metadata);
 
@@ -99,13 +100,15 @@ export class SolidEngine implements Engine {
 
     public async readMany(collection: string, filters: EngineFilters = {}): Promise<EngineDocumentsCollection> {
         const documentsArray = await this.getDocumentsForFilters(collection, filters);
-        const documents = documentsArray.reduce((documents, document) => {
-            documents[document.url as string] = this.convertToEngineDocument(document);
+        const documents: EngineDocumentsCollection = {};
 
-            this.emit('onRDFDocumentLoaded', document.url as string, document.metadata);
+        await Promise.all(
+            documentsArray.map(async document => {
+                documents[document.url as string] = await this.convertToEngineDocument(document);
 
-            return documents;
-        }, {} as EngineDocumentsCollection);
+                this.emit('onRDFDocumentLoaded', document.url as string, document.metadata);
+            }),
+        );
 
         return this.helper.filterDocuments(documents, filters);
     }
@@ -182,49 +185,11 @@ export class SolidEngine implements Engine {
         return containerDocuments.flat();
     }
 
-    private convertToEngineDocument(document: RDFDocument): EngineDocument {
-        // TODO use RDF libraries instead of implementing this conversion
-        return {
-            '@graph': document.resources.map(resource => {
-                const attributes: JsonLD = {};
+    private async convertToEngineDocument(document: RDFDocument): Promise<EngineDocument> {
+        const jsonld = await quadsToJsonLD(document.statements);
+        const compactedJsonLD = await compactJsonLDGraph(jsonld);
 
-                for (const [name, properties] of Object.entries(resource.propertiesIndex)) {
-                    const [firstProperty, ...otherProperties] = properties;
-
-                    if (!firstProperty)
-                        continue;
-
-                    let key: string = name;
-                    let cast: (value: unknown) => unknown = value => value;
-
-                    switch (firstProperty.type) {
-                        case RDFResourcePropertyType.Type:
-                            key = '@type';
-                            break;
-                        case RDFResourcePropertyType.Reference:
-                            cast = value => ({ '@id': value });
-                            break;
-                        case RDFResourcePropertyType.Literal:
-                            cast = value => value instanceof Date
-                                ? {
-                                    '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
-                                    '@value': value.toISOString(),
-                                }
-                                : value;
-                            break;
-                    }
-
-                    attributes[key] = otherProperties.length === 0
-                        ? cast(firstProperty.value)
-                        : [firstProperty, ...otherProperties].map(property => cast(property.value));
-                }
-
-                if (resource.url)
-                    attributes['@id'] = resource.url;
-
-                return attributes as EngineAttributeValue;
-            }),
-        };
+        return compactedJsonLD as EngineDocument;
     }
 
     private validateJsonLDGraph(document: EngineDocument): void {

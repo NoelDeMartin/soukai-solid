@@ -1,7 +1,8 @@
 import { Parser as TurtleParser } from 'n3';
-import { fromRDF, toRDF } from 'jsonld';
+import { compact, fromRDF, toRDF } from 'jsonld';
 
 export {
+    compact,
     fromRDF,
     toRDF,
     TurtleParser,

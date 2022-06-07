@@ -3,6 +3,7 @@ import { tap, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 import Faker from 'faker';
 
 import Movie from '@/testing/lib/stubs/Movie';
+import Person from '@/testing/lib/stubs/Person';
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';
 import WatchAction from '@/testing/lib/stubs/WatchAction';
 
@@ -23,7 +24,7 @@ describe('Solid CRUD', () => {
         Movie.collection = 'https://my-pod.com/movies/';
 
         setEngine(new SolidEngine(fetch));
-        bootModels({ Movie, WatchAction });
+        bootModels({ Movie, Person, WatchAction });
     });
 
     it('Creates models', async () => {
@@ -158,24 +159,40 @@ describe('Solid CRUD', () => {
         expect(action.startTime?.getDate()).toEqual(10);
     });
 
+    it('Reads webIds', async () => {
+        // Arrange
+        StubFetcher.addFetchResponse(fixture('alice.ttl'));
+
+        // Act
+        const alice = await Person
+            .from('https://alice.pod-provider.com/profile/')
+            .find('https://alice.pod-provider.com/profile/card#me');
+
+        // Assert
+        expect(alice).not.toBeNull();
+        expect(alice?.name).toEqual('Alice');
+    });
+
     it('Reads many models', async () => {
         // Arrange
         StubFetcher.addFetchResponse(fixture('movies.ttl'));
         StubFetcher.addFetchResponse(fixture('the-lord-of-the-rings.ttl'));
         StubFetcher.addFetchResponse(fixture('spirited-away.ttl'));
+        StubFetcher.addFetchResponse(fixture('the-tale-of-princess-kaguya.ttl'));
         StubFetcher.addFetchResponse(fixture('ramen.ttl'));
 
         // Act
-        const movies = await Movie.all();
+        const movies = await Movie.all({ rating: 'PG' });
 
         // Assert
         expect(movies).toHaveLength(2);
-        const theLordOfTheRings = movies.find(movie => movie.url.endsWith('the-lord-of-the-rings#it')) as Movie;
+        const theTaleOfPrincessKaguya =
+            movies.find(movie => movie.url.endsWith('the-tale-of-princess-kaguya#it')) as Movie;
         const spiritedAway = movies.find(movie => movie.url.endsWith('spirited-away#it')) as Movie;
 
-        expect(theLordOfTheRings).not.toBeUndefined();
-        expect(theLordOfTheRings.title).toEqual('The Lord of the Rings: The Fellowship of the Ring');
-        expect(theLordOfTheRings.actions).toHaveLength(0);
+        expect(theTaleOfPrincessKaguya).not.toBeUndefined();
+        expect(theTaleOfPrincessKaguya.title).toEqual('The Tale of The Princess Kaguya');
+        expect(theTaleOfPrincessKaguya.actions).toHaveLength(0);
 
         expect(spiritedAway).not.toBeUndefined();
         expect(spiritedAway.title).toEqual('Spirited Away');
