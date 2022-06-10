@@ -11,6 +11,8 @@ import {
 import { BelongsToManyRelation, ModelKey } from 'soukai';
 import type { Model, RelationCloneOptions } from 'soukai';
 
+import { operationClasses } from '@/models/history/operations';
+import type SetPropertyOperation from '@/models/history/SetPropertyOperation';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
@@ -110,14 +112,25 @@ export default class SolidBelongsToManyRelation<
     }
 
     public __synchronizeRelated(other: this): void {
+        const { SetPropertyOperation, AddPropertyOperation, RemovePropertyOperation } = operationClasses();
         const foreignProperty = this.parent.getFieldRdfProperty(this.foreignKeyName);
         const localKeyName = this.localKeyName as keyof Related;
         const thisRelatedMap = map(this.related ?? [], localKeyName);
         const otherRelatedMap = map(other.related ?? [], localKeyName);
         const clones = tap(new WeakMap<Model, Model>(), clones => clones.set(other.parent, this.parent));
 
-        this.parent.operations
-            .filter(operation => !operation.exists() && operation.property === foreignProperty)
+        this.parent
+            .operations
+            .filter(
+                (operation): operation is SetPropertyOperation =>
+                    !operation.exists() &&
+                    (
+                        operation instanceof SetPropertyOperation ||
+                        operation instanceof AddPropertyOperation ||
+                        operation instanceof RemovePropertyOperation
+                    ) &&
+                    operation.property === foreignProperty,
+            )
             .map(operation => arrayFrom(operation.value))
             .flat()
             .map(foreignKey => otherRelatedMap.get(foreignKey instanceof ModelKey ? foreignKey.toString() : foreignKey))

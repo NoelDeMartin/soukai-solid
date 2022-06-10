@@ -1,3 +1,4 @@
+import OperationsRelation from './OperationsRelation';
 import SolidACLAuthorizationsRelation from './SolidACLAuthorizationsRelation';
 import SolidBelongsToManyRelation from './SolidBelongsToManyRelation';
 import SolidBelongsToOneRelation from './SolidBelongsToOneRelation';
@@ -11,6 +12,7 @@ SolidContainsRelation.inverseRelationClasses = [SolidIsContainedByRelation];
 SolidIsContainedByRelation.inverseRelationClasses = [SolidContainsRelation];
 
 export {
+    OperationsRelation,
     SolidACLAuthorizationsRelation,
     SolidBelongsToManyRelation,
     SolidBelongsToOneRelation,

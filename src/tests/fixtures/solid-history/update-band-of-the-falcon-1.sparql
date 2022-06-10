@@ -14,14 +14,14 @@ INSERT DATA {
     <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#it-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#it> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:name ;
         soukai:value "Band of the Falcon" .
 
     <#it-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#it> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:member ;
@@ -33,16 +33,15 @@ INSERT DATA {
             <https://berserk.fandom.com/wiki/Corkus> .
 
     <#it-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#it> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:maker ;
         soukai:value <#griffith>.
 
     <#it-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:AddPropertyOperation ;
         soukai:resource <#it> ;
-        soukai:type soukai:AddOperation ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:member ;
         soukai:value <https://berserk.fandom.com/wiki/Guts> .

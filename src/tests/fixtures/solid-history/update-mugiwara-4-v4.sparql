@@ -6,14 +6,14 @@ DELETE DATA {
     <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#it-operation-[[operation-1][.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#it> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:member ;
         soukai:value <#luffy> .
 
     <#it-operation-[[operation-2][.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#it> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:name ;
@@ -40,22 +40,21 @@ INSERT DATA {
         soukai:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#it-operation-[[operation-3][.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#it> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:member ;
         soukai:value <#luffy> .
 
     <#it-operation-[[operation-4][.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#it> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:name ;
         soukai:value "Straw Hat Pirates" .
 
     <#it-operation-[[operation-5][.*]]>
-        a soukai:Operation ;
-        soukai:type soukai:AddOperation ;
+        a soukai:AddPropertyOperation ;
         soukai:resource <#it> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:member ;

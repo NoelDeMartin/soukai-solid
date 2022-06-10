@@ -22,35 +22,35 @@ INSERT DATA {
     <#roronoa-zoro-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#luffy-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#luffy> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:givenName ;
         soukai:value "The King of Pirates" .
 
     <#roronoa-zoro-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#roronoa-zoro> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:name ;
         soukai:value "Roronoa Zoro" .
 
     <#roronoa-zoro-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#roronoa-zoro> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:givenName ;
         soukai:value "Pirate Hunter" .
 
     <#roronoa-zoro-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#roronoa-zoro> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:age ;
         soukai:value 19 .
 
     <#roronoa-zoro-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#roronoa-zoro> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:givenName ;

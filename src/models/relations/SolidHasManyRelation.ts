@@ -36,9 +36,7 @@ export default class SolidHasManyRelation<
             // declared in the same document.
             return this.related = [];
 
-        const modelsInOtherDocuments = await this.relatedClass.all<Related>({
-            $in: this.__modelsInOtherDocumentIds,
-        });
+        const modelsInOtherDocuments = await this.loadRelatedModels(this.__modelsInOtherDocumentIds);
 
         this.related = [
             ...this.__modelsInSameDocument,
@@ -69,6 +67,10 @@ export default class SolidHasManyRelation<
             return;
 
         this.loadDocumentModels([], []);
+    }
+
+    protected loadRelatedModels(documentIds: string[]): Promise<Related[]> {
+        return this.relatedClass.all<Related>({ $in: documentIds });
     }
 
 }

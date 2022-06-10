@@ -20,21 +20,21 @@ INSERT DATA {
         soukai:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#it-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#it> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:name ;
         soukai:value "Griffith" .
 
     <#it-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#it> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:name ;
         soukai:value "Femto" .
 
     <#it-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#it> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:givenName ;

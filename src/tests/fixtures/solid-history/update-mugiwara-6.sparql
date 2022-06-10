@@ -15,9 +15,8 @@ INSERT DATA {
     <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#it-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:RemovePropertyOperation ;
         soukai:resource <#it> ;
-        soukai:type soukai:RemoveOperation ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:member ;
         soukai:value <#nami> .

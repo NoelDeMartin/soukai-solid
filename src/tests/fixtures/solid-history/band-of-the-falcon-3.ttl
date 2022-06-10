@@ -18,14 +18,14 @@
     soukai:updatedAt "1996-05-24T00:00:00.000Z"^^xsd:dateTime .
 
 <#it-operation-1>
-    a soukai:Operation ;
+    a soukai:SetPropertyOperation ;
     soukai:resource <#it> ;
     soukai:date "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
     soukai:property foaf:name ;
     soukai:value "Band of the Falcon" .
 
 <#it-operation-2>
-    a soukai:Operation ;
+    a soukai:SetPropertyOperation ;
     soukai:resource <#it> ;
     soukai:date "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
     soukai:property foaf:member ;
@@ -37,26 +37,24 @@
         <https://berserk.fandom.com/wiki/Corkus> .
 
 <#it-operation-3>
-    a soukai:Operation ;
+    a soukai:SetPropertyOperation ;
     soukai:resource <#it> ;
     soukai:date "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
     soukai:property foaf:maker ;
     soukai:value <#griffith> .
 
 <#it-operation-4>
-    a soukai:Operation ;
+    a soukai:AddPropertyOperation ;
     soukai:resource <#it> ;
-    soukai:type soukai:AddOperation ;
     soukai:date "1992-01-01T00:00:00.000Z"^^xsd:dateTime ;
     soukai:property foaf:member ;
     soukai:value <https://berserk.fandom.com/wiki/Guts> .
 
 <#it-operation-5>
-    a soukai:Operation ;
+    a soukai:RemovePropertyOperation ;
     soukai:resource <#it> ;
     soukai:date "1996-05-24T00:00:00.000Z"^^xsd:dateTime ;
     soukai:property foaf:member ;
-    soukai:type soukai:RemoveOperation ;
     soukai:value
         <https://berserk.fandom.com/wiki/Judeau>,
         <https://berserk.fandom.com/wiki/Pippin>,
@@ -73,14 +71,14 @@
     soukai:updatedAt "1996-05-24T00:00:00.000Z"^^xsd:dateTime .
 
 <#griffith-operation-1>
-    a soukai:Operation ;
+    a soukai:SetPropertyOperation ;
     soukai:resource <#griffith> ;
     soukai:date "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
     soukai:property foaf:name ;
     soukai:value "Griffith" .
 
 <#griffith-operation-2>
-    a soukai:Operation ;
+    a soukai:SetPropertyOperation ;
     soukai:resource <#griffith> ;
     soukai:date "1996-05-24T00:00:00.000Z"^^xsd:dateTime ;
     soukai:property foaf:name ;

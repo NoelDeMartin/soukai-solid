@@ -6,15 +6,19 @@ import type { Tuple } from '@noeldemartin/utils';
 
 import IRI from '@/solid/utils/IRI';
 import { SolidEngine } from '@/engines';
-import { SolidModel } from '@/models';
-import { SolidModelOperationType } from '@/models/SolidModelOperation';
-import type SolidModelOperation from '@/models/SolidModelOperation';
+import {
+    AddPropertyOperation,
+    PropertyOperation,
+    RemovePropertyOperation,
+    SetPropertyOperation,
+    SolidModel,
+} from '@/models';
 import type { SolidBelongsToManyRelation } from '@/models';
 
 import BaseGroup from '@/testing/lib/stubs/Group';
 import BasePerson from '@/testing/lib/stubs/Person';
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';
-import { loadFixture } from '@/testing/utils';
+import { assertInstanceOf, loadFixture } from '@/testing/utils';
 
 const expandIRI = (iri: string) => defaultExpandIRI(iri, {
     extraContext: {
@@ -169,7 +173,7 @@ describe('Solid history tracking', () => {
         const band = await Group.find('solid://band-of-the-falcon#it') as Group;
 
         // Assert - Band
-        const bandOperations = band.operations as Tuple<SolidModelOperation, 5>;
+        const bandOperations = band.operations as Tuple<PropertyOperation, 5>;
         expect(band.name).toEqual('Band of the Falcon');
         expect(band.memberUrls).toEqual([
             'https://berserk.fandom.com/wiki/Griffith',
@@ -184,58 +188,64 @@ describe('Solid history tracking', () => {
         expect(band.metadata.createdAt).toBeInstanceOf(Date);
         expect(band.metadata.updatedAt).toBeInstanceOf(Date);
 
-        expect(bandOperations[0].resourceUrl).toEqual('solid://band-of-the-falcon#it');
-        expect(bandOperations[0].type).toBeUndefined();
-        expect(bandOperations[0].date).toBeInstanceOf(Date);
-        expect(bandOperations[0].property).toEqual(expandIRI('foaf:name'));
-        expect(bandOperations[0].value).toEqual('Band of the Falcon');
-
-        expect(bandOperations[1].resourceUrl).toEqual('solid://band-of-the-falcon#it');
-        expect(bandOperations[1].type).toBeUndefined();
-        expect(bandOperations[1].date).toBeInstanceOf(Date);
-        expect(bandOperations[1].property).toEqual(expandIRI('foaf:member'));
-        expect(bandOperations[1].value).toHaveLength(5);
-        [
-            'https://berserk.fandom.com/wiki/Griffith',
-            'https://berserk.fandom.com/wiki/Casca',
-            'https://berserk.fandom.com/wiki/Judeau',
-            'https://berserk.fandom.com/wiki/Pippin',
-            'https://berserk.fandom.com/wiki/Corkus',
-        ].forEach((memberUrl, index) => {
-            expect(bandOperations[1].value[index]).toBeInstanceOf(ModelKey);
-            expect(toString(bandOperations[1].value[index])).toEqual(memberUrl);
+        assertInstanceOf(bandOperations[0], SetPropertyOperation, operation => {
+            expect(operation.resourceUrl).toEqual('solid://band-of-the-falcon#it');
+            expect(operation.date).toBeInstanceOf(Date);
+            expect(operation.property).toEqual(expandIRI('foaf:name'));
+            expect(operation.value).toEqual('Band of the Falcon');
         });
 
-        expect(bandOperations[2].resourceUrl).toEqual('solid://band-of-the-falcon#it');
-        expect(bandOperations[2].date).toBeInstanceOf(Date);
-        expect(bandOperations[2].property).toEqual(expandIRI('foaf:maker'));
-        expect(bandOperations[2].value).toBeInstanceOf(ModelKey);
-        expect(toString(bandOperations[2].value)).toEqual('solid://band-of-the-falcon#griffith');
+        assertInstanceOf(bandOperations[1], SetPropertyOperation, operation => {
+            expect(operation.resourceUrl).toEqual('solid://band-of-the-falcon#it');
+            expect(operation.date).toBeInstanceOf(Date);
+            expect(operation.property).toEqual(expandIRI('foaf:member'));
+            expect(operation.value).toHaveLength(5);
+            [
+                'https://berserk.fandom.com/wiki/Griffith',
+                'https://berserk.fandom.com/wiki/Casca',
+                'https://berserk.fandom.com/wiki/Judeau',
+                'https://berserk.fandom.com/wiki/Pippin',
+                'https://berserk.fandom.com/wiki/Corkus',
+            ].forEach((memberUrl, index) => {
+                expect(operation.value[index]).toBeInstanceOf(ModelKey);
+                expect(toString(operation.value[index])).toEqual(memberUrl);
+            });
+        });
 
-        expect(bandOperations[3].resourceUrl).toEqual('solid://band-of-the-falcon#it');
-        expect(bandOperations[3].type).toEqual(SolidModelOperationType.Add);
-        expect(bandOperations[3].date).toBeInstanceOf(Date);
-        expect(bandOperations[3].property).toEqual(expandIRI('foaf:member'));
-        expect(bandOperations[3].value).toBeInstanceOf(ModelKey);
-        expect(toString(bandOperations[3].value)).toEqual('https://berserk.fandom.com/wiki/Guts');
+        assertInstanceOf(bandOperations[2], SetPropertyOperation, operation => {
+            expect(operation.resourceUrl).toEqual('solid://band-of-the-falcon#it');
+            expect(operation.date).toBeInstanceOf(Date);
+            expect(operation.property).toEqual(expandIRI('foaf:maker'));
+            expect(operation.value).toBeInstanceOf(ModelKey);
+            expect(toString(operation.value)).toEqual('solid://band-of-the-falcon#griffith');
+        });
 
-        expect(bandOperations[4].resourceUrl).toEqual('solid://band-of-the-falcon#it');
-        expect(bandOperations[4].type).toEqual(SolidModelOperationType.Remove);
-        expect(bandOperations[4].date).toBeInstanceOf(Date);
-        expect(bandOperations[4].property).toEqual(expandIRI('foaf:member'));
-        expect(bandOperations[4].value).toHaveLength(3);
-        [
-            'https://berserk.fandom.com/wiki/Judeau',
-            'https://berserk.fandom.com/wiki/Pippin',
-            'https://berserk.fandom.com/wiki/Corkus',
-        ].forEach((memberUrl, index) => {
-            expect(bandOperations[4].value[index]).toBeInstanceOf(ModelKey);
-            expect(toString(bandOperations[4].value[index])).toEqual(memberUrl);
+        assertInstanceOf(bandOperations[3], AddPropertyOperation, operation => {
+            expect(operation.resourceUrl).toEqual('solid://band-of-the-falcon#it');
+            expect(operation.date).toBeInstanceOf(Date);
+            expect(operation.property).toEqual(expandIRI('foaf:member'));
+            expect(operation.value).toBeInstanceOf(ModelKey);
+            expect(toString(operation.value)).toEqual('https://berserk.fandom.com/wiki/Guts');
+        });
+
+        assertInstanceOf(bandOperations[4], RemovePropertyOperation, operation => {
+            expect(operation.resourceUrl).toEqual('solid://band-of-the-falcon#it');
+            expect(operation.date).toBeInstanceOf(Date);
+            expect(operation.property).toEqual(expandIRI('foaf:member'));
+            expect(operation.value).toHaveLength(3);
+            [
+                'https://berserk.fandom.com/wiki/Judeau',
+                'https://berserk.fandom.com/wiki/Pippin',
+                'https://berserk.fandom.com/wiki/Corkus',
+            ].forEach((memberUrl, index) => {
+                expect(operation.value[index]).toBeInstanceOf(ModelKey);
+                expect(toString(operation.value[index])).toEqual(memberUrl);
+            });
         });
 
         // Assert - Griffith
         const griffith = band.creator as Person;
-        const griffithOperations = griffith.operations as Tuple<SolidModelOperation, 2>;
+        const griffithOperations = griffith.operations as Tuple<PropertyOperation, 2>;
         expect(griffith).not.toBeNull();
         expect(griffith.name).toEqual('Femto');
 
@@ -246,17 +256,19 @@ describe('Solid history tracking', () => {
         expect(griffith.metadata.createdAt).toBeInstanceOf(Date);
         expect(griffith.metadata.updatedAt).toBeInstanceOf(Date);
 
-        expect(griffithOperations[0].resourceUrl).toEqual('solid://band-of-the-falcon#griffith');
-        expect(griffithOperations[0].type).toBeUndefined();
-        expect(griffithOperations[0].date).toBeInstanceOf(Date);
-        expect(griffithOperations[0].property).toEqual(expandIRI('foaf:name'));
-        expect(griffithOperations[0].value).toEqual('Griffith');
+        assertInstanceOf(griffithOperations[0], SetPropertyOperation, operation => {
+            expect(operation.resourceUrl).toEqual('solid://band-of-the-falcon#griffith');
+            expect(operation.date).toBeInstanceOf(Date);
+            expect(operation.property).toEqual(expandIRI('foaf:name'));
+            expect(operation.value).toEqual('Griffith');
+        });
 
-        expect(griffithOperations[1].resourceUrl).toEqual('solid://band-of-the-falcon#griffith');
-        expect(griffithOperations[1].type).toBeUndefined();
-        expect(griffithOperations[1].date).toBeInstanceOf(Date);
-        expect(griffithOperations[1].property).toEqual(expandIRI('foaf:name'));
-        expect(griffithOperations[1].value).toEqual('Femto');
+        assertInstanceOf(griffithOperations[1], SetPropertyOperation, operation => {
+            expect(operation.resourceUrl).toEqual('solid://band-of-the-falcon#griffith');
+            expect(operation.date).toBeInstanceOf(Date);
+            expect(operation.property).toEqual(expandIRI('foaf:name'));
+            expect(operation.value).toEqual('Femto');
+        });
     });
 
     it('synchronizes relations history in different models', async () => {
@@ -383,18 +395,21 @@ describe('Solid history tracking', () => {
         expect(StubFetcher.fetch).toHaveBeenCalledTimes(5);
 
         const getUpdateVersion = () => {
-            const [firstRegeneratedOperationUrl, ...regeneratedOperationUrls] = remoteMugiwara
+            const [firstRegeneratedOperation, ...regeneratedOperations] = remoteMugiwara
                 .operations
                 .slice(0, 2)
                 .filter(operation => !inceptionRemoteOperationUrls.includes(operation.url));
 
-            if (!firstRegeneratedOperationUrl)
+            if (!firstRegeneratedOperation)
                 return 'v1';
 
-            if (regeneratedOperationUrls.length === 1)
+            if (regeneratedOperations.length === 1)
                 return 'v4';
 
-            return firstRegeneratedOperationUrl.property === IRI('foaf:member') ? 'v2' : 'v3';
+            const property = firstRegeneratedOperation instanceof PropertyOperation
+                && firstRegeneratedOperation.property;
+
+            return property === IRI('foaf:member') ? 'v2' : 'v3';
         };
 
         expect(fetch.mock.calls[4]?.[1]?.body).toEqualSparql(fixture(`update-mugiwara-4-${getUpdateVersion()}.sparql`));

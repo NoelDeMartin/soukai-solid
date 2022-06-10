@@ -5,12 +5,14 @@ import { FieldType, InMemoryEngine, ModelKey, bootModels, setEngine } from 'souk
 import dayjs from 'dayjs';
 import Faker from 'faker';
 import type { EngineDocument, Relation } from 'soukai';
-import type { Equals, Expect, Tuple } from '@noeldemartin/utils';
+import type { Equals, Expect , Tuple } from '@noeldemartin/utils';
 import type { JsonLDGraph , JsonLDResource } from '@noeldemartin/solid-utils';
 
+import AddPropertyOperation from '@/models/history/AddPropertyOperation';
 import IRI from '@/solid/utils/IRI';
-import { SolidModelOperationType } from '@/models/SolidModelOperation';
-import type { SolidModelOperation } from '@/models';
+import PropertyOperation from '@/models/history/PropertyOperation';
+import RemovePropertyOperation from '@/models/history/RemovePropertyOperation';
+import SetPropertyOperation from '@/models/history/SetPropertyOperation';
 
 import Group from '@/testing/lib/stubs/Group';
 import Movie from '@/testing/lib/stubs/Movie';
@@ -18,7 +20,7 @@ import MoviesCollection from '@/testing/lib/stubs/MoviesCollection';
 import Person from '@/testing/lib/stubs/Person';
 import StubEngine from '@/testing/lib/stubs/StubEngine';
 import WatchAction from '@/testing/lib/stubs/WatchAction';
-import { fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@/testing/utils';
+import { assertInstanceOf, fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@/testing/utils';
 import { stubMovieJsonLD, stubMoviesCollectionJsonLD, stubPersonJsonLD, stubWatchActionJsonLD } from '@/testing/lib/stubs/helpers';
 
 import { SolidModel } from './SolidModel';
@@ -1532,34 +1534,38 @@ describe('SolidModel', () => {
         await person.update({ lastName: secondLastName });
 
         // Assert
-        const operations = person.operations as Tuple<SolidModelOperation, 4>;
+        const operations = person.operations as Tuple<PropertyOperation, 4>;
 
         expect(operations).toHaveLength(4);
 
         operations.forEach(operation => expect(operation.url.startsWith(person.url)).toBe(true));
         operations.forEach(operation => expect(operation.resourceUrl).toEqual(person.url));
 
-        expect(operations[0].property).toEqual(IRI('foaf:name'));
-        expect(operations[0].type).toBeUndefined();
-        expect(operations[0].value).toEqual(firstName);
-        expect(operations[0].date).toEqual(person.createdAt);
+        assertInstanceOf(operations[0], SetPropertyOperation, operation => {
+            expect(operation.property).toEqual(IRI('foaf:name'));
+            expect(operation.value).toEqual(firstName);
+            expect(operation.date).toEqual(person.createdAt);
+        });
 
-        expect(operations[1].property).toEqual(IRI('foaf:name'));
-        expect(operations[1].type).toBeUndefined();
-        expect(operations[1].value).toEqual(secondName);
-        expect(operations[1].date.getTime()).toBeGreaterThan(person.createdAt.getTime());
-        expect(operations[1].date.getTime()).toBeLessThan(person.updatedAt.getTime());
+        assertInstanceOf(operations[1], SetPropertyOperation, operation => {
+            expect(operation.property).toEqual(IRI('foaf:name'));
+            expect(operation.value).toEqual(secondName);
+            expect(operation.date.getTime()).toBeGreaterThan(person.createdAt.getTime());
+            expect(operation.date.getTime()).toBeLessThan(person.updatedAt.getTime());
+        });
 
-        expect(operations[2].property).toEqual(IRI('foaf:lastName'));
-        expect(operations[2].type).toBeUndefined();
-        expect(operations[2].value).toEqual(firstLastName);
-        expect(operations[2].date.getTime()).toBeGreaterThan(person.createdAt.getTime());
-        expect(operations[2].date.getTime()).toBeLessThan(person.updatedAt.getTime());
+        assertInstanceOf(operations[2], SetPropertyOperation, operation => {
+            expect(operation.property).toEqual(IRI('foaf:lastName'));
+            expect(operation.value).toEqual(firstLastName);
+            expect(operation.date.getTime()).toBeGreaterThan(person.createdAt.getTime());
+            expect(operation.date.getTime()).toBeLessThan(person.updatedAt.getTime());
+        });
 
-        expect(operations[3].property).toEqual(IRI('foaf:lastName'));
-        expect(operations[3].type).toBeUndefined();
-        expect(operations[3].value).toEqual(secondLastName);
-        expect(operations[3].date).toEqual(person.updatedAt);
+        assertInstanceOf(operations[3], SetPropertyOperation, operation => {
+            expect(operation.property).toEqual(IRI('foaf:lastName'));
+            expect(operation.value).toEqual(secondLastName);
+            expect(operation.date).toEqual(person.updatedAt);
+        });
     });
 
     it('Tracks history properly for array fields', async () => {
@@ -1598,56 +1604,62 @@ describe('SolidModel', () => {
         });
 
         // Assert
-        const operations = group.operations as Tuple<SolidModelOperation, 6>;
+        const operations = group.operations as Tuple<PropertyOperation, 6>;
 
         expect(operations).toHaveLength(6);
 
         operations.forEach(operation => expect(operation.url.startsWith(group.url)).toBe(true));
         operations.forEach(operation => expect(operation.resourceUrl).toEqual(group.url));
 
-        expect(operations[0].property).toEqual(expandIRI('foaf:name'));
-        expect(operations[0].type).toBeUndefined();
-        expect(operations[0].value).toEqual(firstName);
-        expect(operations[0].date).toEqual(group.createdAt);
-
-        expect(operations[1].property).toEqual(expandIRI('foaf:member'));
-        expect(operations[1].type).toBeUndefined();
-        expect(operations[1].value).toHaveLength(initialMembers.length);
-        initialMembers.forEach((memberUrl, index) => {
-            expect(operations[1].value[index]).toBeInstanceOf(ModelKey);
-            expect(toString(operations[1].value[index])).toEqual(memberUrl);
+        assertInstanceOf(operations[0], SetPropertyOperation, operation => {
+            expect(operation.property).toEqual(expandIRI('foaf:name'));
+            expect(operation.value).toEqual(firstName);
+            expect(operation.date).toEqual(group.createdAt);
         });
-        expect(operations[1].date).toEqual(group.createdAt);
 
-        expect(operations[2].property).toEqual(expandIRI('foaf:name'));
-        expect(operations[2].type).toBeUndefined();
-        expect(operations[2].value).toEqual(secondName);
-        expect(operations[2].date.getTime()).toBeGreaterThan(group.createdAt.getTime());
-        expect(operations[2].date.getTime()).toBeLessThan(group.updatedAt.getTime());
-
-        expect(operations[3].property).toEqual(expandIRI('foaf:member'));
-        expect(operations[3].type).toEqual(SolidModelOperationType.Add);
-        expect(operations[3].value).toHaveLength(firstAddedMembers.length);
-        firstAddedMembers.forEach((memberUrl, index) => {
-            expect(operations[3].value[index]).toBeInstanceOf(ModelKey);
-            expect(toString(operations[3].value[index])).toEqual(memberUrl);
+        assertInstanceOf(operations[1], SetPropertyOperation, operation => {
+            expect(operation.property).toEqual(expandIRI('foaf:member'));
+            expect(operation.value).toHaveLength(initialMembers.length);
+            initialMembers.forEach((memberUrl, index) => {
+                expect(operation.value[index]).toBeInstanceOf(ModelKey);
+                expect(toString(operation.value[index])).toEqual(memberUrl);
+            });
+            expect(operation.date).toEqual(group.createdAt);
         });
-        expect(operations[3].date.getTime()).toEqual(operations[2].date.getTime());
 
-        expect(operations[4].property).toEqual(expandIRI('foaf:member'));
-        expect(operations[4].type).toEqual(SolidModelOperationType.Add);
-        expect(operations[4].value).toBeInstanceOf(ModelKey);
-        expect(toString(operations[4].value)).toEqual(secondAddedMember);
-        expect(operations[4].date.getTime()).toEqual(group.updatedAt.getTime());
-
-        expect(operations[5].property).toEqual(expandIRI('foaf:member'));
-        expect(operations[5].type).toEqual(SolidModelOperationType.Remove);
-        expect(operations[5].value).toHaveLength(removedMembers.length);
-        removedMembers.forEach((memberUrl, index) => {
-            expect(operations[5].value[index]).toBeInstanceOf(ModelKey);
-            expect(toString(operations[5].value[index])).toEqual(memberUrl);
+        assertInstanceOf(operations[2], SetPropertyOperation, operation => {
+            expect(operation.property).toEqual(expandIRI('foaf:name'));
+            expect(operation.value).toEqual(secondName);
+            expect(operation.date.getTime()).toBeGreaterThan(group.createdAt.getTime());
+            expect(operation.date.getTime()).toBeLessThan(group.updatedAt.getTime());
         });
-        expect(operations[5].date.getTime()).toEqual(group.updatedAt.getTime());
+
+        assertInstanceOf(operations[3], AddPropertyOperation, operation => {
+            expect(operation.property).toEqual(expandIRI('foaf:member'));
+            expect(operation.value).toHaveLength(firstAddedMembers.length);
+            firstAddedMembers.forEach((memberUrl, index) => {
+                expect(operation.value[index]).toBeInstanceOf(ModelKey);
+                expect(toString(operation.value[index])).toEqual(memberUrl);
+            });
+            expect(operation.date.getTime()).toEqual(operation.date.getTime());
+        });
+
+        assertInstanceOf(operations[4], AddPropertyOperation, operation => {
+            expect(operation.property).toEqual(expandIRI('foaf:member'));
+            expect(operation.value).toBeInstanceOf(ModelKey);
+            expect(toString(operation.value)).toEqual(secondAddedMember);
+            expect(operation.date.getTime()).toEqual(group.updatedAt.getTime());
+        });
+
+        assertInstanceOf(operations[5], RemovePropertyOperation, operation => {
+            expect(operation.property).toEqual(expandIRI('foaf:member'));
+            expect(operation.value).toHaveLength(removedMembers.length);
+            removedMembers.forEach((memberUrl, index) => {
+                expect(operation.value[index]).toBeInstanceOf(ModelKey);
+                expect(toString(operation.value[index])).toEqual(memberUrl);
+            });
+            expect(operation.date.getTime()).toEqual(group.updatedAt.getTime());
+        });
     });
 
     it('[legacy] parses legacy automatic timestamps from JsonLD', async () => {
@@ -1695,17 +1707,19 @@ describe('SolidModel', () => {
         await person.save();
 
         // Assert
-        const operations = person.operations as Tuple<SolidModelOperation, 2>;
+        const operations = person.operations as Tuple<PropertyOperation, 2>;
 
         expect(operations).toHaveLength(2);
 
-        expect(operations[0].property).toEqual(IRI('foaf:knows'));
-        expect(operations[0].type).toBeUndefined();
-        expect(operations[0].value).toEqual(new ModelKey(initialPersonUrl));
+        assertInstanceOf(operations[0], SetPropertyOperation, operation => {
+            expect(operation.property).toEqual(IRI('foaf:knows'));
+            expect(operation.value).toEqual(new ModelKey(initialPersonUrl));
+        });
 
-        expect(operations[1].property).toEqual(IRI('foaf:knows'));
-        expect(operations[1].type).toEqual(IRI('soukai:AddOperation'));
-        expect(operations[1].value).toEqual(new ModelKey(newPersonUrl));
+        assertInstanceOf(operations[1], AddPropertyOperation, operation => {
+            expect(operation.property).toEqual(IRI('foaf:knows'));
+            expect(operation.value).toEqual(new ModelKey(newPersonUrl));
+        });
 
         expect(readOneSpy).not.toHaveBeenCalled();
         expect(readManySpy).not.toHaveBeenCalled();
@@ -1743,55 +1757,52 @@ describe('SolidModel', () => {
         });
 
         // Arrange - initial operations
-        person.relatedOperations.attach({
+        person.relatedOperations.attachSetOperation({
             property: person.getFieldRdfProperty('name'),
             value: Faker.random.word(),
             date: createdAt,
         });
 
-        person.relatedOperations.attach({
+        person.relatedOperations.attachSetOperation({
             property: person.getFieldRdfProperty('lastName'),
             value: lastName,
             date: createdAt,
         });
 
-        person.relatedOperations.attach({
+        person.relatedOperations.attachSetOperation({
             property: person.getFieldRdfProperty('friendUrls'),
             value: initialFriends.map(url => new ModelKey(url)),
             date: createdAt,
         });
 
         // Arrange - second update operation (use wrong order on purpose to test sorting)
-        person.relatedOperations.attach({
+        person.relatedOperations.attachSetOperation({
             property: person.getFieldRdfProperty('name'),
             value: name,
             date: updatedAt,
         });
 
-        person.relatedOperations.attach({
+        person.relatedOperations.attachAddOperation({
             property: person.getFieldRdfProperty('friendUrls'),
-            type: SolidModelOperationType.Add,
             value: new ModelKey(secondAddedFriend),
             date: updatedAt,
         });
 
-        person.relatedOperations.attach({
+        person.relatedOperations.attachRemoveOperation({
             property: person.getFieldRdfProperty('friendUrls'),
-            type: SolidModelOperationType.Remove,
             value: removedFriends.map(url => new ModelKey(url)),
             date: updatedAt,
         });
 
         // Arrange - first update operation (use wrong order on purpose to test sorting)
-        person.relatedOperations.attach({
+        person.relatedOperations.attachSetOperation({
             property: person.getFieldRdfProperty('name'),
             value: Faker.random.word(),
             date: firstUpdatedAt,
         });
 
-        person.relatedOperations.attach({
+        person.relatedOperations.attachAddOperation({
             property: person.getFieldRdfProperty('friendUrls'),
-            type: SolidModelOperationType.Add,
             value: firstAddedFriends.map(url => new ModelKey(url)),
             date: firstUpdatedAt,
         });
@@ -1854,23 +1865,30 @@ describe('SolidModel', () => {
         expect(versionA.operations[2]?.exists()).toBe(true);
         expect(versionA.operations[3]?.exists()).toBe(true);
         expect(versionA.operations[4]?.exists()).toBe(false);
-        expect(versionA.operations[4]?.property).toBe(IRI('foaf:lastName'));
-        expect(versionA.operations[4]?.value).toBe('Last name B');
+        assertInstanceOf(versionA.operations[4], SetPropertyOperation, operation => {
+            expect(operation.property).toBe(IRI('foaf:lastName'));
+            expect(operation.value).toBe('Last name B');
+        });
 
         expect(versionB.operations[0]?.exists()).toBe(true);
         expect(versionB.operations[1]?.exists()).toBe(true);
         expect(versionB.operations[2]?.exists()).toBe(true);
         expect(versionB.operations[3]?.exists()).toBe(false);
-        expect(versionB.operations[3]?.property).toBe(IRI('foaf:name'));
-        expect(versionB.operations[3]?.value).toBe('Name A');
+        assertInstanceOf(versionB.operations[3], SetPropertyOperation, operation => {
+            expect(operation.property).toBe(IRI('foaf:name'));
+            expect(operation.value).toBe('Name A');
+        });
         expect(versionB.operations[4]?.exists()).toBe(true);
 
         range(5).forEach(index => {
-            expect(versionA.operations[index]?.url).toEqual(versionB.operations[index]?.url);
-            expect(versionA.operations[index]?.property).toEqual(versionB.operations[index]?.property);
-            expect(versionA.operations[index]?.type).toEqual(versionB.operations[index]?.type);
-            expect(versionA.operations[index]?.value).toEqual(versionB.operations[index]?.value);
-            expect(versionA.operations[index]?.date).toEqual(versionB.operations[index]?.date);
+            const operationA = versionA.operations[index] as SetPropertyOperation;
+            const operationB = versionB.operations[index] as SetPropertyOperation;
+            expect(operationA).toBeInstanceOf(SetPropertyOperation);
+            expect(operationB).toBeInstanceOf(SetPropertyOperation);
+            expect(operationA.url).toEqual(operationB.url);
+            expect(operationA.property).toEqual(operationB.property);
+            expect(operationA.value).toEqual(operationB.value);
+            expect(operationA.date).toEqual(operationB.date);
         });
     });
 
@@ -1978,20 +1996,27 @@ describe('SolidModel', () => {
 
         expect(versionA.operations[2]?.exists()).toBe(true);
         expect(versionA.operations[3]?.exists()).toBe(false);
-        expect(versionA.operations[3]?.property).toBe(IRI('foaf:lastName'));
-        expect(versionA.operations[3]?.value).toBe('Last name B');
+        assertInstanceOf(versionA.operations[3], SetPropertyOperation, operation => {
+            expect(operation.property).toBe(IRI('foaf:lastName'));
+            expect(operation.value).toBe('Last name B');
+        });
 
         expect(versionB.operations[2]?.exists()).toBe(false);
-        expect(versionB.operations[2]?.property).toBe(IRI('foaf:name'));
-        expect(versionB.operations[2]?.value).toBe('Name A');
+        assertInstanceOf(versionB.operations[2], SetPropertyOperation, operation => {
+            expect(operation.property).toBe(IRI('foaf:name'));
+            expect(operation.value).toBe('Name A');
+        });
         expect(versionB.operations[3]?.exists()).toBe(true);
 
         range(4).forEach(index => {
-            expect(versionA.operations[index]?.url).toEqual(versionB.operations[index]?.url);
-            expect(versionA.operations[index]?.property).toEqual(versionB.operations[index]?.property);
-            expect(versionA.operations[index]?.type).toEqual(versionB.operations[index]?.type);
-            expect(versionA.operations[index]?.value).toEqual(versionB.operations[index]?.value);
-            expect(versionA.operations[index]?.date).toEqual(versionB.operations[index]?.date);
+            const operationA = versionA.operations[index] as SetPropertyOperation;
+            const operationB = versionB.operations[index] as SetPropertyOperation;
+            expect(operationA).toBeInstanceOf(SetPropertyOperation);
+            expect(operationB).toBeInstanceOf(SetPropertyOperation);
+            expect(operationA.url).toEqual(operationB.url);
+            expect(operationA.property).toEqual(operationB.property);
+            expect(operationA.value).toEqual(operationB.value);
+            expect(operationA.date).toEqual(operationB.date);
         });
     });
 
@@ -2011,14 +2036,14 @@ describe('SolidModel', () => {
         [versionA, versionB].forEach(model => originalInceptionOperationUrls.set(
             model,
             model.operations
-                .filter(operation => operation.date.getTime() === model.createdAt.getTime())
+                .filter((operation): operation is PropertyOperation => operation.date.getTime() === model.createdAt.getTime())
                 .reduce((map, operation) => ({ ...map, [operation.property]: operation.url }), {}),
         ));
 
         await SolidModel.synchronize(versionA, versionB);
 
         const reconciliatedOperationModels = [IRI('foaf:name'), IRI('foaf:lastName')].reduce((map, property) => {
-            map[property] = versionA.operations.find(operation => operation.property === property)?.exists()
+            map[property] = versionA.operations.find(operation => operation instanceof PropertyOperation && operation.property === property)?.exists()
                 ? versionB
                 : versionA;
 
@@ -2045,7 +2070,12 @@ describe('SolidModel', () => {
             return tap(
                 Object.entries(reconciliatedOperationModels).reduce((updated, [property, reconciliatedModel]) => {
                     if (reconciliatedModel === model)
-                        updated.push({ $push: model.operations.find(operation => operation.property === property)?.toJsonLD() } as Update);
+                        updated.push({
+                            $push: model
+                                .operations
+                                .find(operation => operation instanceof PropertyOperation && operation.property === property)
+                                ?.toJsonLD(),
+                        } as Update);
 
                     return updated;
                 }, [] as Update[]),
@@ -2166,10 +2196,10 @@ describe('SolidModel', () => {
         // Assert
         expect(person.operations).toHaveLength(1);
 
-        const operation = person.operations[0] as SolidModelOperation;
+        const operation = person.operations[0] as AddPropertyOperation;
+        expect(operation).toBeInstanceOf(AddPropertyOperation);
         expect(operation.resourceUrl).toEqual(person.url);
         expect(operation.property).toEqual(IRI('foaf:knows'));
-        expect(operation.type).toEqual(IRI('soukai:AddOperation'));
         expect(operation.value).toHaveLength(friendUrls.length);
 
         (operation.value as ModelKey[]).forEach((url, index) => {

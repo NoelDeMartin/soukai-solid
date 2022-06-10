@@ -14,21 +14,21 @@
     soukai:updatedAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime .
 
 <#it-operation-1>
-    a soukai:Operation ;
+    a soukai:SetPropertyOperation ;
     soukai:resource <#it> ;
     soukai:date "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
     soukai:property foaf:name ;
     soukai:value "Griffith" .
 
 <#it-operation-2>
-    a soukai:Operation ;
+    a soukai:SetPropertyOperation ;
     soukai:resource <#it> ;
     soukai:date "1996-08-09T00:00:00.000Z"^^xsd:dateTime ;
     soukai:property foaf:name ;
     soukai:value "Femto" .
 
 <#it-operation-3>
-    a soukai:Operation ;
+    a soukai:SetPropertyOperation ;
     soukai:resource <#it> ;
     soukai:date "1996-08-09T00:00:00.000Z"^^xsd:dateTime ;
     soukai:property foaf:givenName ;

@@ -23,11 +23,10 @@ INSERT DATA {
     <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#it-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:RemovePropertyOperation ;
         soukai:resource <#it> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:member ;
-        soukai:type soukai:RemoveOperation ;
         soukai:value
             <https://berserk.fandom.com/wiki/Judeau>,
             <https://berserk.fandom.com/wiki/Pippin>,
@@ -37,14 +36,14 @@ INSERT DATA {
     <#griffith-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#griffith-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#griffith> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:name ;
         soukai:value "Griffith" .
 
     <#griffith-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#griffith> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:name ;

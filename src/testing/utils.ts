@@ -1,7 +1,7 @@
 import Faker from 'faker';
-import { stringToSlug } from '@noeldemartin/utils';
-
 import { readFileSync } from 'fs';
+import { stringToSlug } from '@noeldemartin/utils';
+import type { Constructor } from '@noeldemartin/utils';
 
 interface ContainerOptions {
     baseUrl: string;
@@ -15,6 +15,16 @@ interface DocumentOptions extends ContainerOptions {
 interface ResourceOptions extends DocumentOptions {
     documentUrl: string;
     hash: string;
+}
+
+export function assertInstanceOf<T>(
+    object: unknown,
+    constructor: Constructor<T>,
+    assert: (instance: T) => void,
+): void {
+    expect(object).toBeInstanceOf(constructor);
+
+    assert(object as T);
 }
 
 export function fakeContainerUrl(options: Partial<ContainerOptions> = {}): string {

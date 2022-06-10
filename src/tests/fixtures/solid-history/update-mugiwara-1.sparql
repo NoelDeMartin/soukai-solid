@@ -15,14 +15,14 @@ INSERT DATA {
     <#luffy-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#luffy-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#luffy> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:name ;
         soukai:value "Monkey D. Luffy" .
 
     <#luffy-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#luffy> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:givenName ;

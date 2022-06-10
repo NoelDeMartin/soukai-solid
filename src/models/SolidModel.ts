@@ -76,6 +76,7 @@ import {
 } from './relations/internals/guards';
 import DeletesModels from './mixins/DeletesModels';
 import ManagesPermissions from './mixins/ManagesPermissions';
+import OperationsRelation from './relations/OperationsRelation';
 import SerializesToJsonLD from './mixins/SerializesToJsonLD';
 import SolidACLAuthorizationsRelation from './relations/SolidACLAuthorizationsRelation';
 import SolidBelongsToManyRelation from './relations/SolidBelongsToManyRelation';
@@ -84,11 +85,11 @@ import SolidHasManyRelation from './relations/SolidHasManyRelation';
 import SolidHasOneRelation from './relations/SolidHasOneRelation';
 import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
 import { inferFieldDefinition } from './fields';
-import { SolidModelOperationType } from './SolidModelOperation';
+import { operationClass } from './history/operations';
+import type Metadata from './history/Metadata';
+import type Operation from './history/Operation';
 import type SolidACLAuthorization from './SolidACLAuthorization';
 import type SolidContainerModel from './SolidContainerModel';
-import type SolidModelMetadata from './SolidModelMetadata';
-import type SolidModelOperation from './SolidModelOperation';
 import type { SolidBootedFieldDefinition, SolidBootedFieldsDefinition, SolidFieldsDefinition } from './fields';
 import type { SolidModelConstructor } from './inference';
 import type { SolidRelation } from './relations/inference';
@@ -112,6 +113,8 @@ export class SolidModel extends SolidModelBase {
     public static mintsUrls: boolean = true;
 
     public static history: boolean = false;
+
+    protected static rdfPropertyFields?: Record<string, string>;
 
     public static from<T extends SolidModel>(
         this: SolidModelConstructor<T>,
@@ -381,12 +384,11 @@ export class SolidModel extends SolidModelBase {
     public url!: string;
 
     public authorizations?: SolidACLAuthorization[];
-    public metadata!: SolidModelMetadata;
-    public operations!: SolidModelOperation[];
+    public metadata!: Metadata;
+    public operations!: Operation[];
     public relatedAuthorizations!: SolidACLAuthorizationsRelation<this>;
-    public relatedMetadata!: SolidHasOneRelation<this, SolidModelMetadata, SolidModelConstructor<SolidModelMetadata>>;
-    public relatedOperations!:
-        SolidHasManyRelation<this, SolidModelOperation, SolidModelConstructor<SolidModelOperation>>;
+    public relatedMetadata!: SolidHasOneRelation<this, Metadata, SolidModelConstructor<Metadata>>;
+    public relatedOperations!: OperationsRelation<this>;
 
     protected _documentExists!: boolean;
     protected _sourceDocumentUrl!: string | null;
@@ -413,7 +415,7 @@ export class SolidModel extends SolidModelBase {
     }
 
     protected initializeMetadataRelation(): void {
-        const metadataModelClass = requireBootedModel<typeof SolidModelMetadata>('SolidModelMetadata');
+        const metadataModelClass = requireBootedModel<typeof Metadata>('Metadata');
 
         if (this instanceof metadataModelClass || !this.hasAutomaticTimestamps())
             return;
@@ -626,38 +628,29 @@ export class SolidModel extends SolidModelBase {
         if (this.operations.length === 0)
             return;
 
+        const PropertyOperation = operationClass('PropertyOperation');
         const operations = arraySorted(this.operations, 'date');
-        const fields = invert(map(
-            Object.keys(this.static('fields')),
-            field => this.getFieldRdfProperty(field) as string,
-        ));
+        const unfilledAttributes = new Set(Object.keys(this._attributes));
+        const arrayFields = Object
+            .entries(this.static('fields'))
+            .filter(([_, definition]) => definition.type === FieldType.Array)
+            .map(([field]) => field);
 
-        const filledAttributes = new Set(Object.keys(this._attributes));
+        unfilledAttributes.delete(this.static('primaryKey'));
+        unfilledAttributes.delete(TimestampField.CreatedAt);
+        unfilledAttributes.delete(TimestampField.UpdatedAt);
 
-        filledAttributes.delete(this.static('primaryKey'));
-        filledAttributes.delete(TimestampField.CreatedAt);
-        filledAttributes.delete(TimestampField.UpdatedAt);
+        arrayFields.forEach(field => this.setAttribute(field, []));
+        operations.forEach(operation => {
+            if (operation instanceof PropertyOperation) {
+                const field = this.getRdfPropertyField(operation.property);
 
-        Object.entries(this.static('fields')).forEach(([name, definition]) => {
-            if (definition.type !== FieldType.Array)
-                return;
+                field && unfilledAttributes.delete(field);
+            }
 
-            this.setAttribute(name, []);
+            operation.apply(this);
         });
-
-        for (const operation of operations) {
-            const field = fields[operation.property];
-
-            if (!field)
-                continue;
-
-            filledAttributes.delete(field);
-            this.applyOperation(field, operation);
-        }
-
-        for (const attribute of filledAttributes) {
-            this.unsetAttribute(attribute);
-        }
+        unfilledAttributes.forEach(attribute => this.unsetAttribute(attribute));
 
         this.setAttribute('createdAt', operations[0]?.date);
         this.setAttribute('updatedAt', operations.slice(-1)[0]?.date);
@@ -704,6 +697,15 @@ export class SolidModel extends SolidModelBase {
 
         return fieldDefinition?.rdfProperty
             ?? this.getDefaultRdfContext() + field;
+    }
+
+    public getRdfPropertyField(this: SolidModel, rdfProperty: string): string | null {
+        const fields = this.static().rdfPropertyFields ??= invert(map(
+            Object.keys(this.static('fields')),
+            field => this.getFieldRdfProperty(field) as string,
+        ));
+
+        return fields[rdfProperty] ?? null;
     }
 
     public requireFieldRdfProperty(field: string): string {
@@ -819,7 +821,7 @@ export class SolidModel extends SolidModelBase {
     }
 
     public metadataRelationship(): Relation {
-        const metadataModelClass = requireBootedModel<typeof SolidModelMetadata>('SolidModelMetadata');
+        const metadataModelClass = requireBootedModel<typeof Metadata>('Metadata');
 
         return this
             .hasOne(metadataModelClass, 'resourceUrl')
@@ -828,10 +830,7 @@ export class SolidModel extends SolidModelBase {
     }
 
     public operationsRelationship(): Relation {
-        const operationModelClass = requireBootedModel<typeof SolidModelOperation>('SolidModelOperation');
-
-        return this
-            .hasMany(operationModelClass, 'resourceUrl')
+        return (new OperationsRelation(this))
             .usingSameDocument(true)
             .onDelete('cascade');
     }
@@ -1080,7 +1079,7 @@ export class SolidModel extends SolidModelBase {
                 if (field in this._trackedDirtyAttributes && this._trackedDirtyAttributes[field] === value)
                     continue;
 
-                this.relatedOperations.attach({
+                this.relatedOperations.attachSetOperation({
                     property: this.getFieldRdfProperty(field),
                     date: this.metadata.createdAt,
                     value: this.getOperationValue(field, value),
@@ -1100,7 +1099,7 @@ export class SolidModel extends SolidModelBase {
 
             // TODO handle unset operations
 
-            this.relatedOperations.attach({
+            this.relatedOperations.attachSetOperation({
                 property: this.getFieldRdfProperty(field),
                 date: this.metadata.updatedAt,
                 value: this.getOperationValue(field, value),
@@ -1108,9 +1107,10 @@ export class SolidModel extends SolidModelBase {
         }
     }
 
-    protected addHistoryOperations(operations: SolidModelOperation[]): void {
+    protected addHistoryOperations(operations: Operation[]): void {
+        const PropertyOperation = operationClass('PropertyOperation');
         const knownOperationUrls = new Set(this.operations.map(operation => operation.url));
-        const newOperations: SolidModelOperation[] = [];
+        const newOperations: Operation[] = [];
         const trackedDirtyProperties: Set<string> = new Set();
         const fieldPropertiesMap = Object
             .keys(this.static('fields'))
@@ -1134,7 +1134,7 @@ export class SolidModel extends SolidModelBase {
 
             newOperations.push(newOperation);
 
-            if (operation.property in fieldPropertiesMap)
+            if ((operation instanceof PropertyOperation) && operation.property in fieldPropertiesMap)
                 trackedDirtyProperties.add(operation.property);
         }
 
@@ -1150,14 +1150,19 @@ export class SolidModel extends SolidModelBase {
     }
 
     protected removeDuplicatedHistoryOperations(): void {
+        const PropertyOperation = operationClass('PropertyOperation');
         const inceptionProperties: string[] = [];
         const duplicatedOperationUrls: string[] = [];
-        const inceptionOperations = this.operations
-            .filter(operation => operation.date.getTime() === this.createdAt.getTime());
-        const isNotDuplicated = (operation: SolidModelOperation): boolean =>
-            !duplicatedOperationUrls.includes(operation.url);
+        const inceptionOperations = this.operations.filter(
+            operation => operation.date.getTime() === this.createdAt.getTime(),
+        );
+        const isNotDuplicated = (operation: Operation): boolean => !duplicatedOperationUrls.includes(operation.url);
 
         for (const inceptionOperation of inceptionOperations) {
+            if (!(inceptionOperation instanceof PropertyOperation)) {
+                continue;
+            }
+
             if (!inceptionProperties.includes(inceptionOperation.property)) {
                 inceptionProperties.push(inceptionOperation.property);
 
@@ -1400,55 +1405,18 @@ export class SolidModel extends SolidModelBase {
         );
 
         if (added.length > 0)
-            this.relatedOperations.attach({
+            this.relatedOperations.attachAddOperation({
                 property: this.getFieldRdfProperty(field),
-                type: SolidModelOperationType.Add,
                 date: this.metadata.updatedAt,
                 value: added,
             });
 
         if (removed.length > 0)
-            this.relatedOperations.attach({
+            this.relatedOperations.attachRemoveOperation({
                 property: this.getFieldRdfProperty(field),
-                type: SolidModelOperationType.Remove,
                 date: this.metadata.updatedAt,
                 value: removed,
             });
-    }
-
-    private applyOperation(field: string, operation: SolidModelOperation): void {
-        switch (operation.type) {
-            case SolidModelOperationType.Add: {
-                const value = this.getAttributeValue(field);
-
-                if (!Array.isArray(value))
-                    throw new SoukaiError('Can\'t apply Add operation to non-array field');
-
-                this.setAttributeValue(field, [...value, ...arrayFrom(operation.value)]);
-                break;
-            }
-            case SolidModelOperationType.Remove: {
-                const value = this.getAttributeValue(field);
-
-                if (!Array.isArray(value))
-                    throw new SoukaiError('Can\'t apply Remove operation to non-array field');
-
-                const removed = this.castAttribute(
-                    arrayFrom(operation.value),
-                    this.getFieldDefinition(field),
-                ) as typeof value;
-
-                this.setAttributeValue(field, arrayWithout(value, removed));
-                break;
-            }
-            case SolidModelOperationType.Unset:
-                // TODO
-                break;
-            case SolidModelOperationType.Set:
-            default:
-                this.setAttributeValue(field, operation.value);
-                break;
-        }
     }
 
     private reconcileModelTimestamps(wasTouchedBeforeSaving: boolean): void {

@@ -1,28 +1,26 @@
 import { bootModels } from 'soukai';
 
-import type DeletesModels from './mixins/DeletesModels';
-import type ManagesPermissions from './mixins/ManagesPermissions';
-import type SerializesToJsonLD from './mixins/SerializesToJsonLD';
+import { historyModels } from './history/index';
 
 import SolidACLAuthorization from './SolidACLAuthorization';
 import SolidContainerModel from './SolidContainerModel';
 import SolidDocument from './SolidDocument';
-import SolidModelMetadata from './SolidModelMetadata';
-import SolidModelOperation, { SolidModelOperationType } from './SolidModelOperation';
 import SolidTypeRegistration from './SolidTypeRegistration';
+
+import type DeletesModels from './mixins/DeletesModels';
+import type ManagesPermissions from './mixins/ManagesPermissions';
+import type SerializesToJsonLD from './mixins/SerializesToJsonLD';
 
 export * from './inference';
 export * from './permissions';
 export * from './relations/index';
+export * from './history/index';
 export * from './SolidModel';
 
 export {
     SolidACLAuthorization,
     SolidContainerModel,
     SolidDocument,
-    SolidModelMetadata,
-    SolidModelOperation,
-    SolidModelOperationType,
     SolidTypeRegistration,
 };
 
@@ -41,11 +39,10 @@ export type {
 
 export function bootSolidModels(): void {
     bootModels({
+        ...historyModels,
         SolidACLAuthorization,
         SolidContainerModel,
         SolidDocument,
-        SolidModelMetadata,
-        SolidModelOperation,
         SolidTypeRegistration,
     });
 }

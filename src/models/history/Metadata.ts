@@ -1,9 +1,9 @@
 import { FieldType } from 'soukai';
 import type { IModel } from 'soukai';
 
-import { SolidModel } from './SolidModel';
+import { SolidModel } from '@/models/SolidModel';
 
-export default class SolidModelMetadata extends SolidModel {
+export default class Metadata extends SolidModel {
 
     public static rdfContexts = {
         soukai: 'https://soukai.noeldemartin.com/vocab/',
@@ -41,5 +41,4 @@ export default class SolidModelMetadata extends SolidModel {
 
 }
 
-export default interface SolidModelMetadata
-    extends Omit<IModel<typeof SolidModelMetadata>, 'createdAt' | 'updatedAt'> {}
+export default interface Metadata extends Omit<IModel<typeof Metadata>, 'createdAt' | 'updatedAt'> {}

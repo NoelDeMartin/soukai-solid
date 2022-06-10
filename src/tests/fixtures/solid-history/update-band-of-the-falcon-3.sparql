@@ -23,28 +23,26 @@ INSERT DATA {
     <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#it-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:RemovePropertyOperation ;
         soukai:resource <#it> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:member ;
-        soukai:type soukai:RemoveOperation ;
         soukai:value
             <https://berserk.fandom.com/wiki/Guts>,
             <https://berserk.fandom.com/wiki/Casca> .
 
     <#it-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:AddPropertyOperation ;
         soukai:resource <#it> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:member ;
-        soukai:type soukai:AddOperation ;
         soukai:value <https://berserk.fandom.com/wiki/Zodd> .
 
     <#griffith> foaf:name "Griffith" .
     <#griffith-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#griffith-operation-[[.*]]>
-        a soukai:Operation ;
+        a soukai:SetPropertyOperation ;
         soukai:resource <#griffith> ;
         soukai:date "[[.*]]"^^xsd:dateTime ;
         soukai:property foaf:name ;

@@ -1,0 +1,39 @@
+import { FieldType } from 'soukai';
+import type { IModel } from 'soukai';
+
+import type { SolidModel } from '@/models/SolidModel';
+
+import Operation, { OperationFieldsDefinition } from './Operation';
+
+export const PropertyOperationFieldsDefinition = {
+    ...OperationFieldsDefinition,
+    property: {
+        type: FieldType.Key,
+        required: true,
+    },
+} as const;
+
+export default class PropertyOperation extends Operation {
+
+    public static rdfsClasses = ['PropertyOperation'];
+
+    public static fields = PropertyOperationFieldsDefinition;
+
+    public apply(model: SolidModel): void {
+        const field = model.getRdfPropertyField(this.property);
+
+        if (!field) {
+            return;
+        }
+
+        this.applyPropertyUpdate(model, field);
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    protected applyPropertyUpdate(model: SolidModel, field: string): void {
+        //
+    }
+
+}
+
+export default interface PropertyOperation extends IModel<typeof PropertyOperation> {}
