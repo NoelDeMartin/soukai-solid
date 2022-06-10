@@ -1,4 +1,5 @@
 import AddPropertyOperation from './AddPropertyOperation';
+import DeleteOperation from './DeleteOperation';
 import Metadata from './Metadata';
 import Operation from './Operation';
 import PropertyOperation from './PropertyOperation';
@@ -9,6 +10,7 @@ import { Operations } from './operations';
 
 export const historyModels = {
     AddPropertyOperation,
+    DeleteOperation,
     Metadata,
     Operation,
     PropertyOperation,
@@ -19,6 +21,7 @@ export const historyModels = {
 
 export {
     AddPropertyOperation,
+    DeleteOperation,
     Metadata,
     Operation,
     Operations,

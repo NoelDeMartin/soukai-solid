@@ -32,6 +32,10 @@ export default class Metadata extends SolidModel {
         return this.getAttributeValue('updatedAt');
     }
 
+    public getDeletedAtAttribute(): Date {
+        return this.getAttributeValue('deletedAt');
+    }
+
     protected newUrl(documentUrl?: string, resourceHash?: string): string {
         if (!this.resourceUrl)
             return super.newUrl(documentUrl, resourceHash);

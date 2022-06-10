@@ -3,6 +3,7 @@ import { requireBootedModel } from 'soukai';
 import type Operation from './Operation';
 import type PropertyOperation from './PropertyOperation';
 import type AddPropertyOperation from './AddPropertyOperation';
+import type DeleteOperation from './DeleteOperation';
 import type RemovePropertyOperation from './RemovePropertyOperation';
 import type SetPropertyOperation from './SetPropertyOperation';
 import type UnsetPropertyOperation from './UnsetPropertyOperation';
@@ -16,6 +17,7 @@ export type Operations = {
     RemovePropertyOperation: typeof RemovePropertyOperation;
     SetPropertyOperation: typeof SetPropertyOperation;
     UnsetPropertyOperation: typeof UnsetPropertyOperation;
+    DeleteOperation: typeof DeleteOperation;
 };
 
 export function operationClass<T extends keyof Operations>(operation: T): Operations[T] {
@@ -30,5 +32,6 @@ export function operationClasses(): Operations {
         RemovePropertyOperation: requireBootedModel('RemovePropertyOperation'),
         SetPropertyOperation: requireBootedModel('SetPropertyOperation'),
         UnsetPropertyOperation: requireBootedModel('UnsetPropertyOperation'),
+        DeleteOperation: requireBootedModel('DeleteOperation'),
     };
 }

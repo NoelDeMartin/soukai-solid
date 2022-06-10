@@ -5,10 +5,11 @@ import { FieldType, InMemoryEngine, ModelKey, bootModels, setEngine } from 'souk
 import dayjs from 'dayjs';
 import Faker from 'faker';
 import type { EngineDocument, Relation } from 'soukai';
-import type { Equals, Expect , Tuple } from '@noeldemartin/utils';
-import type { JsonLDGraph , JsonLDResource } from '@noeldemartin/solid-utils';
+import type { Equals, Expect, Tuple } from '@noeldemartin/utils';
+import type { JsonLDGraph, JsonLDResource } from '@noeldemartin/solid-utils';
 
 import AddPropertyOperation from '@/models/history/AddPropertyOperation';
+import DeleteOperation from '@/models/history/DeleteOperation';
 import IRI from '@/solid/utils/IRI';
 import PropertyOperation from '@/models/history/PropertyOperation';
 import RemovePropertyOperation from '@/models/history/RemovePropertyOperation';
@@ -960,13 +961,35 @@ describe('SolidModel', () => {
 
     it('soft deletes', async () => {
         // Arrange
-        const person = await Person.create();
+        class TrackedPerson extends Person {
+
+            public static timestamps = true;
+            public static history = true;
+
+        }
+
+        const name = Faker.random.word();
+        const person = await TrackedPerson.create({ name });
 
         // Act
+        await after({ ms: 10 });
         await person.softDelete();
 
         // Assert
         expect(person.isSoftDeleted()).toBe(true);
+        expect(person.operations).toHaveLength(2);
+
+        assertInstanceOf(person.operations[0], SetPropertyOperation, operation => {
+            expect(operation.property).toEqual(IRI('foaf:name'));
+            expect(operation.value).toEqual(name);
+            expect(operation.date).toEqual(person.createdAt);
+        });
+
+        assertInstanceOf(person.operations[1], DeleteOperation, operation => {
+            expect(person.createdAt).not.toEqual(person.updatedAt);
+            expect(operation.date).toEqual(person.updatedAt);
+            expect(operation.date).toEqual(person.deletedAt);
+        });
     });
 
     it('aliases url attribute as id', async () => {
@@ -1742,9 +1765,13 @@ describe('SolidModel', () => {
             dayjs().subtract(1, 'month').toDate(),
             dayjs().add(1, 'month').toDate(),
         );
-        const updatedAt = Faker.date.between(
+        const deletedAt = Faker.date.between(
             dayjs().add(1, 'month').toDate(),
             dayjs().add(3, 'months').toDate(),
+        );
+        const updatedAt = Faker.date.between(
+            dayjs().add(3, 'month').toDate(),
+            dayjs().add(4, 'months').toDate(),
         );
         const person = new Person({
             name: Faker.random.word(),
@@ -1807,10 +1834,16 @@ describe('SolidModel', () => {
             date: firstUpdatedAt,
         });
 
+        // Arrange - soft delete
+        person.relatedOperations.attachDeleteOperation({
+            date: deletedAt,
+        });
+
         // Act
         person.rebuildAttributesFromHistory();
 
         // Assert
+        expect(person.isSoftDeleted()).toBe(true);
         expect(person.name).toEqual(name);
         expect(person.lastName).toEqual(lastName);
         expect(person.givenName).toBeUndefined();
@@ -1826,6 +1859,7 @@ describe('SolidModel', () => {
         );
         expect(person.createdAt).toEqual(createdAt);
         expect(person.updatedAt).toEqual(updatedAt);
+        expect(person.deletedAt).toEqual(deletedAt);
     });
 
     it('Synchronizes models history', async () => {

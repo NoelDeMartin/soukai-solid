@@ -383,6 +383,7 @@ export class SolidModel extends SolidModelBase {
     // TODO this should be optional
     public url!: string;
 
+    public deletedAt?: Date;
     public authorizations?: SolidACLAuthorization[];
     public metadata!: Metadata;
     public operations!: Operation[];
@@ -467,7 +468,20 @@ export class SolidModel extends SolidModelBase {
     }
 
     public async softDelete(): Promise<this> {
-        await this.metadata?.update({ deletedAt: new Date() });
+        if (!this.hasAutomaticTimestamps()) {
+            throw new SoukaiError('Cannot soft delete a model without automatic timestamps');
+        }
+
+        if (this.isSoftDeleted()) {
+            return this;
+        }
+
+        const now = new Date();
+
+        this.metadata.setAttribute(TimestampField.UpdatedAt, now);
+        this.metadata.setAttribute('deletedAt', now);
+
+        await this.save();
 
         return this;
     }
@@ -548,7 +562,7 @@ export class SolidModel extends SolidModelBase {
             return true;
 
         return ignoreRelations
-            ? false
+            ? this.metadata?.isDirty('deletedAt')
             : this.getDocumentModels().filter(model => model.isDirty(undefined, true)).length > 0;
     }
 
@@ -744,6 +758,10 @@ export class SolidModel extends SolidModelBase {
 
     public getUpdatedAtAttribute(): Date {
         return this.metadata?.updatedAt ?? super.getAttributeValue('updatedAt');
+    }
+
+    public getDeletedAtAttribute(): Date | undefined {
+        return this.metadata?.deletedAt;
     }
 
     public getDocumentModels(_documentModels?: Set<SolidModel>): SolidModel[] {
@@ -1104,6 +1122,10 @@ export class SolidModel extends SolidModelBase {
                 date: this.metadata.updatedAt,
                 value: this.getOperationValue(field, value),
             });
+        }
+
+        if (this.metadata.isDirty('deletedAt')) {
+            this.relatedOperations.attachDeleteOperation({ date: this.metadata.deletedAt });
         }
     }
 

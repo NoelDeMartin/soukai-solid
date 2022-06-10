@@ -4,6 +4,7 @@ import type { Attributes, EngineDocument } from 'soukai';
 import RDF from '@/solid/utils/RDF';
 import { operationClass } from '@/models/history/operations';
 import type AddPropertyOperation from '@/models/history/AddPropertyOperation';
+import type DeleteOperation from '@/models/history/DeleteOperation';
 import type Operation from '@/models/history/Operation';
 import type RemovePropertyOperation from '@/models/history/RemovePropertyOperation';
 import type SetPropertyOperation from '@/models/history/SetPropertyOperation';
@@ -54,6 +55,10 @@ export default class OperationsRelation<Parent extends SolidModel = SolidModel>
 
     public attachUnsetOperation(attributes: Attributes): UnsetPropertyOperation {
         return this.attach(attributes, 'UnsetPropertyOperation');
+    }
+
+    public attachDeleteOperation(attributes: Attributes): DeleteOperation {
+        return this.attach(attributes, 'DeleteOperation');
     }
 
     public async __loadDocumentModels(documentUrl: string, document: JsonLDGraph): Promise<void> {
@@ -116,6 +121,10 @@ export default class OperationsRelation<Parent extends SolidModel = SolidModel>
             UnsetPropertyOperation: [
                 'https://soukai.noeldemartin.com/vocab/UnsetPropertyOperation',
                 'soukai:UnsetPropertyOperation',
+            ],
+            DeleteOperation: [
+                'https://soukai.noeldemartin.com/vocab/DeleteOperation',
+                'soukai:DeleteOperation',
             ],
         };
         const resourceClasses = arrayFrom(resource['@type'] ?? []);

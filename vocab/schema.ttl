@@ -22,6 +22,11 @@
     rdfs:comment "Operation affecting a resource's property." ;
     rdfs:subClassOf :Operation .
 
+:DeleteOperation a rdfs:Class ;
+    rdfs:label "Delete Operation" ;
+    rdfs:comment "Operation that soft deletes a resource." ;
+    rdfs:subClassOf :Operation .
+
 :SetPropertyOperation a :OperationType ;
     rdfs:label "Set Property Operation" ;
     rdfs:comment "Operation that replaces a resource's property." ;
