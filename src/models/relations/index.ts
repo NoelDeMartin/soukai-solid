@@ -7,6 +7,7 @@ import SolidContainsRelation from './SolidContainsRelation';
 import SolidHasManyRelation from './SolidHasManyRelation';
 import SolidHasOneRelation from './SolidHasOneRelation';
 import SolidIsContainedByRelation from './SolidIsContainedByRelation';
+import TombstoneRelation from './TombstoneRelation';
 
 SolidContainsRelation.inverseRelationClasses = [SolidIsContainedByRelation];
 SolidIsContainedByRelation.inverseRelationClasses = [SolidContainsRelation];
@@ -21,6 +22,7 @@ export {
     SolidHasManyRelation,
     SolidHasOneRelation,
     SolidIsContainedByRelation,
+    TombstoneRelation,
 };
 
 export type { SolidBelongsToManyRelationBase } from './SolidBelongsToManyRelation';

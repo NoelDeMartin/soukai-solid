@@ -5,6 +5,7 @@ import Operation from './Operation';
 import PropertyOperation from './PropertyOperation';
 import RemovePropertyOperation from './RemovePropertyOperation';
 import SetPropertyOperation from './SetPropertyOperation';
+import Tombstone from './Tombstone';
 import UnsetPropertyOperation from './UnsetPropertyOperation';
 import { Operations } from './operations';
 
@@ -16,6 +17,7 @@ export const historyModels = {
     PropertyOperation,
     RemovePropertyOperation,
     SetPropertyOperation,
+    Tombstone,
     UnsetPropertyOperation,
 };
 
@@ -28,5 +30,6 @@ export {
     PropertyOperation,
     RemovePropertyOperation,
     SetPropertyOperation,
+    Tombstone,
     UnsetPropertyOperation,
 };

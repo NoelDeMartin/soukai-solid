@@ -84,12 +84,14 @@ import SolidBelongsToOneRelation from './relations/SolidBelongsToOneRelation';
 import SolidHasManyRelation from './relations/SolidHasManyRelation';
 import SolidHasOneRelation from './relations/SolidHasOneRelation';
 import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
+import TombstoneRelation from '@/models/relations/TombstoneRelation';
 import { inferFieldDefinition } from './fields';
 import { operationClass } from './history/operations';
 import type Metadata from './history/Metadata';
 import type Operation from './history/Operation';
 import type SolidACLAuthorization from './SolidACLAuthorization';
 import type SolidContainerModel from './SolidContainerModel';
+import type Tombstone from './history/Tombstone';
 import type { SolidBootedFieldDefinition, SolidBootedFieldsDefinition, SolidFieldsDefinition } from './fields';
 import type { SolidModelConstructor } from './inference';
 import type { SolidRelation } from './relations/inference';
@@ -102,7 +104,7 @@ export class SolidModel extends SolidModelBase {
 
     public static fields: SolidFieldsDefinition;
 
-    public static classFields = ['_history', '_publicPermissions'];
+    public static classFields = ['_history', '_publicPermissions', '_tombstone'];
 
     public static rdfContexts: Record<string, string> = {};
 
@@ -113,6 +115,8 @@ export class SolidModel extends SolidModelBase {
     public static mintsUrls: boolean = true;
 
     public static history: boolean = false;
+
+    public static tombstone: boolean = true;
 
     protected static rdfPropertyFields?: Record<string, string>;
 
@@ -387,9 +391,11 @@ export class SolidModel extends SolidModelBase {
     public authorizations?: SolidACLAuthorization[];
     public metadata!: Metadata;
     public operations!: Operation[];
+    public tombstone?: Tombstone;
     public relatedAuthorizations!: SolidACLAuthorizationsRelation<this>;
     public relatedMetadata!: SolidHasOneRelation<this, Metadata, SolidModelConstructor<Metadata>>;
     public relatedOperations!: OperationsRelation<this>;
+    public relatedTombstone!: TombstoneRelation<this>;
 
     protected _documentExists!: boolean;
     protected _sourceDocumentUrl!: string | null;
@@ -399,6 +405,7 @@ export class SolidModel extends SolidModelBase {
 
     private _sourceSubject: SubjectParts = {};
     declare private _history?: boolean;
+    declare private _tombstone?: boolean;
 
     protected initialize(attributes: Attributes, exists: boolean): void {
         this._documentExists = exists;
@@ -568,6 +575,18 @@ export class SolidModel extends SolidModelBase {
 
     public isSoftDeleted(): boolean {
         return !!this.metadata?.deletedAt;
+    }
+
+    public disableTombstone(): void {
+        this._tombstone = false;
+    }
+
+    public enableTombstone(): void {
+        this._tombstone = false;
+    }
+
+    public leavesTombstone(): boolean {
+        return !!(this._tombstone ?? this.static('tombstone'));
     }
 
     public cleanDirty(ignoreRelations?: boolean): void {
@@ -761,7 +780,7 @@ export class SolidModel extends SolidModelBase {
     }
 
     public getDeletedAtAttribute(): Date | undefined {
-        return this.metadata?.deletedAt;
+        return this.metadata?.deletedAt ?? super.getAttributeValue('deletedAt');
     }
 
     public getDocumentModels(_documentModels?: Set<SolidModel>): SolidModel[] {
@@ -851,6 +870,10 @@ export class SolidModel extends SolidModelBase {
         return (new OperationsRelation(this))
             .usingSameDocument(true)
             .onDelete('cascade');
+    }
+
+    public tombstoneRelationship(): Relation {
+        return new TombstoneRelation(this);
     }
 
     public authorizationsRelationship(): Relation {
@@ -1007,6 +1030,14 @@ export class SolidModel extends SolidModelBase {
         dirtyDocumentModelsExisted.forEach(([model, existed]) => {
             model._wasRecentlyCreated = model._wasRecentlyCreated || !existed;
         });
+    }
+
+    protected async performDelete(): Promise<void> {
+        if (this.tracksHistory() && this.leavesTombstone()) {
+            this.relatedTombstone.create();
+        }
+
+        await super.performDelete();
     }
 
     protected async afterSave(ignoreRelations?: boolean): Promise<void> {

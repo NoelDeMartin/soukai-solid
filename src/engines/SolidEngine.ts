@@ -114,6 +114,14 @@ export class SolidEngine implements Engine {
     }
 
     public async update(collection: string, id: string, updates: EngineUpdates): Promise<void> {
+        if ('$overwrite' in updates) {
+            const properties = await this.getJsonLDGraphProperties(updates.$overwrite as JsonLD);
+
+            await this.client.overwriteDocument(id, properties);
+
+            return;
+        }
+
         const operations = await this.extractJsonLDGraphUpdate(updates);
 
         await this.client.updateDocument(id, operations);

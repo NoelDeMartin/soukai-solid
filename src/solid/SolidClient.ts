@@ -160,6 +160,27 @@ export default class SolidClient {
             : await this.updateNonContainerDocument(document, operations);
     }
 
+    public async overwriteDocument(url: string, properties: RDFResourceProperty[]): Promise<void> {
+        const document = await this.getDocument(url);
+
+        if (document === null)
+            throw new DocumentNotFound(url);
+
+        const response = await this.fetch(url, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/sparql-update',
+                'If-None-Match': '*',
+            },
+            body: `
+                DELETE DATA { ${RDFResourceProperty.toTurtle(document.properties, url)} } ;
+                INSERT DATA { ${RDFResourceProperty.toTurtle(properties, url)} }
+            `,
+        });
+
+        this.assertSuccessfulResponse(response, `Error overwriting document at ${document.url}`);
+    }
+
     public async deleteDocument(url: string, preloadedDocument?: RDFDocument): Promise<void> {
         const document = preloadedDocument ?? await this.getDocument(url);
 

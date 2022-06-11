@@ -271,7 +271,7 @@ describe('Solid history tracking', () => {
         });
     });
 
-    it('synchronizes relations history in different models', async () => {
+    it('Synchronizes relations history in different models', async () => {
         // Arrange
         StubFetcher.addFetchResponse(fixture('mugiwara-1.ttl'));
         StubFetcher.addFetchResponse(fixture('mugiwara-1.ttl'));
@@ -312,7 +312,7 @@ describe('Solid history tracking', () => {
         expect(fetch.mock.calls[6]?.[1]?.body).toEqualSparql(fixture('update-mugiwara-3.sparql'));
     });
 
-    it('synchronizes models with related models', async () => {
+    it('Synchronizes models with related models', async () => {
         // -------------- Part I --------------
 
         // Arrange - prepare network stubs
@@ -476,6 +476,41 @@ describe('Solid history tracking', () => {
         await expect(localMugiwara.toJsonLD()).toEqualJsonLD(fixture('mugiwara-6.jsonld'));
         await expect(localEngine.database['solid://bands/']?.['solid://bands/mugiwara'])
             .toEqualJsonLD(fixture('mugiwara-6-document.jsonld'));
+    });
+
+    it('Leaves a Tombstone behind', async () => {
+        // Arrange
+        const bandTurtle = fixture('band-of-the-falcon-3.ttl');
+
+        StubFetcher.addFetchResponse(bandTurtle);
+
+        // TODO this could be improved to fetch only once
+        StubFetcher.addFetchResponse(bandTurtle); // Fetch document to see if it can be deleted entirely
+        StubFetcher.addFetchResponse(bandTurtle);// Fetch document under SolidClient.update to prepare PATCH
+        StubFetcher.addFetchResponse(); // PATCH document
+
+        const band = await Group.find('solid://band-of-the-falcon#it') as Group;
+
+        // Act
+        await band.delete();
+
+        // Arrange
+        expect(band.exists()).toBe(false);
+
+        expect(StubFetcher.fetch).toHaveBeenCalledTimes(4);
+
+        expect(fetch.mock.calls[3]?.[1]?.method).toEqual('PATCH');
+        expect(fetch.mock.calls[3]?.[1]?.body).toEqualSparql(`
+            DELETE DATA { ${bandTurtle} } ;
+            INSERT DATA {
+                @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+                @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+
+                <#it>
+                    a soukai:Tombstone ;
+                    soukai:deletedAt  "[[.*]]"^^xsd:dateTime .
+            } .
+        `);
     });
 
 });

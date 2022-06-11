@@ -1,5 +1,7 @@
 import { urlParentDirectory, urlRoot } from '@noeldemartin/utils';
+import type { EngineDocument } from 'soukai';
 
+import type Tombstone from '@/models/history/Tombstone';
 import type { SolidModel } from '@/models/SolidModel';
 
 type ResourcesGraph = { '@graph': { '@id': string }[] };
@@ -84,17 +86,28 @@ export default class DeletesModels {
         if (!document)
             return;
 
+        const engine = this.requireEngine();
         const modelUrls = models.filter(model => model.exists()).map(model => model.url);
 
         if (!document['@graph'].some(resource => !modelUrls.some(url => url === resource['@id']))) {
-            await this.requireEngine().delete(containerUrl, documentUrl);
+            const tombstones = models
+                .filter((model): model is SolidModel & { tombstone: Tombstone } => model.isRelationLoaded('tombstone'))
+                .map(model => model.tombstone);
+
+            tombstones.length === 0
+                ? await engine.delete(containerUrl, documentUrl)
+                : await engine.update(containerUrl, documentUrl, {
+                    $overwrite: {
+                        '@graph': tombstones.map(tombstone => tombstone.serializeToJsonLD(false)),
+                    } as EngineDocument,
+                });
 
             models.forEach(model => model.setDocumentExists(false));
 
             return;
         }
 
-        await this.requireEngine().update(containerUrl, documentUrl, {
+        await engine.update(containerUrl, documentUrl, {
             '@graph': {
                 $updateItems: {
                     $where: { '@id': { $in: modelUrls } },
