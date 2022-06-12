@@ -14,7 +14,7 @@ export type This = SolidModel;
 export default class SerializesToJsonLD {
 
     protected serializeToJsonLD(this: This, includeRelations: boolean = true): JsonLD {
-        return JsonLDModelSerializer.forModel(this).serialize(this, { includeRelations });
+        return JsonLDModelSerializer.forModel(this.static()).serialize(this, { includeRelations });
     }
 
     protected async convertJsonLDToAttributes(this: This, jsonld: JsonLDResource): Promise<Attributes> {
@@ -54,7 +54,7 @@ export default class SerializesToJsonLD {
         compactIRIs: boolean,
     ): EngineFilters {
         const jsonldFilters: EngineFilters = {};
-        const serializer = JsonLDModelSerializer.forModel(this);
+        const serializer = JsonLDModelSerializer.forModel(this.static());
         const expandedTypes = this.static('rdfsClasses');
         const compactedTypes = expandedTypes.map(rdfClass => serializer.processExpandedIRI(rdfClass));
         const typeFilters: EngineAttributeFilter[] = [];
@@ -96,7 +96,7 @@ export default class SerializesToJsonLD {
     }
 
     private convertAttributeValuesToJsonLD(this: This, attributes: Attributes, compactIRIs: boolean): JsonLD {
-        const serializer = JsonLDModelSerializer.forModel(this, compactIRIs);
+        const serializer = JsonLDModelSerializer.forModel(this.static(), compactIRIs);
 
         return serializer.serialize(this, {
             includeContext: false,

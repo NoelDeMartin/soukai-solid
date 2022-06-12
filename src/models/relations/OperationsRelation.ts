@@ -1,8 +1,9 @@
 import { arrayFilter, arrayFrom, urlRoute } from '@noeldemartin/utils';
 import type { Attributes, EngineDocument } from 'soukai';
 
+import JsonLDModelSerializer from '@/models/internals/JsonLDModelSerializer';
 import RDF from '@/solid/utils/RDF';
-import { operationClass } from '@/models/history/operations';
+import { operationClass, operationClasses } from '@/models/history/operations';
 import type AddPropertyOperation from '@/models/history/AddPropertyOperation';
 import type DeleteOperation from '@/models/history/DeleteOperation';
 import type Operation from '@/models/history/Operation';
@@ -16,8 +17,16 @@ import type { SolidModel } from '@/models/SolidModel';
 
 import SolidHasManyRelation from './SolidHasManyRelation';
 
+interface OperationRdfsMatcher {
+    operation: typeof Operation;
+
+    match(resourceRdfsClasses: string[]): boolean;
+}
+
 export default class OperationsRelation<Parent extends SolidModel = SolidModel>
     extends SolidHasManyRelation<Parent, Operation, typeof Operation> {
+
+    protected static operationMatchers: OperationRdfsMatcher[];
 
     constructor(parent: Parent) {
         super(parent, operationClass('Operation'), 'resourceUrl');
@@ -104,39 +113,31 @@ export default class OperationsRelation<Parent extends SolidModel = SolidModel>
     }
 
     protected getOperationClass(resource: JsonLD): typeof Operation | undefined {
-        // TODO This could be inferred from classes instead
-        const rdfsClasses: Partial<Record<keyof Operations, string[]>> = {
-            AddPropertyOperation: [
-                'https://soukai.noeldemartin.com/vocab/AddPropertyOperation',
-                'soukai:AddPropertyOperation',
-            ],
-            RemovePropertyOperation: [
-                'https://soukai.noeldemartin.com/vocab/RemovePropertyOperation',
-                'soukai:RemovePropertyOperation',
-            ],
-            SetPropertyOperation: [
-                'https://soukai.noeldemartin.com/vocab/SetPropertyOperation',
-                'soukai:SetPropertyOperation',
-            ],
-            UnsetPropertyOperation: [
-                'https://soukai.noeldemartin.com/vocab/UnsetPropertyOperation',
-                'soukai:UnsetPropertyOperation',
-            ],
-            DeleteOperation: [
-                'https://soukai.noeldemartin.com/vocab/DeleteOperation',
-                'soukai:DeleteOperation',
-            ],
-        };
-        const resourceClasses = arrayFrom(resource['@type'] ?? []);
-        const matchingEntry = Object
-            .entries(rdfsClasses)
-            .find(
-                ([_, operationClasses]) => operationClasses?.some(
-                    operationClass => resourceClasses.includes(operationClass),
-                ),
-            );
+        const matchers = this.getOperationMatchers();
+        const resourceRdfsClasses = arrayFrom(resource['@type'] ?? []);
+        const matcher = matchers.find(matcher => matcher.match(resourceRdfsClasses));
 
-        return matchingEntry && operationClass(matchingEntry[0] as keyof Operations);
+        return matcher?.operation;
+    }
+
+    protected getOperationMatchers(): OperationRdfsMatcher[] {
+        return OperationsRelation.operationMatchers ??= Object
+            .values(operationClasses())
+            .map(
+                (operation) => {
+                    const serializer = JsonLDModelSerializer.forModel(operation);
+                    const expandedTypes = operation.rdfsClasses;
+                    const compactedTypes = expandedTypes.map(rdfClass => serializer.processExpandedIRI(rdfClass));
+                    const rdfsClasses = [...expandedTypes, ...compactedTypes];
+
+                    return {
+                        operation,
+                        match: resourceRdfsClasses => rdfsClasses.some(
+                            operationRdfsClass => resourceRdfsClasses.includes(operationRdfsClass),
+                        ),
+                    };
+                },
+            );
     }
 
 }

@@ -105,8 +105,8 @@ class JsonLDContext {
 
 export default class JsonLDModelSerializer {
 
-    public static forModel(model: SolidModel, compactsIRIs: boolean = true): JsonLDModelSerializer {
-        const context = JsonLDContext.fromRdfClasses(model.static('rdfContexts'));
+    public static forModel(model: typeof SolidModel, compactsIRIs: boolean = true): JsonLDModelSerializer {
+        const context = JsonLDContext.fromRdfClasses(model.rdfContexts);
 
         return new JsonLDModelSerializer(context, compactsIRIs ? IRIFormat.Compacted : IRIFormat.Expanded);
     }
