@@ -26,7 +26,7 @@ interface OperationRdfsMatcher {
 export default class OperationsRelation<Parent extends SolidModel = SolidModel>
     extends SolidHasManyRelation<Parent, Operation, typeof Operation> {
 
-    protected static operationMatchers: OperationRdfsMatcher[];
+    private static operationMatchers: OperationRdfsMatcher[];
 
     constructor(parent: Parent) {
         super(parent, operationClass('Operation'), 'resourceUrl');
@@ -120,7 +120,7 @@ export default class OperationsRelation<Parent extends SolidModel = SolidModel>
         return matcher?.operation;
     }
 
-    protected getOperationMatchers(): OperationRdfsMatcher[] {
+    private getOperationMatchers(): OperationRdfsMatcher[] {
         return OperationsRelation.operationMatchers ??= Object
             .values(operationClasses())
             .map(
