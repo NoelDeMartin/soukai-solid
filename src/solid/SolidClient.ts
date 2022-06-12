@@ -170,7 +170,6 @@ export default class SolidClient {
             method: 'PATCH',
             headers: {
                 'Content-Type': 'application/sparql-update',
-                'If-None-Match': '*',
             },
             body: `
                 DELETE DATA { ${RDFResourceProperty.toTurtle(document.properties, url)} } ;
