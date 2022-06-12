@@ -120,6 +120,8 @@ export class SolidModel extends SolidModelBase {
 
     protected static rdfPropertyFields?: Record<string, string>;
 
+    protected static historyDisabled: WeakMap<SolidModel, void> = new WeakMap;
+
     public static from<T extends SolidModel>(
         this: SolidModelConstructor<T>,
         parentUrl: string,
@@ -577,6 +579,14 @@ export class SolidModel extends SolidModelBase {
         return !!this.metadata?.deletedAt;
     }
 
+    public enableHistory(): void {
+        this._history = true;
+    }
+
+    public disableHistory(): void {
+        this._history = false;
+    }
+
     public disableTombstone(): void {
         this._tombstone = false;
     }
@@ -622,7 +632,9 @@ export class SolidModel extends SolidModelBase {
     }
 
     public tracksHistory(): boolean {
-        return this._history ?? this.static('history');
+        return this.static().historyDisabled.has(this)
+            ? false
+            : this._history ?? this.static('history');
     }
 
     public withoutTrackingHistory<T>(operation: () => T): T;
@@ -631,16 +643,13 @@ export class SolidModel extends SolidModelBase {
         if (!this.tracksHistory())
             return operation();
 
-        const wasTrackingHistory = this._history;
         const restoreHistoryTracking = (): true => {
-            typeof wasTrackingHistory === 'undefined'
-                ? delete this._history
-                : this._history = wasTrackingHistory;
+            this.static().historyDisabled.delete(this);
 
             return true;
         };
 
-        this._history = false;
+        this.static().historyDisabled.set(this);
 
         const result = operation();
 
