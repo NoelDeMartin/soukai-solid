@@ -582,11 +582,11 @@ export class SolidModel extends SolidModelBase {
     }
 
     public enableTombstone(): void {
-        this._tombstone = false;
+        this._tombstone = true;
     }
 
     public leavesTombstone(): boolean {
-        return !!(this._tombstone ?? this.static('tombstone'));
+        return this._tombstone ?? this.static('tombstone');
     }
 
     public cleanDirty(ignoreRelations?: boolean): void {
