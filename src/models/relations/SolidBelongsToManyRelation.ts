@@ -85,6 +85,9 @@ export default class SolidBelongsToManyRelation<
     }
 
     public reset(related: Related[]): void {
+        this.__newModels = [];
+        this.__modelsInSameDocument = [];
+
         const foreignKeys = this.parent.getAttribute<string[]>(this.foreignKeyName);
 
         related.forEach(model => {
@@ -94,8 +97,6 @@ export default class SolidBelongsToManyRelation<
         });
 
         this.parent.setAttribute(this.foreignKeyName, foreignKeys);
-
-        this.__modelsInSameDocument = [];
     }
 
     public clone(options: RelationCloneOptions = {}): this {
