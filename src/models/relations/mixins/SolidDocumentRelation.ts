@@ -6,7 +6,7 @@ import type { SolidModelConstructor } from '@/models/inference';
 
 // Workaround for https://github.com/microsoft/TypeScript/issues/35356
 export interface ISolidDocumentRelation<Related extends SolidModel = SolidModel> {
-    reset(related: Related[]): void;
+    reset(related?: Related[]): void;
     __loadDocumentModels(documentUrl: string, document: JsonLDGraph): Promise<void>;
     __beforeParentCreate(): void;
 }

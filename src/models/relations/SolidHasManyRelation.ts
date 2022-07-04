@@ -46,7 +46,7 @@ export default class SolidHasManyRelation<
         return this.related;
     }
 
-    public reset(related: Related[]): void {
+    public reset(related: Related[] = []): void {
         this.__newModels = [];
         this.__modelsInSameDocument = [];
 

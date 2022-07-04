@@ -51,7 +51,7 @@ export default class SolidHasOneRelation<
         return this.related;
     }
 
-    public reset(related: Related[]): void {
+    public reset(related: Related[] = []): void {
         const model = related[0];
 
         delete this.__newModel;
