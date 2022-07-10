@@ -22,7 +22,7 @@ import { assertInstanceOf, loadFixture } from '@/testing/utils';
 
 const expandIRI = (iri: string) => defaultExpandIRI(iri, {
     extraContext: {
-        soukai: 'https://soukai.noeldemartin.com/vocab/',
+        crdt: 'https://vocab.noeldemartin.com/crdt/',
         foaf: 'http://xmlns.com/foaf/0.1/',
     },
 });
@@ -503,13 +503,13 @@ describe('Solid history tracking', () => {
         expect(fetch.mock.calls[3]?.[1]?.body).toEqualSparql(`
             DELETE DATA { ${bandTurtle} } ;
             INSERT DATA {
-                @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+                @prefix crdt: <https://vocab.noeldemartin.com/crdt/> .
                 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
                 <#it-metadata>
-                    a soukai:Tombstone ;
-                    soukai:resource <#it> ;
-                    soukai:deletedAt  "[[.*]]"^^xsd:dateTime .
+                    a crdt:Tombstone ;
+                    crdt:resource <#it> ;
+                    crdt:deletedAt  "[[.*]]"^^xsd:dateTime .
             } .
         `);
     });

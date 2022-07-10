@@ -19,7 +19,7 @@ export const OperationFieldsDefinition = {
 export default class Operation extends SolidModel {
 
     public static rdfContexts = {
-        soukai: 'https://soukai.noeldemartin.com/vocab/',
+        crdt: 'https://vocab.noeldemartin.com/crdt/',
     };
 
     public static rdfsClasses = ['Operation'];

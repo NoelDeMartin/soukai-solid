@@ -156,11 +156,11 @@ export class SolidModel extends SolidModelBase {
         modelClass.rdfContexts = {
             ...modelClass.rdfContexts,
             solid: 'http://www.w3.org/ns/solid/terms#',
-            rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
-            rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+            crdt: 'https://vocab.noeldemartin.com/crdt/',
             ldp: 'http://www.w3.org/ns/ldp#',
             purl: 'http://purl.org/dc/terms/',
-            soukai: 'https://soukai.noeldemartin.com/vocab/',
+            rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+            rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
         };
 
         const fields = modelClass.fields as BootedFieldsDefinition<{ rdfProperty?: string }>;

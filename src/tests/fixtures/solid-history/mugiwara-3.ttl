@@ -1,5 +1,5 @@
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
-@prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+@prefix crdt: <https://vocab.noeldemartin.com/crdt/> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 <#it>
@@ -8,31 +8,31 @@
     foaf:member <#luffy>, <#roronoa-zoro> .
 
 <#it-metadata>
-    a soukai:Metadata ;
-    soukai:resource <#it> ;
-    soukai:createdAt "1996-08-04T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:updatedAt "1997-09-01T00:00:00.000Z"^^xsd:dateTime .
+    a crdt:Metadata ;
+    crdt:resource <#it> ;
+    crdt:createdAt "1996-08-04T00:00:00.000Z"^^xsd:dateTime ;
+    crdt:updatedAt "1997-09-01T00:00:00.000Z"^^xsd:dateTime .
 
 <#it-operation-1>
-    a soukai:SetPropertyOperation ;
-    soukai:resource <#it> ;
-    soukai:date "1996-08-04T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:property foaf:name ;
-    soukai:value "Straw Hat Pirates" .
+    a crdt:SetPropertyOperation ;
+    crdt:resource <#it> ;
+    crdt:date "1996-08-04T00:00:00.000Z"^^xsd:dateTime ;
+    crdt:property foaf:name ;
+    crdt:value "Straw Hat Pirates" .
 
 <#it-operation-2>
-    a soukai:SetPropertyOperation ;
-    soukai:resource <#it> ;
-    soukai:date "1996-08-04T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:property foaf:member ;
-    soukai:value <#luffy> .
+    a crdt:SetPropertyOperation ;
+    crdt:resource <#it> ;
+    crdt:date "1996-08-04T00:00:00.000Z"^^xsd:dateTime ;
+    crdt:property foaf:member ;
+    crdt:value <#luffy> .
 
 <#it-operation-3>
-    a soukai:AddPropertyOperation ;
-    soukai:resource <#it> ;
-    soukai:date "1997-09-01T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:property foaf:member ;
-    soukai:value <#roronoa-zoro> .
+    a crdt:AddPropertyOperation ;
+    crdt:resource <#it> ;
+    crdt:date "1997-09-01T00:00:00.000Z"^^xsd:dateTime ;
+    crdt:property foaf:member ;
+    crdt:value <#roronoa-zoro> .
 
 <#luffy>
     a foaf:Person ;
@@ -40,24 +40,24 @@
     foaf:givenName "Straw Hat Luffy" .
 
 <#luffy-metadata>
-    a soukai:Metadata ;
-    soukai:resource <#luffy> ;
-    soukai:createdAt "1996-08-04T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:updatedAt "1997-07-28T00:00:00.000Z"^^xsd:dateTime .
+    a crdt:Metadata ;
+    crdt:resource <#luffy> ;
+    crdt:createdAt "1996-08-04T00:00:00.000Z"^^xsd:dateTime ;
+    crdt:updatedAt "1997-07-28T00:00:00.000Z"^^xsd:dateTime .
 
 <#luffy-operation-1>
-    a soukai:SetPropertyOperation ;
-    soukai:resource <#luffy> ;
-    soukai:date "1996-08-04T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:property foaf:name ;
-    soukai:value "Monkey D. Luffy" .
+    a crdt:SetPropertyOperation ;
+    crdt:resource <#luffy> ;
+    crdt:date "1996-08-04T00:00:00.000Z"^^xsd:dateTime ;
+    crdt:property foaf:name ;
+    crdt:value "Monkey D. Luffy" .
 
 <#luffy-operation-2>
-    a soukai:SetPropertyOperation ;
-    soukai:resource <#luffy> ;
-    soukai:date "1997-07-28T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:property foaf:givenName ;
-    soukai:value "Straw Hat Luffy" .
+    a crdt:SetPropertyOperation ;
+    crdt:resource <#luffy> ;
+    crdt:date "1997-07-28T00:00:00.000Z"^^xsd:dateTime ;
+    crdt:property foaf:givenName ;
+    crdt:value "Straw Hat Luffy" .
 
 <#roronoa-zoro>
     a foaf:Person ;
@@ -66,7 +66,7 @@
     foaf:givenName "Pirate Hunter" .
 
 <#roronoa-zoro-metadata>
-    a soukai:Metadata ;
-    soukai:resource <#roronoa-zoro> ;
-    soukai:createdAt "1997-09-01T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:updatedAt "1997-09-01T00:00:00.000Z"^^xsd:dateTime .
+    a crdt:Metadata ;
+    crdt:resource <#roronoa-zoro> ;
+    crdt:createdAt "1997-09-01T00:00:00.000Z"^^xsd:dateTime ;
+    crdt:updatedAt "1997-09-01T00:00:00.000Z"^^xsd:dateTime .

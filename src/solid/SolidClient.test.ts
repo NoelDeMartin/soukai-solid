@@ -621,7 +621,7 @@ describe('SolidClient', () => {
                 <http://xmlns.com/foaf/0.1/surname> "Doe" ;
                 <http://xmlns.com/foaf/0.1/givenName> "John" .
             <${metadataUrl}>
-                <https://soukai.noeldemartin.com/vocab/createdAt>
+                <https://vocab.noeldemartin.com/crdt/createdAt>
                     "2020-03-08T14:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
         `;
 
@@ -651,7 +651,7 @@ describe('SolidClient', () => {
                 <${resourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
                 <${resourceUrl}> <http://xmlns.com/foaf/0.1/givenName> "John" .
                 <${metadataUrl}>
-                    <https://soukai.noeldemartin.com/vocab/createdAt>
+                    <https://vocab.noeldemartin.com/crdt/createdAt>
                         "2020-03-08T14:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
             }
         `);

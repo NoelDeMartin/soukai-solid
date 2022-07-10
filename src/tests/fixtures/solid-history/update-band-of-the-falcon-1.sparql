@@ -1,31 +1,31 @@
 DELETE DATA {
-    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix crdt: <https://vocab.noeldemartin.com/crdt/> .
     @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-    <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+    <#it-metadata> crdt:updatedAt "[[.*]]"^^xsd:dateTime .
 } ;
 
 INSERT DATA {
     @prefix foaf: <http://xmlns.com/foaf/0.1/> .
-    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix crdt: <https://vocab.noeldemartin.com/crdt/> .
     @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
     <#it> foaf:member <https://berserk.fandom.com/wiki/Guts> .
-    <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+    <#it-metadata> crdt:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#it-operation-[[.*]]>
-        a soukai:SetPropertyOperation ;
-        soukai:resource <#it> ;
-        soukai:date "[[.*]]"^^xsd:dateTime ;
-        soukai:property foaf:name ;
-        soukai:value "Band of the Falcon" .
+        a crdt:SetPropertyOperation ;
+        crdt:resource <#it> ;
+        crdt:date "[[.*]]"^^xsd:dateTime ;
+        crdt:property foaf:name ;
+        crdt:value "Band of the Falcon" .
 
     <#it-operation-[[.*]]>
-        a soukai:SetPropertyOperation ;
-        soukai:resource <#it> ;
-        soukai:date "[[.*]]"^^xsd:dateTime ;
-        soukai:property foaf:member ;
-        soukai:value
+        a crdt:SetPropertyOperation ;
+        crdt:resource <#it> ;
+        crdt:date "[[.*]]"^^xsd:dateTime ;
+        crdt:property foaf:member ;
+        crdt:value
             <https://berserk.fandom.com/wiki/Griffith>,
             <https://berserk.fandom.com/wiki/Casca>,
             <https://berserk.fandom.com/wiki/Judeau>,
@@ -33,17 +33,17 @@ INSERT DATA {
             <https://berserk.fandom.com/wiki/Corkus> .
 
     <#it-operation-[[.*]]>
-        a soukai:SetPropertyOperation ;
-        soukai:resource <#it> ;
-        soukai:date "[[.*]]"^^xsd:dateTime ;
-        soukai:property foaf:maker ;
-        soukai:value <#griffith>.
+        a crdt:SetPropertyOperation ;
+        crdt:resource <#it> ;
+        crdt:date "[[.*]]"^^xsd:dateTime ;
+        crdt:property foaf:maker ;
+        crdt:value <#griffith>.
 
     <#it-operation-[[.*]]>
-        a soukai:AddPropertyOperation ;
-        soukai:resource <#it> ;
-        soukai:date "[[.*]]"^^xsd:dateTime ;
-        soukai:property foaf:member ;
-        soukai:value <https://berserk.fandom.com/wiki/Guts> .
+        a crdt:AddPropertyOperation ;
+        crdt:resource <#it> ;
+        crdt:date "[[.*]]"^^xsd:dateTime ;
+        crdt:property foaf:member ;
+        crdt:value <https://berserk.fandom.com/wiki/Guts> .
 
 }

@@ -32,19 +32,19 @@ export function stubPersonJsonLD(
     }
 
     if (optional.createdAt) {
-        jsonld['@context']['metadata'] = { '@reverse': 'soukai:resource' };
-        jsonld['@context']['soukai'] = 'https://soukai.noeldemartin.com/vocab/';
+        jsonld['@context']['metadata'] = { '@reverse': 'crdt:resource' };
+        jsonld['@context']['crdt'] = 'https://vocab.noeldemartin.com/crdt/';
         jsonld['metadata'] = {
             '@id': `${url}-metadata`,
-            '@type': 'soukai:Metadata',
-            'soukai:createdAt': {
+            '@type': 'crdt:Metadata',
+            'crdt:createdAt': {
                 '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
                 '@value': optional.createdAt,
             },
         };
 
         if (optional.updatedAt) {
-            (jsonld['metadata'] as Record<string, unknown>)['soukai:updatedAt'] = {
+            (jsonld['metadata'] as Record<string, unknown>)['crdt:updatedAt'] = {
                 '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
                 '@value': optional.updatedAt,
             };

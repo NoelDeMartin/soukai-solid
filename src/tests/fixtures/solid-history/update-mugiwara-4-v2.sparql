@@ -1,49 +1,49 @@
 DELETE DATA {
     @prefix foaf: <http://xmlns.com/foaf/0.1/> .
-    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix crdt: <https://vocab.noeldemartin.com/crdt/> .
     @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-    <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+    <#it-metadata> crdt:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#it-operation-[[operation-1][.*]]>
-        a soukai:SetPropertyOperation ;
-        soukai:resource <#it> ;
-        soukai:date "[[.*]]"^^xsd:dateTime ;
-        soukai:property foaf:member ;
-        soukai:value <#luffy> .
+        a crdt:SetPropertyOperation ;
+        crdt:resource <#it> ;
+        crdt:date "[[.*]]"^^xsd:dateTime ;
+        crdt:property foaf:member ;
+        crdt:value <#luffy> .
 
 } ;
 
 INSERT DATA {
     @prefix foaf: <http://xmlns.com/foaf/0.1/> .
-    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix crdt: <https://vocab.noeldemartin.com/crdt/> .
     @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
     <#it> foaf:member <#nami> .
-    <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+    <#it-metadata> crdt:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#nami>
         a foaf:Person ;
         foaf:name "Nami" .
 
     <#nami-metadata>
-        a soukai:Metadata ;
-        soukai:resource <#nami> ;
-        soukai:createdAt "[[.*]]"^^xsd:dateTime ;
-        soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+        a crdt:Metadata ;
+        crdt:resource <#nami> ;
+        crdt:createdAt "[[.*]]"^^xsd:dateTime ;
+        crdt:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#it-operation-[[operation-2][.*]]>
-        a soukai:SetPropertyOperation ;
-        soukai:resource <#it> ;
-        soukai:date "[[.*]]"^^xsd:dateTime ;
-        soukai:property foaf:member ;
-        soukai:value <#luffy> .
+        a crdt:SetPropertyOperation ;
+        crdt:resource <#it> ;
+        crdt:date "[[.*]]"^^xsd:dateTime ;
+        crdt:property foaf:member ;
+        crdt:value <#luffy> .
 
     <#it-operation-[[operation-3][.*]]>
-        a soukai:AddPropertyOperation ;
-        soukai:resource <#it> ;
-        soukai:date "[[.*]]"^^xsd:dateTime ;
-        soukai:property foaf:member ;
-        soukai:value <#nami> .
+        a crdt:AddPropertyOperation ;
+        crdt:resource <#it> ;
+        crdt:date "[[.*]]"^^xsd:dateTime ;
+        crdt:property foaf:member ;
+        crdt:value <#nami> .
 
 }

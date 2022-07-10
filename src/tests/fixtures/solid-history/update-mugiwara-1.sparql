@@ -1,31 +1,31 @@
 DELETE DATA {
     @prefix foaf: <http://xmlns.com/foaf/0.1/> .
-    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix crdt: <https://vocab.noeldemartin.com/crdt/> .
     @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-    <#luffy-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+    <#luffy-metadata> crdt:updatedAt "[[.*]]"^^xsd:dateTime .
 } ;
 
 INSERT DATA {
     @prefix foaf: <http://xmlns.com/foaf/0.1/> .
-    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix crdt: <https://vocab.noeldemartin.com/crdt/> .
     @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
     <#luffy> foaf:givenName "Straw Hat Luffy" .
-    <#luffy-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+    <#luffy-metadata> crdt:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#luffy-operation-[[.*]]>
-        a soukai:SetPropertyOperation ;
-        soukai:resource <#luffy> ;
-        soukai:date "[[.*]]"^^xsd:dateTime ;
-        soukai:property foaf:name ;
-        soukai:value "Monkey D. Luffy" .
+        a crdt:SetPropertyOperation ;
+        crdt:resource <#luffy> ;
+        crdt:date "[[.*]]"^^xsd:dateTime ;
+        crdt:property foaf:name ;
+        crdt:value "Monkey D. Luffy" .
 
     <#luffy-operation-[[.*]]>
-        a soukai:SetPropertyOperation ;
-        soukai:resource <#luffy> ;
-        soukai:date "[[.*]]"^^xsd:dateTime ;
-        soukai:property foaf:givenName ;
-        soukai:value "Straw Hat Luffy" .
+        a crdt:SetPropertyOperation ;
+        crdt:resource <#luffy> ;
+        crdt:date "[[.*]]"^^xsd:dateTime ;
+        crdt:property foaf:givenName ;
+        crdt:value "Straw Hat Luffy" .
 
 }

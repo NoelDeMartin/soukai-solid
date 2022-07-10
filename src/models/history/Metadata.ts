@@ -6,7 +6,7 @@ import { SolidModel } from '@/models/SolidModel';
 export default class Metadata extends SolidModel {
 
     public static rdfContexts = {
-        soukai: 'https://soukai.noeldemartin.com/vocab/',
+        crdt: 'https://vocab.noeldemartin.com/crdt/',
     };
 
     public static rdfsClasses = ['Metadata'];

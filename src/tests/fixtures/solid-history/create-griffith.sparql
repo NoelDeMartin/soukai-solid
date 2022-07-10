@@ -1,6 +1,6 @@
 INSERT DATA {
     @prefix foaf: <http://xmlns.com/foaf/0.1/> .
-    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix crdt: <https://vocab.noeldemartin.com/crdt/> .
     @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
     <#it>
@@ -8,8 +8,8 @@ INSERT DATA {
         foaf:name "Griffith" .
 
     <#it-metadata>
-        a soukai:Metadata ;
-        soukai:resource <#it> ;
-        soukai:createdAt "[[.*]]"^^xsd:dateTime ;
-        soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+        a crdt:Metadata ;
+        crdt:resource <#it> ;
+        crdt:createdAt "[[.*]]"^^xsd:dateTime ;
+        crdt:updatedAt "[[.*]]"^^xsd:dateTime .
 }

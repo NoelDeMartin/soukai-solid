@@ -1,31 +1,31 @@
 DELETE DATA {
     @prefix foaf: <http://xmlns.com/foaf/0.1/> .
-    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix crdt: <https://vocab.noeldemartin.com/crdt/> .
     @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-    <#nami-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+    <#nami-metadata> crdt:updatedAt "[[.*]]"^^xsd:dateTime .
 } ;
 
 INSERT DATA {
     @prefix foaf: <http://xmlns.com/foaf/0.1/> .
-    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix crdt: <https://vocab.noeldemartin.com/crdt/> .
     @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
     <#nami> foaf:givenName "Cat Burglar" .
-    <#nami-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+    <#nami-metadata> crdt:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#nami-operation-[[.*]]>
-        a soukai:SetPropertyOperation ;
-        soukai:resource <#nami> ;
-        soukai:date "[[.*]]"^^xsd:dateTime ;
-        soukai:property foaf:name ;
-        soukai:value "Nami" .
+        a crdt:SetPropertyOperation ;
+        crdt:resource <#nami> ;
+        crdt:date "[[.*]]"^^xsd:dateTime ;
+        crdt:property foaf:name ;
+        crdt:value "Nami" .
 
     <#nami-operation-[[.*]]>
-        a soukai:SetPropertyOperation ;
-        soukai:resource <#nami> ;
-        soukai:date "[[.*]]"^^xsd:dateTime ;
-        soukai:property foaf:givenName ;
-        soukai:value "Cat Burglar" .
+        a crdt:SetPropertyOperation ;
+        crdt:resource <#nami> ;
+        crdt:date "[[.*]]"^^xsd:dateTime ;
+        crdt:property foaf:givenName ;
+        crdt:value "Cat Burglar" .
 
 }

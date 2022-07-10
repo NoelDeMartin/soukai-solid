@@ -1,18 +1,18 @@
 DELETE DATA {
     @prefix foaf: <http://xmlns.com/foaf/0.1/> .
-    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix crdt: <https://vocab.noeldemartin.com/crdt/> .
     @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 	<#it>
         foaf:name "Femto" ;
 	    foaf:givenName "Wings of Darkness" .
 
-    <#it-metadata> soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+    <#it-metadata> crdt:updatedAt "[[.*]]"^^xsd:dateTime .
 } ;
 
 INSERT DATA {
     @prefix foaf: <http://xmlns.com/foaf/0.1/> .
-    @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+    @prefix crdt: <https://vocab.noeldemartin.com/crdt/> .
     @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
     <#it>
@@ -20,19 +20,19 @@ INSERT DATA {
         foaf:givenName "Falcon of Light" .
 
     <#it-metadata>
-        soukai:updatedAt "[[.*]]"^^xsd:dateTime .
+        crdt:updatedAt "[[.*]]"^^xsd:dateTime .
 
     <#it-operation-[[.*]]>
-        a soukai:SetPropertyOperation ;
-        soukai:resource <#it> ;
-        soukai:date "[[.*]]"^^xsd:dateTime ;
-        soukai:property foaf:name ;
-        soukai:value "Griffith" .
+        a crdt:SetPropertyOperation ;
+        crdt:resource <#it> ;
+        crdt:date "[[.*]]"^^xsd:dateTime ;
+        crdt:property foaf:name ;
+        crdt:value "Griffith" .
 
     <#it-operation-[[.*]]>
-        a soukai:SetPropertyOperation ;
-        soukai:resource <#it> ;
-        soukai:date "[[.*]]"^^xsd:dateTime ;
-        soukai:property foaf:givenName ;
-        soukai:value "Falcon of Light" .
+        a crdt:SetPropertyOperation ;
+        crdt:resource <#it> ;
+        crdt:date "[[.*]]"^^xsd:dateTime ;
+        crdt:property foaf:givenName ;
+        crdt:value "Falcon of Light" .
 }

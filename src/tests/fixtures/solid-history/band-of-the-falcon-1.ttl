@@ -1,5 +1,5 @@
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
-@prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+@prefix crdt: <https://vocab.noeldemartin.com/crdt/> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 <#it>
@@ -14,17 +14,17 @@
     foaf:maker <#griffith> .
 
 <#it-metadata>
-    a soukai:Metadata ;
-    soukai:resource <#it> ;
-    soukai:createdAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:updatedAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime .
+    a crdt:Metadata ;
+    crdt:resource <#it> ;
+    crdt:createdAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
+    crdt:updatedAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime .
 
 <#griffith>
     a foaf:Person ;
     foaf:name "Griffith" .
 
 <#griffith-metadata>
-    a soukai:Metadata ;
-    soukai:resource <#griffith> ;
-    soukai:createdAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:updatedAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime .
+    a crdt:Metadata ;
+    crdt:resource <#griffith> ;
+    crdt:createdAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
+    crdt:updatedAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime .

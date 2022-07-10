@@ -1,5 +1,5 @@
 @prefix foaf: <http://xmlns.com/foaf/0.1/> .
-@prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
+@prefix crdt: <https://vocab.noeldemartin.com/crdt/> .
 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
 <#it>
@@ -8,28 +8,28 @@
     foaf:givenName "Wings of Darkness" .
 
 <#it-metadata>
-    a soukai:Metadata ;
-    soukai:resource <#it> ;
-    soukai:createdAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:updatedAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime .
+    a crdt:Metadata ;
+    crdt:resource <#it> ;
+    crdt:createdAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
+    crdt:updatedAt "1991-01-11T00:00:00.000Z"^^xsd:dateTime .
 
 <#it-operation-1>
-    a soukai:SetPropertyOperation ;
-    soukai:resource <#it> ;
-    soukai:date "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:property foaf:name ;
-    soukai:value "Griffith" .
+    a crdt:SetPropertyOperation ;
+    crdt:resource <#it> ;
+    crdt:date "1991-01-11T00:00:00.000Z"^^xsd:dateTime ;
+    crdt:property foaf:name ;
+    crdt:value "Griffith" .
 
 <#it-operation-2>
-    a soukai:SetPropertyOperation ;
-    soukai:resource <#it> ;
-    soukai:date "1996-08-09T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:property foaf:name ;
-    soukai:value "Femto" .
+    a crdt:SetPropertyOperation ;
+    crdt:resource <#it> ;
+    crdt:date "1996-08-09T00:00:00.000Z"^^xsd:dateTime ;
+    crdt:property foaf:name ;
+    crdt:value "Femto" .
 
 <#it-operation-3>
-    a soukai:SetPropertyOperation ;
-    soukai:resource <#it> ;
-    soukai:date "1996-08-09T00:00:00.000Z"^^xsd:dateTime ;
-    soukai:property foaf:givenName ;
-    soukai:value "Wings of Darkness" .
+    a crdt:SetPropertyOperation ;
+    crdt:resource <#it> ;
+    crdt:date "1996-08-09T00:00:00.000Z"^^xsd:dateTime ;
+    crdt:property foaf:givenName ;
+    crdt:value "Wings of Darkness" .

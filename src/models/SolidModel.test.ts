@@ -28,7 +28,7 @@ import { SolidModel } from './SolidModel';
 
 const expandIRI = (iri: string) => defaultExpandIRI(iri, {
     extraContext: {
-        soukai: 'https://soukai.noeldemartin.com/vocab/',
+        crdt: 'https://vocab.noeldemartin.com/crdt/',
         foaf: 'http://xmlns.com/foaf/0.1/',
     },
 });
@@ -1158,16 +1158,16 @@ describe('SolidModel', () => {
             '@id': person.url,
             '@context': {
                 '@vocab': 'http://xmlns.com/foaf/0.1/',
-                'soukai': 'https://soukai.noeldemartin.com/vocab/',
-                'metadata': { '@reverse': 'soukai:resource' },
+                'crdt': 'https://vocab.noeldemartin.com/crdt/',
+                'metadata': { '@reverse': 'crdt:resource' },
             },
             '@type': 'Person',
             'name': name,
             'knows': friendUrls.map(url => ({ '@id': url })),
             'metadata': {
                 '@id': person.url + '-metadata',
-                '@type': 'soukai:Metadata',
-                'soukai:createdAt': {
+                '@type': 'crdt:Metadata',
+                'crdt:createdAt': {
                     '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
                     '@value': '1997-07-21T23:42:00.000Z',
                 },
@@ -1232,8 +1232,8 @@ describe('SolidModel', () => {
         expect(jsonLd).toEqual({
             '@context': {
                 '@vocab': 'http://xmlns.com/foaf/0.1/',
-                'soukai': 'https://soukai.noeldemartin.com/vocab/',
-                'metadata': { '@reverse': 'soukai:resource' },
+                'crdt': 'https://vocab.noeldemartin.com/crdt/',
+                'metadata': { '@reverse': 'crdt:resource' },
             },
             '@type': 'Group',
             '@id': mugiwara.url,
@@ -1246,8 +1246,8 @@ describe('SolidModel', () => {
                     'lastName': 'Monkey D.',
                     'metadata': {
                         '@id': `${luffy.url}-metadata`,
-                        '@type': 'soukai:Metadata',
-                        'soukai:createdAt': {
+                        '@type': 'crdt:Metadata',
+                        'crdt:createdAt': {
                             '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
                             '@value': luffy.createdAt.toISOString(),
                         },
@@ -1260,8 +1260,8 @@ describe('SolidModel', () => {
                     'lastName': 'Roronoa',
                     'metadata': {
                         '@id': `${zoro.url}-metadata`,
-                        '@type': 'soukai:Metadata',
-                        'soukai:createdAt': {
+                        '@type': 'crdt:Metadata',
+                        'crdt:createdAt': {
                             '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
                             '@value': zoro.createdAt.toISOString(),
                         },
@@ -1270,12 +1270,12 @@ describe('SolidModel', () => {
             ],
             'metadata': {
                 '@id': `${mugiwara.url}-metadata`,
-                '@type': 'soukai:Metadata',
-                'soukai:createdAt': {
+                '@type': 'crdt:Metadata',
+                'crdt:createdAt': {
                     '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
                     '@value': mugiwara.createdAt.toISOString(),
                 },
-                'soukai:updatedAt': {
+                'crdt:updatedAt': {
                     '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
                     '@value': mugiwara.updatedAt.toISOString(),
                 },
@@ -1965,7 +1965,7 @@ describe('SolidModel', () => {
                         $updateItems: {
                             $where: { '@id': versionA.metadata.url },
                             $update: {
-                                [IRI('soukai:updatedAt')]: {
+                                [IRI('crdt:updatedAt')]: {
                                     '@value': versionA.updatedAt.toISOString(),
                                     '@type': IRI('xsd:dateTime'),
                                 },
@@ -2153,7 +2153,7 @@ describe('SolidModel', () => {
                         $updateItems: {
                             $where: { '@id': versionA.metadata.url },
                             $update: {
-                                [IRI('soukai:updatedAt')]: {
+                                [IRI('crdt:updatedAt')]: {
                                     '@value': versionA.updatedAt.toISOString(),
                                     '@type': IRI('xsd:dateTime'),
                                 },
