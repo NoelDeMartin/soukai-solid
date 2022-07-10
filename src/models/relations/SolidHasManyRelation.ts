@@ -47,12 +47,14 @@ export default class SolidHasManyRelation<
     }
 
     public reset(related: Related[] = []): void {
+        this.related = [];
         this.__newModels = [];
         this.__modelsInSameDocument = [];
 
         related.forEach(model => {
             model.unsetAttribute(this.foreignKeyName);
 
+            this.related?.push(model);
             this.__newModels.push(model);
         });
     }

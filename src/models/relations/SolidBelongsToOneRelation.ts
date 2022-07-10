@@ -45,14 +45,17 @@ export default class SolidBelongsToOneRelation<
     public reset(related: Related[] = []): void {
         const model = related[0];
 
-        delete this.__newModel;
+        delete this.related;
+        delete this.__modelInSameDocument;
         delete this.__modelInSameDocument;
 
-        if (!model)
+        if (!model) {
             return;
+        }
 
         this.parent.unsetAttribute(this.foreignKeyName);
 
+        this.related = model;
         this.__newModel = model;
     }
 

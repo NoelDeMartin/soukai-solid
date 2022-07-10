@@ -85,6 +85,7 @@ export default class SolidBelongsToManyRelation<
     }
 
     public reset(related: Related[] = []): void {
+        this.related = [];
         this.__newModels = [];
         this.__modelsInSameDocument = [];
 
@@ -93,6 +94,7 @@ export default class SolidBelongsToManyRelation<
         related.forEach(model => {
             arrayRemove(foreignKeys, model.getAttribute(this.localKeyName));
 
+            this.related?.push(model);
             this.__newModels.push(model);
         });
 
