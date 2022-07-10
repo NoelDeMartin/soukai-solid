@@ -14,7 +14,8 @@ export default class TombstoneRelation<Parent extends SolidModel = SolidModel>
         const TombstoneModel = requireBootedModel<typeof Tombstone>('Tombstone');
 
         this.related = new TombstoneModel({
-            url: this.parent.url,
+            url: this.parent.metadata.url,
+            resourceUrl: this.parent.url,
             deletedAt: new Date(),
         });
     }

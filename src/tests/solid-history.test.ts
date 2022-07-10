@@ -506,8 +506,9 @@ describe('Solid history tracking', () => {
                 @prefix soukai: <https://soukai.noeldemartin.com/vocab/> .
                 @prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
 
-                <#it>
+                <#it-metadata>
                     a soukai:Tombstone ;
+                    soukai:resource <#it> ;
                     soukai:deletedAt  "[[.*]]"^^xsd:dateTime .
             } .
         `);

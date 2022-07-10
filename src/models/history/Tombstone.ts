@@ -1,21 +1,10 @@
-import { FieldType } from 'soukai';
 import type { IModel } from 'soukai';
 
-import { SolidModel } from '@/models/SolidModel';
+import Metadata from './Metadata';
 
-export default class Tombstone extends SolidModel {
-
-    public static rdfContexts = {
-        soukai: 'https://soukai.noeldemartin.com/vocab/',
-    };
+export default class Tombstone extends Metadata {
 
     public static rdfsClasses = ['Tombstone'];
-
-    public static timestamps = false;
-
-    public static fields = {
-        deletedAt: FieldType.Date,
-    } as const;
 
 }
 
