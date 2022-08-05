@@ -118,42 +118,15 @@ describe('SolidClient', () => {
 
         // Assert
         expect(url).toEqual(containerUrl);
-        expect(StubFetcher.fetch).toHaveBeenCalledWith(parentUrl, {
-            method: 'POST',
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl, {
+            method: 'PATCH',
             headers: {
-                'Content-Type': 'text/turtle',
+                'Content-Type': 'application/sparql-update',
                 'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                 'Slug': stringToSlug(label),
+                'If-None-Match': '*',
             },
-            body: `<> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" .`,
-        });
-    });
-
-    it('creates container documents without a minted url', async () => {
-        // Arrange
-        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
-        const containerUrl = urlResolveDirectory(parentUrl, stringToSlug(Faker.random.word()));
-
-        StubFetcher.addFetchResponse('', { Location: containerUrl }, 201);
-
-        // Act
-        const url = await client.createDocument(
-            parentUrl,
-            null,
-            [
-                RDFResourceProperty.type(null, IRI('ldp:Container')),
-            ],
-        );
-
-        // Assert
-        expect(url).toEqual(containerUrl);
-        expect(StubFetcher.fetch).toHaveBeenCalledWith(parentUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'text/turtle',
-                'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
-            },
-            body: '',
+            body: `INSERT DATA { <> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" . }`,
         });
     });
 

@@ -84,7 +84,7 @@ export default class SolidClient {
         properties: RDFResourceProperty[] = [],
     ): Promise<string> {
         const ldpContainer = IRI('ldp:Container');
-        const isContainer = properties.some(
+        const isContainer = () => properties.some(
             property =>
                 property.resourceUrl === url &&
                 property.type === RDFResourcePropertyType.Type &&
@@ -94,7 +94,7 @@ export default class SolidClient {
         // TODO some of these operations can overwrite an existing document.
         // In this project that's ok because the existence of the document is checked
         // in the engine before calling this method, but it should be fixed for correctness.
-        return isContainer
+        return url && isContainer()
             ? this.createContainerDocument(parentUrl, url, properties)
             : this.createNonContainerDocument(parentUrl, url, properties);
     }
@@ -219,35 +219,36 @@ export default class SolidClient {
 
     private async createContainerDocument(
         parentUrl: string,
-        url: string | null,
+        url: string,
         properties: RDFResourceProperty[],
     ): Promise<string> {
-        if (url && !url.startsWith(parentUrl))
+        if (!url.startsWith(parentUrl))
             throw new SoukaiError('Explicit document url should start with the parent url');
 
-        if (url && !url.endsWith('/'))
+        if (!url.endsWith('/'))
             throw new SoukaiError(`Container urls must end with a trailing slash, given ${url}`);
 
-        const containerLocation = url ? `at ${url}` : `under ${parentUrl}`;
+        const turtle = RDFResourceProperty.toTurtle(
+            this.withoutReservedContainerProperties(url, properties),
+            url,
+        );
         const response = await this.fetch(
-            parentUrl,
+            url,
             {
-                method: 'POST',
+                method: 'PATCH',
                 headers: objectWithoutEmpty({
-                    'Content-Type': 'text/turtle',
+                    'Content-Type': 'application/sparql-update',
                     'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
-                    'Slug': url ? urlDirectoryName(url) : null,
+                    'Slug': urlDirectoryName(url),
+                    'If-None-Match': '*',
                 }) as Record<string, string>,
-                body: RDFResourceProperty.toTurtle(
-                    this.withoutReservedContainerProperties(url, properties),
-                    url,
-                ),
+                body: `INSERT DATA { ${turtle} }`,
             },
         );
 
-        this.assertSuccessfulResponse(response, `Error creating container ${containerLocation}`);
+        this.assertSuccessfulResponse(response, `Error creating container at ${url}`);
 
-        return url || urlResolve(parentUrl, response.headers.get('Location') || '');
+        return url;
     }
 
     private async createNonContainerDocument(
