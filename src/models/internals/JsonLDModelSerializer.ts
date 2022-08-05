@@ -165,7 +165,7 @@ export default class JsonLDModelSerializer {
             return;
         }
 
-        const property = model.getFieldRdfProperty(field);
+        const property = model.static().getFieldRdfProperty(field);
 
         if (!property)
             return;
@@ -191,8 +191,8 @@ export default class JsonLDModelSerializer {
         const solidHasRelation = isSolidHasRelation(relation);
         const expandedForeignProperty =
             solidHasRelation
-                ? relatedInstance.getFieldRdfProperty(relation.foreignKeyName)
-                : relation.parent.getFieldRdfProperty(relation.foreignKeyName);
+                ? relatedInstance.static().getFieldRdfProperty(relation.foreignKeyName)
+                : relation.parent.static().getFieldRdfProperty(relation.foreignKeyName);
         const foreignProperty = this.processExpandedIRI(expandedForeignProperty as string);
         const serializeOptions: SerializeOptions = {
             ignoreModels: ignoredModels,
@@ -224,7 +224,7 @@ export default class JsonLDModelSerializer {
     }
 
     private setJsonLDProperty(jsonld: JsonLD, model: SolidModel, name: string, field: string, value: unknown): void {
-        value = this.castJsonLDValue(value, model.getFieldDefinition(field, value));
+        value = this.castJsonLDValue(value, model.static().getFieldDefinition(field, value));
 
         if (value instanceof EmptyJsonLDValue)
             return;

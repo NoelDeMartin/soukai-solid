@@ -20,7 +20,7 @@ export default class PropertyOperation extends Operation {
     public static fields = PropertyOperationFieldsDefinition;
 
     public apply(model: SolidModel): void {
-        const field = model.getRdfPropertyField(this.property);
+        const field = model.static().getRdfPropertyField(this.property);
 
         if (!field) {
             return;

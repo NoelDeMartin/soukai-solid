@@ -116,7 +116,7 @@ export default class SolidBelongsToManyRelation<
 
     public __synchronizeRelated(other: this): void {
         const { SetPropertyOperation, AddPropertyOperation, RemovePropertyOperation } = operationClasses();
-        const foreignProperty = this.parent.getFieldRdfProperty(this.foreignKeyName);
+        const foreignProperty = this.parent.static().getFieldRdfProperty(this.foreignKeyName);
         const localKeyName = this.localKeyName as keyof Related;
         const thisRelatedMap = map(this.related ?? [], localKeyName);
         const otherRelatedMap = map(other.related ?? [], localKeyName);

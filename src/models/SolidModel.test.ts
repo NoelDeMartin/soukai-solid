@@ -81,8 +81,8 @@ describe('SolidModel', () => {
     beforeAll(() => bootModels({
         Group,
         GroupWithHistory,
-        GroupWithPersonsInSameDocument,
         GroupWithHistoryAndPersonsInSameDocument,
+        GroupWithPersonsInSameDocument,
         Movie,
         MoviesCollection,
         Person,
@@ -531,7 +531,7 @@ describe('SolidModel', () => {
         );
     });
 
-    it('Uses default hash to mint urls for new models', async () => {
+    it('uses default hash to mint urls for new models', async () => {
         // Arrange
         class StubModel extends SolidModel {
 
@@ -1786,51 +1786,51 @@ describe('SolidModel', () => {
 
         // Arrange - initial operations
         person.relatedOperations.attachSetOperation({
-            property: person.getFieldRdfProperty('name'),
+            property: Person.getFieldRdfProperty('name'),
             value: Faker.random.word(),
             date: createdAt,
         });
 
         person.relatedOperations.attachSetOperation({
-            property: person.getFieldRdfProperty('lastName'),
+            property: Person.getFieldRdfProperty('lastName'),
             value: lastName,
             date: createdAt,
         });
 
         person.relatedOperations.attachSetOperation({
-            property: person.getFieldRdfProperty('friendUrls'),
+            property: Person.getFieldRdfProperty('friendUrls'),
             value: initialFriends.map(url => new ModelKey(url)),
             date: createdAt,
         });
 
         // Arrange - second update operation (use wrong order on purpose to test sorting)
         person.relatedOperations.attachSetOperation({
-            property: person.getFieldRdfProperty('name'),
+            property: Person.getFieldRdfProperty('name'),
             value: name,
             date: updatedAt,
         });
 
         person.relatedOperations.attachAddOperation({
-            property: person.getFieldRdfProperty('friendUrls'),
+            property: Person.getFieldRdfProperty('friendUrls'),
             value: new ModelKey(secondAddedFriend),
             date: updatedAt,
         });
 
         person.relatedOperations.attachRemoveOperation({
-            property: person.getFieldRdfProperty('friendUrls'),
+            property: Person.getFieldRdfProperty('friendUrls'),
             value: removedFriends.map(url => new ModelKey(url)),
             date: updatedAt,
         });
 
         // Arrange - first update operation (use wrong order on purpose to test sorting)
         person.relatedOperations.attachSetOperation({
-            property: person.getFieldRdfProperty('name'),
+            property: Person.getFieldRdfProperty('name'),
             value: Faker.random.word(),
             date: firstUpdatedAt,
         });
 
         person.relatedOperations.attachAddOperation({
-            property: person.getFieldRdfProperty('friendUrls'),
+            property: Person.getFieldRdfProperty('friendUrls'),
             value: firstAddedFriends.map(url => new ModelKey(url)),
             date: firstUpdatedAt,
         });

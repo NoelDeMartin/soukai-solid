@@ -122,6 +122,34 @@ export class SolidModel extends SolidModelBase {
 
     protected static historyDisabled: WeakMap<SolidModel, void> = new WeakMap;
 
+    public static getFieldDefinition(field: string, value?: unknown): SolidBootedFieldDefinition {
+        return (this.fields as SolidBootedFieldsDefinition)[field]
+            ?? inferFieldDefinition(value, this.getDefaultRdfContext() + field, false);
+    }
+
+    public static getFieldRdfProperty(field: string): string | null {
+        const fieldDefinition = (this.fields as SolidBootedFieldsDefinition)[field];
+
+        if (fieldDefinition && !fieldDefinition.rdfProperty)
+            return null;
+
+        return fieldDefinition?.rdfProperty
+            ?? this.getDefaultRdfContext() + field;
+    }
+
+    public static getRdfPropertyField(rdfProperty: string): string | null {
+        const fields = this.rdfPropertyFields ??= invert(map(
+            Object.keys(this.fields),
+            field => this.getFieldRdfProperty(field) as string,
+        ));
+
+        return fields[rdfProperty] ?? null;
+    }
+
+    public static requireFieldRdfProperty(field: string): string {
+        return this.getFieldRdfProperty(field) ?? fail(`Couldn't get required property for rdf field '${field}'`);
+    }
+
     public static from<T extends SolidModel>(
         this: SolidModelConstructor<T>,
         parentUrl: string,
@@ -164,7 +192,7 @@ export class SolidModel extends SolidModelBase {
         };
 
         const fields = modelClass.fields as BootedFieldsDefinition<{ rdfProperty?: string }>;
-        const defaultRdfContext = instance.getDefaultRdfContext();
+        const defaultRdfContext = modelClass.getDefaultRdfContext();
 
         if (instance.hasAutomaticTimestamp(TimestampField.CreatedAt))
             delete fields[TimestampField.CreatedAt];
@@ -338,6 +366,10 @@ export class SolidModel extends SolidModelBase {
             when(relationA, synchronizesRelatedModels).__synchronizeRelated(relationB);
             when(relationB, synchronizesRelatedModels).__synchronizeRelated(relationA);
         }
+    }
+
+    protected static getDefaultRdfContext(): string {
+        return Object.values(this.rdfContexts).shift() || '';
     }
 
     protected static async withCollection<Result>(
@@ -685,7 +717,7 @@ export class SolidModel extends SolidModelBase {
         arrayFields.forEach(field => this.setAttribute(field, []));
         operations.forEach(operation => {
             if (operation instanceof PropertyOperation) {
-                const field = this.getRdfPropertyField(operation.property);
+                const field = this.static().getRdfPropertyField(operation.property);
 
                 field && unfilledAttributes.delete(field);
             }
@@ -726,34 +758,6 @@ export class SolidModel extends SolidModelBase {
         return documentUrl ? urlParentDirectory(documentUrl) : null;
     }
 
-    public getFieldDefinition(field: string, value?: unknown): SolidBootedFieldDefinition {
-        return this.static('fields')[field]
-            ?? inferFieldDefinition(value, this.getDefaultRdfContext() + field, false);
-    }
-
-    public getFieldRdfProperty(this: SolidModel, field: string): string | null {
-        const fieldDefinition = this.static('fields')[field];
-
-        if (fieldDefinition && !fieldDefinition.rdfProperty)
-            return null;
-
-        return fieldDefinition?.rdfProperty
-            ?? this.getDefaultRdfContext() + field;
-    }
-
-    public getRdfPropertyField(this: SolidModel, rdfProperty: string): string | null {
-        const fields = this.static().rdfPropertyFields ??= invert(map(
-            Object.keys(this.static('fields')),
-            field => this.getFieldRdfProperty(field) as string,
-        ));
-
-        return fields[rdfProperty] ?? null;
-    }
-
-    public requireFieldRdfProperty(field: string): string {
-        return this.getFieldRdfProperty(field) ?? fail(`Couldn't get required property for rdf field '${field}'`);
-    }
-
     public setAttribute(field: string, value: unknown): void {
         const oldPrimaryKey = this.getPrimaryKey();
 
@@ -781,15 +785,15 @@ export class SolidModel extends SolidModelBase {
     }
 
     public getCreatedAtAttribute(): Date {
-        return this.metadata?.createdAt ?? super.getAttributeValue('createdAt');
+        return this.metadata?.getAttributeValue('createdAt') ?? super.getAttributeValue('createdAt');
     }
 
     public getUpdatedAtAttribute(): Date {
-        return this.metadata?.updatedAt ?? super.getAttributeValue('updatedAt');
+        return this.metadata?.getAttributeValue('updatedAt') ?? super.getAttributeValue('updatedAt');
     }
 
     public getDeletedAtAttribute(): Date | undefined {
-        return this.metadata?.deletedAt ?? super.getAttributeValue('deletedAt');
+        return this.metadata?.getAttributeValue('deletedAt') ?? super.getAttributeValue('deletedAt');
     }
 
     public getDocumentModels(_documentModels?: Set<SolidModel>): SolidModel[] {
@@ -1138,7 +1142,7 @@ export class SolidModel extends SolidModelBase {
                     continue;
 
                 this.relatedOperations.attachSetOperation({
-                    property: this.getFieldRdfProperty(field),
+                    property: this.static().getFieldRdfProperty(field),
                     date: this.metadata.createdAt,
                     value: this.getOperationValue(field, value),
                 });
@@ -1158,7 +1162,7 @@ export class SolidModel extends SolidModelBase {
             // TODO handle unset operations
 
             this.relatedOperations.attachSetOperation({
-                property: this.getFieldRdfProperty(field),
+                property: this.static().getFieldRdfProperty(field),
                 date: this.metadata.updatedAt,
                 value: this.getOperationValue(field, value),
             });
@@ -1177,7 +1181,7 @@ export class SolidModel extends SolidModelBase {
         const fieldPropertiesMap = Object
             .keys(this.static('fields'))
             .reduce((fieldProperties, field) => {
-                const rdfProperty = this.getFieldRdfProperty(field);
+                const rdfProperty = this.static().getFieldRdfProperty(field);
 
                 if (rdfProperty)
                     fieldProperties[rdfProperty] = field;
@@ -1274,10 +1278,6 @@ export class SolidModel extends SolidModelBase {
 
     protected isContainedBy<T extends typeof SolidContainerModel>(model: T): SolidIsContainedByRelation {
         return new SolidIsContainedByRelation(this, model);
-    }
-
-    protected getDefaultRdfContext(): string {
-        return Object.values(this.static('rdfContexts')).shift() || '';
     }
 
     protected toEngineDocument(): EngineDocument {
@@ -1435,7 +1435,7 @@ export class SolidModel extends SolidModelBase {
     private getOperationValue<T = unknown>(field: string, value: unknown): T;
     private getOperationValue<T = unknown>(field: Omit<BootedFieldDefinition, 'required'>, value: unknown): T;
     private getOperationValue(field: string | Omit<BootedFieldDefinition, 'required'>, value?: unknown): unknown {
-        const definition = typeof field === 'string' ? this.getFieldDefinition(field, value) : field;
+        const definition = typeof field === 'string' ? this.static().getFieldDefinition(field, value) : field;
 
         value = value ?? this.getAttributeValue(field as string);
 
@@ -1468,14 +1468,14 @@ export class SolidModel extends SolidModelBase {
 
         if (added.length > 0)
             this.relatedOperations.attachAddOperation({
-                property: this.getFieldRdfProperty(field),
+                property: this.static().getFieldRdfProperty(field),
                 date: this.metadata.updatedAt,
                 value: added,
             });
 
         if (removed.length > 0)
             this.relatedOperations.attachRemoveOperation({
-                property: this.getFieldRdfProperty(field),
+                property: this.static().getFieldRdfProperty(field),
                 date: this.metadata.updatedAt,
                 value: removed,
             });
