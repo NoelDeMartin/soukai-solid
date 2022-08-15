@@ -136,7 +136,9 @@ describe('Solid CRUD', () => {
 
     it('Reads models', async () => {
         // Arrange
-        StubFetcher.addFetchResponse(fixture('spirited-away.ttl'));
+        StubFetcher.addFetchResponse(fixture('spirited-away.ttl'), {
+            'WAC-Allow': 'public="read"',
+        });
 
         // Act
         const movie = await Movie.find('solid://spirited-away#it') as Movie;
@@ -148,6 +150,8 @@ describe('Solid CRUD', () => {
         expect(movie.releaseDate?.getFullYear()).toEqual(2001);
         expect(movie.releaseDate?.getMonth()).toEqual(6);
         expect(movie.releaseDate?.getDate()).toEqual(20);
+        expect(movie.isPublic).toEqual(true);
+        expect(movie.isPrivate).toEqual(false);
 
         expect(movie.actions).toHaveLength(1);
 

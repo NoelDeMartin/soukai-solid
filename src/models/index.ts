@@ -11,6 +11,7 @@ import SolidTypeRegistration from './SolidTypeRegistration';
 import type DeletesModels from './mixins/DeletesModels';
 import type ManagesPermissions from './mixins/ManagesPermissions';
 import type SerializesToJsonLD from './mixins/SerializesToJsonLD';
+import type { PermissionsTracker } from './mixins/ManagesPermissions';
 
 export * from './inference';
 export * from './relations/index';
@@ -25,7 +26,7 @@ export {
     SolidTypeRegistration,
 };
 
-export type { DeletesModels, SerializesToJsonLD, ManagesPermissions };
+export type { DeletesModels, SerializesToJsonLD, ManagesPermissions, PermissionsTracker };
 
 export type { This as DeletesModelsThis } from './mixins/DeletesModels';
 export type { This as ManagesPermissionsThis } from './mixins/ManagesPermissions';

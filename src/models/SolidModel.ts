@@ -238,21 +238,37 @@ export class SolidModel extends SolidModelBase {
         this.ensureBooted();
 
         try {
+            const { documentPermissions, stopTracking } = this.instance().trackPublicPermissions();
             const document = await this.requireEngine().readOne(containerUrl, documentUrl);
+            const model = await this.instance().createFromEngineDocument(documentUrl, document, resourceUrl);
 
-            return this.instance().createFromEngineDocument(documentUrl, document, resourceUrl);
+            stopTracking();
+
+            model._publicPermissions = documentPermissions[documentUrl];
+
+            return model;
         } catch (error) {
             return null;
         }
     }
 
-    public static all<T extends Model>(this: ModelConstructor<T>, filters?: EngineFilters): Promise<T[]>;
-    public static all<T extends SolidModel>(this: SolidModelConstructor<T>, filters?: EngineFilters): Promise<T[]>;
-    public static all<T extends SolidModel>(this: SolidModelConstructor<T>, filters: EngineFilters = {}): Promise<T[]> {
+    /* eslint-disable max-len */
+    public static async all<T extends Model>(this: ModelConstructor<T>, filters?: EngineFilters): Promise<T[]>;
+    public static async all<T extends SolidModel>(this: SolidModelConstructor<T>, filters?: EngineFilters): Promise<T[]>;
+    public static async all<T extends SolidModel>(this: SolidModelConstructor<T>, filters: EngineFilters = {}): Promise<T[]> {
         filters = this.prepareEngineFilters(filters);
 
-        return this.withCollection(() => super.all(filters) as unknown as T[]);
+        const { documentPermissions, stopTracking } = this.instance().trackPublicPermissions();
+
+        const models = await this.withCollection(() => super.all(filters) as unknown as T[]);
+
+        stopTracking();
+
+        models.forEach(model => (model._publicPermissions = documentPermissions[model.requireDocumentUrl()]));
+
+        return models;
     }
+    /* eslint-enable max-len */
 
     public static prepareEngineFilters(filters: EngineFilters = {}): EngineFilters {
         // This is necessary because a SolidEngine behaves differently than other engines.

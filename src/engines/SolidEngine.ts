@@ -131,8 +131,10 @@ export class SolidEngine implements Engine {
         await this.client.deleteDocument(id);
     }
 
-    public addListener(listener: SolidEngineListener): void {
+    public addListener(listener: SolidEngineListener): () => void {
         this.listeners.push(listener);
+
+        return () => this.removeListener(listener);
     }
 
     public removeListener(listener: SolidEngineListener): void {

@@ -2,8 +2,14 @@ import { arrayWithout, tap, urlParse, uuid } from '@noeldemartin/utils';
 import { SolidDocument, SolidDocumentPermission, expandIRI } from '@noeldemartin/solid-utils';
 import { requireBootedModel } from 'soukai';
 
+import { SolidEngine } from '@/engines/SolidEngine';
 import type SolidACLAuthorization from '@/models/SolidACLAuthorization';
 import type { SolidModel } from '@/models/SolidModel';
+
+export interface PermissionsTracker {
+    documentPermissions: Record<string, SolidDocumentPermission[]>;
+    stopTracking(): void;
+}
 
 export type This = SolidModel;
 
@@ -46,6 +52,34 @@ export default class ManagesPermissions {
         );
 
         this._publicPermissions = permissions;
+    }
+
+    protected trackPublicPermissions(this: This): PermissionsTracker {
+        const engine = this.static().requireEngine();
+
+        if (!(engine instanceof SolidEngine)) {
+            return {
+                documentPermissions: {},
+                stopTracking() {
+                    //
+                },
+            };
+        }
+
+        const documentPermissions: Record<string, SolidDocumentPermission[]> = {};
+        const stopTracking = engine.addListener({
+            onRDFDocumentLoaded(url, metadata) {
+                if (!metadata.headers) {
+                    return;
+                }
+
+                const document = new SolidDocument(url, [], metadata.headers);
+
+                documentPermissions[url] = document.getPublicPermissions();
+            },
+        });
+
+        return { documentPermissions, stopTracking };
     }
 
     private async updateAuthorizations(this: This, permissions: SolidDocumentPermission[]): Promise<void> {

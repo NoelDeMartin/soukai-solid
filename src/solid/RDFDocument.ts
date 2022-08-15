@@ -17,6 +17,7 @@ export interface TurtleParsingOptions {
 export interface RDFDocumentMetadata {
     containsRelativeIRIs?: boolean;
     describedBy?: string;
+    headers?: Headers;
 }
 
 export class RDFParsingError extends SoukaiError {}
@@ -33,6 +34,7 @@ export default class RDFDocument {
             return new RDFDocument(options.baseUrl || '', data.quads, {
                 containsRelativeIRIs: data.containsRelativeIRIs,
                 describedBy: getDescribedBy(options),
+                headers: options.headers,
             });
         } catch (error) {
             throw new RDFParsingError((error as Error).message);
