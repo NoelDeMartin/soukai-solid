@@ -2,6 +2,7 @@ import { bootModels, setEngine } from 'soukai';
 import { tap, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 import Faker from 'faker';
 
+import Group from '@/testing/lib/stubs/Group';
 import Movie from '@/testing/lib/stubs/Movie';
 import Person from '@/testing/lib/stubs/Person';
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';
@@ -24,7 +25,7 @@ describe('Solid CRUD', () => {
         Movie.collection = 'https://my-pod.com/movies/';
 
         setEngine(new SolidEngine(fetch));
-        bootModels({ Movie, Person, WatchAction });
+        bootModels({ Movie, Person, WatchAction, Group });
     });
 
     it('Creates models', async () => {
@@ -299,6 +300,61 @@ describe('Solid CRUD', () => {
                     schema:object <#movie> ;
                     schema:startTime "${watchDate.toISOString()}"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
             } ;
+        `);
+    });
+
+    it('Deletes related models in existing documents', async () => {
+        // Arrange
+        const documentUrl = fakeDocumentUrl();
+        const groupName = Faker.name.title();
+        const memberName = Faker.name.title();
+        const group = new Group({
+            url: `${documentUrl}#group`,
+            name: groupName,
+            memberUrls: [`${documentUrl}#member`],
+        }, true);
+        const member = new Person({ url: `${documentUrl}#member`, name: memberName }, true);
+
+        group.setRelationModels('members', [member]);
+
+        const documentTurtle = `
+            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+            @prefix foaf: <http://xmlns.com/foaf/0.1/>.
+
+            <#it> rdfs:label "Groups" .
+
+            <#group>
+                a foaf:Group ;
+                foaf:name "${groupName}" ;
+                foaf:member <#member> .
+
+            <#member>
+                a foaf:Person ;
+                foaf:name "${memberName}" .
+        `;
+
+        // TODO this could be improved to fetch only once
+        StubFetcher.addFetchResponse(documentTurtle); // Fetch document
+        StubFetcher.addFetchResponse(); // PATCH document
+
+        // Act
+        await group.relatedMembers.remove(member);
+
+        // Assert
+        expect(fetch).toHaveBeenCalledTimes(2);
+
+        expect(fetch.mock.calls[1]?.[0]).toEqual(documentUrl);
+        expect(fetch.mock.calls[1]?.[1]?.method).toEqual('PATCH');
+        expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(`
+            DELETE DATA {
+                @prefix foaf: <http://xmlns.com/foaf/0.1/>.
+
+                <#group> foaf:member <#member> .
+
+                <#member>
+                    a foaf:Person ;
+                    foaf:name "${memberName}" .
+            }
         `);
     });
 

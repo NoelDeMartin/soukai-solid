@@ -2,6 +2,7 @@ import { arrayUnique, tap } from '@noeldemartin/utils';
 import { SoukaiError } from 'soukai';
 import type { Attributes, Key, MultiModelRelation } from 'soukai';
 
+import { isSolidBelongsToRelation, isSolidHasRelation } from '@/models/relations/internals/guards';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
@@ -29,6 +30,7 @@ export default class SolidMultiModelDocumentRelation<
 > extends SolidDocumentRelation<Related> {
 
     public __newModels: Related[] = [];
+    public __removedDocumentModels: Related[] = [];
     declare public __modelsInSameDocument?: Related[];
     declare public __modelsInOtherDocumentIds?: string[];
 
@@ -108,6 +110,11 @@ export default class SolidMultiModelDocumentRelation<
 
     public detach(this: This<Parent, Related, RelatedClass>, keyOrModel: string | Related): void {
         const localKey = typeof keyOrModel === 'string' ? keyOrModel : keyOrModel.getAttribute(this.localKeyName);
+        const detachedModel = this.related?.find(model => model.getAttribute(this.localKeyName) === localKey);
+
+        if (!detachedModel) {
+            return;
+        }
 
         this.related = this.related?.filter(model => model.getAttribute(this.localKeyName) !== localKey);
         this.__newModels = this.__newModels.filter(model => model.getAttribute(this.localKeyName) !== localKey);
@@ -116,10 +123,20 @@ export default class SolidMultiModelDocumentRelation<
         this.__modelsInOtherDocumentIds =
             this.__modelsInOtherDocumentIds?.filter(id => id !== localKey);
 
-        this.parent.setAttribute(
-            this.foreignKeyName,
-            this.parent.getAttribute<Key[]>(this.foreignKeyName).filter(key => key !== localKey),
-        );
+        if (detachedModel.getDocumentUrl() === this.parent.getDocumentUrl() && !this.parent.tracksHistory()) {
+            this.__removedDocumentModels.push(detachedModel);
+        }
+
+        if (isSolidHasRelation(this)) {
+            detachedModel.setAttribute(this.foreignKeyName, null);
+        }
+
+        if (isSolidBelongsToRelation(this)) {
+            this.parent.setAttribute(
+                this.foreignKeyName,
+                this.parent.getAttribute<Key[]>(this.foreignKeyName).filter(key => key !== localKey),
+            );
+        }
     }
 
     protected cloneSolidData(clone: This<Parent, Related, RelatedClass>): void {
@@ -128,11 +145,19 @@ export default class SolidMultiModelDocumentRelation<
         clone.useSameDocument = this.useSameDocument;
         clone.documentModelsLoaded = this.documentModelsLoaded;
         clone.__newModels = [];
+        clone.__removedDocumentModels = [];
 
         for (const relatedModel of this.__newModels) {
             clone.__newModels.push(
                 relatedClones.find(relatedClone => relatedClone.is(relatedModel)) ??
                 tap(relatedModel.clone(), relatedClone => relatedClones.push(relatedClone)),
+            );
+        }
+
+        for (const removedModel of this.__removedDocumentModels) {
+            clone.__removedDocumentModels.push(
+                relatedClones.find(relatedClone => relatedClone.is(removedModel)) ??
+                tap(removedModel.clone(), relatedClone => relatedClones.push(relatedClone)),
             );
         }
 
@@ -157,7 +182,7 @@ export default class SolidMultiModelDocumentRelation<
         if (this.__modelsInOtherDocumentIds.length === 0)
             this.related = arrayUnique([
                 ...this.related ?? [],
-                ...this.__modelsInSameDocument.slice(0),
+                ...this.__modelsInSameDocument,
             ]);
 
         this.documentModelsLoaded = true;

@@ -70,10 +70,12 @@ import {
     hasBeforeParentCreateHook,
     isSolidDocumentRelation,
     isSolidHasRelation,
-    isSolidMultiModelDocumentRelation,
-    isSolidSingleModelDocumentRelation,
     synchronizesRelatedModels,
 } from './relations/internals/guards';
+import {
+    isSolidMultiModelDocumentRelation,
+    isSolidSingleModelDocumentRelation,
+} from './relations/internals/cardinality-guards';
 import DeletesModels from './mixins/DeletesModels';
 import ManagesPermissions from './mixins/ManagesPermissions';
 import OperationsRelation from './relations/OperationsRelation';
@@ -618,9 +620,14 @@ export class SolidModel extends SolidModelBase {
         if (super.isDirty())
             return true;
 
-        return ignoreRelations
-            ? this.metadata?.isDirty('deletedAt')
-            : this.getDocumentModels().filter(model => model.isDirty(undefined, true)).length > 0;
+        if (ignoreRelations) {
+            return this.metadata?.isDirty('deletedAt');
+        }
+
+        const dirtyDocumentModels = this.getDocumentModels().filter(model => model.isDirty(undefined, true));
+        const removedDocumentModels = this.getRemovedDocumentModels();
+
+        return (dirtyDocumentModels.length + removedDocumentModels.length) > 0;
     }
 
     public isSoftDeleted(): boolean {
@@ -848,6 +855,24 @@ export class SolidModel extends SolidModelBase {
         }
 
         return [...documentModels];
+    }
+
+    public getRemovedDocumentModels(): SolidModel[] {
+        const removedModels = new Set<SolidModel>();
+
+        for (const relation of Object.values(this._relations)) {
+            if (
+                !isSolidDocumentRelation(relation) ||
+                !isSolidMultiModelDocumentRelation(relation) ||
+                !relation.loaded
+            ) {
+                continue;
+            }
+
+            relation.__removedDocumentModels.forEach(model => removedModels.add(model));
+        }
+
+        return [...removedModels];
     }
 
     public getDirtyDocumentModels(): SolidModel[] {
@@ -1308,6 +1333,7 @@ export class SolidModel extends SolidModelBase {
         const graphUpdates: EngineAttributeUpdateOperation[] = [];
         const engine = this.requireEngine();
         const documentModels = this.getDirtyDocumentModels();
+        const removedDocumentModels = this.getRemovedDocumentModels();
 
         if (!ignoreRelations) {
             for (const documentModel of documentModels) {
@@ -1330,6 +1356,15 @@ export class SolidModel extends SolidModelBase {
                 '$apply' in relatedGraphUpdates
                     ? graphUpdates.push(...relatedGraphUpdates.$apply)
                     : graphUpdates.push(relatedGraphUpdates);
+            }
+
+            for (const removedModel of removedDocumentModels) {
+                removedModel.getDocumentModels().forEach(model => graphUpdates.push({
+                    $updateItems: {
+                        $where: { '@id': model.url },
+                        $unset: true,
+                    },
+                }));
             }
         }
 
