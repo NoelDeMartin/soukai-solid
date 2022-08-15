@@ -134,6 +134,27 @@ describe('Solid CRUD', () => {
         `);
     });
 
+    it('Updates array fields', async () => {
+        // Arrange
+        const movie = await createStub();
+        const urls = movie.externalUrls.slice(0);
+
+        StubFetcher.addFetchResponse();
+
+        // Act
+        await movie.update({ externalUrls: [] });
+
+        // Assert
+        expect(movie.externalUrls).toEqual([]);
+        expect(fetch).toHaveBeenCalledTimes(2);
+
+        expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(`
+            DELETE DATA {
+                <#it> <${IRI('schema:sameAs')}> ${urls.map(url => `<${url}>`).join(', ')} .
+            }
+        `);
+    });
+
     it('Reads models', async () => {
         // Arrange
         StubFetcher.addFetchResponse(fixture('spirited-away.ttl'), {
@@ -292,8 +313,9 @@ async function createStub(title?: string): Promise<Movie> {
         ],
     };
 
-    return tap(new Movie(attributes), async stub => {
+    return tap(new Movie(attributes, true), async stub => {
         stub.mintUrl();
+        stub.cleanDirty();
 
         const document = await RDFDocument.fromJsonLD(stub.toJsonLD());
         const turtle = RDFResourceProperty.toTurtle(

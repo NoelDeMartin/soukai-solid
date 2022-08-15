@@ -2222,7 +2222,10 @@ describe('SolidModel', () => {
 
     it('History tracking for new arrays uses add operation', async () => {
         // Arrange
-        const person = await PersonWithHistory.create();
+        setEngine(new InMemoryEngine);
+
+        const { url } = await PersonWithHistory.create();
+        const person = await PersonWithHistory.findOrFail(url);
         const friendUrls = range(3).map(() => fakeResourceUrl({ hash: uuid() }));
 
         // Act

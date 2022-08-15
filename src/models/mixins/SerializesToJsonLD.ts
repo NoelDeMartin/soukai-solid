@@ -1,5 +1,5 @@
 import { ModelKey } from 'soukai';
-import type { Attributes, EngineAttributeFilter, EngineFilters, EngineUpdates } from 'soukai';
+import type { Attributes, EngineAttributeFilter, EngineAttributeUpdate, EngineFilters , EngineUpdates } from 'soukai';
 import type { JsonLD, JsonLDResource } from '@noeldemartin/solid-utils';
 
 import type { SolidModel } from '@/models/SolidModel';
@@ -76,7 +76,10 @@ export default class SerializesToJsonLD {
             delete filters.$in;
         }
 
-        const graphContainsFilters = this.convertAttributeValuesToJsonLD(filters, compactIRIs) as EngineFilters;
+        const graphContainsFilters = this.convertAttributeValuesToJsonLD(
+            filters,
+            { compactIRIs, keepEmptyValues: false },
+        ) as EngineFilters;
 
         if (typeFilters.length > 0)
             graphContainsFilters['@type'] = { $or: typeFilters };
@@ -92,16 +95,34 @@ export default class SerializesToJsonLD {
         updates: EngineUpdates,
         compactIRIs: boolean,
     ): EngineUpdates {
-        return this.convertAttributeValuesToJsonLD(updates, compactIRIs) as EngineUpdates;
+        const jsonLDUpdates = this.convertAttributeValuesToJsonLD(
+            updates,
+            { compactIRIs, keepEmptyValues: true },
+        ) as Record<string, EngineAttributeUpdate>;
+
+        for (const [field, value] of Object.entries(jsonLDUpdates)) {
+            if (value !== null) {
+                continue;
+            }
+
+            jsonLDUpdates[field] = { $unset: true };
+        }
+
+        return jsonLDUpdates;
     }
 
-    private convertAttributeValuesToJsonLD(this: This, attributes: Attributes, compactIRIs: boolean): JsonLD {
-        const serializer = JsonLDModelSerializer.forModel(this.static(), compactIRIs);
+    private convertAttributeValuesToJsonLD(
+        this: This,
+        attributes: Attributes,
+        options: { compactIRIs: boolean; keepEmptyValues: boolean },
+    ): JsonLD {
+        const serializer = JsonLDModelSerializer.forModel(this.static(), options.compactIRIs);
 
         return serializer.serialize(this, {
             includeContext: false,
             includeTypes: false,
             includeRelations: false,
+            keepEmptyValues: options.keepEmptyValues,
             attributes,
         });
     }

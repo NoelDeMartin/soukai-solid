@@ -22,6 +22,7 @@ type SerializeOptions = Partial<{
     includeRelations: boolean;
     includeContext: boolean;
     includeTypes: boolean;
+    keepEmptyValues: boolean;
     attributes: Attributes;
     ignoreModels: Set<SolidModel>;
 }>;
@@ -126,7 +127,7 @@ export default class JsonLDModelSerializer {
         ignoredModels.add(model);
 
         for (const [field, value] of Object.entries(options.attributes ?? model.getAttributes()))
-            this.setJsonLDField(jsonld, model, field, value);
+            this.setJsonLDField(jsonld, model, field, value, options);
 
         if (options.includeRelations ?? true)
             this.setJsonLDRelations(jsonld, model, ignoredModels);
@@ -158,7 +159,13 @@ export default class JsonLDModelSerializer {
             : expandedIRI;
     }
 
-    private setJsonLDField(jsonld: JsonLD, model: SolidModel, field: string, value: unknown): void {
+    private setJsonLDField(
+        jsonld: JsonLD,
+        model: SolidModel,
+        field: string,
+        value: unknown,
+        options: SerializeOptions,
+    ): void {
         if (field === model.static('primaryKey')) {
             jsonld['@id'] = toString(value);
 
@@ -170,7 +177,7 @@ export default class JsonLDModelSerializer {
         if (!property)
             return;
 
-        this.setJsonLDProperty(jsonld, model, this.processExpandedIRI(property), field, value);
+        this.setJsonLDProperty(jsonld, model, this.processExpandedIRI(property), field, value, options);
     }
 
     private setJsonLDRelations(jsonld: JsonLD, model: SolidModel, ignoredModels: Set<SolidModel>): void {
@@ -223,11 +230,23 @@ export default class JsonLDModelSerializer {
         jsonld['@context'] = this.context.render();
     }
 
-    private setJsonLDProperty(jsonld: JsonLD, model: SolidModel, name: string, field: string, value: unknown): void {
+    private setJsonLDProperty(
+        jsonld: JsonLD,
+        model: SolidModel,
+        name: string,
+        field: string,
+        value: unknown,
+        options: SerializeOptions,
+    ): void {
         value = this.castJsonLDValue(value, model.static().getFieldDefinition(field, value));
 
-        if (value instanceof EmptyJsonLDValue)
+        if (value instanceof EmptyJsonLDValue) {
+            if (options.keepEmptyValues) {
+                jsonld[name] = null;
+            }
+
             return;
+        }
 
         jsonld[name] = value;
     }
