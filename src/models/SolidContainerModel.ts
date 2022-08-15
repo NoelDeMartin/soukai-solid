@@ -6,7 +6,7 @@ import {
     uuid,
 } from '@noeldemartin/utils';
 import { FieldType } from 'soukai';
-import { findContainerRegistration } from '@noeldemartin/solid-utils';
+import { findContainerRegistrations } from '@noeldemartin/solid-utils';
 import type { IModel, Relation } from 'soukai';
 
 import { SolidEngine } from '@/engines';
@@ -44,21 +44,15 @@ export default class SolidContainerModel extends SolidModel {
     ): Promise<T | null> {
         const engine = this.requireEngine();
         const fetch = engine instanceof SolidEngine ? engine.getFetch() : undefined;
-        const containerRegistration = await findContainerRegistration(
+        const urls = await findContainerRegistrations(
             typeIndexUrl,
-            childrenModelClass.rdfsClasses[0] as string,
+            childrenModelClass.rdfsClasses,
             fetch,
         );
 
-        if (!containerRegistration)
-            return null;
-
-        const attributes = {
-            url: containerRegistration.value('solid:instanceContainer'),
-            name: containerRegistration.value('rdfs:label'),
-        };
-
-        return this.newInstance(attributes, true);
+        return urls[0]
+            ? this.newInstance({ url: urls[0] }, true)
+            : null;
     }
 
     public resourceUrls!: string[];

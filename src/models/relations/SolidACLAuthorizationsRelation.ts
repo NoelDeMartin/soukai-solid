@@ -39,7 +39,7 @@ export default class SolidACLAuthorizationsRelation<Parent extends SolidModel = 
         const authorizations = await Promise.all(
             acl
                 .document
-                .statements(undefined, 'rdfs:type', 'acl:Authorization')
+                .statements(undefined, 'rdf:type', 'acl:Authorization')
                 .map(
                     ({ subject }) => aclAuthorizationClass.createFromEngineDocument(
                         acl.effectiveUrl,

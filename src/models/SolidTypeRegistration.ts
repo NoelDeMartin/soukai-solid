@@ -17,10 +17,8 @@ export default class SolidTypeRegistration extends SolidModel {
             type: FieldType.Key,
             required: true,
         },
-        instanceContainer: {
-            type: FieldType.Key,
-            required: true,
-        },
+        instance: FieldType.Key,
+        instanceContainer: FieldType.Key,
     };
 
 }

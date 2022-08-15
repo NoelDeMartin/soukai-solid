@@ -5,6 +5,7 @@ import { historyModels } from './history/index';
 import SolidACLAuthorization from './SolidACLAuthorization';
 import SolidContainerModel from './SolidContainerModel';
 import SolidDocument from './SolidDocument';
+import SolidTypeIndex from './SolidTypeIndex';
 import SolidTypeRegistration from './SolidTypeRegistration';
 
 import type DeletesModels from './mixins/DeletesModels';
@@ -12,7 +13,6 @@ import type ManagesPermissions from './mixins/ManagesPermissions';
 import type SerializesToJsonLD from './mixins/SerializesToJsonLD';
 
 export * from './inference';
-export * from './permissions';
 export * from './relations/index';
 export * from './history/index';
 export * from './SolidModel';
@@ -21,6 +21,7 @@ export {
     SolidACLAuthorization,
     SolidContainerModel,
     SolidDocument,
+    SolidTypeIndex,
     SolidTypeRegistration,
 };
 

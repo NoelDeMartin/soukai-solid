@@ -1,8 +1,7 @@
-import { arrayFilter, arrayWithout, stringMatch, tap, urlParse, uuid } from '@noeldemartin/utils';
-import { expandIRI } from '@noeldemartin/solid-utils';
+import { arrayWithout, tap, urlParse, uuid } from '@noeldemartin/utils';
+import { SolidDocument, SolidDocumentPermission, expandIRI } from '@noeldemartin/solid-utils';
 import { requireBootedModel } from 'soukai';
 
-import { SolidDocumentPermission } from '@/models/permissions';
 import type SolidACLAuthorization from '@/models/SolidACLAuthorization';
 import type { SolidModel } from '@/models/SolidModel';
 
@@ -31,20 +30,20 @@ export default class ManagesPermissions {
 
     public async fetchPublicPermissions(this: This): Promise<void> {
         const aclAuthorizationClass = requireBootedModel<typeof SolidACLAuthorization>('SolidACLAuthorization');
-        const resourceHead = await aclAuthorizationClass.fetch(this.requireDocumentUrl(), { method: 'HEAD' });
-        const wacAllow = resourceHead.headers.get('WAC-Allow') ?? '';
-        const publicModes = stringMatch<2>(wacAllow, /public="([^"]+)"/)?.[1] ?? '';
+        const documentUrl = this.requireDocumentUrl();
+        const resourceHead = await aclAuthorizationClass.fetch(documentUrl, { method: 'HEAD' });
+        const document = new SolidDocument(documentUrl, [], resourceHead.headers);
 
-        this._publicPermissions = arrayFilter([
-            publicModes.includes('read') && SolidDocumentPermission.Read,
-            publicModes.includes('write') && SolidDocumentPermission.Write,
-            publicModes.includes('append') && SolidDocumentPermission.Append,
-            publicModes.includes('control') && SolidDocumentPermission.Control,
-        ]);
+        this._publicPermissions = document.getPublicPermissions();
     }
 
     public async updatePublicPermissions(this: This, permissions: SolidDocumentPermission[]): Promise<void> {
-        await this.updateAuthorizations(permissions);
+        const aclAuthorizationClass = requireBootedModel<typeof SolidACLAuthorization>('SolidACLAuthorization');
+
+        await this.withEngine(
+            aclAuthorizationClass.requireEngine(),
+            () => this.updateAuthorizations(permissions),
+        );
 
         this._publicPermissions = permissions;
     }

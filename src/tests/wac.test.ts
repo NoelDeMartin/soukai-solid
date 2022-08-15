@@ -1,8 +1,9 @@
 import Faker from 'faker';
 import { bootModels, setEngine } from 'soukai';
+import { SolidDocumentPermission } from '@noeldemartin/solid-utils';
 
 import { SolidEngine } from '@/engines';
-import { SolidACLAuthorization, SolidDocumentPermission } from '@/models';
+import { SolidACLAuthorization } from '@/models';
 
 import Movie from '@/testing/lib/stubs/Movie';
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';

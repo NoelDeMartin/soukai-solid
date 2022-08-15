@@ -1,10 +1,10 @@
 import { FieldType, SoukaiError } from 'soukai';
+import { SolidDocumentPermission } from '@noeldemartin/solid-utils';
 import type { IModel } from 'soukai';
 
 import { SolidEngine } from '@/engines';
 import type { Fetch } from '@/engines';
 
-import { SolidDocumentPermission } from './permissions';
 import { SolidModel } from './SolidModel';
 
 const PERMISSION_MODES: Record<SolidDocumentPermission, string> = {
