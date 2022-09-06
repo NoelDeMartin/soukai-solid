@@ -765,6 +765,10 @@ export class SolidModel extends SolidModelBase {
         return this._sourceDocumentUrl;
     }
 
+    public setSourceDocumentUrl(sourceDocumentUrl: string | null): void {
+        this._sourceDocumentUrl = sourceDocumentUrl;
+    }
+
     public requireContainerUrl(): string {
         return this.getContainerUrl() ?? fail(SoukaiError, 'Failed getting required container url');
     }
@@ -932,6 +936,14 @@ export class SolidModel extends SolidModelBase {
 
     public authorizationsRelationship(): Relation {
         return new SolidACLAuthorizationsRelation(this);
+    }
+
+    public onMoved(newResourceUrl: string, newDocumentUrl?: string): void {
+        newDocumentUrl && this.setSourceDocumentUrl(newDocumentUrl);
+        this.setAttribute('url', newResourceUrl);
+        this.cleanDirty();
+
+        // TODO update related models as well using same document
     }
 
     protected getDefaultCollection(): string {
