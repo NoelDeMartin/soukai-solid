@@ -8,20 +8,20 @@ import {
     urlDirectoryName,
     urlResolve,
 } from '@noeldemartin/utils';
+import { NetworkRequestError, UnsuccessfulNetworkRequestError } from '@noeldemartin/solid-utils';
 import type { Quad } from 'rdf-js';
 
-import { decantUpdateOperations, decantUpdateOperationsData } from '@/solid/operations/utils';
-import { OperationType } from '@/solid/operations/Operation';
 import IRI from '@/solid/utils/IRI';
 import RDFDocument, { RDFParsingError } from '@/solid/RDFDocument';
 import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
+import { decantUpdateOperations, decantUpdateOperationsData } from '@/solid/operations/utils';
+import { OperationType } from '@/solid/operations/Operation';
 import type { LiteralValue } from '@/solid/RDFResourceProperty';
 import type { UpdateOperation } from '@/solid/operations/Operation';
 
 import MalformedDocumentError, { DocumentFormat } from '@/errors/MalformedDocumentError';
-import NetworkError from '@/errors/NetworkError';
 
 const RESERVED_CONTAINER_PROPERTIES = [
     IRI('ldp:contains'),
@@ -61,7 +61,7 @@ export default class SolidClient {
             } catch (error) {
                 const url = typeof input === 'object' ? input.url : input;
 
-                throw new NetworkError(`Error fetching ${url}`, (error as Error));
+                throw new NetworkRequestError(url, { cause: error });
             }
         };
         this.config = {
@@ -520,7 +520,7 @@ export default class SolidClient {
         if (Math.floor(response.status / 100) === 2)
             return;
 
-        throw new SoukaiError(`${errorMessage}, returned ${response.status} status code`);
+        throw new UnsuccessfulNetworkRequestError(errorMessage, response);
     }
 
 }

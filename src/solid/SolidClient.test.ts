@@ -641,7 +641,7 @@ describe('SolidClient', () => {
         // Act & Assert
         await expect(client.updateDocument(url, [new RemovePropertyOperation(url, 'foobar')]))
             .rejects
-            .toThrowError(`Error updating document at ${url}, returned 404 status code`);
+            .toThrowError(`Error updating document at ${url} (returned 404 status code)`);
     });
 
     it('ignores empty updates', async () => {

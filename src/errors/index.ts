@@ -1,8 +1,2 @@
-import MalformedDocumentError from './MalformedDocumentError';
-import NetworkError from './NetworkError';
-
-export {
-    MalformedDocumentError,
-    NetworkError,
-};
+export { default as MalformedDocumentError } from './MalformedDocumentError';
 export type { DocumentFormat } from './MalformedDocumentError';
