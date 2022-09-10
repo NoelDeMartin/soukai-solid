@@ -119,14 +119,13 @@ describe('SolidClient', () => {
         // Assert
         expect(url).toEqual(containerUrl);
         expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl, {
-            method: 'PATCH',
+            method: 'PUT',
             headers: {
-                'Content-Type': 'application/sparql-update',
+                'Content-Type': 'text/turtle',
                 'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
-                'Slug': stringToSlug(label),
                 'If-None-Match': '*',
             },
-            body: `INSERT DATA { <> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" . }`,
+            body: `<> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" .`,
         });
     });
 
@@ -140,7 +139,7 @@ describe('SolidClient', () => {
         const parentUrl = urlResolveDirectory(grandParentUrl, parentSlug);
         const containerUrl = urlResolveDirectory(parentUrl, stringToSlug(label));
 
-        StubFetcher.addFetchResponse('', {}, 500); // PATCH new container
+        StubFetcher.addFetchResponse('', {}, 500); // PUT new container
         StubFetcher.addFetchResponse('', {}, 404); // POST new container
         StubFetcher.addFetchResponse('', {}, 404); // POST parent
         StubFetcher.addFetchResponse('', {}, 201); // POST grandparent

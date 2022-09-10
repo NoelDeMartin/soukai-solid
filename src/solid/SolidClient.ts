@@ -235,14 +235,13 @@ export default class SolidClient {
         const response = await this.fetch(
             url,
             {
-                method: 'PATCH',
+                method: 'PUT',
                 headers: {
-                    'Content-Type': 'application/sparql-update',
+                    'Content-Type': 'text/turtle',
                     'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
-                    'Slug': requireUrlDirectoryName(url),
                     'If-None-Match': '*',
                 },
-                body: `INSERT DATA { ${turtle} }`,
+                body: turtle,
             },
         );
 
