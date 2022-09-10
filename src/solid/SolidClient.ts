@@ -3,9 +3,9 @@ import {
     arrayDiff,
     arrayFilter,
     arrayRemove,
-    objectWithoutEmpty,
+    requireUrlDirectoryName,
+    requireUrlParentDirectory,
     urlClean,
-    urlDirectoryName,
     urlResolve,
 } from '@noeldemartin/utils';
 import { NetworkRequestError, UnsuccessfulNetworkRequestError } from '@noeldemartin/solid-utils';
@@ -236,15 +236,52 @@ export default class SolidClient {
             url,
             {
                 method: 'PATCH',
-                headers: objectWithoutEmpty({
+                headers: {
                     'Content-Type': 'application/sparql-update',
                     'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
-                    'Slug': urlDirectoryName(url),
+                    'Slug': requireUrlDirectoryName(url),
                     'If-None-Match': '*',
-                }) as Record<string, string>,
+                },
                 body: `INSERT DATA { ${turtle} }`,
             },
         );
+
+        if (this.isInternalErrorResponse(response)) {
+            // Handle NSS internal error
+            // See https://github.com/nodeSolidServer/node-solid-server/issues/1703
+            return this.createContainerDocumentUsingPOST(url, turtle);
+        }
+
+        this.assertSuccessfulResponse(response, `Error creating container at ${url}`);
+
+        return url;
+    }
+
+    private async createContainerDocumentUsingPOST(
+        url: string,
+        turtle: string,
+        createParent: boolean = true,
+    ): Promise<string> {
+        const parentUrl = requireUrlParentDirectory(url);
+        const response = await this.fetch(
+            parentUrl,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/turtle',
+                    'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
+                    'Slug': requireUrlDirectoryName(url),
+                    'If-None-Match': '*',
+                },
+                body: turtle,
+            },
+        );
+
+        if (response.status === 404 && createParent) {
+            await this.createContainerDocumentUsingPOST(parentUrl, '');
+
+            return this.createContainerDocumentUsingPOST(url, turtle, false);
+        }
 
         this.assertSuccessfulResponse(response, `Error creating container at ${url}`);
 
@@ -517,10 +554,15 @@ export default class SolidClient {
     }
 
     private assertSuccessfulResponse(response: Response, errorMessage: string): void {
-        if (Math.floor(response.status / 100) === 2)
+        if (Math.floor(response.status / 100) === 2) {
             return;
+        }
 
         throw new UnsuccessfulNetworkRequestError(errorMessage, response);
+    }
+
+    private isInternalErrorResponse(response: Response): boolean {
+        return Math.floor(response.status / 100) === 5;
     }
 
 }

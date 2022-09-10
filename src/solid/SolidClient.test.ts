@@ -13,7 +13,7 @@ import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation'
 import type RDFDocument from '@/solid/RDFDocument';
 
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';
-import { fakeResourceUrl } from '@/testing/utils';
+import { fakeContainerUrl, fakeResourceUrl } from '@/testing/utils';
 
 describe('SolidClient', () => {
 
@@ -127,6 +127,79 @@ describe('SolidClient', () => {
                 'If-None-Match': '*',
             },
             body: `INSERT DATA { <> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" . }`,
+        });
+    });
+
+    it('falls back to creating container documents using POST', async () => {
+        // Arrange
+        const grandParentSlug = stringToSlug(Faker.random.word());
+        const parentSlug = stringToSlug(Faker.random.word());
+        const label = Faker.random.word();
+        const rootUrl = fakeContainerUrl();
+        const grandParentUrl = urlResolveDirectory(rootUrl, grandParentSlug);
+        const parentUrl = urlResolveDirectory(grandParentUrl, parentSlug);
+        const containerUrl = urlResolveDirectory(parentUrl, stringToSlug(label));
+
+        StubFetcher.addFetchResponse('', {}, 500); // PATCH new container
+        StubFetcher.addFetchResponse('', {}, 404); // POST new container
+        StubFetcher.addFetchResponse('', {}, 404); // POST parent
+        StubFetcher.addFetchResponse('', {}, 201); // POST grandparent
+        StubFetcher.addFetchResponse('', {}, 201); // POST parent
+        StubFetcher.addFetchResponse('', {}, 201); // POST new container
+
+        // Act
+        const url = await client.createDocument(
+            parentUrl,
+            containerUrl,
+            [
+                RDFResourceProperty.literal(containerUrl, IRI('rdfs:label'), label),
+                RDFResourceProperty.literal(containerUrl, IRI('purl:modified'), new Date()),
+                RDFResourceProperty.type(containerUrl, IRI('ldp:Container')),
+            ],
+        );
+
+        // Assert
+        expect(url).toEqual(containerUrl);
+        expect(StubFetcher.fetch).toHaveBeenCalledTimes(6);
+
+        [1, 5].forEach(index => {
+            expect(StubFetcher.fetchSpy.mock.calls[index]?.[0]).toEqual(parentUrl);
+            expect(StubFetcher.fetchSpy.mock.calls[index]?.[1]).toEqual({
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/turtle',
+                    'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
+                    'Slug': stringToSlug(label),
+                    'If-None-Match': '*',
+                },
+                body: `<> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" .`,
+            });
+        });
+
+        [2, 4].forEach(index => {
+            expect(StubFetcher.fetchSpy.mock.calls[index]?.[0]).toEqual(grandParentUrl);
+            expect(StubFetcher.fetchSpy.mock.calls[index]?.[1]).toEqual({
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'text/turtle',
+                    'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
+                    'Slug': parentSlug,
+                    'If-None-Match': '*',
+                },
+                body: '',
+            });
+        });
+
+        expect(StubFetcher.fetchSpy.mock.calls[3]?.[0]).toEqual(rootUrl);
+        expect(StubFetcher.fetchSpy.mock.calls[3]?.[1]).toEqual({
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/turtle',
+                'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
+                'Slug': grandParentSlug,
+                'If-None-Match': '*',
+            },
+            body: '',
         });
     });
 
