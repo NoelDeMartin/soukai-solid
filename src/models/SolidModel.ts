@@ -196,10 +196,10 @@ export class SolidModel extends SolidModelBase {
         const fields = modelClass.fields as BootedFieldsDefinition<{ rdfProperty?: string }>;
         const defaultRdfContext = modelClass.getDefaultRdfContext();
 
-        if (instance.hasAutomaticTimestamp(TimestampField.CreatedAt))
+        if (instance.static().hasAutomaticTimestamp(TimestampField.CreatedAt))
             delete fields[TimestampField.CreatedAt];
 
-        if (instance.hasAutomaticTimestamp(TimestampField.UpdatedAt))
+        if (instance.static().hasAutomaticTimestamp(TimestampField.UpdatedAt))
             delete fields[TimestampField.UpdatedAt];
 
         modelClass.rdfsClasses = arrayUnique(
@@ -316,10 +316,10 @@ export class SolidModel extends SolidModelBase {
             resourceId,
         );
 
-        if (this.instance().hasAutomaticTimestamp(TimestampField.CreatedAt))
+        if (this.hasAutomaticTimestamp(TimestampField.CreatedAt))
             attributes['createdAt'] = resource?.getPropertyValue(IRI('purl:created'));
 
-        if (this.instance().hasAutomaticTimestamp(TimestampField.UpdatedAt))
+        if (this.hasAutomaticTimestamp(TimestampField.UpdatedAt))
             attributes['updatedAt'] = resource?.getPropertyValue(IRI('purl:modified'));
 
         return tap(this.newInstance(objectWithoutEmpty(attributes)), async (model) => {
@@ -477,8 +477,9 @@ export class SolidModel extends SolidModelBase {
     protected initializeMetadataRelation(): void {
         const metadataModelClass = requireBootedModel<typeof Metadata>('Metadata');
 
-        if (this instanceof metadataModelClass || !this.hasAutomaticTimestamps())
+        if (this instanceof metadataModelClass || !this.static().hasAutomaticTimestamps()) {
             return;
+        }
 
         const metadataRelation = this._relations.metadata as SolidHasOneRelation;
         const metadataModel = metadataModelClass.newInstance(objectWithoutEmpty({
@@ -527,7 +528,7 @@ export class SolidModel extends SolidModelBase {
     }
 
     public async softDelete(): Promise<this> {
-        if (!this.hasAutomaticTimestamps()) {
+        if (!this.static().hasAutomaticTimestamps()) {
             throw new SoukaiError('Cannot soft delete a model without automatic timestamps');
         }
 
