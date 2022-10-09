@@ -1,6 +1,6 @@
 import { arrayFrom, arrayWithout, tap } from '@noeldemartin/utils';
 import { FieldType, SoukaiError } from 'soukai';
-import type { BootedFieldDefinition , IModel } from 'soukai';
+import type { IModel, ModelCastAttributeOptions } from 'soukai';
 
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
@@ -47,15 +47,17 @@ export default class RemovePropertyOperation extends PropertyOperation {
     private createAttributeCaster(ModelClass: SolidModelConstructor): AttributeCaster {
         const CasterClass = class extends ModelClass {
 
-            public castAttribute<T>(value: T, definition?: BootedFieldDefinition): T {
-                return super.castAttribute(value, definition) as T;
+            public castAttribute<T>(value: T, options: ModelCastAttributeOptions = {}): T {
+                return super.castAttribute(value, options) as T;
             }
 
         };
         const casterInstance = CasterClass.pureInstance();
 
         return tap(
-            (field, value) => casterInstance.castAttribute(value, casterInstance.static().getFieldDefinition(field)),
+            (field, value) => casterInstance.castAttribute(value, {
+                definition: casterInstance.static().getFieldDefinition(field),
+            }),
             caster => RemovePropertyOperation.attributeCasters.set(ModelClass, caster),
         );
     }

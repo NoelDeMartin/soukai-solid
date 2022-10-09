@@ -24,6 +24,11 @@ export default class Movie extends SolidModel {
             rdfProperty: 'schema:name',
             type: FieldType.String,
         },
+        imageUrls: {
+            type: FieldType.Array,
+            items: FieldType.Key,
+            rdfProperty: 'schema:image',
+        },
         externalUrls: {
             type: FieldType.Array,
             rdfProperty: 'schema:sameAs',

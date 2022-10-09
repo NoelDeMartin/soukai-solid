@@ -50,6 +50,7 @@ import type {
     IModel,
     Key,
     MagicAttributes,
+    ModelCastAttributeOptions,
     ModelConstructor,
     MultiModelRelation,
     Relation,
@@ -961,7 +962,7 @@ export class SolidModel extends SolidModelBase {
         const createModel = async () => {
             const attributes = await this.parseEngineDocumentAttributes(id, document, resourceId);
 
-            attributes[this.static('primaryKey')] = resourceId || id;
+            attributes[this.static('primaryKey')] = new ModelKey(resourceId || id);
 
             return this.newInstance(attributes, true);
         };
@@ -1424,11 +1425,11 @@ export class SolidModel extends SolidModelBase {
         return this.convertJsonLDToAttributes(jsonld as JsonLDResource);
     }
 
-    protected castAttribute(value: unknown, definition?: BootedFieldDefinition): unknown {
+    protected castAttribute(value: unknown, options: ModelCastAttributeOptions = {}): unknown {
         const prepareValue = () => {
             const isNullOrUndefined = typeof value === 'undefined' || value === null;
 
-            switch (definition?.type) {
+            switch (options.definition?.type) {
                 case FieldType.Array:
                     return isNullOrUndefined ? [] : arrayFrom(value);
                 case FieldType.Any:
@@ -1447,7 +1448,7 @@ export class SolidModel extends SolidModelBase {
             return isNullOrUndefined ? undefined : value;
         };
 
-        return super.castAttribute(prepareValue(), definition);
+        return super.castAttribute(prepareValue(), options);
     }
 
     protected newUrl(documentUrl?: string, resourceHash?: string): string {

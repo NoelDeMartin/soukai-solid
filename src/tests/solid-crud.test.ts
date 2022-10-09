@@ -163,11 +163,11 @@ describe('Solid CRUD', () => {
         });
 
         // Act
-        const movie = await Movie.find('solid://spirited-away#it') as Movie;
+        const movie = await Movie.find('solid://movies/spirited-away#it') as Movie;
 
         // Assert
         expect(movie).toBeInstanceOf(Movie);
-        expect(movie.url).toEqual('solid://spirited-away#it');
+        expect(movie.url).toEqual('solid://movies/spirited-away#it');
         expect(movie.title).toEqual('Spirited Away');
         expect(movie.releaseDate?.getFullYear()).toEqual(2001);
         expect(movie.releaseDate?.getMonth()).toEqual(6);

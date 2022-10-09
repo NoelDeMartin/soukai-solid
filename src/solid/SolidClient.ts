@@ -9,7 +9,7 @@ import {
     urlResolve,
 } from '@noeldemartin/utils';
 import { NetworkRequestError, UnsuccessfulNetworkRequestError } from '@noeldemartin/solid-utils';
-import type { Quad } from 'rdf-js';
+import type { Quad, Quad_Object } from 'rdf-js';
 
 import IRI from '@/solid/utils/IRI';
 import RDFDocument, { RDFParsingError } from '@/solid/RDFDocument';
@@ -497,34 +497,38 @@ export default class SolidClient {
                         statement.subject.value === operation.propertyResourceUrl &&
                     statement.predicate.value === operation.propertyName,
                 )
-                .map(statement => statement.object.value);
+                .map(statement => statement.object);
             const isLiteralProperty = operation.propertyOrProperties[0].type === RDFResourcePropertyType.Literal;
-            const { added, removed } = arrayDiff(
+            const isReference = (property: Quad_Object | RDFResourceProperty) => 'type' in property
+                ? property.type === RDFResourcePropertyType.Reference
+                : property.termType === 'NamedNode';
+            const { added, removed } = arrayDiff<Quad_Object | RDFResourceProperty>(
                 documentValues,
-                operation.propertyOrProperties.map(property => property.value),
+                operation.propertyOrProperties,
+                (a, b) => a.value === b.value && isReference(a) === isReference(b),
             );
 
-            added.forEach(value => operations.push(
+            added.forEach(addedProperty => operations.push(
                 new UpdatePropertyOperation(
                     isLiteralProperty
                         ? RDFResourceProperty.literal(
                             operation.propertyResourceUrl,
                             operation.propertyName,
-                            value as LiteralValue,
+                            addedProperty.value as LiteralValue,
                         )
                         : RDFResourceProperty.reference(
                             operation.propertyResourceUrl,
                             operation.propertyName,
-                            value as string,
+                            addedProperty.value as string,
                         ),
                 ),
             ));
 
-            removed.forEach(value => operations.push(
+            removed.forEach(removedProperty => operations.push(
                 new RemovePropertyOperation(
                     operation.propertyResourceUrl as string,
                     operation.propertyName,
-                    value,
+                    removedProperty.value,
                 ),
             ));
 
