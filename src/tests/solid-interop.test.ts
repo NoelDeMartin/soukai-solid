@@ -38,7 +38,9 @@ describe('Solid Interoperability', () => {
         const movie = await Movie.find('solid://movies/spirited-away#it') as Movie;
         const malformations = movie.getMalformedDocumentAttributes();
 
-        await movie.fixMalformedAttributes();
+        movie.fixMalformedAttributes();
+
+        await movie.withoutTimestamps(() => movie.save());
 
         // Assert
         expect(malformations);
