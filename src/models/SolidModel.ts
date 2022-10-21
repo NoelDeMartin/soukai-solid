@@ -885,6 +885,32 @@ export class SolidModel extends SolidModelBase {
         return this.getDocumentModels().filter(model => model.isDirty());
     }
 
+    public requireRelation<T extends SolidRelation = SolidRelation>(relation: string): T;
+    public requireRelation<T extends Relation = Relation>(relation: string): T;
+    public requireRelation<T extends SolidRelation = SolidRelation>(relation: string): T {
+        return super.requireRelation(relation);
+    }
+
+    public getRelationModel<T extends SolidModel>(relation: string): T | null;
+    public getRelationModel<T extends Model>(relation: string): T | null;
+    public getRelationModel<T extends SolidModel>(relation: string): T | null {
+        return super.getRelationModel<T>(relation);
+    }
+
+    public getRelationModels<T extends SolidModel>(relation: string): T[] | null;
+    public getRelationModels<T extends Model>(relation: string): T[] | null;
+    public getRelationModels<T extends SolidModel>(relation: string): T[] | null {
+        return super.getRelationModels<T>(relation);
+    }
+
+    public setRelationModel(relation: string, model: SolidModel | null): void {
+        return super.setRelationModel(relation, model);
+    }
+
+    public setRelationModels(relation: string, models: SolidModel[] | null): void {
+        return super.setRelationModels(relation, models);
+    }
+
     public getRelatedModels(_relatedModels?: Set<SolidModel>): SolidModel[] {
         const relatedModels = _relatedModels ?? new Set();
 
