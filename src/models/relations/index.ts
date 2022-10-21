@@ -12,6 +12,9 @@ import TombstoneRelation from './TombstoneRelation';
 SolidContainsRelation.inverseRelationClasses = [SolidIsContainedByRelation];
 SolidIsContainedByRelation.inverseRelationClasses = [SolidContainsRelation];
 
+export * from './guards';
+export * from './cardinality-guards';
+
 export {
     OperationsRelation,
     SolidACLAuthorizationsRelation,

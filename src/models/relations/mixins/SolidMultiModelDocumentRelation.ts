@@ -2,7 +2,7 @@ import { arrayUnique, tap } from '@noeldemartin/utils';
 import { SoukaiError } from 'soukai';
 import type { Attributes, Key, MultiModelRelation } from 'soukai';
 
-import { isSolidBelongsToRelation, isSolidHasRelation } from '@/models/relations/internals/guards';
+import { isSolidBelongsToRelation, isSolidHasRelation } from '@/models/relations/guards';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 

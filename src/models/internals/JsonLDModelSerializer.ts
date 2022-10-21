@@ -4,8 +4,8 @@ import type { Attributes, BootedArrayFieldDefinition } from 'soukai';
 import type { JsonLD } from '@noeldemartin/solid-utils';
 
 import { inferFieldDefinition } from '@/models/fields';
-import { isSolidHasRelation } from '@/models/relations/internals/guards';
-import { isSolidMultiModelDocumentRelation } from '@/models/relations/internals/cardinality-guards';
+import { isSolidHasRelation } from '@/models/relations/guards';
+import { isSolidMultiModelDocumentRelation } from '@/models/relations/cardinality-guards';
 import type { SolidBootedFieldDefinition } from '@/models/fields';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidRelation } from '@/models/relations/inference';

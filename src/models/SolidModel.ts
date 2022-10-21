@@ -72,11 +72,11 @@ import {
     isSolidDocumentRelation,
     isSolidHasRelation,
     synchronizesRelatedModels,
-} from './relations/internals/guards';
+} from './relations/guards';
 import {
     isSolidMultiModelDocumentRelation,
     isSolidSingleModelDocumentRelation,
-} from './relations/internals/cardinality-guards';
+} from './relations/cardinality-guards';
 import DeletesModels from './mixins/DeletesModels';
 import ManagesPermissions from './mixins/ManagesPermissions';
 import OperationsRelation from './relations/OperationsRelation';
