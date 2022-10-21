@@ -113,6 +113,8 @@ export class SolidModel extends SolidModelBase {
 
     public static rdfsClasses: string[] = [];
 
+    public static reservedRelations: string[] = ['metadata', 'operations'];
+
     public static defaultResourceHash: string = 'it';
 
     public static mintsUrls: boolean = true;
@@ -378,7 +380,7 @@ export class SolidModel extends SolidModelBase {
         a.addHistoryOperations(b.operations);
         b.addHistoryOperations(a.operations);
 
-        for (const relation of arrayWithout(this.relations, ['metadata', 'operations'])) {
+        for (const relation of arrayWithout(this.relations, this.reservedRelations)) {
             const relationA = a.requireRelation(relation);
             const relationB = b.requireRelation(relation);
 
