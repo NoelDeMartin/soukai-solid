@@ -5,7 +5,8 @@ import type { JsonLD, JsonLDResource } from '@noeldemartin/solid-utils';
 import type { SolidModel } from '@/models/SolidModel';
 
 import { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
-import RDFDocument from '@/solid/RDFDocument';
+import type RDFResourceProperty from '@/solid/RDFResourceProperty';
+import type RDFResource from '@/solid/RDFResource';
 
 import JsonLDModelSerializer from '@/models/internals/JsonLDModelSerializer';
 
@@ -17,10 +18,11 @@ export default class SerializesToJsonLD {
         return JsonLDModelSerializer.forModel(this.static()).serialize(this, { includeRelations });
     }
 
-    protected async convertJsonLDToAttributes(this: This, jsonld: JsonLDResource): Promise<Attributes> {
-        // TODO this is probably wasteful because we've already parsed this in createManyFromEngineDocuments method
-        const document = await RDFDocument.fromJsonLD(jsonld);
-        const resource = document.requireResource(jsonld['@id']);
+    protected async convertJsonLDToAttributes(
+        this: This,
+        jsonld: JsonLDResource,
+        resource: RDFResource,
+    ): Promise<Attributes> {
         const fieldsDefinition = this.static('fields');
         const attributes: Attributes = {};
 
@@ -30,7 +32,13 @@ export default class SerializesToJsonLD {
             if (!fieldDefinition.rdfProperty)
                 continue;
 
-            const properties = resource.propertiesIndex[fieldDefinition.rdfProperty] || [];
+            const properties = resource.propertiesIndex[fieldDefinition.rdfProperty]
+                ?? fieldDefinition.rdfPropertyAliases.reduce(
+                    (properties, rdfPropertyAlias) => properties.concat(
+                        resource.propertiesIndex[rdfPropertyAlias] ?? [],
+                    ),
+                    [] as RDFResourceProperty[],
+                );
             const propertyValues = properties.map(
                 property =>
                     property.type === RDFResourcePropertyType.Reference
@@ -70,6 +78,11 @@ export default class SerializesToJsonLD {
             typeFilters.push({ $eq: compactedTypes[0] as string });
             typeFilters.push({ $eq: expandedTypes[0] as string });
         }
+
+        this.static('rdfsClassesAliases').forEach(rdfsClassAliases => {
+            rdfsClassAliases.length > 0 && typeFilters.push({ $contains: rdfsClassAliases });
+            rdfsClassAliases.length === 1 && typeFilters.push({ $eq: rdfsClassAliases[0] as string });
+        });
 
         if (filters.$in) {
             jsonldFilters.$in = filters.$in;

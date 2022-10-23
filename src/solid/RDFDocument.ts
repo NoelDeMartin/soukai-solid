@@ -1,5 +1,5 @@
 import { SoukaiError } from 'soukai';
-import { arrayWithout, urlResolve, urlRoute } from '@noeldemartin/utils';
+import { arrayWithout, tap, urlResolve, urlRoute } from '@noeldemartin/utils';
 import type { JsonLD, JsonLDGraph } from '@noeldemartin/solid-utils';
 import type { Quad } from 'rdf-js';
 
@@ -24,6 +24,8 @@ export class RDFParsingError extends SoukaiError {}
 
 export default class RDFDocument {
 
+    private static documentsCache: WeakMap<JsonLD, RDFDocument> = new WeakMap();
+
     public static async fromTurtle(turtle: string, options: TurtleParsingOptions = {}): Promise<RDFDocument> {
         try {
             const data = await fromTurtle(turtle, {
@@ -42,9 +44,16 @@ export default class RDFDocument {
     }
 
     public static async fromJsonLD(json: JsonLD, baseUrl?: string): Promise<RDFDocument> {
+        return this.documentsCache.get(json)
+            ?? await this.getFromJsonLD(json, baseUrl);
+    }
+
+    private static async getFromJsonLD(json: JsonLD, baseUrl?: string): Promise<RDFDocument> {
         const quads = await toRDF(json, baseUrl);
 
-        return new RDFDocument(json['@id'] ? urlRoute(json['@id']) : null, quads);
+        return tap(new RDFDocument(json['@id'] ? urlRoute(json['@id']) : null, quads), document => {
+            this.documentsCache.set(json, document);
+        });
     }
 
     public readonly url: string | null;

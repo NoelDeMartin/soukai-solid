@@ -113,6 +113,8 @@ export class SolidModel extends SolidModelBase {
 
     public static rdfsClasses: string[] = [];
 
+    public static rdfsClassesAliases: string[][] = [];
+
     public static reservedRelations: string[] = ['metadata', 'operations'];
 
     public static defaultResourceHash: string = 'it';
@@ -129,7 +131,12 @@ export class SolidModel extends SolidModelBase {
 
     public static getFieldDefinition(field: string, value?: unknown): SolidBootedFieldDefinition {
         return (this.fields as SolidBootedFieldsDefinition)[field]
-            ?? inferFieldDefinition(value, this.getDefaultRdfContext() + field, false);
+            ?? inferFieldDefinition(
+                value,
+                this.getDefaultRdfContext() + field,
+                [],
+                false,
+            );
     }
 
     public static getFieldRdfProperty(field: string): string | null {
@@ -196,7 +203,10 @@ export class SolidModel extends SolidModelBase {
             rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
         };
 
-        const fields = modelClass.fields as BootedFieldsDefinition<{ rdfProperty?: string }>;
+        const fields = modelClass.fields as BootedFieldsDefinition<{
+            rdfProperty?: string;
+            rdfPropertyAliases?: string[];
+        }>;
         const defaultRdfContext = modelClass.getDefaultRdfContext();
 
         if (instance.static().hasAutomaticTimestamp(TimestampField.CreatedAt))
@@ -206,11 +216,16 @@ export class SolidModel extends SolidModelBase {
             delete fields[TimestampField.UpdatedAt];
 
         modelClass.rdfsClasses = arrayUnique(
-            (modelClass.rdfsClasses ?? []).map(name => IRI(name, modelClass.rdfContexts, defaultRdfContext)),
+            modelClass.rdfsClasses?.map(name => IRI(name, modelClass.rdfContexts, defaultRdfContext)) ?? [],
         );
 
-        if (modelClass.rdfsClasses.length === 0)
+        if (modelClass.rdfsClasses.length === 0) {
             modelClass.rdfsClasses = [defaultRdfContext + modelClass.modelName];
+        }
+
+        modelClass.rdfsClassesAliases = modelClass.rdfsClassesAliases.map(rdfsClasses => arrayUnique(
+            rdfsClasses.map(name => IRI(name, modelClass.rdfContexts, defaultRdfContext)) ?? [],
+        ));
 
         for (const [name, field] of Object.entries(fields)) {
             field.rdfProperty = IRI(
@@ -218,11 +233,69 @@ export class SolidModel extends SolidModelBase {
                 modelClass.rdfContexts,
                 defaultRdfContext,
             );
+            field.rdfPropertyAliases = field.rdfPropertyAliases
+                ?.map(property => IRI(property, modelClass.rdfContexts, defaultRdfContext))
+                ?? [];
         }
 
         delete fields[modelClass.primaryKey]?.rdfProperty;
+        delete fields[modelClass.primaryKey]?.rdfPropertyAliases;
 
         modelClass.fields = fields;
+    }
+
+    public static aliasRdfPrefixes(aliases: Record<string, string>): void {
+        this.ensureBooted();
+
+        for (const [original, alias] of Object.entries(aliases)) {
+            const rdfsClassesAliases = this.rdfsClasses.reduce((rdfsClassesAliases, rdfsClass) => {
+                if (rdfsClass.startsWith(original)) {
+                    rdfsClassesAliases.push(rdfsClass.replace(original, alias));
+                }
+
+                return rdfsClassesAliases;
+            }, [] as string[]);
+
+            if (rdfsClassesAliases.length > 0) {
+                this.rdfsClassesAliases.push(rdfsClassesAliases);
+            }
+
+            for (const field of Object.values(this.fields as SolidBootedFieldsDefinition)) {
+                if (!field.rdfProperty?.startsWith(original)) {
+                    continue;
+                }
+
+                field.rdfPropertyAliases.push(field.rdfProperty.replace(original, alias));
+            }
+        }
+    }
+
+    public static resetRdfAliases(): void {
+        this.rdfsClassesAliases = [];
+
+        for (const field of Object.values(this.fields as SolidBootedFieldsDefinition)) {
+            if (!field.rdfPropertyAliases) {
+                continue;
+            }
+
+            field.rdfPropertyAliases = [];
+        }
+    }
+
+    public static replaceRdfPrefixes(replacements: Record<string, string>): void {
+        this.ensureBooted();
+
+        for (const [original, replacement] of Object.entries(replacements)) {
+            this.rdfsClasses = this.rdfsClasses.map(rdfsClass => rdfsClass.replace(original, replacement));
+
+            for (const field of Object.values(this.fields as SolidBootedFieldsDefinition)) {
+                if (!field.rdfProperty?.startsWith(original)) {
+                    continue;
+                }
+
+                field.rdfProperty = field.rdfProperty.replace(original, replacement);
+            }
+        }
     }
 
     /* eslint-disable max-len */
@@ -456,6 +529,7 @@ export class SolidModel extends SolidModelBase {
     protected _sourceDocumentUrl!: string | null;
     protected _trackedDirtyAttributes!: Attributes;
     protected _removedResourceUrls!: string[];
+    protected _usesRdfAliases!: boolean;
     declare protected _relations: Record<string, SolidRelation>;
 
     private _sourceSubject: SubjectParts = {};
@@ -467,6 +541,7 @@ export class SolidModel extends SolidModelBase {
         this._sourceDocumentUrl = this._sourceDocumentUrl ?? null;
         this._trackedDirtyAttributes = {};
         this._removedResourceUrls = [];
+        this._usesRdfAliases = false;
 
         super.initialize(attributes, exists);
     }
@@ -765,6 +840,10 @@ export class SolidModel extends SolidModelBase {
         return this.getDocumentUrl() ?? fail(SoukaiError, 'Failed getting required document url');
     }
 
+    public usesRdfAliases(): boolean {
+        return this._usesRdfAliases;
+    }
+
     public getSourceDocumentUrl(): string | null {
         return this._sourceDocumentUrl;
     }
@@ -995,15 +1074,22 @@ export class SolidModel extends SolidModelBase {
             return this.newInstance(attributes, true);
         };
 
+        const rdfDocument = await RDFDocument.fromJsonLD(document);
+        const resource = rdfDocument.requireResource(resourceId || id);
         const model = await createModel();
 
         await model.loadDocumentModels(id, document);
 
-        return tap(model, m => m._sourceDocumentUrl = urlClean(id, { fragment: false }));
+        return tap(model, async m => {
+            m._sourceDocumentUrl = urlClean(id, { fragment: false });
+            m._usesRdfAliases = this.static('rdfsClassesAliases').some(
+                types => !types.some(type => !resource.isType(type)),
+            );
+        });
     }
 
     protected async createManyFromEngineDocuments(documents: Record<string, EngineDocument>): Promise<this[]> {
-        const rdfsClasses = this.static('rdfsClasses');
+        const rdfsClasses = [this.static('rdfsClasses'), ...this.static('rdfsClassesAliases')];
         const models = await Promise.all(Object.entries(documents).map(async ([documentUrl, engineDocument]) => {
             const rdfDocument = await RDFDocument.fromJsonLD(engineDocument);
 
@@ -1013,7 +1099,7 @@ export class SolidModel extends SolidModelBase {
                     .filter(
                         (resource): resource is RDFResource & { url: string } =>
                             !!resource.url &&
-                            !rdfsClasses.some(rdfsClass => !resource.isType(rdfsClass)),
+                            rdfsClasses.some(types => !types.some(type => !resource.isType(type))),
                     )
                     .map(async resource => this.createFromEngineDocument(
                         documentUrl,
@@ -1450,7 +1536,9 @@ export class SolidModel extends SolidModelBase {
         if (!jsonld)
             throw new SoukaiError(`Resource '${resourceId}' not found on document`);
 
-        return this.convertJsonLDToAttributes(jsonld as JsonLDResource);
+        const rdfDocument = await RDFDocument.fromJsonLD(document);
+
+        return this.convertJsonLDToAttributes(jsonld as JsonLDResource, rdfDocument.requireResource(resourceId));
     }
 
     protected castAttribute(value: unknown, options: ModelCastAttributeOptions = {}): unknown {

@@ -127,8 +127,116 @@ describe('SolidModel', () => {
                 type: FieldType.String,
                 required: false,
                 rdfProperty: 'http://xmlns.com/foaf/0.1/givenname',
+                rdfPropertyAliases: [],
             },
         });
+    });
+
+    it('aliases RDF prefixes', () => {
+        // Arrange
+        class StubModel extends SolidModel {
+
+            public static rdfContexts = {
+                schema: 'https://schema.org/',
+            };
+
+            public static rdfsClasses = ['schema:Movie'];
+
+            public static fields = {
+                title: {
+                    type: FieldType.String,
+                    rdfProperty: 'schema:name',
+                },
+            };
+
+        }
+
+        bootModels({ StubModel });
+
+        // Act
+        StubModel.aliasRdfPrefixes({
+            'https://schema.org/': 'http://schema.org/',
+        });
+
+        // Assert
+        const fields = StubModel.instance().static('fields');
+
+        expect(StubModel.rdfsClasses).toEqual(['https://schema.org/Movie']);
+        expect(StubModel.rdfsClassesAliases).toEqual([['http://schema.org/Movie']]);
+        expect(fields.title?.rdfProperty).toEqual('https://schema.org/name');
+        expect(fields.title?.rdfPropertyAliases).toEqual(['http://schema.org/name']);
+    });
+
+    it('replaces RDF prefixes', () => {
+        // Arrange
+        class StubModel extends SolidModel {
+
+            public static rdfContexts = {
+                schema: 'https://schema.org/',
+            };
+
+            public static rdfsClasses = ['schema:Movie'];
+
+            public static fields = {
+                title: {
+                    type: FieldType.String,
+                    rdfProperty: 'schema:name',
+                },
+            };
+
+        }
+
+        bootModels({ StubModel });
+
+        // Act
+        StubModel.replaceRdfPrefixes({
+            'https://schema.org/': 'http://schema.org/',
+        });
+
+        // Assert
+        const fields = StubModel.instance().static('fields');
+
+        expect(StubModel.rdfsClasses).toEqual(['http://schema.org/Movie']);
+        expect(StubModel.rdfsClassesAliases).toEqual([]);
+        expect(fields.title?.rdfProperty).toEqual('http://schema.org/name');
+        expect(fields.title?.rdfPropertyAliases).toEqual([]);
+    });
+
+    it('resets RDF Aliases', () => {
+        // Arrange
+        class StubModel extends SolidModel {
+
+            public static rdfContexts = {
+                schema: 'https://schema.org/',
+            };
+
+            public static rdfsClasses = ['schema:Movie'];
+
+            public static fields = {
+                title: {
+                    type: FieldType.String,
+                    rdfProperty: 'schema:name',
+                },
+            };
+
+        }
+
+        bootModels({ StubModel });
+
+        StubModel.aliasRdfPrefixes({
+            'https://schema.org/': 'http://schema.org/',
+        });
+
+        // Act
+        StubModel.resetRdfAliases();
+
+        // Assert
+        const fields = StubModel.instance().static('fields');
+
+        expect(StubModel.rdfsClasses).toEqual(['https://schema.org/Movie']);
+        expect(StubModel.rdfsClassesAliases).toEqual([]);
+        expect(fields.title?.rdfProperty).toEqual('https://schema.org/name');
+        expect(fields.title?.rdfPropertyAliases).toEqual([]);
     });
 
     it('defaults to first context if rdfProperty is missing', () => {
@@ -157,6 +265,7 @@ describe('SolidModel', () => {
                 type: FieldType.String,
                 required: false,
                 rdfProperty: 'http://xmlns.com/foaf/0.1/name',
+                rdfPropertyAliases: [],
             },
         });
     });

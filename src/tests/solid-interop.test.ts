@@ -64,4 +64,27 @@ describe('Solid Interoperability', () => {
         `);
     });
 
+    it('Reads http and https schemes', async () => {
+        // Arrange
+        const turtle = `
+            @prefix schema: <http://schema.org/>.
+
+            <#it>
+                a schema:Movie;
+                schema:name "Spirited Away".
+        `;
+
+        StubFetcher.addFetchResponse(turtle);
+
+        // Act
+        Movie.aliasRdfPrefixes({ 'https://schema.org': 'http://schema.org' });
+
+        const movies = await Movie.all({ $in: ['solid://movies/spirited-away#it'] });
+
+        // Assert
+        expect(movies).toHaveLength(1);
+        expect(movies[0]?.title).toEqual('Spirited Away');
+        expect(movies[0]?.usesRdfAliases()).toBe(true);
+    });
+
 });

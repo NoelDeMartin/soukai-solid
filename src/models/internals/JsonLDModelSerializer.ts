@@ -258,6 +258,7 @@ export default class JsonLDModelSerializer {
                 const inferredFieldDefinition = inferFieldDefinition(
                     value,
                     fieldDefinition.rdfProperty,
+                    fieldDefinition.rdfPropertyAliases,
                     fieldDefinition.required,
                 );
 

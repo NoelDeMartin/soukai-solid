@@ -10,28 +10,38 @@ import type {
 
 export type SolidFieldDefinition = FieldDefinition<{
     rdfProperty?: string;
+    rdfPropertyAliases?: string[];
 }>;
 export type SolidBootedFieldDefinition = BootedFieldDefinition<{
     rdfProperty: string;
+    rdfPropertyAliases: string[];
 }>;
 export type SolidFieldsDefinition = FieldsDefinition<{
     rdfProperty?: string;
+    rdfPropertyAliases?: string[];
 }>;
 export type SolidBootedFieldsDefinition = BootedFieldsDefinition<{
     rdfProperty: string;
+    rdfPropertyAliases: string[];
 }>;
 
 /* eslint-disable max-len */
-export function inferFieldDefinition(value: unknown): Omit<SolidBootedFieldDefinition, 'required' | 'rdfProperty'>;
-export function inferFieldDefinition(value: unknown, rdfProperty: string, required: boolean): SolidBootedFieldDefinition;
+export function inferFieldDefinition(value: unknown): Omit<SolidBootedFieldDefinition, 'required' | 'rdfProperty' | 'rdfPropertyAliases'>;
+export function inferFieldDefinition(value: unknown, rdfProperty: string, rdfPropertyAliases: string[], required: boolean): SolidBootedFieldDefinition;
 /* eslint-enable max-len */
 
 export function inferFieldDefinition(
     value: unknown,
     rdfProperty?: string,
+    rdfPropertyAliases?: string[],
     required?: boolean,
-): SolidBootedFieldDefinition | Omit<SolidBootedFieldDefinition, 'required' | 'rdfProperty'> {
-    const fieldDefinition = (type: FieldTypeValue) => objectWithoutEmpty({ type, rdfProperty, required });
+): SolidBootedFieldDefinition | Omit<SolidBootedFieldDefinition, 'required' | 'rdfProperty' | 'rdfPropertyAliases'> {
+    const fieldDefinition = (type: FieldTypeValue) => objectWithoutEmpty({
+        type,
+        rdfProperty,
+        rdfPropertyAliases,
+        required,
+    });
 
     switch (typeof value) {
         case 'string':
@@ -67,7 +77,10 @@ export function inferFieldDefinition(
                     fields[field] = inferFieldDefinition(value);
 
                     return fields;
-                }, {} as Record<string, Omit<SolidBootedFieldDefinition, 'required' | 'rdfProperty'>>),
+                }, {} as Record<
+                    string,
+                    Omit<SolidBootedFieldDefinition, 'required' | 'rdfProperty' | 'rdfPropertyAliases'>
+                 >),
             });
         default:
             return fieldDefinition(FieldType.Any);

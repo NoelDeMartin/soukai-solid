@@ -51,11 +51,13 @@ describe('SolidContainerModel', () => {
                 type: FieldType.String,
                 required: false,
                 rdfProperty: IRI('rdfs:label'),
+                rdfPropertyAliases: [],
             },
             resourceUrls: {
                 type: FieldType.Array,
                 required: false,
                 rdfProperty: IRI('ldp:contains'),
+                rdfPropertyAliases: [],
                 items: {
                     type: FieldType.Key,
                 },
