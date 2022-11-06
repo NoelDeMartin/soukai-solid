@@ -6,6 +6,12 @@ import WatchAction from '@/testing/lib/stubs/WatchAction';
 
 import { SolidEngine } from '@/engines';
 
+class MovieWithTimestamps extends Movie {
+
+    public static timestamps = true;
+
+}
+
 describe('Solid Interoperability', () => {
 
     let fetch: jest.Mock<Promise<Response>, [RequestInfo, RequestInit?]>;
@@ -15,7 +21,7 @@ describe('Solid Interoperability', () => {
         Movie.collection = 'https://my-pod.com/movies/';
 
         setEngine(new SolidEngine(fetch));
-        bootModels({ Movie, WatchAction });
+        bootModels({ Movie, WatchAction, MovieWithTimestamps });
     });
 
     it('Fixes malformed attributes', async () => {
@@ -35,7 +41,7 @@ describe('Solid Interoperability', () => {
         StubFetcher.addFetchResponse();
 
         // Act
-        const movie = await Movie.find('solid://movies/spirited-away#it') as Movie;
+        const movie = await MovieWithTimestamps.find('solid://movies/spirited-away#it') as MovieWithTimestamps;
         const malformations = movie.getMalformedDocumentAttributes();
 
         movie.fixMalformedAttributes();
@@ -56,10 +62,18 @@ describe('Solid Interoperability', () => {
             } ;
             INSERT DATA {
                 @prefix schema: <https://schema.org/>.
+                @prefix crdt: <https://vocab.noeldemartin.com/crdt/>.
+                @prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
 
                 <#it>
                     schema:image <https://www.themoviedb.org/t/p/w600_and_h900_bestv2/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg> ;
                     schema:sameAs <https://www.imdb.com/title/tt0245429>, <https://www.themoviedb.org/movie/129> .
+
+                <#it-metadata>
+                    a crdt:Metadata ;
+                    crdt:resource <#it> ;
+                    crdt:createdAt "[[date][.*]]"^^xsd:dateTime ;
+                    crdt:updatedAt "[[date][.*]]"^^xsd:dateTime .
             }
         `);
     });

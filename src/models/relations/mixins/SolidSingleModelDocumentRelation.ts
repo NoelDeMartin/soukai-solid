@@ -132,6 +132,14 @@ export default class SolidSingleModelDocumentRelation<
             this.related = this.__modelInSameDocument;
             this.documentModelsLoaded = true;
 
+            if (!this.__modelInSameDocument?.exists()) {
+                this.__newModel = this.__modelInSameDocument;
+
+                return;
+            }
+
+            delete this.__newModel;
+
             return;
         }
 

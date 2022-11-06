@@ -971,7 +971,6 @@ describe('SolidModel', () => {
         const containerUrl = urlResolveDirectory(Faker.internet.url());
         const documentUrl = urlResolve(containerUrl, Faker.random.uuid());
         const url = `${documentUrl}#it`;
-        const metadataUrl = `${documentUrl}#it-metadata`;
         const model = new StubModel({ url, name: Faker.name.firstName() }, true);
 
         engine.setMany(containerUrl, {
@@ -993,7 +992,7 @@ describe('SolidModel', () => {
             {
                 '@graph': {
                     $updateItems: {
-                        $where: { '@id': { $in: [metadataUrl, url] } },
+                        $where: { '@id': { $in: [url] } },
                         $unset: true,
                     },
                 },

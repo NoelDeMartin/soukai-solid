@@ -55,7 +55,6 @@ export default class SolidContainerModel extends SolidModel {
             : null;
     }
 
-    public resourceUrls!: string[];
     public documents!: SolidDocument[];
     public relatedDocuments!: SolidContainerDocumentsRelation;
 

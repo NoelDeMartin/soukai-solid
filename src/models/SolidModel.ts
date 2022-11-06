@@ -583,7 +583,7 @@ export class SolidModel extends SolidModelBase {
             resourceUrl: this._attributes[this.static('primaryKey')],
             createdAt: this._attributes.createdAt,
             updatedAt: this._attributes.updatedAt,
-        }), this._exists);
+        }), false);
 
         metadataModel.resourceUrl && metadataModel.mintUrl(this.getDocumentUrl() || undefined, this._documentExists);
         this._proxy.relatedMetadata.attach(metadataModel);
@@ -782,6 +782,22 @@ export class SolidModel extends SolidModelBase {
 
         if (!ignoreRelations)
             this.getDocumentModels().forEach(model => model.cleanDirty(true));
+    }
+
+    public fixMalformedAttributes(): void {
+        super.fixMalformedAttributes();
+
+        if (!this.relatedMetadata.enabled) {
+            return;
+        }
+
+        if (this.static().hasAutomaticTimestamp(TimestampField.CreatedAt)) {
+            this.metadata.createdAt = this.createdAt ?? new Date();
+        }
+
+        if (this.static().hasAutomaticTimestamp(TimestampField.UpdatedAt)) {
+            this.metadata.updatedAt = this.updatedAt ?? this.createdAt ?? new Date();
+        }
     }
 
     public tracksHistory(): boolean {
@@ -1372,7 +1388,7 @@ export class SolidModel extends SolidModelBase {
             });
         }
 
-        if (this.metadata.isDirty('deletedAt')) {
+        if (this.metadata.isDirty('deletedAt') && !!this.metadata.deletedAt) {
             this.relatedOperations.attachDeleteOperation({ date: this.metadata.deletedAt });
         }
     }
