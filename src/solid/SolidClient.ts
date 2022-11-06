@@ -383,7 +383,7 @@ export default class SolidClient {
         operations.push(...RESERVED_CONTAINER_TYPES.map(createRemoveTypeOperation));
 
         await this.updateNonContainerDocument(
-            document.clone(document.metadata.describedBy || `${document.url}.meta`),
+            document.clone({ changeUrl: document.metadata.describedBy || `${document.url}.meta` }),
             operations,
         );
     }
@@ -488,7 +488,6 @@ export default class SolidClient {
 
             if (!Array.isArray(operation.propertyOrProperties) || operation.propertyResourceUrl === null)
                 continue;
-
 
             const documentValues = document
                 .statements

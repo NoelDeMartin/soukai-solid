@@ -6,13 +6,13 @@ import type { LiteralValue } from '@/solid/RDFResourceProperty';
 
 export default class RDFResource {
 
-    public readonly url: string | null;
+    public readonly url: string;
     public readonly types: string[];
     public readonly properties: RDFResourceProperty[];
     public readonly propertiesIndex: Record<string, RDFResourceProperty[]>;
     public readonly statements: Quad[];
 
-    public constructor(url: string | null) {
+    public constructor(url: string) {
         this.url = url;
         this.statements = [];
         this.types = [];

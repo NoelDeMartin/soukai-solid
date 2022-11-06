@@ -4,6 +4,7 @@ import type { EngineDocument, EngineDocumentsCollection, Relation } from 'soukai
 import type { JsonLDGraph } from '@noeldemartin/solid-utils';
 
 import RDF from '@/solid/utils/RDF';
+import RDFDocument from '@/solid/RDFDocument';
 import type { SolidBootedFieldsDefinition } from '@/models/fields';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
@@ -35,10 +36,8 @@ export default class SolidHasRelation {
         const foreignFields = this.relatedClass.fields as SolidBootedFieldsDefinition;
         const foreignProperty = foreignFields[this.foreignKeyName]?.rdfProperty as string;
         const filters = this.relatedClass.prepareEngineFilters();
-        const reducedDocument = {
-            '@graph': document['@graph'].filter(resource => resource['@id'] !== this.parent.id),
-        } as EngineDocument;
-        const documents = document['@graph']
+        const reducedDocument = RDFDocument.reduceJsonLDGraph(document, this.parent.id) as EngineDocument;
+        const resourceDocuments = document['@graph']
             .filter(resource => {
                 const property = RDF.getJsonLDProperty(resource, foreignProperty);
 
@@ -47,19 +46,19 @@ export default class SolidHasRelation {
                     && '@id' in property
                     && (property as { '@id': string })['@id'] === this.parent.url;
             })
-            .reduce((documents, resource) => {
-                documents[resource['@id']] = { '@graph': [resource as EngineDocument] };
+            .reduce((resourceDocuments, resource) => {
+                resourceDocuments[resource['@id']] = { '@graph': [resource as EngineDocument] };
 
-                return documents;
+                return resourceDocuments;
             }, {} as EngineDocumentsCollection);
 
         const modelsInSameDocument = await Promise.all(
             Object
-                .keys(helper.filterDocuments(documents, filters))
+                .keys(helper.filterDocuments(resourceDocuments, filters))
                 .map(id => this.relatedClass.createFromEngineDocument(documentUrl, reducedDocument, id)),
         );
 
-        const modelsInOtherDocumentIds = Object.keys(documents).filter(
+        const modelsInOtherDocumentIds = Object.keys(resourceDocuments).filter(
             resourceId =>
                 !modelsInSameDocument.some(model => model.url === resourceId) &&
                 urlRoute(resourceId) !== documentUrl,

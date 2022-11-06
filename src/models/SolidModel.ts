@@ -58,7 +58,7 @@ import type {
     TimestampFieldValue,
 } from 'soukai';
 import type { Constructor } from '@noeldemartin/utils';
-import type { JsonLD, JsonLDGraph, JsonLDResource, SubjectParts } from '@noeldemartin/solid-utils';
+import type { JsonLD, JsonLDGraph, SubjectParts } from '@noeldemartin/solid-utils';
 import type { Quad } from 'rdf-js';
 
 import { SolidEngine } from '@/engines';
@@ -96,6 +96,7 @@ import type SolidACLAuthorization from './SolidACLAuthorization';
 import type SolidContainerModel from './SolidContainerModel';
 import type Tombstone from './history/Tombstone';
 import type { SolidBootedFieldDefinition, SolidBootedFieldsDefinition, SolidFieldsDefinition } from './fields';
+import type { SolidDocumentRelationInstance } from './relations/mixins/SolidDocumentRelation';
 import type { SolidModelConstructor } from './inference';
 import type { SolidRelation } from './relations/inference';
 
@@ -115,7 +116,7 @@ export class SolidModel extends SolidModelBase {
 
     public static rdfsClassesAliases: string[][] = [];
 
-    public static reservedRelations: string[] = ['metadata', 'operations'];
+    public static reservedRelations: string[] = ['metadata', 'operations', 'tombstone', 'authorizations'];
 
     public static defaultResourceHash: string = 'it';
 
@@ -378,10 +379,8 @@ export class SolidModel extends SolidModelBase {
         baseUrl?: string,
         sourceResourceId?: string,
     ): Promise<T> {
-        baseUrl = baseUrl ?? this.collection;
-
         const jsonld = mintJsonLDIdentifiers(sourceJsonLD);
-        const rdfDocument = await RDFDocument.fromJsonLD(jsonld, baseUrl);
+        const rdfDocument = await RDFDocument.fromJsonLD(jsonld, baseUrl ?? this.collection);
         const flatJsonLD = await rdfDocument.toJsonLD();
         const resourceId = sourceResourceId ?? this.findResourceId(rdfDocument.statements, baseUrl);
         const resource = rdfDocument.resource(resourceId);
@@ -406,8 +405,12 @@ export class SolidModel extends SolidModelBase {
 
             // TODO this should be recursive to take care of 2nd degree relations.
             for (const relationName of this.relations) {
-                const relation = model._relations[relationName] as Relation;
-                const models = relation.getLoadedModels() as SolidModel[];
+                const relation = model.requireRelation(relationName);
+                const models = relation.getLoadedModels();
+
+                if (!relation.enabled) {
+                    continue;
+                }
 
                 when(relation, isSolidDocumentRelation).reset(models);
 
@@ -456,6 +459,10 @@ export class SolidModel extends SolidModelBase {
         for (const relation of arrayWithout(this.relations, this.reservedRelations)) {
             const relationA = a.requireRelation(relation);
             const relationB = b.requireRelation(relation);
+
+            if (!relationA.enabled || !relationB.enabled) {
+                continue;
+            }
 
             when(relationA, synchronizesRelatedModels).__synchronizeRelated(relationB);
             when(relationB, synchronizesRelatedModels).__synchronizeRelated(relationA);
@@ -549,17 +556,29 @@ export class SolidModel extends SolidModelBase {
     protected initializeRelations(): void {
         super.initializeRelations();
 
+        this.initializeRelationsEnabling();
         this.initializeMetadataRelation();
     }
 
-    protected initializeMetadataRelation(): void {
-        const metadataModelClass = requireBootedModel<typeof Metadata>('Metadata');
+    protected initializeRelationsEnabling(): void {
+        if (!this.static().hasAutomaticTimestamps()) {
+            this._proxy.relatedMetadata.disable();
+        }
 
-        if (this instanceof metadataModelClass || !this.static().hasAutomaticTimestamps()) {
+        if (!this._proxy.tracksHistory()) {
+            this._proxy.relatedOperations.disable();
+            this._proxy.relatedTombstone.disable();
+        }
+
+        this._proxy.relatedAuthorizations.disable();
+    }
+
+    protected initializeMetadataRelation(): void {
+        if (!this._proxy.relatedMetadata.enabled) {
             return;
         }
 
-        const metadataRelation = this._relations.metadata as SolidHasOneRelation;
+        const metadataModelClass = requireBootedModel<typeof Metadata>('Metadata');
         const metadataModel = metadataModelClass.newInstance(objectWithoutEmpty({
             resourceUrl: this._attributes[this.static('primaryKey')],
             createdAt: this._attributes.createdAt,
@@ -567,7 +586,7 @@ export class SolidModel extends SolidModelBase {
         }), this._exists);
 
         metadataModel.resourceUrl && metadataModel.mintUrl(this.getDocumentUrl() || undefined, this._documentExists);
-        metadataRelation.attach(metadataModel);
+        this._proxy.relatedMetadata.attach(metadataModel);
 
         delete this._attributes.createdAt;
         delete this._attributes.updatedAt;
@@ -684,7 +703,7 @@ export class SolidModel extends SolidModelBase {
         Object
             .values(this._relations)
             .filter(isSolidDocumentRelation)
-            .filter(relation => relation.useSameDocument)
+            .filter(relation => relation.enabled && relation.useSameDocument)
             .map(relation => relation.getLoadedModels())
             .flat()
             .forEach(relatedModel => relatedModel.setDocumentExists(documentExists));
@@ -743,7 +762,7 @@ export class SolidModel extends SolidModelBase {
         Object
             .values(this._relations)
             .filter(isSolidMultiModelDocumentRelation)
-            .filter(relation => relation.useSameDocument)
+            .filter(relation => relation.enabled && relation.useSameDocument)
             .forEach(relation => {
                 relation.__modelsInSameDocument = relation.__modelsInSameDocument || [];
                 relation.__modelsInSameDocument.push(...relation.__newModels);
@@ -754,7 +773,7 @@ export class SolidModel extends SolidModelBase {
         Object
             .values(this._relations)
             .filter(isSolidSingleModelDocumentRelation)
-            .filter(relation => relation.useSameDocument && !!relation.__newModel)
+            .filter(relation => relation.enabled && relation.useSameDocument && !!relation.__newModel)
             .forEach(relation => {
                 relation.__modelInSameDocument = relation.__newModel;
 
@@ -913,32 +932,35 @@ export class SolidModel extends SolidModelBase {
             return [...documentModels];
 
         const documentUrl = this.getDocumentUrl();
+        const addModels = (models: SolidModel[]) => models.forEach(model => documentModels.add(model));
 
         documentModels.add(this);
 
         for (const relation of Object.values(this._relations)) {
-            if (!isSolidDocumentRelation(relation) || !relation.loaded || !relation.useSameDocument)
+            if (
+                !relation.enabled ||
+                !relation.loaded ||
+                !isSolidDocumentRelation(relation) ||
+                !relation.useSameDocument
+            ) {
                 continue;
+            }
 
-            const relatedDocumentModels = [
-                ...(
-                    (isSolidSingleModelDocumentRelation(relation) && relation.__newModel)
-                        ? relation.__newModel.getDocumentModels(documentModels)
-                        : []
-                ),
-                ...(
-                    isSolidMultiModelDocumentRelation(relation)
-                        ? relation.__newModels.map(model => model.getDocumentModels(documentModels)).flat()
-                        : []
-                ),
-                ...relation
+            if ((isSolidSingleModelDocumentRelation(relation) && relation.__newModel)) {
+                addModels(relation.__newModel.getDocumentModels(documentModels));
+            }
+
+            if (isSolidMultiModelDocumentRelation(relation)) {
+                addModels(relation.__newModels.map(model => model.getDocumentModels(documentModels)).flat());
+            }
+
+            addModels(
+                relation
                     .getLoadedModels()
                     .filter(model => model.getDocumentUrl() === documentUrl)
                     .map(model => model.getDocumentModels(documentModels))
                     .flat(),
-            ];
-
-            relatedDocumentModels.forEach(model => documentModels.add(model));
+            );
         }
 
         return [...documentModels];
@@ -949,9 +971,10 @@ export class SolidModel extends SolidModelBase {
 
         for (const relation of Object.values(this._relations)) {
             if (
+                !relation.enabled ||
+                !relation.loaded ||
                 !isSolidDocumentRelation(relation) ||
-                !isSolidMultiModelDocumentRelation(relation) ||
-                !relation.loaded
+                !isSolidMultiModelDocumentRelation(relation)
             ) {
                 continue;
             }
@@ -1001,6 +1024,10 @@ export class SolidModel extends SolidModelBase {
         relatedModels.add(this);
 
         for (const relation of Object.values(this._relations)) {
+            if (!relation.enabled) {
+                continue;
+            }
+
             const relationModels = [
                 ...(
                     (isSolidSingleModelDocumentRelation(relation) && relation.__newModel)
@@ -1074,13 +1101,12 @@ export class SolidModel extends SolidModelBase {
             return this.newInstance(attributes, true);
         };
 
-        const rdfDocument = await RDFDocument.fromJsonLD(document);
-        const resource = rdfDocument.requireResource(resourceId || id);
+        const resource = await RDFDocument.resourceFromJsonLDGraph(document as JsonLDGraph, resourceId || id);
         const model = await createModel();
 
         await model.loadDocumentModels(id, document);
 
-        return tap(model, async m => {
+        return tap(model, m => {
             m._sourceDocumentUrl = urlClean(id, { fragment: false });
             m._usesRdfAliases = this.static('rdfsClassesAliases').some(
                 types => !types.some(type => !resource.isType(type)),
@@ -1116,12 +1142,18 @@ export class SolidModel extends SolidModelBase {
         const engine = this.requireEngine();
 
         await Promise.all(
-            Object.values(this._relations).filter(isSolidDocumentRelation).map(async relation => {
-                return relation.relatedClass.withEngine(
-                    engine,
-                    () => relation.__loadDocumentModels(documentUrl, document as JsonLDGraph),
-                );
-            }),
+            Object
+                .values(this._relations)
+                .filter(
+                    (relation: Relation): relation is SolidDocumentRelationInstance =>
+                        relation.enabled && isSolidDocumentRelation(relation),
+                )
+                .map(async relation => {
+                    return relation.relatedClass.withEngine(
+                        engine,
+                        () => relation.__loadDocumentModels(documentUrl, document as JsonLDGraph),
+                    );
+                }),
         );
     }
 
@@ -1169,8 +1201,9 @@ export class SolidModel extends SolidModelBase {
 
     protected async beforeCreate(): Promise<void> {
         for (const relation of Object.values(this._relations)) {
-            if (!hasBeforeParentCreateHook(relation))
+            if (!relation.enabled || !hasBeforeParentCreateHook(relation)) {
                 continue;
+            }
 
             relation.__beforeParentCreate();
         }
@@ -1234,7 +1267,9 @@ export class SolidModel extends SolidModelBase {
     protected onPrimaryKeyUpdated(value: Key | null, oldValue: Key | null): void {
         const documentUrl = this.getDocumentUrl() || undefined;
         const documentExists = this.documentExists();
-        const hasRelations = Object.values(this._relations).filter(isSolidHasRelation);
+        const hasRelations = Object.values(this._relations).filter(
+            relation => relation.enabled && isSolidHasRelation(relation),
+        );
 
         for (const relation of hasRelations) {
             relation.getLoadedModels().forEach(model => {
@@ -1529,16 +1564,7 @@ export class SolidModel extends SolidModelBase {
         document: EngineDocument,
         resourceId?: string,
     ): Promise<Attributes> {
-        resourceId = resourceId || id as string;
-
-        const jsonld = (document['@graph'] as EngineDocument[]).find(entity => entity['@id'] === resourceId);
-
-        if (!jsonld)
-            throw new SoukaiError(`Resource '${resourceId}' not found on document`);
-
-        const rdfDocument = await RDFDocument.fromJsonLD(document);
-
-        return this.convertJsonLDToAttributes(jsonld as JsonLDResource, rdfDocument.requireResource(resourceId));
+        return this.parseEngineDocumentAttributesFromJsonLD(document, resourceId || id as string);
     }
 
     protected castAttribute(value: unknown, options: ModelCastAttributeOptions = {}): unknown {
@@ -1605,6 +1631,10 @@ export class SolidModel extends SolidModelBase {
         // Set foreign keys
         for (const documentModel of models) {
             for (const relation of Object.values(documentModel._relations)) {
+                if (!relation.enabled) {
+                    continue;
+                }
+
                 relation
                     .getLoadedModels()
                     .forEach(model => relation.setForeignAttributes(model));

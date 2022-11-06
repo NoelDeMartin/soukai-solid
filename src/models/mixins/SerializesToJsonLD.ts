@@ -1,12 +1,20 @@
-import { ModelKey } from 'soukai';
-import type { Attributes, EngineAttributeFilter, EngineAttributeUpdate, EngineFilters , EngineUpdates } from 'soukai';
-import type { JsonLD, JsonLDResource } from '@noeldemartin/solid-utils';
+import { fail } from '@noeldemartin/utils';
+import { ModelKey, SoukaiError } from 'soukai';
+import type {
+    Attributes,
+    EngineAttributeFilter,
+    EngineAttributeUpdate,
+    EngineDocument,
+    EngineFilters,
+    EngineUpdates,
+} from 'soukai';
+import type { JsonLD, JsonLDGraph, JsonLDResource } from '@noeldemartin/solid-utils';
 
 import type { SolidModel } from '@/models/SolidModel';
 
+import RDFDocument from '@/solid/RDFDocument';
 import { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 import type RDFResourceProperty from '@/solid/RDFResourceProperty';
-import type RDFResource from '@/solid/RDFResource';
 
 import JsonLDModelSerializer from '@/models/internals/JsonLDModelSerializer';
 
@@ -18,15 +26,19 @@ export default class SerializesToJsonLD {
         return JsonLDModelSerializer.forModel(this.static()).serialize(this, { includeRelations });
     }
 
-    protected async convertJsonLDToAttributes(
+    protected async parseEngineDocumentAttributesFromJsonLD(
         this: This,
-        jsonld: JsonLDResource,
-        resource: RDFResource,
+        document: EngineDocument,
+        resourceId: string,
     ): Promise<Attributes> {
+        const jsonGraph = document as JsonLDGraph;
+        const resourceJson = jsonGraph['@graph'].find(entity => entity['@id'] === resourceId)
+            ?? fail<JsonLDResource>(SoukaiError, `Resource '${resourceId}' not found on document`);
+        const resource = await RDFDocument.resourceFromJsonLDGraph(jsonGraph, resourceId, resourceJson);
         const fieldsDefinition = this.static('fields');
         const attributes: Attributes = {};
 
-        attributes[this.static('primaryKey')] = jsonld['@id'];
+        attributes[this.static('primaryKey')] = resourceId;
 
         for (const [fieldName, fieldDefinition] of Object.entries(fieldsDefinition)) {
             if (!fieldDefinition.rdfProperty)

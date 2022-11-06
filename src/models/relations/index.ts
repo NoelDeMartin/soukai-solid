@@ -39,7 +39,11 @@ export type {
     ProtectedThis as SolidBelongsToRelationProtectedThis,
     This as SolidBelongsToRelationThis,
 } from './mixins/SolidBelongsToRelation';
-export type { default as SolidDocumentRelation, ISolidDocumentRelation } from './mixins/SolidDocumentRelation';
+export type {
+    default as SolidDocumentRelation,
+    ISolidDocumentRelation,
+    SolidDocumentRelationInstance,
+} from './mixins/SolidDocumentRelation';
 export type {
     default as SolidHasRelation,
     ProtectedThis as SolidHasRelationProtectedThis,
@@ -47,9 +51,11 @@ export type {
 } from './mixins/SolidHasRelation';
 export type {
     default as SolidMultiModelDocumentRelation,
+    SolidMultiModelDocumentRelationInstance,
     This as SolidMultiModelDocumentRelationThis,
 } from './mixins/SolidMultiModelDocumentRelation';
 export type {
     default as SolidSingleModelDocumentRelation,
+    SolidSingleModelDocumentRelationInstance,
     This as SolidSingleModelDocumentRelationThis,
 } from './mixins/SolidSingleModelDocumentRelation';

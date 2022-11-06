@@ -186,8 +186,14 @@ export default class JsonLDModelSerializer {
             const relation = model.requireRelation<SolidRelation>(relationName);
             const loadedModel = relation.getLoadedModels()[0];
 
-            if (!relation.loaded || relation.isEmpty() || (loadedModel && ignoredModels.has(loadedModel)))
+            if (
+                !relation.enabled ||
+                !relation.loaded ||
+                relation.isEmpty() ||
+                (loadedModel && ignoredModels.has(loadedModel))
+            ) {
                 continue;
+            }
 
             this.context.addTerms(relation.relatedClass.rdfContexts);
             this.setJsonLDRelation(jsonld, relation, ignoredModels);

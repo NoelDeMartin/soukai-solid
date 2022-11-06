@@ -5,11 +5,11 @@ import SolidBelongsToRelation from '@/models/relations/mixins/SolidBelongsToRela
 import SolidHasRelation from '@/models/relations/mixins/SolidHasRelation';
 import type { SolidDocumentRelationInstance } from '@/models/relations/mixins/SolidDocumentRelation';
 
-interface BeforeParentCreateRelation extends Relation {
+export interface BeforeParentCreateRelation extends Relation {
     __beforeParentCreate(): void;
 }
 
-interface SynchronizesRelatedModels extends Relation {
+export interface SynchronizesRelatedModels extends Relation {
     __synchronizeRelated(other: Relation): void;
 }
 

@@ -1,6 +1,6 @@
 import { SoukaiError } from 'soukai';
-import { arrayWithout, tap, urlResolve, urlRoute } from '@noeldemartin/utils';
-import type { JsonLD, JsonLDGraph } from '@noeldemartin/solid-utils';
+import { fail, objectMap, tap, urlResolve, urlRoute } from '@noeldemartin/utils';
+import type { JsonLD, JsonLDGraph, JsonLDResource } from '@noeldemartin/solid-utils';
 import type { Quad } from 'rdf-js';
 
 import { fromTurtle, toRDF } from '@/solid/external';
@@ -12,6 +12,11 @@ export interface TurtleParsingOptions {
     baseUrl?: string;
     format?: string;
     headers?: Headers;
+}
+
+export interface CloneOptions {
+    changeUrl: string;
+    removeResourceUrls: string[];
 }
 
 export interface RDFDocumentMetadata {
@@ -43,9 +48,41 @@ export default class RDFDocument {
         }
     }
 
+    public static async resourceFromJsonLDGraph(
+        documentJson: JsonLDGraph,
+        resourceId: string,
+        resourceJson?: JsonLDResource,
+    ): Promise<RDFResource> {
+        const requireResourceJson = () => {
+            return resourceJson
+                ?? documentJson['@graph'].find(entity => entity['@id'] === resourceId)
+                ?? fail<JsonLDResource>(SoukaiError, `Resource '${resourceId}' not found on document`);
+        };
+
+        const document = this.documentsCache.get(documentJson) ?? await this.fromJsonLD(requireResourceJson());
+
+        return document.requireResource(resourceId);
+    }
+
     public static async fromJsonLD(json: JsonLD, baseUrl?: string): Promise<RDFDocument> {
         return this.documentsCache.get(json)
             ?? await this.getFromJsonLD(json, baseUrl);
+    }
+
+    public static reduceJsonLDGraph(json: JsonLDGraph, resourceId: string): JsonLDGraph {
+        return tap({ '@graph': json['@graph'].filter(resource => resource['@id'] !== resourceId) }, reducedJson => {
+            const document = this.documentsCache.get(json);
+
+            if (!document) {
+                return;
+            }
+
+            this.cacheJsonLD(reducedJson, document.clone({ removeResourceUrls: [resourceId] }));
+        });
+    }
+
+    private static cacheJsonLD(json: JsonLD, document: RDFDocument): void {
+        this.documentsCache.set(json, document);
     }
 
     private static async getFromJsonLD(json: JsonLD, baseUrl?: string): Promise<RDFDocument> {
@@ -57,11 +94,11 @@ export default class RDFDocument {
     }
 
     public readonly url: string | null;
-    public readonly statements: Quad[];
     public readonly metadata: RDFDocumentMetadata;
-    public readonly resourcesIndex: Record<string, RDFResource>;
-    public readonly properties: RDFResourceProperty[];
-    public readonly resources: RDFResource[];
+    public statements: Quad[];
+    public resourcesIndex: Record<string, RDFResource>;
+    public properties: RDFResourceProperty[];
+    public resources: RDFResource[];
 
     constructor(url: string | null, statements: Quad[] = [], metadata: RDFDocumentMetadata = {}) {
         this.url = url;
@@ -80,7 +117,7 @@ export default class RDFDocument {
         this.resources = Object.values(this.resourcesIndex);
 
         this.properties = this.resources.reduce(
-            (properties, resource) => [...properties, ...resource.properties],
+            (properties, resource) => properties.concat(resource.properties),
             [] as RDFResourceProperty[],
         );
     }
@@ -112,20 +149,30 @@ export default class RDFDocument {
         return resource;
     }
 
-    public clone(url: string | null = null): RDFDocument {
-        const document = new RDFDocument(url || this.url);
-        const properties = arrayWithout(Object.getOwnPropertyNames(this), ['url']) as (keyof this)[];
+    public clone(options: Partial<CloneOptions> = {}): RDFDocument {
+        return tap(new RDFDocument(options.changeUrl ?? this.url, [], this.metadata), document => {
+            const removeResourceUrls = options.removeResourceUrls;
 
-        Object.assign(
-            document,
-            properties.reduce((properties, property) => {
-                properties[property] = this[property as keyof this];
+            if (!removeResourceUrls) {
+                document.statements = this.statements.slice(0);
+                document.properties = this.properties.slice(0);
+                document.resources = this.resources.slice(0);
+                document.resourcesIndex = { ...this.resourcesIndex };
 
-                return properties;
-            }, {} as this),
-        );
+                return;
+            }
 
-        return document;
+            document.statements = this.statements.filter(
+                statement => !removeResourceUrls.includes(statement.subject.value),
+            );
+            document.properties = this.properties.filter(
+                property => !property.resourceUrl || !removeResourceUrls.includes(property.resourceUrl),
+            );
+            document.resources = this.resources.filter(
+                resource => !removeResourceUrls.includes(resource.url),
+            );
+            document.resourcesIndex = objectMap(document.resources, 'url');
+        });
     }
 
 }

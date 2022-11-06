@@ -3,6 +3,7 @@ import type { Attributes, EngineDocument } from 'soukai';
 
 import JsonLDModelSerializer from '@/models/internals/JsonLDModelSerializer';
 import RDF from '@/solid/utils/RDF';
+import RDFDocument from '@/solid/RDFDocument';
 import { operationClass, operationClasses } from '@/models/history/operations';
 import type AddPropertyOperation from '@/models/history/AddPropertyOperation';
 import type DeleteOperation from '@/models/history/DeleteOperation';
@@ -73,9 +74,7 @@ export default class OperationsRelation<Parent extends SolidModel = SolidModel>
     public async __loadDocumentModels(documentUrl: string, document: JsonLDGraph): Promise<void> {
         const foreignFields = this.relatedClass.fields as unknown as SolidBootedFieldsDefinition;
         const foreignProperty = foreignFields[this.foreignKeyName]?.rdfProperty as string;
-        const reducedDocument = {
-            '@graph': document['@graph'].filter(resource => resource['@id'] !== this.parent.id),
-        } as EngineDocument & JsonLDGraph;
+        const reducedDocument = RDFDocument.reduceJsonLDGraph(document, this.parent.id) as EngineDocument;
         const resources = document['@graph'].filter(resource => {
             const property = RDF.getJsonLDProperty(resource, foreignProperty);
 

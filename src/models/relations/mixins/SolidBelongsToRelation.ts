@@ -3,6 +3,7 @@ import { urlRoute } from '@noeldemartin/utils';
 import type { EngineDocument, EngineDocumentsCollection, Relation } from 'soukai';
 import type { JsonLDGraph } from '@noeldemartin/solid-utils';
 
+import RDFDocument from '@/solid/RDFDocument';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
@@ -35,9 +36,7 @@ export default class SolidBelongsToRelation {
             ? foreignKeyValue
             : (foreignKeyValue ? [foreignKeyValue] : []);
         const filters = this.relatedClass.prepareEngineFilters();
-        const reducedDocument = {
-            '@graph': document['@graph'].filter(resource => resource['@id'] !== this.parent.id),
-        } as EngineDocument;
+        const reducedDocument = RDFDocument.reduceJsonLDGraph(document, this.parent.id) as EngineDocument;
         const documents = document['@graph']
             .filter(resource => modelIds.indexOf(resource['@id']) !== -1)
             .reduce((documents, resource) => {

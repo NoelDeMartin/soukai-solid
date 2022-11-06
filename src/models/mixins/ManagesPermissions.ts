@@ -83,6 +83,8 @@ export default class ManagesPermissions {
     }
 
     private async updateAuthorizations(this: This, permissions: SolidDocumentPermission[]): Promise<void> {
+        this.relatedAuthorizations.enable();
+
         const authorizations = await this.loadRelationIfUnloaded<SolidACLAuthorization[]>('authorizations');
         const aclAuthorizationClass = requireBootedModel<typeof SolidACLAuthorization>('SolidACLAuthorization');
         const modes = permissions.map(permission => aclAuthorizationClass.modeFromSolidDocumentPermission(permission));
@@ -121,6 +123,8 @@ export default class ManagesPermissions {
     }
 
     private async createDocumentACLResource(this: This, publicModes: string[]): Promise<void> {
+        this.relatedAuthorizations.enable();
+
         const aclAuthorizationClass = requireBootedModel<typeof SolidACLAuthorization>('SolidACLAuthorization');
         const authorizations = this.authorizations as SolidACLAuthorization[];
         const ownerAuthorizations = authorizations
@@ -150,6 +154,8 @@ export default class ManagesPermissions {
     }
 
     private async createPublicAuthorization(this: This, modes: string[]): Promise<void> {
+        this.relatedAuthorizations.enable();
+
         const aclAuthorizationClass = requireBootedModel<typeof SolidACLAuthorization>('SolidACLAuthorization');
         const publicAuthorization = await aclAuthorizationClass.createInDocument({
             agentClasses: [aclAuthorizationClass.rdfProperty('foaf:Agent')],
