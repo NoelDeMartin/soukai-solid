@@ -1349,6 +1349,13 @@ export class SolidModel extends SolidModelBase {
     protected async addDirtyHistoryOperations(): Promise<void> {
         await this.loadRelationIfUnloaded('operations');
 
+        if ('url' in this._dirtyAttributes) {
+            throw new SoukaiError(
+                'It wasn\'t possible to generate the changes history for a model because ' +
+                `its primary key was modified from '${this.url}' to '${this._originalAttributes.url}'.`,
+            );
+        }
+
         if (this.operations.length === 0) {
             const originalAttributes = objectWithoutEmpty(
                 objectWithout(this._originalAttributes, [this.static('primaryKey')]),
@@ -1362,7 +1369,7 @@ export class SolidModel extends SolidModelBase {
                     continue;
 
                 this.relatedOperations.attachSetOperation({
-                    property: this.static().getFieldRdfProperty(field),
+                    property: this.static().requireFieldRdfProperty(field),
                     date: this.metadata.createdAt,
                     value: this.getOperationValue(field, value),
                 });
@@ -1382,7 +1389,7 @@ export class SolidModel extends SolidModelBase {
             // TODO handle unset operations
 
             this.relatedOperations.attachSetOperation({
-                property: this.static().getFieldRdfProperty(field),
+                property: this.static().requireFieldRdfProperty(field),
                 date: this.metadata.updatedAt,
                 value: this.getOperationValue(field, value),
             });
