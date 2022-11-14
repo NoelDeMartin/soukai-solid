@@ -1,11 +1,10 @@
 import { tap, toString } from '@noeldemartin/utils';
-import { FieldType, SoukaiError } from 'soukai';
+import { FieldType, MultiModelRelation, SoukaiError } from 'soukai';
 import type { Attributes, BootedArrayFieldDefinition } from 'soukai';
 import type { JsonLD } from '@noeldemartin/solid-utils';
 
 import { inferFieldDefinition } from '@/models/fields';
-import { isSolidHasRelation } from '@/models/relations/guards';
-import { isSolidMultiModelDocumentRelation } from '@/models/relations/cardinality-guards';
+import { isSolidDocumentRelation, isSolidHasRelation } from '@/models/relations/guards';
 import type { SolidBootedFieldDefinition } from '@/models/fields';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidRelation } from '@/models/relations/inference';
@@ -189,6 +188,7 @@ export default class JsonLDModelSerializer {
             if (
                 !relation.enabled ||
                 !relation.loaded ||
+                !isSolidDocumentRelation(relation) ||
                 relation.isEmpty() ||
                 (loadedModel && ignoredModels.has(loadedModel))
             ) {
@@ -222,7 +222,7 @@ export default class JsonLDModelSerializer {
         if (solidHasRelation)
             this.context.addReverseProperty(relation.name, foreignProperty);
 
-        jsonld[solidHasRelation ? relation.name : foreignProperty] = isSolidMultiModelDocumentRelation(relation)
+        jsonld[solidHasRelation ? relation.name : foreignProperty] = relation instanceof MultiModelRelation
             ? relation.getLoadedModels().map(model => serializeRelatedModel(model))
             : serializeRelatedModel(relation.related as SolidModel);
     }
