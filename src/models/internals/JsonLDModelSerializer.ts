@@ -1,5 +1,5 @@
 import { tap, toString } from '@noeldemartin/utils';
-import { FieldType, MultiModelRelation, SoukaiError } from 'soukai';
+import { FieldType, SoukaiError } from 'soukai';
 import type { Attributes, BootedArrayFieldDefinition } from 'soukai';
 import type { JsonLD } from '@noeldemartin/solid-utils';
 
@@ -202,6 +202,7 @@ export default class JsonLDModelSerializer {
 
     private setJsonLDRelation(jsonld: JsonLD, relation: SolidRelation, ignoredModels: Set<SolidModel>): void {
         const relatedInstance = relation.relatedClass.instance() as SolidModel;
+        const relatedModels = relation.related;
         const solidHasRelation = isSolidHasRelation(relation);
         const expandedForeignProperty =
             solidHasRelation
@@ -219,12 +220,17 @@ export default class JsonLDModelSerializer {
                 delete jsonld[foreignProperty];
             });
 
-        if (solidHasRelation)
-            this.context.addReverseProperty(relation.name, foreignProperty);
+        if (!relatedModels) {
+            return;
+        }
 
-        jsonld[solidHasRelation ? relation.name : foreignProperty] = relation instanceof MultiModelRelation
-            ? relation.getLoadedModels().map(model => serializeRelatedModel(model))
-            : serializeRelatedModel(relation.related as SolidModel);
+        if (solidHasRelation) {
+            this.context.addReverseProperty(relation.name, foreignProperty);
+        }
+
+        jsonld[solidHasRelation ? relation.name : foreignProperty] = Array.isArray(relatedModels)
+            ? relatedModels.map(model => serializeRelatedModel(model))
+            : serializeRelatedModel(relatedModels);
     }
 
     private setJsonLDTypes(jsonld: JsonLD, model: SolidModel): void {
