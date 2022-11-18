@@ -1595,8 +1595,17 @@ export class SolidModel extends SolidModelBase {
             const isNullOrUndefined = typeof value === 'undefined' || value === null;
 
             switch (options.definition?.type) {
-                case FieldType.Array:
-                    return isNullOrUndefined ? [] : arrayFrom(value);
+                case FieldType.Array: {
+                    const arrayValue = isNullOrUndefined ? [] : arrayFrom(value);
+                    const uniqueArrayValue = arrayUnique(arrayValue);
+
+                    if (arrayValue.length !== uniqueArrayValue.length) {
+                        // eslint-disable-next-line no-console
+                        console.warn('An array field had duplicate values, this is not supported in Solid models.');
+                    }
+
+                    return uniqueArrayValue;
+                }
                 case FieldType.Any:
                     if (!Array.isArray(value))
                         return value;

@@ -319,6 +319,23 @@ describe('SolidModel', () => {
         expect(document['@graph'][0]['@type']).not.toBeUndefined();
     });
 
+    it('removes duplicated array values', async () => {
+        // Arrange
+        const url = fakeResourceUrl();
+        const name = Faker.random.word();
+        const movie = new Movie({ url, name, externalUrls: ['https://example.com', 'https://example.org', 'https://example.com'] });
+        const createSpy = jest.spyOn(engine, 'create');
+
+        // Act
+        await movie.save();
+
+        // Assert
+        const document = createSpy.mock.calls[0]?.[1] as JsonLDGraph;
+
+        expect(movie.externalUrls).toEqual(['https://example.com', 'https://example.org']);
+        expect(document['@graph'][0]?.sameAs).toHaveLength(2);
+    });
+
     it('sends JSON-LD with related models in the same document', async () => {
         // Arrange
         const containerUrl = urlResolveDirectory(Faker.internet.url());
