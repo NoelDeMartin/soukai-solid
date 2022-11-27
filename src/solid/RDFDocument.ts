@@ -1,17 +1,15 @@
-import { SoukaiError } from 'soukai';
 import { fail, objectMap, tap, urlResolve, urlRoute } from '@noeldemartin/utils';
+import { jsonldToQuads, parseTurtle, quadsToJsonLD } from '@noeldemartin/solid-utils';
+import { SoukaiError } from 'soukai';
 import type { JsonLD, JsonLDGraph, JsonLDResource } from '@noeldemartin/solid-utils';
 import type { Quad } from 'rdf-js';
 
-import { fromTurtle, toRDF } from '@/solid/external';
-import RDF from '@/solid/utils/RDF';
 import RDFResource from '@/solid/RDFResource';
 import type RDFResourceProperty from '@/solid/RDFResourceProperty';
 
 export interface TurtleParsingOptions {
-    baseUrl?: string;
-    format?: string;
-    headers?: Headers;
+    baseIRI: string;
+    headers: Headers;
 }
 
 export interface CloneOptions {
@@ -25,27 +23,20 @@ export interface RDFDocumentMetadata {
     headers?: Headers;
 }
 
-export class RDFParsingError extends SoukaiError {}
-
 export default class RDFDocument {
 
     private static documentsCache: WeakMap<JsonLD, RDFDocument> = new WeakMap();
 
-    public static async fromTurtle(turtle: string, options: TurtleParsingOptions = {}): Promise<RDFDocument> {
-        try {
-            const data = await fromTurtle(turtle, {
-                baseIRI: options.baseUrl || '',
-                format: options.format || 'text/turtle',
-            });
+    public static async fromTurtle(turtle: string, options: Partial<TurtleParsingOptions> = {}): Promise<RDFDocument> {
+        const data = await parseTurtle(turtle, {
+            baseIRI: options.baseIRI,
+        });
 
-            return new RDFDocument(options.baseUrl || '', data.quads, {
-                containsRelativeIRIs: data.containsRelativeIRIs,
-                describedBy: getDescribedBy(options),
-                headers: options.headers,
-            });
-        } catch (error) {
-            throw new RDFParsingError((error as Error).message);
-        }
+        return new RDFDocument(options.baseIRI || '', data.quads, {
+            containsRelativeIRIs: data.containsRelativeIRIs,
+            describedBy: getDescribedBy(options),
+            headers: options.headers,
+        });
     }
 
     public static async resourceFromJsonLDGraph(
@@ -86,7 +77,7 @@ export default class RDFDocument {
     }
 
     private static async getFromJsonLD(json: JsonLD, baseUrl?: string): Promise<RDFDocument> {
-        const quads = await toRDF(json, baseUrl);
+        const quads = await jsonldToQuads(json, baseUrl);
 
         return tap(new RDFDocument(json['@id'] ? urlRoute(json['@id']) : null, quads), document => {
             this.documentsCache.set(json, document);
@@ -133,7 +124,7 @@ export default class RDFDocument {
     }
 
     public async toJsonLD(): Promise<JsonLDGraph> {
-        return RDF.createJsonLD(this.statements);
+        return quadsToJsonLD(this.statements);
     }
 
     public resource(url: string): RDFResource | null {
@@ -177,7 +168,7 @@ export default class RDFDocument {
 
 }
 
-function getDescribedBy(options: TurtleParsingOptions): string | undefined {
+function getDescribedBy(options: Partial<TurtleParsingOptions> = {}): string | undefined {
     if (!options.headers?.has('Link'))
         return undefined;
 
@@ -186,5 +177,5 @@ function getDescribedBy(options: TurtleParsingOptions): string | undefined {
     if (!matches)
         return undefined;
 
-    return urlResolve(options.baseUrl || '', matches[1] as string);
+    return urlResolve(options.baseIRI || '', matches[1] as string);
 }

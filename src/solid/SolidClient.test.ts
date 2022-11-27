@@ -1,8 +1,7 @@
 import Faker from 'faker';
+import { MalformedSolidDocumentError } from '@noeldemartin/solid-utils';
 import { range, stringToSlug, urlResolve, urlResolveDirectory, urlRoute, uuid } from '@noeldemartin/utils';
 import type { Tuple } from '@noeldemartin/utils';
-
-import MalformedDocumentError from '@/errors/MalformedDocumentError';
 
 import ChangeUrlOperation from '@/solid/operations/ChangeUrlOperation';
 import IRI from '@/solid/utils/IRI';
@@ -831,7 +830,7 @@ describe('SolidClient', () => {
 
     it('handles malformed document errors', async () => {
         // Arrange
-        let error!: MalformedDocumentError;
+        let error!: MalformedSolidDocumentError;
         const url = Faker.internet.url();
 
         StubFetcher.addFetchResponse('this is not turtle');
@@ -840,17 +839,17 @@ describe('SolidClient', () => {
         try {
             await client.getDocument(url);
         } catch (e) {
-            error = e as MalformedDocumentError;
+            error = e as MalformedSolidDocumentError;
         }
 
         // Assert
-        expect(error).toBeInstanceOf(MalformedDocumentError);
-        expect(error.message).toEqual(`Malformed RDF document found at ${url} - Unexpected "this" on line 1.`);
+        expect(error).toBeInstanceOf(MalformedSolidDocumentError);
+        expect(error.message).toEqual(`Malformed Turtle document found at ${url} - Unexpected "this" on line 1.`);
     });
 
     it('handles malformed document errors reading containers', async () => {
         // Arrange
-        let error!: MalformedDocumentError;
+        let error!: MalformedSolidDocumentError;
         const containerUrl = urlResolveDirectory(
             Faker.internet.url(),
             stringToSlug(Faker.random.word()),
@@ -862,12 +861,14 @@ describe('SolidClient', () => {
         try {
             await client.getDocuments(containerUrl);
         } catch (e) {
-            error = e as MalformedDocumentError;
+            error = e as MalformedSolidDocumentError;
         }
 
         // Assert
-        expect(error).toBeInstanceOf(MalformedDocumentError);
-        expect(error.message).toEqual(`Malformed RDF document found at ${containerUrl} - Unexpected "this" on line 1.`);
+        expect(error).toBeInstanceOf(MalformedSolidDocumentError);
+        expect(error.message).toEqual(
+            `Malformed Turtle document found at ${containerUrl} - Unexpected "this" on line 1.`,
+        );
     });
 
 });

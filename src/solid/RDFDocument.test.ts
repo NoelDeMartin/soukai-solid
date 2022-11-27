@@ -16,7 +16,7 @@ describe('RDFDocument', () => {
             <${url}>
                 a foaf:Person ;
                 foaf:name "${name}" .
-        `, { baseUrl: url });
+        `, { baseIRI: url });
 
         // Assert
         expect(document.statements).toHaveLength(2);

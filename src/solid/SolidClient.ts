@@ -12,7 +12,7 @@ import { NetworkRequestError, UnsuccessfulNetworkRequestError } from '@noeldemar
 import type { Quad, Quad_Object } from 'rdf-js';
 
 import IRI from '@/solid/utils/IRI';
-import RDFDocument, { RDFParsingError } from '@/solid/RDFDocument';
+import RDFDocument from '@/solid/RDFDocument';
 import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
@@ -20,8 +20,6 @@ import { decantUpdateOperations, decantUpdateOperationsData } from '@/solid/oper
 import { OperationType } from '@/solid/operations/Operation';
 import type { LiteralValue } from '@/solid/RDFResourceProperty';
 import type { UpdateOperation } from '@/solid/operations/Operation';
-
-import MalformedDocumentError, { DocumentFormat } from '@/errors/MalformedDocumentError';
 
 const RESERVED_CONTAINER_PROPERTIES = [
     IRI('ldp:contains'),
@@ -108,17 +106,12 @@ export default class SolidClient {
             return null;
 
         const data = await response.text();
+        const document = await RDFDocument.fromTurtle(data, {
+            headers: response.headers,
+            baseIRI: url,
+        });
 
-        try {
-            const document = await RDFDocument.fromTurtle(data, {
-                headers: response.headers,
-                baseUrl: url,
-            });
-
-            return document;
-        } catch (error) {
-            throw new MalformedDocumentError(url, DocumentFormat.RDF, (error as Error)?.message);
-        }
+        return document;
     }
 
     public async getDocuments(containerUrl: string, needsContainers: boolean = false): Promise<RDFDocument[]> {
@@ -127,9 +120,6 @@ export default class SolidClient {
                 ? await this.getContainerDocumentsUsingGlobbing(containerUrl)
                 : await this.getContainerDocuments(containerUrl);
         } catch (error) {
-            if (error instanceof RDFParsingError)
-                throw new MalformedDocumentError(containerUrl, DocumentFormat.RDF, error.message);
-
             if (this.config.useGlobbing) {
                 // Due to an existing bug, empty containers return 404
                 // see: https://github.com/solid/node-solid-server/issues/900
@@ -324,7 +314,7 @@ export default class SolidClient {
     private async getContainerDocuments(containerUrl: string): Promise<RDFDocument[]> {
         const response = await this.fetch(containerUrl, { headers: { Accept: 'text/turtle' } });
         const turtleData = await response.text();
-        const containerDocument = await RDFDocument.fromTurtle(turtleData, { baseUrl: containerUrl });
+        const containerDocument = await RDFDocument.fromTurtle(turtleData, { baseIRI: containerUrl });
 
         return this.getDocumentsFromContainer(containerUrl, containerDocument);
     }
@@ -357,7 +347,7 @@ export default class SolidClient {
         );
 
         const turtleData = await response.text();
-        const globbingDocument = await RDFDocument.fromTurtle(turtleData, { baseUrl: containerUrl });
+        const globbingDocument = await RDFDocument.fromTurtle(turtleData, { baseIRI: containerUrl });
         const statementsByUrl = globbingDocument.statements.reduce(
             (statementsByUrl, statement) => {
                 const baseUrl = urlClean(statement.subject.value, { fragment: false });

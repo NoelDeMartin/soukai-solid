@@ -1,5 +1,5 @@
 import { arrayFrom, arrayUnique, isObject, urlParentDirectory, urlRoot } from '@noeldemartin/utils';
-import { quadsToJsonLD } from '@noeldemartin/solid-utils';
+import { compactJsonLDGraph, quadsToJsonLD } from '@noeldemartin/solid-utils';
 import {
     DocumentAlreadyExists,
     DocumentNotFound,
@@ -30,7 +30,6 @@ import type { RDFDocumentMetadata } from '@/solid/RDFDocument';
 import type { UpdateOperation } from '@/solid/operations/Operation';
 
 import IRI from '@/solid/utils/IRI';
-import { compactJsonLDGraph } from '@/solid/external';
 
 export interface SolidEngineConfig {
     useGlobbing: boolean;

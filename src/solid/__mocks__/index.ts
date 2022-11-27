@@ -32,7 +32,7 @@ export class SolidClientMock {
         if (await this.documentExists(url))
             throw new Error(`Cannot create a document at ${url}, url already in use`);
 
-        const document = await RDFDocument.fromTurtle(turtleData, { baseUrl: url });
+        const document = await RDFDocument.fromTurtle(turtleData, { baseIRI: url });
 
         this.documents[url] = [document];
 

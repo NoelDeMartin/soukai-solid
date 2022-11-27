@@ -1,18 +1,8 @@
-import type { Quad } from 'rdf-js';
-import type { JsonLD, JsonLDGraph } from '@noeldemartin/solid-utils';
+import type { JsonLD } from '@noeldemartin/solid-utils';
 
-import { fromRDF } from '@/solid/external';
 import IRI from '@/solid/utils/IRI';
 
 class RDF {
-
-    public async createJsonLD(statements: Quad[]): Promise<JsonLDGraph> {
-        const resources = await fromRDF(statements);
-
-        return {
-            '@graph': resources,
-        };
-    }
 
     public getJsonLDProperty<T = unknown>(json: JsonLD, property: string): T | null {
         property = IRI(property);
