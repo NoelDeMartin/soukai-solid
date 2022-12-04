@@ -1,8 +1,8 @@
 import { FieldType } from 'soukai';
 import { uuid } from '@noeldemartin/utils';
-import type { IModel } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
+import type { ISolidModel } from '@/models/SolidModel';
 
 export const OperationFieldsDefinition = {
     resourceUrl: {
@@ -44,4 +44,4 @@ export default class Operation extends SolidModel {
 
 }
 
-export default interface Operation extends IModel<typeof Operation> {}
+export default interface Operation extends ISolidModel<typeof Operation> {}

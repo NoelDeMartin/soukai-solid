@@ -1,6 +1,7 @@
-import { SolidModel } from './SolidModel';
 import { FieldType } from 'soukai';
-import type { IModel } from 'soukai';
+
+import { SolidModel } from './SolidModel';
+import type { ISolidModel } from './SolidModel';
 
 export default class SolidDocument extends SolidModel {
 
@@ -17,4 +18,4 @@ export default class SolidDocument extends SolidModel {
 
 }
 
-export default interface SolidDocument extends Omit<IModel<typeof SolidDocument>, 'updatedAt'> {}
+export default interface SolidDocument extends Omit<ISolidModel<typeof SolidDocument>, 'updatedAt'> {}

@@ -30,7 +30,7 @@ export default class SolidIsContainedByRelation<
         ]);
     }
 
-    public async resolve(): Promise<Related | null> {
+    public async load(): Promise<Related | null> {
         const oldCollection = this.relatedClass.collection;
         const containerUrl = requireUrlParentDirectory(this.parent.url);
 
@@ -41,10 +41,6 @@ export default class SolidIsContainedByRelation<
         this.relatedClass.collection = oldCollection;
 
         return this.related;
-    }
-
-    public addRelated(related: Related): void {
-        this.related = related;
     }
 
 }

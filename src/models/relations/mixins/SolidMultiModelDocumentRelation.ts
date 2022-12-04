@@ -1,6 +1,7 @@
 import { arrayUnique, tap } from '@noeldemartin/utils';
-import { SoukaiError } from 'soukai';
-import type { Attributes, Key, MultiModelRelation } from 'soukai';
+import { MultiModelRelation } from 'soukai';
+import type { Attributes, Key } from 'soukai';
+import type { ClosureArgs } from '@noeldemartin/utils';
 
 import { isSolidBelongsToRelation, isSolidHasRelation } from '@/models/relations/guards';
 import type { SolidModel } from '@/models/SolidModel';
@@ -16,6 +17,11 @@ export type This<
 > =
     SolidMultiModelDocumentRelation<Parent, Related, RelatedClass> &
     MultiModelRelation<Parent, Related, RelatedClass>;
+
+// Workaround for https://github.com/microsoft/TypeScript/issues/29132
+export interface ProtectedSolidMultiRelation<Related extends SolidModel = SolidModel> {
+    assertLoaded(method: string): this is { related: Related[] };
+}
 
 export type SolidMultiModelDocumentRelationInstance<
     Parent extends SolidModel = SolidModel,
@@ -33,6 +39,18 @@ export default class SolidMultiModelDocumentRelation<
     public __removedDocumentModels: Related[] = [];
     declare public __modelsInSameDocument?: Related[];
     declare public __modelsInOtherDocumentIds?: string[];
+
+    protected get protectedSolidMulti(): ProtectedSolidMultiRelation {
+        return this as unknown as ProtectedSolidMultiRelation;
+    }
+
+    private get super(): MultiModelRelation {
+        return new Proxy(this, {
+            get: (target, property: keyof MultiModelRelation) => {
+                return (...args: ClosureArgs) => MultiModelRelation.prototype[property].call(this, ...args);
+            },
+        }) as unknown as MultiModelRelation;
+    }
 
     public isEmpty(this: This): boolean | null {
         if (!this.documentModelsLoaded && this.parent.exists())
@@ -54,7 +72,7 @@ export default class SolidMultiModelDocumentRelation<
      * @param attributes Attributes to create the related instance.
      */
     public async create(this: This<Parent, Related, RelatedClass>, attributes: Attributes = {}): Promise<Related> {
-        this.assertLoaded('create');
+        this.protectedSolidMulti.assertLoaded('create');
 
         const model = this.relatedClass.newInstance<Related>(attributes);
 
@@ -71,7 +89,7 @@ export default class SolidMultiModelDocumentRelation<
      * @param model Related model instance to save.
      */
     public async save(this: This, model: Related): Promise<Related> {
-        this.assertLoaded('save');
+        this.protectedSolidMulti.assertLoaded('save');
         this.attach(model);
 
         if (!this.useSameDocument)
@@ -80,26 +98,6 @@ export default class SolidMultiModelDocumentRelation<
             await this.parent.save();
 
         return model;
-    }
-
-    public attach(model: Related): Related;
-    public attach(attributes: Attributes): Related;
-    public attach(this: This<Parent, Related, RelatedClass>, modelOrAttributes: Related | Attributes): Related {
-        const model = modelOrAttributes instanceof this.relatedClass
-            ? modelOrAttributes as Related
-            : this.relatedClass.newInstance(modelOrAttributes);
-
-        return tap(model, () => {
-            if (!this.assertLoaded('add') || this.related.includes(model) || this.__newModels.includes(model))
-                return;
-
-            if (!model.exists())
-                this.__newModels.push(model);
-
-            this.addRelated(model);
-            this.initializeInverseRelations(model);
-            this.setForeignAttributes(model);
-        });
     }
 
     public async remove(this: This<Parent, Related, RelatedClass>, keyOrModel: Key | Related): Promise<void> {
@@ -137,6 +135,19 @@ export default class SolidMultiModelDocumentRelation<
                 this.parent.getAttribute<Key[]>(this.foreignKeyName).filter(key => key !== localKey),
             );
         }
+    }
+
+    public addRelated(related: Related): void {
+        this.super.addRelated(related);
+
+        if (!related.exists()) {
+            this.__newModels.push(related);
+        }
+    }
+
+    public isRelated(model: Related): boolean {
+        return this.super.isRelated(model)
+            || this.__newModels.includes(model);
     }
 
     protected cloneSolidData(clone: This<Parent, Related, RelatedClass>): void {
@@ -186,19 +197,6 @@ export default class SolidMultiModelDocumentRelation<
             ]);
 
         this.documentModelsLoaded = true;
-    }
-
-    private assertLoaded(this: This, method: string): this is { related: Related[] } {
-        if (this.loaded)
-            return true;
-
-        if (!this.parent.exists()) {
-            this.related = [];
-
-            return true;
-        }
-
-        throw new SoukaiError(`The "${method}" method can't be called before loading the relationship`);
     }
 
 }

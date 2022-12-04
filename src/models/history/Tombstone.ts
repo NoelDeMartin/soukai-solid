@@ -1,4 +1,4 @@
-import type { IModel } from 'soukai';
+import type { ISolidModel } from '@/models/SolidModel';
 
 import Metadata from './Metadata';
 
@@ -8,4 +8,4 @@ export default class Tombstone extends Metadata {
 
 }
 
-export default interface Tombstone extends IModel<typeof Tombstone> {}
+export default interface Tombstone extends ISolidModel<typeof Tombstone> {}

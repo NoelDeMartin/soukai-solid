@@ -46,10 +46,8 @@ import type {
     EngineDocument,
     EngineFilters,
     EngineUpdates,
-    FieldsDefinition,
     IModel,
     Key,
-    MagicAttributes,
     ModelCastAttributeOptions,
     ModelConstructor,
     MultiModelRelation,
@@ -57,7 +55,6 @@ import type {
     SingleModelRelation,
     TimestampFieldValue,
 } from 'soukai';
-import type { Constructor } from '@noeldemartin/utils';
 import type { JsonLD, JsonLDGraph, SubjectParts } from '@noeldemartin/solid-utils';
 import type { Quad } from 'rdf-js';
 
@@ -97,8 +94,10 @@ import type SolidContainerModel from './SolidContainerModel';
 import type Tombstone from './history/Tombstone';
 import type { SolidBootedFieldDefinition, SolidBootedFieldsDefinition, SolidFieldsDefinition } from './fields';
 import type { SolidDocumentRelationInstance } from './relations/mixins/SolidDocumentRelation';
-import type { SolidModelConstructor } from './inference';
+import type { SolidMagicAttributes, SolidModelConstructor } from './inference';
 import type { SolidRelation } from './relations/inference';
+
+export type ISolidModel<T extends typeof SolidModel> = SolidMagicAttributes<{ fields: T['fields'] }>;
 
 export const SolidModelBase = mixed(Model, [DeletesModels, SerializesToJsonLD, ManagesPermissions]);
 
@@ -365,14 +364,6 @@ export class SolidModel extends SolidModelBase {
         });
     }
 
-    /* eslint-disable max-len */
-    public static schema<T extends SolidModel, F extends SolidFieldsDefinition>(this: SolidModelConstructor<T>, fields: F): Constructor<MagicAttributes<F>> & SolidModelConstructor<T>;
-    public static schema<T extends Model, F extends FieldsDefinition>(this: ModelConstructor<T>, fields: F): Constructor<MagicAttributes<F>> & ModelConstructor<T>;
-    public static schema<T extends SolidModel, F extends SolidFieldsDefinition>(this: SolidModelConstructor<T>, fields: F): Constructor<MagicAttributes<F>> & SolidModelConstructor<T> {
-        return super.schema(fields) as Constructor<MagicAttributes<F>> & SolidModelConstructor<T>;
-    }
-    /* eslint-enable max-len */
-
     public static async newFromJsonLD<T extends SolidModel>(
         this: SolidModelConstructor<T>,
         sourceJsonLD: JsonLD,
@@ -513,8 +504,9 @@ export class SolidModel extends SolidModelBase {
             .entries(resourcesTypes)
             .find(([_, types]) => !this.rdfsClasses.some(rdfsClass => !types.includes(rdfsClass)))?.[0];
 
-        if (!resourceId)
+        if (!resourceId) {
             throw new SoukaiError('Couldn\'t find matching resource in JSON-LD');
+        }
 
         return baseUrl ? urlResolve(baseUrl, resourceId) : resourceId;
     }

@@ -21,14 +21,14 @@ export type This<
     Relation<Parent, Related, RelatedClass>;
 
 // Workaround for https://github.com/microsoft/TypeScript/issues/29132
-export interface ProtectedThis<Related extends SolidModel = SolidModel> {
+export interface ProtectedSolidHasRelation<Related extends SolidModel = SolidModel> {
     loadDocumentModels: SolidDocumentRelation<Related>['loadDocumentModels'];
 }
 
 export default class SolidHasRelation {
 
-    protected get protected(): ProtectedThis {
-        return this as unknown as ProtectedThis;
+    protected get protectedSolidHas(): ProtectedSolidHasRelation {
+        return this as unknown as ProtectedSolidHasRelation;
     }
 
     public async __loadDocumentModels(this: This, documentUrl: string, document: JsonLDGraph): Promise<void> {
@@ -64,7 +64,7 @@ export default class SolidHasRelation {
                 urlRoute(resourceId) !== documentUrl,
         );
 
-        this.protected.loadDocumentModels(modelsInSameDocument, modelsInOtherDocumentIds);
+        this.protectedSolidHas.loadDocumentModels(modelsInSameDocument, modelsInOtherDocumentIds);
     }
 
 }

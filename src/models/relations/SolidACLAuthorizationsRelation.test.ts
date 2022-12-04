@@ -1,7 +1,6 @@
 import { bootModels } from 'soukai';
 
 import Person from '@/testing/lib/stubs/Person';
-import { SolidACLAuthorization } from '@/models';
 
 describe('SolidACLAuthorizationsRelation', () => {
 
@@ -11,7 +10,7 @@ describe('SolidACLAuthorizationsRelation', () => {
         // Arrange
         const person = new Person({ name: 'John Doe' });
 
-        person.relatedAuthorizations.addRelated(new SolidACLAuthorization());
+        person.relatedAuthorizations.attach();
         person.relatedAuthorizations.enable();
 
         // Act

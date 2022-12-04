@@ -32,7 +32,7 @@ export default class SolidACLAuthorizationsRelation<Parent extends SolidModel = 
         // nothing to do here
     }
 
-    public async resolve(): Promise<SolidACLAuthorization[]> {
+    public async load(): Promise<SolidACLAuthorization[]> {
         const aclAuthorizationClass = requireBootedModel<typeof SolidACLAuthorization>('SolidACLAuthorization');
         const acl = await fetchSolidDocumentACL(this.parent.requireDocumentUrl(), aclAuthorizationClass.fetch);
         const jsonld = await quadsToJsonLD(acl.document.statements());

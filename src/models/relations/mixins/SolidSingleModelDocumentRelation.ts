@@ -1,6 +1,7 @@
-import { SoukaiError } from 'soukai';
+import { SingleModelRelation, SoukaiError } from 'soukai';
 import { tap } from '@noeldemartin/utils';
-import type { Attributes, SingleModelRelation } from 'soukai';
+import type { Attributes } from 'soukai';
+import type { ClosureArgs } from '@noeldemartin/utils';
 
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
@@ -31,6 +32,14 @@ export default class SolidSingleModelDocumentRelation<
     declare public __newModel?: Related;
     declare public __modelInSameDocument?: Related;
     declare public __modelInOtherDocumentId?: string;
+
+    private get super(): SingleModelRelation {
+        return new Proxy(this, {
+            get: (target, property: keyof SingleModelRelation) => {
+                return (...args: ClosureArgs) => SingleModelRelation.prototype[property].call(this, ...args);
+            },
+        }) as unknown as SingleModelRelation;
+    }
 
     public isEmpty(this: This): boolean | null {
         if (!this.documentModelsLoaded && this.parent.exists())
@@ -78,24 +87,17 @@ export default class SolidSingleModelDocumentRelation<
         return model;
     }
 
-    public attach(model: Related): Related;
-    public attach(attributes: Attributes): Related;
-    public attach(this: This<Parent, Related, RelatedClass>, modelOrAttributes: Related | Attributes): Related {
-        const model = modelOrAttributes instanceof this.relatedClass
-            ? modelOrAttributes as Related
-            : this.relatedClass.newInstance(modelOrAttributes);
+    public addRelated(related: Related): void {
+        this.super.addRelated(related);
 
-        return tap(model, () => {
-            if (this.related)
-                this.assertNotLoaded('set');
+        if (!related.exists()) {
+            this.__newModel = related;
+        }
+    }
 
-            if (!model.exists())
-                this.__newModel = model;
-
-            this.addRelated(model);
-            this.initializeInverseRelations(model);
-            this.setForeignAttributes(model);
-        });
+    public isRelated(related: Related): boolean {
+        return this.super.isRelated(related)
+            || this.__newModel === related;
     }
 
     protected cloneSolidData(clone: This<Parent, Related, RelatedClass>): void {

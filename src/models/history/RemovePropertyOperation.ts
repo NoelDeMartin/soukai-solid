@@ -1,8 +1,8 @@
 import { arrayFrom, arrayWithout, tap } from '@noeldemartin/utils';
 import { FieldType, SoukaiError } from 'soukai';
-import type { IModel, ModelCastAttributeOptions } from 'soukai';
+import type { ModelCastAttributeOptions } from 'soukai';
 
-import type { SolidModel } from '@/models/SolidModel';
+import type { ISolidModel, SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
 import PropertyOperation, { PropertyOperationFieldsDefinition } from './PropertyOperation';
@@ -64,4 +64,4 @@ export default class RemovePropertyOperation extends PropertyOperation {
 
 }
 
-export default interface RemovePropertyOperation extends IModel<typeof RemovePropertyOperation> {}
+export default interface RemovePropertyOperation extends ISolidModel<typeof RemovePropertyOperation> {}

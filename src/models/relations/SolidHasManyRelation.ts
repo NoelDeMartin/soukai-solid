@@ -27,7 +27,7 @@ export default class SolidHasManyRelation<
     extends SolidHasManyRelationBase<Parent, Related, RelatedClass>
     implements ISolidDocumentRelation<Related> {
 
-    public async resolve(): Promise<Related[]> {
+    public async load(): Promise<Related[]> {
         if (this.isEmpty())
             return this.related = [];
 

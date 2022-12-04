@@ -20,7 +20,7 @@ export default class TombstoneRelation<Parent extends SolidModel = SolidModel>
         });
     }
 
-    public async resolve(): Promise<Tombstone | null> {
+    public async load(): Promise<Tombstone | null> {
         // Nothing to do here.
         // Tombstones are not meant to coexist with models in storage, this relation is only used
         // as a temporary mechanism to mark a model before deletion.

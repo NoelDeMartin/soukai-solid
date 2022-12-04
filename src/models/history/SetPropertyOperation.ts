@@ -1,7 +1,6 @@
 import { FieldType } from 'soukai';
-import type { IModel } from 'soukai';
 
-import type { SolidModel } from '@/models/SolidModel';
+import type { ISolidModel, SolidModel } from '@/models/SolidModel';
 
 import PropertyOperation, { PropertyOperationFieldsDefinition } from './PropertyOperation';
 
@@ -23,4 +22,4 @@ export default class SetPropertyOperation extends PropertyOperation {
 
 }
 
-export default interface SetPropertyOperation extends IModel<typeof SetPropertyOperation> {}
+export default interface SetPropertyOperation extends ISolidModel<typeof SetPropertyOperation> {}

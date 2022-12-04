@@ -36,7 +36,7 @@ export type { SolidHasOneRelationBase } from './SolidHasOneRelation';
 export type { SolidRelation } from './inference';
 export type {
     default as SolidBelongsToRelation,
-    ProtectedThis as SolidBelongsToRelationProtectedThis,
+    ProtectedSolidBelongsToRelation,
     This as SolidBelongsToRelationThis,
 } from './mixins/SolidBelongsToRelation';
 export type {
@@ -46,11 +46,12 @@ export type {
 } from './mixins/SolidDocumentRelation';
 export type {
     default as SolidHasRelation,
-    ProtectedThis as SolidHasRelationProtectedThis,
+    ProtectedSolidHasRelation,
     This as SolidHasRelationThis,
 } from './mixins/SolidHasRelation';
 export type {
     default as SolidMultiModelDocumentRelation,
+    ProtectedSolidMultiRelation,
     SolidMultiModelDocumentRelationInstance,
     This as SolidMultiModelDocumentRelationThis,
 } from './mixins/SolidMultiModelDocumentRelation';

@@ -1,8 +1,10 @@
 import { FieldType } from 'soukai';
-import type { IModel, Relation } from 'soukai';
+import type { Relation } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
-import type { SolidBelongsToManyRelation, SolidBelongsToOneRelation } from '@/models';
+import type SolidBelongsToManyRelation from '@/models/relations/SolidBelongsToManyRelation';
+import type SolidBelongsToOneRelation from '@/models/relations/SolidBelongsToOneRelation';
+import type { ISolidModel } from '@/models/SolidModel';
 
 import Person from '@/testing/lib/stubs/Person';
 
@@ -50,4 +52,4 @@ export default class Group extends SolidModel {
 
 }
 
-export default interface Group extends IModel<typeof Group> {}
+export default interface Group extends ISolidModel<typeof Group> {}

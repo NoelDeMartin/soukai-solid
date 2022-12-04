@@ -28,7 +28,7 @@ export default class SolidContainsRelation<
         ]);
     }
 
-    public async resolve(): Promise<Related[]> {
+    public async load(): Promise<Related[]> {
         this.related = this.isEmpty()
             ? []
             : await this.relatedClass.from(this.parent.url).all<Related>({

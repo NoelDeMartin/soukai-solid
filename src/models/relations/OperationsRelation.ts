@@ -33,9 +33,9 @@ export default class OperationsRelation<Parent extends SolidModel = SolidModel>
         super(parent, operationClass('Operation'), 'resourceUrl');
     }
 
-    public attach(modelOrAttributes: Operation | Attributes): Operation;
+    public attach(modelOrAttributes?: Operation | Attributes): Operation;
     public attach<T extends keyof Operations>(attributes: Attributes, type: T): InstanceType<Operations[T]>;
-    public attach(modelOrAttributes: Operation | Attributes, type?: keyof Operations): Operation {
+    public attach(modelOrAttributes: Operation | Attributes = {}, type?: keyof Operations): Operation {
         const Operation = operationClass('Operation');
         const model = modelOrAttributes instanceof Operation
             ? modelOrAttributes
@@ -104,7 +104,7 @@ export default class OperationsRelation<Parent extends SolidModel = SolidModel>
                     urlRoute(resourceId) !== documentUrl,
             );
 
-        this.protected.loadDocumentModels(modelsInSameDocument, modelsInOtherDocumentIds);
+        this.protectedSolidHas.loadDocumentModels(modelsInSameDocument, modelsInOtherDocumentIds);
     }
 
     protected async loadRelatedModels(): Promise<Operation[]> {

@@ -37,6 +37,7 @@ export type {
     SolidBootedFieldsDefinition,
     SolidFieldDefinition,
     SolidFieldsDefinition,
+    SolidSchemaDefinition,
 } from './fields';
 
 export function bootSolidModels(): void {

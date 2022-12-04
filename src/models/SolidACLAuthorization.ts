@@ -1,11 +1,11 @@
 import { FieldType, SoukaiError } from 'soukai';
 import { SolidDocumentPermission } from '@noeldemartin/solid-utils';
-import type { IModel } from 'soukai';
 
 import { SolidEngine } from '@/engines';
 import type { Fetch } from '@/engines';
 
 import { SolidModel } from './SolidModel';
+import type { ISolidModel } from './SolidModel';
 
 const PERMISSION_MODES: Record<SolidDocumentPermission, string> = {
     [SolidDocumentPermission.Read]: 'http://www.w3.org/ns/auth/acl#Read',
@@ -70,4 +70,4 @@ export default class SolidACLAuthorization extends SolidModel {
 
 }
 
-export default interface SolidACLAuthorization extends IModel<typeof SolidACLAuthorization> {}
+export default interface SolidACLAuthorization extends ISolidModel<typeof SolidACLAuthorization> {}

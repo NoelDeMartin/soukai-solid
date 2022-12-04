@@ -1,6 +1,4 @@
-import type { IModel } from 'soukai';
-
-import type { SolidModel } from '@/models/SolidModel';
+import type { ISolidModel, SolidModel } from '@/models/SolidModel';
 
 import Operation from './Operation';
 
@@ -14,4 +12,4 @@ export default class DeleteOperation extends Operation {
 
 }
 
-export default interface DeleteOperation extends IModel<typeof DeleteOperation> {}
+export default interface DeleteOperation extends ISolidModel<typeof DeleteOperation> {}

@@ -7,16 +7,17 @@ import {
 } from '@noeldemartin/utils';
 import { FieldType } from 'soukai';
 import { findContainerRegistrations } from '@noeldemartin/solid-utils';
-import type { IModel, Relation } from 'soukai';
+import type { Relation } from 'soukai';
 
 import { SolidEngine } from '@/engines';
 
 import SolidContainerDocumentsRelation from './relations/SolidContainerDocumentsRelation';
 import SolidContainsRelation from './relations/SolidContainsRelation';
 
-import { SolidModel } from './SolidModel';
 import SolidTypeRegistration from './SolidTypeRegistration';
+import { SolidModel } from './SolidModel';
 import type SolidDocument from './SolidDocument';
+import type { ISolidModel } from './SolidModel';
 import type { SolidModelConstructor } from './inference';
 
 export default class SolidContainerModel extends SolidModel {
@@ -96,4 +97,4 @@ export default class SolidContainerModel extends SolidModel {
 
 }
 
-export default interface SolidContainerModel extends IModel<typeof SolidContainerModel> {}
+export default interface SolidContainerModel extends ISolidModel<typeof SolidContainerModel> {}

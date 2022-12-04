@@ -39,7 +39,7 @@ export default class SolidBelongsToManyRelation<
     implements ISolidDocumentRelation<Related>
 {
 
-    public async resolve(): Promise<Related[]> {
+    public async load(): Promise<Related[]> {
         if (!this.__modelsInSameDocument || !this.__modelsInOtherDocumentIds) {
             this.__modelsInSameDocument = [];
             this.__modelsInOtherDocumentIds = this.parent.getAttribute(this.foreignKeyName);

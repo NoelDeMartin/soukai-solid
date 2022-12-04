@@ -1,9 +1,10 @@
 import { FieldType, TimestampField } from 'soukai';
 import { stringToSlug } from '@noeldemartin/utils';
-import type { IModel, Relation, TimestampFieldValue } from 'soukai';
+import type { Relation, TimestampFieldValue } from 'soukai';
 
+import type SolidBelongsToManyRelation from '@/models/relations/SolidBelongsToManyRelation';
 import { SolidModel } from '@/models/SolidModel';
-import type { SolidBelongsToManyRelation } from '@/models';
+import type { ISolidModel } from '@/models/SolidModel';
 
 import Group from '@/testing/lib/stubs/Group';
 import Movie from '@/testing/lib/stubs/Movie';
@@ -66,4 +67,4 @@ export default class Person extends SolidModel {
 
 }
 
-export default interface Person extends IModel<typeof Person> {}
+export default interface Person extends ISolidModel<typeof Person> {}

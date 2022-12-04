@@ -28,7 +28,7 @@ export default class SolidBelongsToOneRelation<
     implements ISolidDocumentRelation<Related>
 {
 
-    public async resolve(): Promise<Related | null> {
+    public async load(): Promise<Related | null> {
         if (this.__modelInSameDocument)
             return this.related = this.__modelInSameDocument;
 

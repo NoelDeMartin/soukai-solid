@@ -1,7 +1,7 @@
 import { FieldType } from 'soukai';
-import type { IModel } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
+import type { ISolidModel } from '@/models/SolidModel';
 
 export default class Metadata extends SolidModel {
 
@@ -41,4 +41,4 @@ export default class Metadata extends SolidModel {
 
 }
 
-export default interface Metadata extends Omit<IModel<typeof Metadata>, 'createdAt' | 'updatedAt'> {}
+export default interface Metadata extends Omit<ISolidModel<typeof Metadata>, 'createdAt' | 'updatedAt'> {}

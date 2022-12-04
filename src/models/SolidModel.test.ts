@@ -14,6 +14,7 @@ import IRI from '@/solid/utils/IRI';
 import PropertyOperation from '@/models/history/PropertyOperation';
 import RemovePropertyOperation from '@/models/history/RemovePropertyOperation';
 import SetPropertyOperation from '@/models/history/SetPropertyOperation';
+import { defineSolidModelSchema } from '@/models/schema';
 
 import Group from '@/testing/lib/stubs/Group';
 import Movie from '@/testing/lib/stubs/Movie';
@@ -2391,9 +2392,15 @@ describe('SolidModel types', () => {
 
     it('has correct types', async () => {
         // Arrange
-        class StubModel extends SolidModel.schema({
-            foo: FieldType.String,
-            bar: FieldType.Number,
+        class StubModel extends defineSolidModelSchema({
+            fields: {
+                foo: FieldType.String,
+                bar: FieldType.Number,
+                baz: {
+                    type: FieldType.Array,
+                    items: FieldType.Date,
+                },
+            },
         }) {}
 
         setEngine(new StubEngine);
@@ -2413,6 +2420,7 @@ describe('SolidModel types', () => {
             Expect<Equals<typeof jsonldInstance, StubModel>> |
             Expect<Equals<typeof instance['foo'], string | undefined>> |
             Expect<Equals<typeof instance['bar'], number | undefined>> |
+            Expect<Equals<typeof instance['baz'], Date[]>> |
             true
         >();
     });

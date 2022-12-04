@@ -1,8 +1,7 @@
 import { arrayFrom } from '@noeldemartin/utils';
 import { FieldType, SoukaiError } from 'soukai';
-import type { IModel } from 'soukai';
 
-import type { SolidModel } from '@/models/SolidModel';
+import type { ISolidModel, SolidModel } from '@/models/SolidModel';
 
 import PropertyOperation, { PropertyOperationFieldsDefinition } from './PropertyOperation';
 
@@ -30,4 +29,4 @@ export default class AddPropertyOperation extends PropertyOperation {
 
 }
 
-export default interface AddPropertyOperation extends IModel<typeof AddPropertyOperation> {}
+export default interface AddPropertyOperation extends ISolidModel<typeof AddPropertyOperation> {}

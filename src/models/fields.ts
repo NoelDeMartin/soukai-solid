@@ -6,6 +6,7 @@ import type {
     FieldDefinition,
     FieldTypeValue,
     FieldsDefinition,
+    SchemaDefinition,
 } from 'soukai';
 
 export type SolidFieldDefinition = FieldDefinition<{
@@ -86,3 +87,15 @@ export function inferFieldDefinition(
             return fieldDefinition(FieldType.Any);
     }
 }
+
+export type SolidSchemaDefinition = SchemaDefinition<{
+    rdfProperty?: string;
+    rdfPropertyAliases?: string[];
+}> & Partial<{
+    rdfContexts: Record<string, string>;
+    rdfsClasses: string[];
+    rdfsClassesAliases: string[][];
+    defaultResourceHash: string;
+    history: boolean;
+    tombstone: boolean;
+}>;

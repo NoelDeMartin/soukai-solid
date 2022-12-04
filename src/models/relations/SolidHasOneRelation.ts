@@ -27,7 +27,7 @@ export default class SolidHasOneRelation<
     extends SolidHasOneRelationBase<Parent, Related, RelatedClass>
     implements ISolidDocumentRelation<Related> {
 
-    public async resolve(): Promise<Related | null> {
+    public async load(): Promise<Related | null> {
         if (this.isEmpty())
             return this.related = null;
 

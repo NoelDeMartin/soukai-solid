@@ -1,7 +1,8 @@
 import { FieldType } from 'soukai';
-import type { IModel, Relation } from 'soukai';
+import type { Relation } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
+import type { ISolidModel } from '@/models/SolidModel';
 
 import Movie from './Movie';
 
@@ -26,4 +27,4 @@ export default class WatchAction extends SolidModel {
 
 }
 
-export default interface WatchAction extends IModel<typeof WatchAction> {}
+export default interface WatchAction extends ISolidModel<typeof WatchAction> {}

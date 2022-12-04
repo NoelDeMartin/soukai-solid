@@ -1,9 +1,10 @@
 import { FieldType } from 'soukai';
-import type { IModel, Relation } from 'soukai';
+import type { Relation } from 'soukai';
 
 import { SolidModel } from '@/models/SolidModel';
 import type SolidHasManyRelation from '@/models/relations/SolidHasManyRelation';
 import type SolidHasOneRelation from '@/models/relations/SolidHasOneRelation';
+import type { ISolidModel } from '@/models/SolidModel';
 
 import MoviesCollection from '@/testing/lib/stubs/MoviesCollection';
 import Person from '@/testing/lib/stubs/Person';
@@ -79,4 +80,4 @@ export default class Movie extends SolidModel {
 
 }
 
-export default interface Movie extends IModel<typeof Movie> {}
+export default interface Movie extends ISolidModel<typeof Movie> {}
