@@ -104,29 +104,20 @@ export const SolidModelBase = mixed(Model, [DeletesModels, SerializesToJsonLD, M
 export class SolidModel extends SolidModelBase {
 
     public static primaryKey: string = 'url';
-
     public static fields: SolidFieldsDefinition;
-
     public static classFields = ['_history', '_publicPermissions', '_tombstone'];
-
+    public static rdfContext?: string;
     public static rdfContexts: Record<string, string> = {};
-
+    public static rdfsClass?: string;
     public static rdfsClasses: string[] = [];
-
     public static rdfsClassesAliases: string[][] = [];
-
     public static reservedRelations: string[] = ['metadata', 'operations', 'tombstone', 'authorizations'];
-
     public static defaultResourceHash: string = 'it';
-
     public static mintsUrls: boolean = true;
-
     public static history: boolean = false;
-
     public static tombstone: boolean = true;
 
     protected static rdfPropertyFields?: Record<string, string>;
-
     protected static historyDisabled: WeakMap<SolidModel, void> = new WeakMap;
 
     public static getFieldDefinition(field: string, value?: unknown): SolidBootedFieldDefinition {
@@ -193,6 +184,7 @@ export class SolidModel extends SolidModelBase {
             );
 
         // Expand RDF definitions.
+        modelClass.rdfContexts = modelClass.rdfContexts ?? {};
         modelClass.rdfContexts = {
             ...modelClass.rdfContexts,
             solid: 'http://www.w3.org/ns/solid/terms#',
@@ -202,6 +194,7 @@ export class SolidModel extends SolidModelBase {
             rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
             rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
         };
+        modelClass.rdfContexts.default = modelClass.rdfContext ?? Object.values(modelClass.rdfContexts)[0] ?? '';
 
         const fields = modelClass.fields as BootedFieldsDefinition<{
             rdfProperty?: string;
@@ -209,11 +202,17 @@ export class SolidModel extends SolidModelBase {
         }>;
         const defaultRdfContext = modelClass.getDefaultRdfContext();
 
-        if (instance.static().hasAutomaticTimestamp(TimestampField.CreatedAt))
+        if (instance.static().hasAutomaticTimestamp(TimestampField.CreatedAt)) {
             delete fields[TimestampField.CreatedAt];
+        }
 
-        if (instance.static().hasAutomaticTimestamp(TimestampField.UpdatedAt))
+        if (instance.static().hasAutomaticTimestamp(TimestampField.UpdatedAt)) {
             delete fields[TimestampField.UpdatedAt];
+        }
+
+        if (modelClass.rdfsClass && (!modelClass.rdfsClasses || modelClass.rdfsClasses.length === 0)) {
+            modelClass.rdfsClasses = [modelClass.rdfsClass];
+        }
 
         modelClass.rdfsClasses = arrayUnique(
             modelClass.rdfsClasses?.map(name => IRI(name, modelClass.rdfContexts, defaultRdfContext)) ?? [],
@@ -461,7 +460,7 @@ export class SolidModel extends SolidModelBase {
     }
 
     protected static getDefaultRdfContext(): string {
-        return Object.values(this.rdfContexts).shift() || '';
+        return this.rdfContexts.default ?? '';
     }
 
     protected static async withCollection<Result>(

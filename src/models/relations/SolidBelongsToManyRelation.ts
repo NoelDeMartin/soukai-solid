@@ -84,6 +84,23 @@ export default class SolidBelongsToManyRelation<
         return this.related;
     }
 
+    public associate(foreignKey: ModelKey | unknown): void {
+        const foreignKeys = this.parent.getAttribute<ModelKey[]>(this.foreignKeyName);
+        const foreignKeyValue = ModelKey.from(foreignKey);
+
+        this.parent.setAttribute(this.foreignKeyName, foreignKeys.concat(foreignKeyValue));
+    }
+
+    public disassociate(foreignKey: ModelKey | unknown): void {
+        const foreignKeys = this.parent.getAttribute<ModelKey[]>(this.foreignKeyName);
+        const foreignKeyValue = ModelKey.from(foreignKey);
+
+        this.parent.setAttribute(
+            this.foreignKeyName,
+            foreignKeys.filter(key => !foreignKeyValue.equals(ModelKey.from(key))),
+        );
+    }
+
     public reset(related: Related[] = []): void {
         this.related = [];
         this.__newModels = [];

@@ -92,7 +92,9 @@ export type SolidSchemaDefinition = SchemaDefinition<{
     rdfProperty?: string;
     rdfPropertyAliases?: string[];
 }> & Partial<{
+    rdfContext: string;
     rdfContexts: Record<string, string>;
+    rdfsClass: string;
     rdfsClasses: string[];
     rdfsClassesAliases: string[][];
     defaultResourceHash: string;

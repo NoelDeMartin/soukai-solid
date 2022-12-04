@@ -1,4 +1,4 @@
-import { arrayWithout, toString, urlParse } from '@noeldemartin/utils';
+import { toString, urlParse } from '@noeldemartin/utils';
 import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
 import { InMemoryEngine, ModelKey, bootModels, setEngine } from 'soukai';
 import type { Relation } from 'soukai';
@@ -130,27 +130,23 @@ describe('Solid history tracking', () => {
         await band.save();
 
         // Act - Guts joins the band
-        await band.update({ memberUrls: [...band.memberUrls, 'https://berserk.fandom.com/wiki/Guts'] });
+        band.relatedMembers.associate('https://berserk.fandom.com/wiki/Guts');
+
+        await band.save();
 
         // Act - Judeau, Pippin and Corkus are expelled from the band; Griffith becomes Femto
-        band.memberUrls = arrayWithout(band.memberUrls, [
-            'https://berserk.fandom.com/wiki/Judeau',
-            'https://berserk.fandom.com/wiki/Pippin',
-            'https://berserk.fandom.com/wiki/Corkus',
-        ]);
+        band.relatedMembers.disassociate('https://berserk.fandom.com/wiki/Judeau');
+        band.relatedMembers.disassociate('https://berserk.fandom.com/wiki/Pippin');
+        band.relatedMembers.disassociate('https://berserk.fandom.com/wiki/Corkus');
 
         griffith.name = 'Femto';
 
         await band.save();
 
         // Act - Guts and Casca leave the band, Zodd joins; Femto becomes Griffith again
-        band.memberUrls = [
-            ...arrayWithout(band.memberUrls, [
-                'https://berserk.fandom.com/wiki/Guts',
-                'https://berserk.fandom.com/wiki/Casca',
-            ]),
-            'https://berserk.fandom.com/wiki/Zodd',
-        ];
+        band.relatedMembers.disassociate('https://berserk.fandom.com/wiki/Guts');
+        band.relatedMembers.disassociate('https://berserk.fandom.com/wiki/Casca');
+        band.relatedMembers.associate('https://berserk.fandom.com/wiki/Zodd');
 
         griffith.name = 'Griffith';
 

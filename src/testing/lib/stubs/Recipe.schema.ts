@@ -3,10 +3,8 @@ import { FieldType } from 'soukai';
 import { defineSolidModelSchema } from '@/models/schema';
 
 export default defineSolidModelSchema({
-    rdfContexts: {
-        schema: 'https://schema.org/',
-    },
-    rdfsClasses: ['Recipe'],
+    rdfContext: 'https://schema.org/',
+    rdfsClass: 'Recipe',
     fields: {
         name: {
             type: FieldType.String,
@@ -14,12 +12,12 @@ export default defineSolidModelSchema({
         },
         ingredients: {
             type: FieldType.Array,
-            rdfProperty: 'schema:recipeIngredient',
+            rdfProperty: 'recipeIngredient',
             items: FieldType.String,
         },
         instructionsStepUrls: {
             type: FieldType.Array,
-            rdfProperty: 'schema:recipeInstructions',
+            rdfProperty: 'recipeInstructions',
             items: FieldType.Key,
         },
     },
