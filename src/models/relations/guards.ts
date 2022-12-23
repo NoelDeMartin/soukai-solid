@@ -10,7 +10,7 @@ export interface BeforeParentCreateRelation extends Relation {
 }
 
 export interface SynchronizesRelatedModels extends Relation {
-    __synchronizeRelated(other: Relation): void;
+    __synchronizeRelated(other: Relation): Promise<void>;
 }
 
 export function hasBeforeParentCreateHook(relation: Relation): relation is BeforeParentCreateRelation {

@@ -454,8 +454,8 @@ export class SolidModel extends SolidModelBase {
                 continue;
             }
 
-            when(relationA, synchronizesRelatedModels).__synchronizeRelated(relationB);
-            when(relationB, synchronizesRelatedModels).__synchronizeRelated(relationA);
+            await when(relationA, synchronizesRelatedModels).__synchronizeRelated(relationB);
+            await when(relationB, synchronizesRelatedModels).__synchronizeRelated(relationA);
         }
     }
 
@@ -827,8 +827,13 @@ export class SolidModel extends SolidModelBase {
     }
 
     public rebuildAttributesFromHistory(): void {
-        if (this.operations.length === 0)
+        if (!this.hasRelation('operations') || !this.isRelationLoaded('operations')) {
+            throw new SoukaiError('Can\'t rebuild attributes from history if \'operations\'  relation isn\'t loaded');
+        }
+
+        if (this.operations.length === 0) {
             return;
+        }
 
         const PropertyOperation = operationClass('PropertyOperation');
         const operations = arraySorted(this.operations, 'date');

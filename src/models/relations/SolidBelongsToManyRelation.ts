@@ -12,12 +12,15 @@ import { BelongsToManyRelation, ModelKey } from 'soukai';
 import type { Model, RelationCloneOptions } from 'soukai';
 
 import { operationClasses } from '@/models/history/operations';
+import type AddPropertyOperation from '@/models/history/AddPropertyOperation';
+import type RemovePropertyOperation from '@/models/history/RemovePropertyOperation';
 import type SetPropertyOperation from '@/models/history/SetPropertyOperation';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
 import SolidBelongsToRelation from './mixins/SolidBelongsToRelation';
 import SolidMultiModelDocumentRelation from './mixins/SolidMultiModelDocumentRelation';
+import type { BeforeParentCreateRelation, SynchronizesRelatedModels } from './guards';
 import type { ISolidDocumentRelation } from './mixins/SolidDocumentRelation';
 
 export const SolidBelongsToManyRelationBase = mixedWithoutTypes(
@@ -36,7 +39,7 @@ export default class SolidBelongsToManyRelation<
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
 >
     extends SolidBelongsToManyRelationBase<Parent, Related, RelatedClass>
-    implements ISolidDocumentRelation<Related>
+    implements ISolidDocumentRelation<Related>, BeforeParentCreateRelation, SynchronizesRelatedModels
 {
 
     public async load(): Promise<Related[]> {
@@ -131,7 +134,7 @@ export default class SolidBelongsToManyRelation<
         this.loadDocumentModels([], this.parent.getAttribute(this.foreignKeyName));
     }
 
-    public __synchronizeRelated(other: this): void {
+    public async __synchronizeRelated(other: this): Promise<void> {
         const { SetPropertyOperation, AddPropertyOperation, RemovePropertyOperation } = operationClasses();
         const foreignProperty = this.parent.static().getFieldRdfProperty(this.foreignKeyName);
         const localKeyName = this.localKeyName as keyof Related;
@@ -142,7 +145,7 @@ export default class SolidBelongsToManyRelation<
         this.parent
             .operations
             .filter(
-                (operation): operation is SetPropertyOperation =>
+                (operation): operation is SetPropertyOperation | AddPropertyOperation | RemovePropertyOperation =>
                     !operation.exists() &&
                     (
                         operation instanceof SetPropertyOperation ||
@@ -165,21 +168,25 @@ export default class SolidBelongsToManyRelation<
                 thisRelatedMap.add(newRelated);
             });
 
-        this.related = [
-            ...this.parent
+        const related = await Promise.all(
+            this
+                .parent
                 .getAttribute<string[]>(this.foreignKeyName)
-                .map(foreignValue => {
+                .map(async foreignValue => {
                     const thisRelated = thisRelatedMap.get(foreignValue);
                     const otherRelated = otherRelatedMap.get(foreignValue);
 
                     if (!thisRelated || !otherRelated)
                         return thisRelated;
 
-                    thisRelated.static().synchronize(thisRelated, otherRelated);
+                    await thisRelated.static().synchronize(thisRelated, otherRelated);
 
                     return thisRelated;
-                })
-                .filter((model): model is Related => !!model),
+                }),
+        );
+
+        this.related = [
+            ...related.filter((model): model is Related => !!model),
             ...this.__newModels,
         ];
     }

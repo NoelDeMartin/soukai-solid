@@ -7,6 +7,7 @@ import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
 import SolidSingleModelDocumentRelation from './mixins/SolidSingleModelDocumentRelation';
+import type { BeforeParentCreateRelation } from './guards';
 import type { ISolidDocumentRelation } from './mixins/SolidDocumentRelation';
 
 export const SolidHasOneRelationBase = mixedWithoutTypes(
@@ -25,7 +26,7 @@ export default class SolidHasOneRelation<
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
 >
     extends SolidHasOneRelationBase<Parent, Related, RelatedClass>
-    implements ISolidDocumentRelation<Related> {
+    implements ISolidDocumentRelation<Related>, BeforeParentCreateRelation {
 
     public async load(): Promise<Related | null> {
         if (this.isEmpty())
