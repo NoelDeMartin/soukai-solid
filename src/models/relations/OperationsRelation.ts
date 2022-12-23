@@ -74,7 +74,7 @@ export default class OperationsRelation<Parent extends SolidModel = SolidModel>
     public async __loadDocumentModels(documentUrl: string, document: JsonLDGraph): Promise<void> {
         const foreignFields = this.relatedClass.fields as unknown as SolidBootedFieldsDefinition;
         const foreignProperty = foreignFields[this.foreignKeyName]?.rdfProperty as string;
-        const reducedDocument = RDFDocument.reduceJsonLDGraph(document, this.parent.id) as EngineDocument;
+        const reducedDocument = RDFDocument.reduceJsonLDGraph(document, this.parent.url) as EngineDocument;
         const resources = document['@graph'].filter(resource => {
             const property = RDF.getJsonLDProperty(resource, foreignProperty);
 

@@ -1,32 +1,10 @@
-import { FieldType } from 'soukai';
 import { uuid } from '@noeldemartin/utils';
 
-import { SolidModel } from '@/models/SolidModel';
-import type { ISolidModel } from '@/models/SolidModel';
+import type { SolidModel } from '@/models/SolidModel';
 
-export const OperationFieldsDefinition = {
-    resourceUrl: {
-        type: FieldType.Key,
-        required: true,
-        rdfProperty: 'resource',
-    },
-    date: {
-        type: FieldType.Date,
-        required: true,
-    },
-} as const;
+import Model from './Operation.schema';
 
-export default class Operation extends SolidModel {
-
-    public static rdfContexts = {
-        crdt: 'https://vocab.noeldemartin.com/crdt/',
-    };
-
-    public static rdfsClasses = ['Operation'];
-
-    public static timestamps = false;
-
-    public static fields = OperationFieldsDefinition;
+export default class Operation extends Model {
 
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public apply(model: SolidModel): void {
@@ -43,5 +21,3 @@ export default class Operation extends SolidModel {
     }
 
 }
-
-export default interface Operation extends ISolidModel<typeof Operation> {}

@@ -1,44 +1,14 @@
-import { FieldType, TimestampField } from 'soukai';
 import { stringToSlug } from '@noeldemartin/utils';
-import type { Relation, TimestampFieldValue } from 'soukai';
+import type { Relation } from 'soukai';
 
 import type SolidBelongsToManyRelation from '@/models/relations/SolidBelongsToManyRelation';
-import { SolidModel } from '@/models/SolidModel';
-import type { ISolidModel } from '@/models/SolidModel';
 
 import Group from '@/testing/lib/stubs/Group';
 import Movie from '@/testing/lib/stubs/Movie';
 
-export default class Person extends SolidModel {
+import Model from './Person.schema';
 
-    public static timestamps: boolean | TimestampFieldValue[] = [TimestampField.CreatedAt];
-
-    public static rdfContexts = {
-        foaf: 'http://xmlns.com/foaf/0.1/',
-    };
-
-    public static rdfsClasses = ['foaf:Person'];
-
-    public static fields = {
-        name: FieldType.String,
-        lastName: FieldType.String,
-        givenName: FieldType.String,
-        age: FieldType.Number,
-        directed: {
-            type: FieldType.Key,
-            rdfProperty: 'foaf:made',
-        },
-        starred: {
-            type: FieldType.Array,
-            rdfProperty: 'foaf:pastProject',
-            items: FieldType.Key,
-        },
-        friendUrls: {
-            type: FieldType.Array,
-            rdfProperty: 'foaf:knows',
-            items: FieldType.Key,
-        },
-    } as const;
+export default class Person extends Model {
 
     public friends?: Person[];
     public relatedFriends!: SolidBelongsToManyRelation<Person, Person, typeof Person>;
@@ -66,5 +36,3 @@ export default class Person extends SolidModel {
     }
 
 }
-
-export default interface Person extends ISolidModel<typeof Person> {}

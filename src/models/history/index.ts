@@ -33,3 +33,12 @@ export {
     Tombstone,
     UnsetPropertyOperation,
 };
+
+export { default as AddPropertyOperationSchema } from './AddPropertyOperation.schema';
+export { default as DeleteOperationSchema } from './DeleteOperation.schema';
+export { default as MetadataSchema } from './Metadata.schema';
+export { default as OperationSchema } from './Operation.schema';
+export { default as PropertyOperationSchema } from './PropertyOperation.schema';
+export { default as RemovePropertyOperationSchema } from './RemovePropertyOperation.schema';
+export { default as SetPropertyOperationSchema } from './SetPropertyOperation.schema';
+export { default as UnsetPropertyOperationSchema } from './UnsetPropertyOperation.schema';

@@ -26,6 +26,12 @@ export {
     SolidTypeRegistration,
 };
 
+export { default as SolidACLAuthorizationSchema } from './SolidACLAuthorization.schema';
+export { default as SolidContainerModelSchema } from './SolidContainerModel.schema';
+export { default as SolidDocumentSchema } from './SolidDocument.schema';
+export { default as SolidTypeIndexSchema } from './SolidTypeIndex.schema';
+export { default as SolidTypeRegistrationSchema } from './SolidTypeRegistration.schema';
+
 export type { DeletesModels, SerializesToJsonLD, ManagesPermissions, PermissionsTracker };
 
 export type { This as DeletesModelsThis } from './mixins/DeletesModels';

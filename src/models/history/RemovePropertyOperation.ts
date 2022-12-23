@@ -1,25 +1,15 @@
 import { arrayFrom, arrayWithout, tap } from '@noeldemartin/utils';
-import { FieldType, SoukaiError } from 'soukai';
+import { SoukaiError } from 'soukai';
 import type { ModelCastAttributeOptions } from 'soukai';
 
-import type { ISolidModel, SolidModel } from '@/models/SolidModel';
+import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
-import PropertyOperation, { PropertyOperationFieldsDefinition } from './PropertyOperation';
+import Model from './RemovePropertyOperation.schema';
 
 type AttributeCaster = <T>(field: string, value: T) => T;
 
-export default class RemovePropertyOperation extends PropertyOperation {
-
-    public static rdfsClasses = ['RemovePropertyOperation'];
-
-    public static fields = {
-        ...PropertyOperationFieldsDefinition,
-        value: {
-            type: FieldType.Any,
-            required: true,
-        },
-    } as const;
+export default class RemovePropertyOperation extends Model {
 
     private static attributeCasters: WeakMap<typeof SolidModel, AttributeCaster> = new WeakMap;
 
@@ -63,5 +53,3 @@ export default class RemovePropertyOperation extends PropertyOperation {
     }
 
 }
-
-export default interface RemovePropertyOperation extends ISolidModel<typeof RemovePropertyOperation> {}

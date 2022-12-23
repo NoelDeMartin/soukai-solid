@@ -46,7 +46,6 @@ import type {
     EngineDocument,
     EngineFilters,
     EngineUpdates,
-    IModel,
     Key,
     ModelCastAttributeOptions,
     ModelConstructor,
@@ -94,10 +93,8 @@ import type SolidContainerModel from './SolidContainerModel';
 import type Tombstone from './history/Tombstone';
 import type { SolidBootedFieldDefinition, SolidBootedFieldsDefinition, SolidFieldsDefinition } from './fields';
 import type { SolidDocumentRelationInstance } from './relations/mixins/SolidDocumentRelation';
-import type { SolidMagicAttributes, SolidModelConstructor } from './inference';
+import type { SolidModelConstructor } from './inference';
 import type { SolidRelation } from './relations/inference';
-
-export type ISolidModel<T extends typeof SolidModel> = SolidMagicAttributes<{ fields: T['fields'] }>;
 
 export const SolidModelBase = mixed(Model, [DeletesModels, SerializesToJsonLD, ManagesPermissions]);
 
@@ -210,18 +207,7 @@ export class SolidModel extends SolidModelBase {
             delete fields[TimestampField.UpdatedAt];
         }
 
-        if (modelClass.rdfsClass && (!modelClass.rdfsClasses || modelClass.rdfsClasses.length === 0)) {
-            modelClass.rdfsClasses = [modelClass.rdfsClass];
-        }
-
-        modelClass.rdfsClasses = arrayUnique(
-            modelClass.rdfsClasses?.map(name => IRI(name, modelClass.rdfContexts, defaultRdfContext)) ?? [],
-        );
-
-        if (modelClass.rdfsClasses.length === 0) {
-            modelClass.rdfsClasses = [defaultRdfContext + modelClass.modelName];
-        }
-
+        modelClass.rdfsClasses = this.bootRdfsClasses();
         modelClass.rdfsClassesAliases = modelClass.rdfsClassesAliases.map(rdfsClasses => arrayUnique(
             rdfsClasses.map(name => IRI(name, modelClass.rdfContexts, defaultRdfContext)) ?? [],
         ));
@@ -356,7 +342,7 @@ export class SolidModel extends SolidModelBase {
         return this.instance().convertEngineFiltersToJsonLD(filters, compactIRIs);
     }
 
-    public static rdfProperty(property: string): string {
+    public static rdfTerm(property: string): string {
         return expandIRI(property, {
             extraContext: this.rdfContexts,
             defaultPrefix: Object.values(this.rdfContexts).shift(),
@@ -457,6 +443,28 @@ export class SolidModel extends SolidModelBase {
             await when(relationA, synchronizesRelatedModels).__synchronizeRelated(relationB);
             await when(relationB, synchronizesRelatedModels).__synchronizeRelated(relationA);
         }
+    }
+
+    protected static bootRdfsClasses(initialClass?: typeof SolidModel): string[] {
+        const modelClass = initialClass ?? this;
+        const rdfsClass = Object.getOwnPropertyDescriptor(modelClass, 'rdfsClass')?.value as string | null;
+        const rdfsClasses = Object.getOwnPropertyDescriptor(modelClass, 'rdfsClasses')?.value as string[] | null;
+
+        if (rdfsClasses && rdfsClasses.length > 0) {
+            return arrayUnique(rdfsClasses?.map(name => this.rdfTerm(name)) ?? []);
+        }
+
+        if (rdfsClass) {
+            return [this.rdfTerm(rdfsClass)];
+        }
+
+        const parentModelClass = Object.getPrototypeOf(modelClass);
+
+        if (!parentModelClass) {
+            return [this.rdfTerm(this.getDefaultRdfContext() + this.modelName)];
+        }
+
+        return this.bootRdfsClasses(parentModelClass);
     }
 
     protected static getDefaultRdfContext(): string {
@@ -783,11 +791,11 @@ export class SolidModel extends SolidModelBase {
         }
 
         if (this.static().hasAutomaticTimestamp(TimestampField.CreatedAt)) {
-            this.metadata.createdAt = this.createdAt ?? new Date();
+            this.metadata.createdAt = this.getAttribute('createdAt') ?? new Date();
         }
 
         if (this.static().hasAutomaticTimestamp(TimestampField.UpdatedAt)) {
-            this.metadata.updatedAt = this.updatedAt ?? this.createdAt ?? new Date();
+            this.metadata.updatedAt = this.getAttribute('updatedAt') ?? this.getAttribute('createdAt') ?? new Date();
         }
     }
 
@@ -1443,7 +1451,7 @@ export class SolidModel extends SolidModelBase {
         const inceptionProperties: string[] = [];
         const duplicatedOperationUrls: string[] = [];
         const inceptionOperations = this.operations.filter(
-            operation => operation.date.getTime() === this.createdAt.getTime(),
+            operation => operation.date.getTime() === this.metadata.createdAt?.getTime(),
         );
         const isNotDuplicated = (operation: Operation): boolean => !duplicatedOperationUrls.includes(operation.url);
 
@@ -1754,5 +1762,3 @@ export class SolidModel extends SolidModelBase {
     }
 
 }
-
-export interface SolidModel extends IModel<typeof SolidModel> {}

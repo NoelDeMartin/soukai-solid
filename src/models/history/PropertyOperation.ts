@@ -1,22 +1,8 @@
-import { FieldType } from 'soukai';
+import type { SolidModel } from '@/models/SolidModel';
 
-import type { ISolidModel, SolidModel } from '@/models/SolidModel';
+import Model from './PropertyOperation.schema';
 
-import Operation, { OperationFieldsDefinition } from './Operation';
-
-export const PropertyOperationFieldsDefinition = {
-    ...OperationFieldsDefinition,
-    property: {
-        type: FieldType.Key,
-        required: true,
-    },
-} as const;
-
-export default class PropertyOperation extends Operation {
-
-    public static rdfsClasses = ['PropertyOperation'];
-
-    public static fields = PropertyOperationFieldsDefinition;
+export default class PropertyOperation extends Model {
 
     public apply(model: SolidModel): void {
         const field = model.static().getRdfPropertyField(this.property);
@@ -34,5 +20,3 @@ export default class PropertyOperation extends Operation {
     }
 
 }
-
-export default interface PropertyOperation extends ISolidModel<typeof PropertyOperation> {}

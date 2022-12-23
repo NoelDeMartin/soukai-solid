@@ -3,7 +3,7 @@ import { FieldType } from 'soukai';
 import { defineSolidModelSchema } from '@/models/schema';
 
 export default defineSolidModelSchema({
-    rdfContext: 'https://schema.org/',
+    rdfContexts: { schema: 'https://schema.org/' },
     rdfsClass: 'HowToStep',
     fields: {
         text: {

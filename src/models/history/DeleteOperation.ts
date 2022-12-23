@@ -1,15 +1,11 @@
-import type { ISolidModel, SolidModel } from '@/models/SolidModel';
+import type { SolidModel } from '@/models/SolidModel';
 
-import Operation from './Operation';
+import Model from './DeleteOperation.schema';
 
-export default class DeleteOperation extends Operation {
-
-    public static rdfsClasses = ['DeleteOperation'];
+export default class DeleteOperation extends Model {
 
     public apply(model: SolidModel): void {
         model.metadata.setAttribute('deletedAt', this.date);
     }
 
 }
-
-export default interface DeleteOperation extends ISolidModel<typeof DeleteOperation> {}

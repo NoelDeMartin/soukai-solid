@@ -5,7 +5,6 @@ import {
     urlResolveDirectory,
     uuid,
 } from '@noeldemartin/utils';
-import { FieldType } from 'soukai';
 import { findContainerRegistrations } from '@noeldemartin/solid-utils';
 import type { Relation } from 'soukai';
 
@@ -14,29 +13,13 @@ import { SolidEngine } from '@/engines';
 import SolidContainerDocumentsRelation from './relations/SolidContainerDocumentsRelation';
 import SolidContainsRelation from './relations/SolidContainsRelation';
 
+import Model from './SolidContainerModel.schema';
 import SolidTypeRegistration from './SolidTypeRegistration';
-import { SolidModel } from './SolidModel';
 import type SolidDocument from './SolidDocument';
-import type { ISolidModel } from './SolidModel';
+import type { SolidModel } from './SolidModel';
 import type { SolidModelConstructor } from './inference';
 
-export default class SolidContainerModel extends SolidModel {
-
-    public static rdfsClasses = ['ldp:Container'];
-
-    public static timestamps = false;
-
-    public static fields = {
-        name: {
-            type: FieldType.String,
-            rdfProperty: 'rdfs:label',
-        },
-        resourceUrls: {
-            type: FieldType.Array,
-            rdfProperty: 'ldp:contains',
-            items: FieldType.Key,
-        },
-    };
+export default class SolidContainerModel extends Model {
 
     public static async fromTypeIndex<T extends SolidContainerModel>(
         this: SolidModelConstructor<T>,
@@ -96,5 +79,3 @@ export default class SolidContainerModel extends SolidModel {
     }
 
 }
-
-export default interface SolidContainerModel extends ISolidModel<typeof SolidContainerModel> {}

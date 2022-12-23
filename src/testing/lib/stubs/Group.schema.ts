@@ -3,22 +3,22 @@ import { FieldType } from 'soukai';
 import { defineSolidModelSchema } from '@/models/schema';
 
 export default defineSolidModelSchema({
-    rdfContexts: { schema: 'https://schema.org/' },
-    rdfsClass: 'Recipe',
+    rdfContexts: { foaf: 'http://xmlns.com/foaf/0.1/' },
+    rdfsClass: 'Group',
+    timestamps: false,
     fields: {
         name: {
             type: FieldType.String,
             required: true,
         },
-        ingredients: {
+        memberUrls: {
             type: FieldType.Array,
-            rdfProperty: 'recipeIngredient',
-            items: FieldType.String,
-        },
-        instructionsStepUrls: {
-            type: FieldType.Array,
-            rdfProperty: 'recipeInstructions',
+            rdfProperty: 'member',
             items: FieldType.Key,
+        },
+        creatorUrl: {
+            type: FieldType.Key,
+            rdfProperty: 'maker',
         },
     },
 });

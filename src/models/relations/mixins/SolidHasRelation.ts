@@ -36,7 +36,7 @@ export default class SolidHasRelation {
         const foreignFields = this.relatedClass.fields as SolidBootedFieldsDefinition;
         const foreignProperty = foreignFields[this.foreignKeyName]?.rdfProperty as string;
         const filters = this.relatedClass.prepareEngineFilters();
-        const reducedDocument = RDFDocument.reduceJsonLDGraph(document, this.parent.id) as EngineDocument;
+        const reducedDocument = RDFDocument.reduceJsonLDGraph(document, this.parent.url) as EngineDocument;
         const resourceDocuments = document['@graph']
             .filter(resource => {
                 const property = RDF.getJsonLDProperty(resource, foreignProperty);

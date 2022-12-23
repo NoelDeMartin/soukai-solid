@@ -128,7 +128,7 @@ export default class ManagesPermissions {
         const aclAuthorizationClass = requireBootedModel<typeof SolidACLAuthorization>('SolidACLAuthorization');
         const authorizations = this.authorizations as SolidACLAuthorization[];
         const ownerAuthorizations = authorizations
-            .filter(authorization => authorization.modes.includes(aclAuthorizationClass.rdfProperty('acl:Control')))
+            .filter(authorization => authorization.modes.includes(aclAuthorizationClass.rdfTerm('acl:Control')))
             .map(authorization => tap(
                 new aclAuthorizationClass(authorization.getAttributes()),
                 newAuthorization => {
@@ -158,7 +158,7 @@ export default class ManagesPermissions {
 
         const aclAuthorizationClass = requireBootedModel<typeof SolidACLAuthorization>('SolidACLAuthorization');
         const publicAuthorization = await aclAuthorizationClass.createInDocument({
-            agentClasses: [aclAuthorizationClass.rdfProperty('foaf:Agent')],
+            agentClasses: [aclAuthorizationClass.rdfTerm('foaf:Agent')],
             accessTo: [this.requireDocumentUrl()],
             modes,
         }, this.relatedAuthorizations.requireACLUrl(), 'public');

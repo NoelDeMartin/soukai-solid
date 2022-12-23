@@ -5,7 +5,7 @@ import { FieldType, InMemoryEngine, ModelKey, bootModels, setEngine } from 'souk
 import dayjs from 'dayjs';
 import Faker from 'faker';
 import type { EngineDocument, Relation } from 'soukai';
-import type { Equals, Expect, Tuple } from '@noeldemartin/utils';
+import type { Constructor, Equals, Expect , Tuple } from '@noeldemartin/utils';
 import type { JsonLDGraph, JsonLDResource } from '@noeldemartin/solid-utils';
 
 import AddPropertyOperation from '@/models/history/AddPropertyOperation';
@@ -15,6 +15,7 @@ import PropertyOperation from '@/models/history/PropertyOperation';
 import RemovePropertyOperation from '@/models/history/RemovePropertyOperation';
 import SetPropertyOperation from '@/models/history/SetPropertyOperation';
 import { defineSolidModelSchema } from '@/models/schema';
+import type { SolidMagicAttributes, SolidModelConstructor } from '@/models/inference';
 
 import Group from '@/testing/lib/stubs/Group';
 import Movie from '@/testing/lib/stubs/Movie';
@@ -27,55 +28,7 @@ import { stubMovieJsonLD, stubMoviesCollectionJsonLD, stubPersonJsonLD, stubWatc
 
 import { SolidModel } from './SolidModel';
 
-const expandIRI = (iri: string) => defaultExpandIRI(iri, {
-    extraContext: {
-        crdt: 'https://vocab.noeldemartin.com/crdt/',
-        foaf: 'http://xmlns.com/foaf/0.1/',
-    },
-});
-
 let engine: StubEngine;
-
-class PersonWithHistory extends Person {
-
-    public static timestamps = true;
-    public static history = true;
-
-}
-
-class GroupWithHistory extends Group {
-
-    public static timestamps = true;
-    public static history = true;
-
-}
-
-class GroupWithPersonsInSameDocument extends Group {
-
-    public static timestamps = true;
-
-    public membersRelationship(): Relation {
-        return this
-            .belongsToMany(Person, 'memberUrls')
-            .usingSameDocument(true)
-            .onDelete('cascade');
-    }
-
-}
-
-class GroupWithHistoryAndPersonsInSameDocument extends Group {
-
-    public static timestamps = true;
-    public static history = true;
-
-    public membersRelationship(): Relation {
-        return this
-            .belongsToMany(Person, 'memberUrls')
-            .usingSameDocument(true)
-            .onDelete('cascade');
-    }
-
-}
 
 describe('SolidModel', () => {
 
@@ -269,6 +222,19 @@ describe('SolidModel', () => {
                 rdfPropertyAliases: [],
             },
         });
+    });
+
+    it('merges rdfs classes properly', () => {
+        // Arrange.
+        class A extends defineSolidModelSchema({ rdfsClass: 'A' }) { }
+        class B extends defineSolidModelSchema(A, { rdfsClass: 'B' }) { }
+
+        // Act
+        bootModels({ A, B });
+
+        // Assert
+        expect(A.rdfsClasses).toEqual([A.rdfTerm('A')]);
+        expect(B.rdfsClasses).toEqual([B.rdfTerm('B')]);
     });
 
     it('allows adding undefined fields', async () => {
@@ -1088,12 +1054,7 @@ describe('SolidModel', () => {
 
     it('soft deletes', async () => {
         // Arrange
-        class TrackedPerson extends Person {
-
-            public static timestamps = true;
-            public static history = true;
-
-        }
+        class TrackedPerson extends solidModelWithHistory(Person) { }
 
         const name = Faker.random.word();
         const person = await TrackedPerson.create({ name });
@@ -1985,8 +1946,9 @@ describe('SolidModel', () => {
             ),
         );
         expect(person.createdAt).toEqual(createdAt);
-        expect(person.updatedAt).toEqual(updatedAt);
         expect(person.deletedAt).toEqual(deletedAt);
+
+        expect(person.getAttribute('updatedAt')).toEqual(updatedAt);
     });
 
     it('Synchronizes models history', async () => {
@@ -2426,3 +2388,46 @@ describe('SolidModel types', () => {
     });
 
 });
+
+function expandIRI(iri: string) {
+    return defaultExpandIRI(iri, {
+        extraContext: {
+            crdt: 'https://vocab.noeldemartin.com/crdt/',
+            foaf: 'http://xmlns.com/foaf/0.1/',
+        },
+    });
+}
+
+function solidModelWithTimestamps<T extends SolidModel>(model: SolidModelConstructor<T>): Constructor<SolidMagicAttributes<{ timestamps: true }>> & SolidModelConstructor<T> {
+    return defineSolidModelSchema(model, { timestamps: true });
+}
+
+function solidModelWithHistory<T extends SolidModel>(model: SolidModelConstructor<T>): Constructor<SolidMagicAttributes<{ timestamps: true; history: true }>> & SolidModelConstructor<T> {
+    return defineSolidModelSchema(model, { timestamps: true, history: true });
+}
+
+class PersonWithHistory extends solidModelWithHistory(Person) {}
+
+class GroupWithHistory extends solidModelWithHistory(Group) {}
+
+class GroupWithPersonsInSameDocument extends solidModelWithTimestamps(Group) {
+
+    public membersRelationship(): Relation {
+        return this
+            .belongsToMany(Person, 'memberUrls')
+            .usingSameDocument(true)
+            .onDelete('cascade');
+    }
+
+}
+
+class GroupWithHistoryAndPersonsInSameDocument extends solidModelWithHistory(Group) {
+
+    public membersRelationship(): Relation {
+        return this
+            .belongsToMany(Person, 'memberUrls')
+            .usingSameDocument(true)
+            .onDelete('cascade');
+    }
+
+}

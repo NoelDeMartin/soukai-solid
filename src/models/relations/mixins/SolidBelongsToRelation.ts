@@ -36,7 +36,7 @@ export default class SolidBelongsToRelation {
             ? foreignKeyValue
             : (foreignKeyValue ? [foreignKeyValue] : []);
         const filters = this.relatedClass.prepareEngineFilters();
-        const reducedDocument = RDFDocument.reduceJsonLDGraph(document, this.parent.id) as EngineDocument;
+        const reducedDocument = RDFDocument.reduceJsonLDGraph(document, this.parent.url) as EngineDocument;
         const documents = document['@graph']
             .filter(resource => modelIds.indexOf(resource['@id']) !== -1)
             .reduce((documents, resource) => {
