@@ -25,18 +25,18 @@ export default class SolidContainerDocumentsRelation extends SolidBelongsToManyR
     }
 
     public async load(): Promise<SolidDocument[]> {
-        const engine = this.parent.requireEngine();
-
-        if (this.isEmpty())
+        if (this.isEmpty()) {
             return this.related = [];
+        }
 
-        if (engine instanceof SolidEngine) {
+        if (this.parent.requireFinalEngine() instanceof SolidEngine) {
             return super.load();
         }
 
         // TODO this implementation can have serious performance issues for some engines.
         // Right now, there are only local engines other than Solid being used with Soukai,
         // so the problem is not as severe.
+        const engine = this.parent.requireEngine();
         const documents = await engine.readMany(this.container.requireDocumentUrl());
 
         this.related = Object.entries(documents).map(([url, document]) => new SolidDocument({

@@ -16,10 +16,11 @@ const PERMISSION_MODES: Record<SolidDocumentPermission, string> = {
 export default class SolidACLAuthorization extends Model {
 
     public static get fetch(): Fetch {
-        const engine = this.requireEngine();
+        const engine = this.requireFinalEngine();
 
-        if (!(engine instanceof SolidEngine))
+        if (!(engine instanceof SolidEngine)) {
             throw new SoukaiError('ACL authorizations can only be fetched with Solid engines');
+        }
 
         return engine.getFetch();
     }

@@ -48,7 +48,7 @@ export class SolidEngine implements Engine {
     private client: SolidClient;
     private listeners: SolidEngineListener[] = [];
 
-    public constructor(fetch: Fetch, config: Partial<SolidEngineConfig> = {}) {
+    public constructor(fetch?: Fetch, config: Partial<SolidEngineConfig> = {}) {
         this.helper = new EngineHelper();
         this.config = {
             useGlobbing: false,

@@ -52,12 +52,13 @@ export default class SolidContainsRelation<
 
         await model.save(this.parent.url);
 
-        if (this.parent.requireEngine() instanceof SolidEngine)
+        if (this.parent.requireFinalEngine() instanceof SolidEngine) {
             this.parent.setOriginalAttribute('resourceUrls', [...this.parent.resourceUrls, model.getDocumentUrl()]);
-        else
+        } else {
             await this.parent.update({
                 resourceUrls: [...this.parent.resourceUrls, model.getDocumentUrl()],
             });
+        }
 
         if (this.loaded)
             this.related?.push(model);

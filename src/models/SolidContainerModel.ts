@@ -26,7 +26,7 @@ export default class SolidContainerModel extends Model {
         typeIndexUrl: string,
         childrenModelClass: typeof SolidModel,
     ): Promise<T | null> {
-        const engine = this.requireEngine();
+        const engine = this.requireFinalEngine();
         const fetch = engine instanceof SolidEngine ? engine.getFetch() : undefined;
         const urls = await findContainerRegistrations(
             typeIndexUrl,

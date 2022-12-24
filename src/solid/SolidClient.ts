@@ -50,7 +50,9 @@ export default class SolidClient {
     private fetch: TypedFetch;
     private config: SolidClientConfig;
 
-    constructor(fetch: Fetch) {
+    constructor(defaultFetch?: Fetch) {
+        const fetch = defaultFetch ?? window.fetch ?? global.fetch;
+
         this.fetch = async (input, options) => {
             try {
                 const response = await fetch(input, options);

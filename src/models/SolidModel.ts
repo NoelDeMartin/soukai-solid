@@ -337,7 +337,7 @@ export class SolidModel extends SolidModelBase {
         // This is necessary because a SolidEngine behaves differently than other engines.
         // Even if a document is stored using compacted IRIs, a SolidEngine will need them expanded
         // because it's ultimately stored in turtle, not json-ld.
-        const compactIRIs = !(this.requireEngine() instanceof SolidEngine);
+        const compactIRIs = !(this.requireFinalEngine() instanceof SolidEngine);
 
         return this.instance().convertEngineFiltersToJsonLD(filters, compactIRIs);
     }
@@ -1564,7 +1564,7 @@ export class SolidModel extends SolidModelBase {
             // This is necessary because a SolidEngine behaves differently than other engines.
             // Even if a document is stored using compacted IRIs, a SolidEngine will need them expanded
             // because it's ultimately stored in turtle, not json-ld.
-            const compactIRIs = !(engine instanceof SolidEngine);
+            const compactIRIs = !(this.requireFinalEngine() instanceof SolidEngine);
 
             graphUpdates.push({
                 $updateItems: {

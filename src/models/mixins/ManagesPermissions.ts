@@ -55,7 +55,7 @@ export default class ManagesPermissions {
     }
 
     protected trackPublicPermissions(this: This): PermissionsTracker {
-        const engine = this.static().requireEngine();
+        const engine = this.static().requireFinalEngine();
 
         if (!(engine instanceof SolidEngine)) {
             return {
