@@ -12,18 +12,18 @@ import WatchAction from '@/testing/lib/stubs/WatchAction';
 import MoviesCollection from '@/testing/lib/stubs/MoviesCollection';
 import StubEngine from '@/testing/lib/stubs/StubEngine';
 
-import SolidContainerModel from './SolidContainerModel';
+import SolidContainer from './SolidContainer';
 import SolidDocument from './SolidDocument';
 
 let engine: StubEngine;
 
-describe('SolidContainerModel', () => {
+describe('SolidContainer', () => {
 
     beforeAll(() => bootModels({ Movie, MoviesCollection, WatchAction }));
     beforeEach(() => setEngine(engine = new StubEngine()));
 
     it('adds ldp:Container rdfsClass', () => {
-        class StubModel extends SolidContainerModel {}
+        class StubModel extends SolidContainer {}
 
         bootModels({ StubModel });
 
@@ -32,7 +32,7 @@ describe('SolidContainerModel', () => {
 
     it('adds resourceUrls field', () => {
         // Arrange
-        class StubModel extends SolidContainerModel {
+        class StubModel extends SolidContainer {
 
             public static timestamps = false;
 
@@ -164,7 +164,7 @@ describe('SolidContainerModel', () => {
 
     it('uses name for minting url for new containers', async () => {
         // Arrange
-        class StubModel extends SolidContainerModel {
+        class StubModel extends SolidContainer {
 
             public static rdfContexts = {
                 foaf: 'http://xmlns.com/foaf/0.1/',
@@ -194,7 +194,7 @@ describe('SolidContainerModel', () => {
     });
 
     it('mints unique urls when urls are already in use', async () => {
-        class StubModel extends SolidContainerModel {
+        class StubModel extends SolidContainer {
 
             public static rdfContexts = {
                 foaf: 'http://xmlns.com/foaf/0.1/',

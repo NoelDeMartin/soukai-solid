@@ -3,13 +3,13 @@ import { SingleModelRelation } from 'soukai';
 
 import type { SolidModel } from '@/models/SolidModel';
 
-import type { SolidContainerModelConstructor } from '@/models/inference';
-import type SolidContainerModel from '@/models/SolidContainerModel';
+import type SolidContainer from '@/models/SolidContainer';
+import type { SolidContainerConstructor } from '@/models/inference';
 
 export default class SolidIsContainedByRelation<
     Parent extends SolidModel = SolidModel,
-    Related extends SolidContainerModel = SolidContainerModel,
-    RelatedClass extends SolidContainerModelConstructor<Related> = SolidContainerModelConstructor<Related>,
+    Related extends SolidContainer = SolidContainer,
+    RelatedClass extends SolidContainerConstructor<Related> = SolidContainerConstructor<Related>,
 > extends SingleModelRelation<Parent, Related, RelatedClass> {
 
     public constructor(parent: Parent, relatedClass: RelatedClass) {

@@ -1,11 +1,11 @@
 import type { Relation } from 'soukai';
 
-import SolidContainerModel from '@/models/SolidContainerModel';
+import SolidContainer from '@/models/SolidContainer';
 import type SolidContainsRelation from '@/models/relations/SolidContainsRelation';
 
 import Movie from '@/testing/lib/stubs/Movie';
 
-export default class MoviesCollection extends SolidContainerModel {
+export default class MoviesCollection extends SolidContainer {
 
     public static timestamps = false;
 

@@ -13,15 +13,15 @@ import { SolidEngine } from '@/engines';
 import SolidContainerDocumentsRelation from './relations/SolidContainerDocumentsRelation';
 import SolidContainsRelation from './relations/SolidContainsRelation';
 
-import Model from './SolidContainerModel.schema';
+import Model from './SolidContainer.schema';
 import SolidTypeRegistration from './SolidTypeRegistration';
 import type SolidDocument from './SolidDocument';
 import type { SolidModel } from './SolidModel';
 import type { SolidModelConstructor } from './inference';
 
-export default class SolidContainerModel extends Model {
+export default class SolidContainer extends Model {
 
-    public static async fromTypeIndex<T extends SolidContainerModel>(
+    public static async fromTypeIndex<T extends SolidContainer>(
         this: SolidModelConstructor<T>,
         typeIndexUrl: string,
         childrenModelClass: typeof SolidModel,

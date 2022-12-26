@@ -89,7 +89,7 @@ import { operationClass } from './history/operations';
 import type Metadata from './history/Metadata';
 import type Operation from './history/Operation';
 import type SolidACLAuthorization from './SolidACLAuthorization';
-import type SolidContainerModel from './SolidContainerModel';
+import type SolidContainer from './SolidContainer';
 import type Tombstone from './history/Tombstone';
 import type { SolidBootedFieldDefinition, SolidBootedFieldsDefinition, SolidFieldsDefinition } from './fields';
 import type { SolidDocumentRelationInstance } from './relations/mixins/SolidDocumentRelation';
@@ -1507,7 +1507,7 @@ export class SolidModel extends SolidModelBase {
     }
     /* eslint-enable max-len */
 
-    protected isContainedBy<T extends typeof SolidContainerModel>(model: T): SolidIsContainedByRelation {
+    protected isContainedBy<T extends typeof SolidContainer>(model: T): SolidIsContainedByRelation {
         return new SolidIsContainedByRelation(this, model);
     }
 

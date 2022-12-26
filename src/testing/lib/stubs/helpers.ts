@@ -137,7 +137,7 @@ export function stubSolidDocumentJsonLD(url: string, updatedAt: string): JsonLDG
             'purl': 'http://purl.org/dc/terms/',
         },
         '@id': url,
-        '@type': ['ldp:Resource', 'Resource'],
+        '@type': ['ldp:Resource', 'http://www.w3.org/ns/iana/media-types/text/turtle#Resource'],
         'purl:modified': {
             '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
             '@value': updatedAt,

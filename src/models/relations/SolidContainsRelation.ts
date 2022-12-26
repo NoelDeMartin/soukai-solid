@@ -4,12 +4,12 @@ import type { Attributes } from 'soukai';
 
 import { SolidEngine } from '@/engines/SolidEngine';
 
-import type SolidContainerModel from '@/models/SolidContainerModel';
+import type SolidContainer from '@/models/SolidContainer';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
 export default class SolidContainsRelation<
-    Parent extends SolidContainerModel = SolidContainerModel,
+    Parent extends SolidContainer = SolidContainer,
     Related extends SolidModel = SolidModel,
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
 > extends BelongsToManyRelation<Parent, Related, RelatedClass> {
