@@ -214,16 +214,19 @@ export default class SolidClient {
         url: string,
         properties: RDFResourceProperty[],
     ): Promise<string> {
+        await this.createContainerFolder(parentUrl, url);
+        await this.updateContainerMetadata(url, properties);
+
+        return url;
+    }
+
+    private async createContainerFolder(parentUrl: string, url: string): Promise<void> {
         if (!url.startsWith(parentUrl))
             throw new SoukaiError('Explicit document url should start with the parent url');
 
         if (!url.endsWith('/'))
             throw new SoukaiError(`Container urls must end with a trailing slash, given ${url}`);
 
-        const turtle = RDFResourceProperty.toTurtle(
-            this.withoutReservedContainerProperties(url, properties),
-            url,
-        );
         const response = await this.fetch(
             url,
             {
@@ -233,26 +236,19 @@ export default class SolidClient {
                     'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                     'If-None-Match': '*',
                 },
-                body: turtle,
             },
         );
 
         if (this.isInternalErrorResponse(response)) {
             // Handle NSS internal error
             // See https://github.com/nodeSolidServer/node-solid-server/issues/1703
-            return this.createContainerDocumentUsingPOST(url, turtle);
+            return this.createContainerDocumentUsingPOST(url);
         }
 
-        this.assertSuccessfulResponse(response, `Error creating container at ${url}`);
-
-        return url;
+        this.assertSuccessfulResponse(response, `Error creating container folder at ${url}`);
     }
 
-    private async createContainerDocumentUsingPOST(
-        url: string,
-        turtle: string,
-        createParent: boolean = true,
-    ): Promise<string> {
+    private async createContainerDocumentUsingPOST(url: string, createParent: boolean = true): Promise<void> {
         const parentUrl = requireUrlParentDirectory(url);
         const response = await this.fetch(
             parentUrl,
@@ -264,19 +260,42 @@ export default class SolidClient {
                     'Slug': requireUrlDirectoryName(url),
                     'If-None-Match': '*',
                 },
-                body: turtle,
             },
         );
 
         if (response.status === 404 && createParent) {
-            await this.createContainerDocumentUsingPOST(parentUrl, '');
+            await this.createContainerDocumentUsingPOST(parentUrl);
 
-            return this.createContainerDocumentUsingPOST(url, turtle, false);
+            return this.createContainerDocumentUsingPOST(url, false);
         }
 
         this.assertSuccessfulResponse(response, `Error creating container at ${url}`);
+    }
 
-        return url;
+    private async updateContainerMetadata(url: string, properties: RDFResourceProperty[]): Promise<void> {
+        if (properties.length === 0) {
+            return;
+        }
+
+        const document = await this.getDocument(url);
+
+        if (!document) {
+            throw new SoukaiError(`Could not get document ${url} after creation`);
+        }
+
+        const metaUrl = document.metadata.describedBy || `${document.url}.meta`;
+        const turtle = RDFResourceProperty.toTurtle(
+            this.withoutReservedContainerProperties(url, properties),
+            url,
+            true,
+        );
+        const response = await this.fetch(metaUrl, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/sparql-update' },
+            body: `INSERT DATA { ${turtle} }`,
+        });
+
+        this.assertSuccessfulResponse(response, `Error updating container metadata at ${metaUrl}`);
     }
 
     private async createNonContainerDocument(

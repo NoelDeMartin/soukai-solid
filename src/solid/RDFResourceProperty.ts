@@ -88,9 +88,13 @@ abstract class RDFResourceProperty {
         return new RDFResourceTypeProperty(resourceUrl, type);
     }
 
-    public static toTurtle(properties: RDFResourceProperty[], documentUrl: string | null = null): string {
+    public static toTurtle(
+        properties: RDFResourceProperty[],
+        documentUrl: string | null = null,
+        explicitSelfReference: boolean = false,
+    ): string {
         return properties
-            .map(property => property.toTurtle(documentUrl) + ' .')
+            .map(property => property.toTurtle(documentUrl, explicitSelfReference) + ' .')
             .join('\n');
     }
 
@@ -117,8 +121,8 @@ abstract class RDFResourceProperty {
         this.value = value;
     }
 
-    public toTurtle(documentUrl: string | null = null): string {
-        const subject = this.getTurtleSubject(documentUrl);
+    public toTurtle(documentUrl: string | null = null, explicitSelfReference: boolean = false): string {
+        const subject = this.getTurtleSubject(documentUrl, explicitSelfReference);
         const predicate = this.getTurtlePredicate();
         const object = this.getTurtleObject(documentUrl);
 
@@ -138,20 +142,26 @@ abstract class RDFResourceProperty {
         }
     }
 
-    protected getTurtleReference(value: string | null, documentUrl: string | null): string {
+    protected getTurtleReference(
+        value: string | null,
+        documentUrl: string | null,
+        explicitSelfReference: boolean = false,
+    ): string {
         const hashIndex = value?.indexOf('#') ?? -1;
 
-        if (!value || value === documentUrl)
-            return '<>';
+        if (!value || value === documentUrl) {
+            return documentUrl && explicitSelfReference ? `<${encodeURI(documentUrl)}>` : '<>';
+        }
 
-        if (documentUrl === null || !value.startsWith(documentUrl) || hashIndex === -1)
+        if (documentUrl === null || !value.startsWith(documentUrl) || hashIndex === -1) {
             return `<${encodeURI(value)}>`;
+        }
 
         return `<#${value.substr(hashIndex + 1)}>`;
     }
 
-    protected getTurtleSubject(documentUrl: string | null): string {
-        return this.getTurtleReference(this.resourceUrl, documentUrl);
+    protected getTurtleSubject(documentUrl: string | null, explicitSelfReference: boolean = false): string {
+        return this.getTurtleReference(this.resourceUrl, documentUrl, explicitSelfReference);
     }
 
     protected getTurtlePredicate(): string {

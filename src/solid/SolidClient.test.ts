@@ -12,7 +12,7 @@ import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation'
 import type RDFDocument from '@/solid/RDFDocument';
 
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';
-import { fakeContainerUrl, fakeResourceUrl } from '@/testing/utils';
+import { fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@/testing/utils';
 
 describe('SolidClient', () => {
 
@@ -102,7 +102,9 @@ describe('SolidClient', () => {
         const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
         const containerUrl = urlResolveDirectory(parentUrl, stringToSlug(label));
 
-        StubFetcher.addFetchResponse('', {}, 201);
+        StubFetcher.addFetchResponse('', {}, 201); // PUT create container
+        StubFetcher.addFetchResponse('', {}, 200); // GET container describedBy
+        StubFetcher.addFetchResponse('', {}, 205); // PATCH container meta
 
         // Act
         const url = await client.createDocument(
@@ -117,14 +119,23 @@ describe('SolidClient', () => {
 
         // Assert
         expect(url).toEqual(containerUrl);
-        expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl, {
+        expect(StubFetcher.fetch).toHaveBeenCalledTimes(3);
+
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(1, containerUrl, {
             method: 'PUT',
             headers: {
                 'Content-Type': 'text/turtle',
                 'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                 'If-None-Match': '*',
             },
-            body: `<> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" .`,
+        });
+
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(2, containerUrl, { headers: { Accept: 'text/turtle' } });
+
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(3, `${containerUrl}.meta`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/sparql-update' },
+            body: `INSERT DATA { <${containerUrl}> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" . }`,
         });
     });
 
@@ -134,6 +145,7 @@ describe('SolidClient', () => {
         const parentSlug = stringToSlug(Faker.random.word());
         const label = Faker.random.word();
         const rootUrl = fakeContainerUrl();
+        const metaUrl = fakeDocumentUrl();
         const grandParentUrl = urlResolveDirectory(rootUrl, grandParentSlug);
         const parentUrl = urlResolveDirectory(grandParentUrl, parentSlug);
         const containerUrl = urlResolveDirectory(parentUrl, stringToSlug(label));
@@ -144,6 +156,8 @@ describe('SolidClient', () => {
         StubFetcher.addFetchResponse('', {}, 201); // POST grandparent
         StubFetcher.addFetchResponse('', {}, 201); // POST parent
         StubFetcher.addFetchResponse('', {}, 201); // POST new container
+        StubFetcher.addFetchResponse('', { Link: `<${metaUrl}>; rel="describedby"` }, 200); // GET container describedBy
+        StubFetcher.addFetchResponse('', {}, 205); // PATCH container meta
 
         // Act
         const url = await client.createDocument(
@@ -158,7 +172,7 @@ describe('SolidClient', () => {
 
         // Assert
         expect(url).toEqual(containerUrl);
-        expect(StubFetcher.fetch).toHaveBeenCalledTimes(6);
+        expect(StubFetcher.fetch).toHaveBeenCalledTimes(8);
 
         [1, 5].forEach(index => {
             expect(StubFetcher.fetchSpy.mock.calls[index]?.[0]).toEqual(parentUrl);
@@ -170,7 +184,6 @@ describe('SolidClient', () => {
                     'Slug': stringToSlug(label),
                     'If-None-Match': '*',
                 },
-                body: `<> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" .`,
             });
         });
 
@@ -184,7 +197,6 @@ describe('SolidClient', () => {
                     'Slug': parentSlug,
                     'If-None-Match': '*',
                 },
-                body: '',
             });
         });
 
@@ -197,7 +209,14 @@ describe('SolidClient', () => {
                 'Slug': grandParentSlug,
                 'If-None-Match': '*',
             },
-            body: '',
+        });
+
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(7, containerUrl, { headers: { Accept: 'text/turtle' } });
+
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(8, metaUrl, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/sparql-update' },
+            body: `INSERT DATA { <${containerUrl}> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" . }`,
         });
     });
 
