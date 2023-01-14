@@ -1585,7 +1585,7 @@ describe('SolidModel', () => {
         expect(person.createdAt).toBeInstanceOf(Date);
     });
 
-    it('imports from JSON-LD without and @id', async () => {
+    it('imports from JSON-LD without an @id', async () => {
         // Arrange
         const name = Faker.random.word();
 

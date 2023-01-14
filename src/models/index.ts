@@ -53,6 +53,7 @@ export function bootSolidModels(): void {
         SolidACLAuthorization,
         SolidContainer,
         SolidDocument,
+        SolidTypeIndex,
         SolidTypeRegistration,
     });
 }
