@@ -1,20 +1,10 @@
-# Solid Soukai [![Build Status](https://semaphoreci.com/api/v1/noeldemartin/soukai-solid/branches/main/badge.svg)](https://semaphoreci.com/noeldemartin/soukai-solid)
+# Soukai Solid [![Build Status](https://semaphoreci.com/api/v1/noeldemartin/soukai-solid/branches/main/badge.svg)](https://semaphoreci.com/noeldemartin/soukai-solid)
+
+<p align="center">
+    <img width="180" src="./logo.svg" alt="Soukai Solid logo">
+</p>
 
 Solid engine for [Soukai ODM](https://soukai.js.org).
-
-## Table of contents
-
-- [Getting Started](#getting-started)
-- [Solid Models vs Solid Documents](#solid-models-vs-solid-documents)
-- [Defining Solid Models](#defining-solid-models)
-    - [Primary keys](#primary-keys)
-    - [Collections](#collections)
-    - [RDF definitions](#rdf-definitions)
-    - [Url minting](#url-minting)
-    - [Relations](#relations)
-- [Going Further](#going-further)
-
------
 
 ## Getting Started
 
@@ -28,19 +18,19 @@ npm install soukai soukai-solid
 
 Managing the authentication is outside the scope of this package, so you'll need to provide a fetch method to perform network requests (if you want to learn more about authentication, you can check out this repository: [noeldemartin/ramen](https://github.com/noeldemartin/ramen)).
 
-To get started, initialize the engine and make sure to call `loadSolidModels` to load models that are provided by this library. Please note that this is just an example to get up and running, but you should define some Solid specific properties in the model for a real application. Make sure to read on after this.
+To get started, initialize the engine and make sure to call `bootSolidModels` to boot models that are provided by this library. Please note that this is just an example to get up and running, but you should define some Solid specific properties in the model for a real application. Make sure to read on after this.
 
 ```js
-import SoukaiSolid, { SolidEngine, SolidModel } from 'soukai-solid';
-import Soukai from 'soukai';
+import { bootSolidModels, SolidEngine, SolidModel } from 'soukai-solid';
+import { bootModels, setEngine } from 'soukai';
 
 class Person extends SolidModel {}
 
-SoukaiSolid.loadSolidModels();
-Soukai.loadModels({ Person });
+bootSolidModels();
+bootModels({ Person });
 
-// If you want to make authenticated requests, you should use the fetch method from an authentication library.
-Soukai.useEngine(new SolidEngine(window.fetch.bind(window)));
+// If you want to make authenticated requests, you should pass the fetch method from an authentication library.
+setEngine(new SolidEngine());
 
 // You would normally get the url dynamically, we're hard-coding it here as an example.
 Person.at('https://example.org/people/').create({ name: 'John Doe' });
@@ -90,7 +80,7 @@ const person = new Person({ name: 'Amy Doe' });
 await person.save('https://example.org/people/');
 
 // or this...
-person.mintUrl('https://example.org/people/');
+person.mintUrl('https://example.org/people/amy');
 
 await person.save();
 
@@ -346,4 +336,9 @@ These methods don't take foreign and local keys because they rely on the `url` o
 
 If you want to see more examples, you can find some models defined under [src/testing/lib/stubs](src/testing/lib/stubs) and files ending with `.test.ts` throughout the source code.
 
-If you want to see some real-life applications using this library, check out [Media Kraken](https://github.com/noeldemartin/media-kraken) and [Solid Focus](https://github.com/NoelDeMartin/solid-focus).
+If you want to see some real-life application using this library, check out one of these:
+
+- [Ramen](https://github.com/NoelDeMartin/ramen)
+- [Umai](https://github.com/NoelDeMartin/umai)
+- [Media Kraken](https://github.com/noeldemartin/media-kraken) (using `v0.4.2`)
+- [Solid Focus](https://github.com/NoelDeMartin/solid-focus) (using `v0.2.1`)
