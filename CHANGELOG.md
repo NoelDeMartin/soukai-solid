@@ -6,13 +6,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ## Next
 
-- Upgraded tooling.
-- Replaced `jsonld-streaming-parser` and `jsonld-streaming-serializer` dependencies with `jsonld`.
-- Make sure to check Soukai's changelog.
-- Automatic timestamps have been refactored into a metadata resource.
-- Added history tracking.
-- Added type registration helpers.
-- Refactored attribute casting for undefined, null and arrays
+This is the first release after 2 years under development, so it's a huge update and the changes listed here are not exhaustive. However, although many of the internals have changed, the public API and core concepts are mostly the same. So upgrading should be mostly straightforward. In any case, you should test that everything is working as expected. And be sure to [ask for assistance](https://github.com/NoelDeMartin/soukai-solid/issues) if you need it!
+
+Also, make sure to check [soukai's release notes](https://github.com/NoelDeMartin/soukai/blob/main/CHANGELOG.md), which also changed significantly.
+
+## Added
+
+- [Authorization helpers](./README.md#authorization) (only for [WAC](https://solidproject.org/TR/wac)).
+- [History tracking](./README.md#history-tracking).
+- Related models in the same document will be loaded automatically in relationships.
+- Inverse relationships will be set automatically.
+- New `SolidTypeIndex` and `SolidTypeRegistration` models to help working with [type indexes](https://solid.github.io/type-indexes/).
+
+## Changed
+
+- Upgraded TypeScript to 4.1.
+- [Automatic timestamps](./README.md#automatic-timestamps) have been moved to a separate RDF resource, so they'll be accessible from a `metadata` relationship instead of being directly within a model's attributes. Some shortcuts have been implemented such as getters and setters from the parent model, but not everything is backwards compatible.
+- Improved container creation algorithm, now it creates parent containers when necessary.
+- Attribute casting for empty values (such as undefined, null, or empty arrays) has been improved.
+- Renamed `SolidContainerModel` to `SolidContainer`.
+- Replaced RDF library dependencies with [@noeldemartin/solid-utils](https://github.com/NoelDeMartin/solid-utils).
+
+## Deprecated
+
+- Globbing. You can continue using it by setting `useGlobbing` to true in `SolidEngine.setConfig`, but it is highly discouraged and it will be removed in future versions.
+- The `SoukaiSolid.loadSolidModels` has been deprecated in favour of `bootSolidModels`.
+
+## Fixed
+
+- Creating and updating container metadata, now it requires a separate request.
 
 ## [v0.4.2](https://github.com/NoelDeMartin/soukai-solid/releases/tag/v0.4.2) - 2021-03-28
 
