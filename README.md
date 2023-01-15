@@ -213,6 +213,9 @@ const person = new Person({
 await person.save();
 ```
 
+> **Warning**
+> Keep in mind that disabling this may break some relationships' initialization, when they rely on foreign ids existing. If you're disabling this and you're using such relationships, make sure to always provide an url when you're creating models.
+
 ### Relations
 
 In addition to the [relations included with the core library](https://soukai.js.org/guide/defining-models.html#relationships), other relations are provided in this package and some are extended with more functionality.
@@ -331,6 +334,99 @@ class Movie extends SolidModel {
 ```
 
 These methods don't take foreign and local keys because they rely on the `url` of the models to resolve collections and model ids.
+
+### Automatic Timestamps
+
+Declaring automatic timestamps works the same way as in [the core library](https://soukai.js.org/guide/defining-models.html#automatic-timestamps), but there are some important differences to keep in mind.
+
+Initially, timestamps were declared as model fields and would produce the following RDF on serialization:
+
+```turtle
+@prefix foaf: <http://xmlns.com/foaf/0.1/>.
+@prefix terms: <http://purl.org/dc/terms/>.
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+
+<#it>
+    a foaf:Person ;
+    foaf:name "Alice" ;
+    terms:created "2021-01-30T11:47:24Z"^^xsd:dateTime ;
+    terms:modified "2021-01-30T11:47:24Z"^^xsd:dateTime .
+```
+
+This is, however, incorrect. The RDF above implies that the person "Alice" was created on January 2021. Instead, what has been created on January 2021 is this record in the Solid POD.
+
+Because of this, timestamps are now declared as fields in a separate `Metadata` model, which is accessible through the built-in `metadata` relationship. You can still use setters and getters in the main model, but keep in mind that it's just syntactic sugar but they are different models under the hood.
+
+This is the RDF that will be generated:
+
+```turtle
+@prefix foaf: <http://xmlns.com/foaf/0.1/>.
+@prefix crdt: <https://vocab.noeldemartin.com/crdt/>.
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#>.
+
+<#it>
+    a foaf:Person ;
+    foaf:name "Alice" .
+
+<#it-metadata>
+    a crdt:Metadata ;
+    crdt:resource <#it> ;
+    crdt:createdAt "2021-01-30T11:47:24Z"^^xsd:dateTime ;
+    crdt:updatedAt "2021-01-30T11:47:24Z"^^xsd:dateTime .
+```
+
+### History Tracking
+
+In some situations, it is desirable to keep track of changes made to a model over time. History tracking is disabled by default, but you can enable it in the model declaration:
+
+```js
+class Person extends SolidModel {
+
+    static history = true;
+
+}
+```
+
+Once this is enabled, any changes that are made to the model will create new operations using the built-in `operations` relationship:
+
+```javascript
+const alice = await Person.create({ name: 'Alice' });
+
+await alice.update({ name: 'Alice Doe' });
+
+console.log(alice.operations.length);
+// console output: 2
+```
+
+The code above will generate the following operations:
+
+- Set `name` to "Alice"
+- Set `name` to "Alice Doe"
+
+This is a trivial example, but this allows implementing a crude [CRDT](https://en.wikipedia.org/wiki/Conflict-free_replicated_data_type) mechanism that uses the Solid POD as mediator. This can be demonstrated by creating two instances of a model, updating them separately, and synchronizing them afterwards using the `synchronize` method.
+
+There are also other use-cases supported, such as soft-deletes (marking a resource as deleted even though it still exists), and tombstones (leaving a `crdt:Tombstone` resource behind instead of deleting the entire document).
+
+Due to the complexity and experimental nature of the feature though, this documentation is brief on purpose. It will be documented further in the future, but for now if you're interested you can learn more from the following resources:
+
+- [CRDTs for Mortals](https://www.youtube.com/watch?v=iEFcmfmdh2w) (20min talk introducing CRDTs).
+- [Local-first software](https://www.inkandswitch.com/local-first/) (Technical article explaining CRDTs motivations and use-cases).
+- [Umai](https://github.com/NoelDeMartin/umai) (An offline-first application using Soukai Solid to synchronize changes across devices).
+
+## Authorization
+
+In order to manage documents' permissions, you can take advantage of the built-in `authorizations` relationship. There are also some helpers such as the `isPublic` and `isPrivate` getters; and the `fetchPublicPermissions` and `updatePublicPermissions` methods.
+
+At the moment, authorization support is limited to [WAC](https://solidproject.org/TR/wac) resources.
+
+## Caveats and limitations
+
+Given the nature of Solid and RDF, there are some things that don't work the same way as the core library:
+
+- `null` and `undefined` attributes will be treated the same way (casted to `undefined`).
+- In array fields, an empty array will also be treated the same way as `null` and `undefined` (casted to an empty array).
+- `FieldType.Object` cannot be used (use [relationships](#relations) instead), neither can nested `FieldType.Array`.
+- Arrays cannot have duplicated entries.
 
 ## Going Further
 
