@@ -4,11 +4,7 @@
     <img width="180" src="./logo.svg" alt="Soukai Solid logo">
 </p>
 
-Solid engine for [Soukai ODM](https://soukai.js.org).
-
-## Getting Started
-
-This library allows you to store and read data from a [Solid POD](https://solidproject.org/) using the Soukai ODM. Before going into Solid specifics, you should be familiar with Soukai basics so make sure to read the [Soukai documentation](https://soukai.js.org/guide/) first.
+This library allows you to store and read data from a [Solid POD](https://solidproject.org/) using the [Soukai ODM](https://soukai.js.org). Before going into Solid specifics, you should be familiar with Soukai basics so make sure to read the [Soukai documentation](https://soukai.js.org/guide/) first.
 
 There are two extensions to the core Soukai library, a Solid engine and a some Solid models (with their respective relationships). To get started, you can install both packages as npm dependencies:
 
@@ -16,9 +12,9 @@ There are two extensions to the core Soukai library, a Solid engine and a some S
 npm install soukai soukai-solid
 ```
 
-Managing the authentication is outside the scope of this package, so you'll need to provide a fetch method to perform network requests (if you want to learn more about authentication, you can check out this repository: [noeldemartin/ramen](https://github.com/noeldemartin/ramen)).
+Managing the authentication is outside the scope of this package, so you'll need to provide a fetch method to perform network requests. If you want to learn how to handle authentication, you can check out this simple application: [Ramen](https://github.com/noeldemartin/ramen).
 
-To get started, initialize the engine and make sure to call `bootSolidModels` to boot models that are provided by this library. Please note that this is just an example to get up and running, but you should define some Solid specific properties in the model for a real application. Make sure to read on after this.
+To get started, initialize the engine and make sure to call `bootSolidModels` to boot models that are provided by this library:
 
 ```js
 import { bootSolidModels, SolidEngine, SolidModel } from 'soukai-solid';
@@ -36,15 +32,18 @@ setEngine(new SolidEngine());
 Person.at('https://example.org/people/').create({ name: 'John Doe' });
 ```
 
+> **Warning**
+> This example is just illustrative to get you started; in a real application you would define static properties in the `Person` model to configure the mapping to RDF. You can read the rest of this documentation to learn how.
+
 ## Solid Models vs Solid Documents
 
 Soukai is a library designed to work with document databases, hence calling it an ODM (Object Document Mapper). This usually means that a Soukai model maps to a database document, and documents are stored within collections in the database.
 
-However, in Solid things work a little different. A Solid container is the equivalent of a collection, but Solid documents don't map directly to Soukai models. Instead, Soukai models represent RDF resources. This is an irrelevant distinction when a Solid document only contains a single RDF resource, but that's rarely the case. Proper RDF modeling often results in documents containing information about multiple resources.
+In Solid, however, things work a little different. A Solid container is the equivalent of a collection, but Solid documents don't map directly to Soukai models. Instead, Soukai models represent RDF resources. This is an irrelevant distinction when a Solid document only contains a single RDF resource, but that's rarely the case. Proper RDF modeling often results in documents containing information about multiple resources.
 
 All of this complexity is dealt with under the hood, but it is important to be aware of the distinction. There are also some practical implications that you'll see in the following sections dealing with collections. Internally, `SolidModel` is serialized to a JSON-LD graph and different models can end up modifying the same document.
 
-The way that models are stored in documents can be configured with relations, and there are some methods to get document information. `getDocumentUrl()` returns the document information from the model url, and `getSourceDocumentUrl()` returns information about the document where the RDF resource was read from. Most of the time both should be the same document, but there is nothing in Solid that forbids doing otherwise.
+The way that models are stored in documents can be configured with relations, and there are some methods to get document information. `getDocumentUrl()` returns the document url inferred from the resource id, whilst `getSourceDocumentUrl()` returns the document url where the resource is actually stored. Most of the time, both should be the same document, but there is nothing in Solid that prevents doing otherwise.
 
 ## Defining Solid Models
 
@@ -71,7 +70,7 @@ const persons = await Person.from(containerUrl).all();
 const person = await Person.at(containerUrl).create({ name: 'Amy Doe' });
 ```
 
-The `find`, `delete` and `save` methods infer the container url from the model url, so calling `from` or `at` is not necessary. However, the `save` accepts the container url as a first argument. This can be ignored if the model url has been minted before by calling `mintUrl` or setting the `url` attribute:
+The `find`, `delete` and `save` methods infer the container url from the model url, so calling `from` or `at` is not necessary. However, the `save` method accepts the container url as a first argument. This can be ignored if the model url has been minted before by calling `mintUrl` or setting the `url` attribute:
 
 ```js
 const person = new Person({ name: 'Amy Doe' });
@@ -138,7 +137,7 @@ class Person extends SolidModel {
 }
 ```
 
-As we've seen in the Getting Started example, those properties are optional. Here's their default values:
+As we've seen in the first example, those properties are optional. Here's their default values:
 
 - `rdfContexts` has the following prefixes included out of the box. If you define your own, these will be merged and not overridden:
 
@@ -177,7 +176,9 @@ class Person extends SolidModel {
 }
 ```
 
-There is also a `SolidContainerModel` class that should be used to declare container models. In addition to everything from a `SolidModel`, it has the following built-in definitions:
+And if you're using TypeScript, you can use the `defineSolidModelSchema` method to take advantage of TypeScript inference.
+
+There is also a `SolidContainer` class that should be used to declare container models. In addition to everything from a `SolidModel`, it has the following built-in definitions:
 
 - The `rdfsClasses` array contains the `ldp:Container` type, it'll be merged with definitions in the model. So it actually makes sense to leave `rdfsClasses` undefined for container models.
 - The `resourceUrls` field is defined as an array mapped from the `ldp:contains` RDF property.
@@ -188,7 +189,7 @@ There is also a `SolidContainerModel` class that should be used to declare conta
 
 The default behavior when creating new models is that the url will be minted in the client side, using the container url and generating a UUID. It will also add a hash at the end which can be configured defining the `defaultResourceHash` static property in the model (it'll be defined as "it" by default).
 
-If the model is a `SolidContainerModel` and has a `name` attribute, this will be used to create a slug instead. Container models don't use a hash in the url and end with a trailing slash.
+If the model is a `SolidContainer` and has a `name` attribute, this will be used to create a slug instead. Container models don't use a hash in the url and end with a trailing slash.
 
 Url minting is useful in order to perform operations with a new model before the server request has been resolved, but it can be disabled by setting the `mintsUrls` property to `false`. You can also mint it manually calling the `mintUrl` method or setting the `url` attribute:
 
@@ -214,7 +215,7 @@ await person.save();
 ```
 
 > **Warning**
-> Keep in mind that disabling this may break some relationships' initialization, when they rely on foreign ids existing. If you're disabling this and you're using such relationships, make sure to always provide an url when you're creating models.
+> Keep in mind that disabling this may break some relationships' initialization, when they rely on foreign keys existing. If you're disabling this and you're using such relationships, make sure to always provide an url when you're creating models.
 
 ### Relations
 
@@ -224,7 +225,7 @@ In addition to the [relations included with the core library](https://soukai.js.
 
 This relation comes with some helper methods.
 
-`create`, `save` and `add` can be used to associate models, setting foreign keys. Models that are stored in the same document of a related model will be saved automatically when the parent model  (the one who defines the relationship) is created if it didn't exist. This can be configured using the `usingSameDocument` method.
+`create`, `save` and `attach` can be used to associate models, setting foreign keys. Models that are stored in the same document of a related model will be saved automatically when the parent model  (the one who defines the relationship) is created if it didn't exist before. This can be configured with the `usingSameDocument` method.
 
 When related models are stored in the same document, the hash of those models will be a UUID instead of the one defined in their `defaultResourceHash` static property.
 
@@ -276,7 +277,7 @@ And here's an example using those models:
 const acdc = await Band.find('https://example.org/bands/ac-dc');
 
 // You can create the model yourself, and it'll be stored when the parent is saved.
-acdc.relatedMembers.add(new Person({ name: 'Bon Scott' }));
+acdc.relatedMembers.attach(new Person({ name: 'Bon Scott' }));
 
 await acdc.save();
 
