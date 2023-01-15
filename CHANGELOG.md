@@ -32,6 +32,10 @@ Also, make sure to check [soukai's release notes](https://github.com/NoelDeMarti
 - Globbing. You can continue using it by setting `useGlobbing` to true in `SolidEngine.setConfig`, but it is highly discouraged and it will be removed in future versions.
 - The `SoukaiSolid.loadSolidModels` has been deprecated in favour of `bootSolidModels`.
 
+## Removed
+
+- The `MalformedDocumentError` class has been removed in favour of `MalformedSolidDocumentError` from the `@noeldemartin/solid-utils` dependency.
+
 ## Fixed
 
 - Creating and updating container metadata, now it requires a separate request.
