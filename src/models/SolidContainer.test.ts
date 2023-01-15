@@ -53,6 +53,12 @@ describe('SolidContainer', () => {
                 rdfProperty: IRI('rdfs:label'),
                 rdfPropertyAliases: [],
             },
+            description: {
+                type: FieldType.String,
+                required: false,
+                rdfProperty: IRI('rdfs:comment'),
+                rdfPropertyAliases: [],
+            },
             resourceUrls: {
                 type: FieldType.Array,
                 required: false,
@@ -61,6 +67,18 @@ describe('SolidContainer', () => {
                 items: {
                     type: FieldType.Key,
                 },
+            },
+            createdAt: {
+                type: FieldType.Date,
+                required: false,
+                rdfProperty: IRI('purl:created'),
+                rdfPropertyAliases: [],
+            },
+            updatedAt: {
+                type: FieldType.Date,
+                required: false,
+                rdfProperty: IRI('purl:modified'),
+                rdfPropertyAliases: [],
             },
         });
     });
