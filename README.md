@@ -285,7 +285,8 @@ await acdc.save();
 await acdc.relatedMembers.create({ name: 'Angus Young' });
 ```
 
-**Note:** Given the nature of Solid, related models defined with `hasMany` will only be loaded if they can be found in the same document as the parent model (the one who defines the relationship). This also works if the foreign key is the only attribute found in the document.
+> **Note**
+> Given the nature of Solid, related models defined with `hasMany` will only be loaded if they can be found in the same document as the parent model (the one who defines the relationship). This also works if the foreign key is the only attribute found in the document.
 
 #### contains and isContainedBy
 
