@@ -54,7 +54,7 @@
     "faker": "^4.1.0",
     "jest": "^26.6.3",
     "jest-summary-reporter": "0.0.2",
-    "soukai": "^0.4.1-next.28afa17749b2c24395064a670c5d3fda7665b3b7",
+    "soukai": "^0.4.1-next.5685def9c613ecea7f7d69f956512644d8ae1d4b",
     "ts-jest": "^26.5.2",
     "typescript": "^4.1.5"
   }
