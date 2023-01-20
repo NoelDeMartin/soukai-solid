@@ -1,6 +1,6 @@
 {
   "name": "soukai-solid",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "description": "Solid engine for Soukai ODM",
   "main": "dist/soukai-solid.cjs.js",
   "browser": "dist/soukai-solid.umd.js",
@@ -29,20 +29,20 @@
     "url": "https://github.com/NoelDeMartin/soukai-solid/issues"
   },
   "peerDependencies": {
-    "soukai": "^0.4.1"
+    "soukai": "^0.5.0"
   },
   "dependencies": {
     "@babel/runtime": "^7.13.8",
-    "@noeldemartin/solid-utils": "0.1.1-next.03a73b36b7695e277f0298e6355fc1c99c8d0b2b",
-    "@noeldemartin/utils": "0.2.1-next.6b17f2fc333f9389f0f4ebca96f962cd2172ee26",
+    "@noeldemartin/solid-utils": "^0.2.0",
+    "@noeldemartin/utils": "^0.3.0",
     "core-js": "^3.9.0"
   },
   "devDependencies": {
     "@babel/plugin-proposal-class-properties": "^7.13.0",
     "@babel/plugin-transform-runtime": "^7.13.8",
     "@microsoft/api-extractor": "^7.18.5",
-    "@noeldemartin/eslint-config-typescript": "next",
-    "@noeldemartin/scripts": "0.1.1-next.ce5d899142d286bfe2196bd04a2ff30f9f9e68c2",
+    "@noeldemartin/eslint-config-typescript": "^0.1.1",
+    "@noeldemartin/scripts": "^0.1.2",
     "@types/faker": "^4.1.5",
     "@types/jest": "^24.0.0",
     "@types/jsonld": "^1.5.5",
@@ -54,7 +54,7 @@
     "faker": "^4.1.0",
     "jest": "^26.6.3",
     "jest-summary-reporter": "0.0.2",
-    "soukai": "^0.4.1-next.5685def9c613ecea7f7d69f956512644d8ae1d4b",
+    "soukai": "^0.5.0",
     "ts-jest": "^26.5.2",
     "typescript": "^4.1.5"
   }
