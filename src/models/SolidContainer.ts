@@ -1,5 +1,6 @@
 import {
     requireUrlParentDirectory,
+    shortId,
     stringToSlug,
     urlDirectoryName,
     urlResolveDirectory,
@@ -65,7 +66,7 @@ export default class SolidContainer extends Model {
     }
 
     protected newUrl(): string {
-        const slug = this.hasAttribute('name') ? stringToSlug(this.getAttribute('name')) : uuid();
+        const slug = this.hasAttribute('name') ? stringToSlug(this.getAttribute('name')) || uuid() : uuid();
 
         return urlResolveDirectory(this.static('collection'), slug);
     }
@@ -75,7 +76,7 @@ export default class SolidContainer extends Model {
 
         const directoryName = urlDirectoryName(url);
 
-        return urlResolveDirectory(requireUrlParentDirectory(url), `${directoryName}-${uuid()}`);
+        return urlResolveDirectory(requireUrlParentDirectory(url), `${directoryName}-${shortId()}`);
     }
 
 }

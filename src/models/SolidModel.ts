@@ -15,6 +15,7 @@ import {
     objectWithout,
     objectWithoutEmpty,
     requireUrlParentDirectory,
+    shortId,
     tap,
     urlClean,
     urlParentDirectory,
@@ -1666,7 +1667,7 @@ export class SolidModel extends SolidModelBase {
         const fragment = urlParse(url)?.fragment;
         const documentUrl = urlRoute(url);
 
-        return `${documentUrl}-${uuid()}${fragment ? `#${fragment}` : ''}`;
+        return `${documentUrl}-${shortId()}${fragment ? `#${fragment}` : ''}`;
     }
 
     protected guessCollection(): string | undefined {
