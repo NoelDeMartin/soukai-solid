@@ -1,5 +1,6 @@
 import {
     arrayDiff,
+    arrayFilter,
     arrayFrom,
     arrayReplace,
     arraySorted,
@@ -40,7 +41,6 @@ import {
 import { expandIRI, mintJsonLDIdentifiers, parseResourceSubject } from '@noeldemartin/solid-utils';
 import type {
     Attributes,
-    BootedFieldDefinition,
     BootedFieldsDefinition,
     EngineAttributeUpdateOperation,
     EngineAttributeValue,
@@ -85,7 +85,7 @@ import SolidHasManyRelation from './relations/SolidHasManyRelation';
 import SolidHasOneRelation from './relations/SolidHasOneRelation';
 import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
 import TombstoneRelation from '@/models/relations/TombstoneRelation';
-import { inferFieldDefinition } from './fields';
+import { inferFieldDefinition, isSolidArrayFieldDefinition } from './fields';
 import { operationClass } from './history/operations';
 import type Metadata from './history/Metadata';
 import type Operation from './history/Operation';
@@ -119,6 +119,24 @@ export class SolidModel extends SolidModelBase {
     protected static historyDisabled: WeakMap<SolidModel, void> = new WeakMap;
 
     public static getFieldDefinition(field: string, value?: unknown): SolidBootedFieldDefinition {
+        if (field.endsWith('.*')) {
+            const parentDefinition = this.getFieldDefinition(
+                field.slice(0, -2),
+                Array.isArray(value) && value.length > 0 ? value[0] : undefined,
+            );
+
+            if (!isSolidArrayFieldDefinition(parentDefinition)) {
+                throw new SoukaiError('Can\'t get item field definition for non-array field');
+            }
+
+            return {
+                type: parentDefinition.items.type,
+                rdfProperty: parentDefinition.rdfProperty,
+                rdfPropertyAliases: parentDefinition.rdfPropertyAliases,
+                required: false,
+            };
+        }
+
         return (this.fields as SolidBootedFieldsDefinition)[field]
             ?? inferFieldDefinition(
                 value,
@@ -1703,54 +1721,52 @@ export class SolidModel extends SolidModelBase {
         }
     }
 
-    private getOperationValue<T = unknown>(field: string): T;
-    private getOperationValue<T = unknown>(field: string, value: unknown): T;
-    private getOperationValue<T = unknown>(field: Omit<BootedFieldDefinition, 'required'>, value: unknown): T;
-    private getOperationValue(field: string | Omit<BootedFieldDefinition, 'required'>, value?: unknown): unknown {
-        const definition = typeof field === 'string' ? this.static().getFieldDefinition(field, value) : field;
-
-        value = value ?? this.getAttributeValue(field as string);
+    private getOperationValue(field: string, value: unknown): unknown {
+        const definition = this.static().getFieldDefinition(field, value);
 
         if (isArrayFieldDefinition(definition)) {
-            if (!value)
-                value = [];
-            else if (!Array.isArray(value))
-                value = [value];
-
-            return (value as unknown[]).map(item => this.getOperationValue(definition.items, item));
+            return arrayFilter(
+                arrayFrom(value, true).map(itemValue => this.getOperationValue(`${field}.*`, itemValue)),
+            );
         }
 
-        if (definition.type === FieldType.Key)
+        if (value && definition.type === FieldType.Key) {
             return new ModelKey(value);
+        }
 
         return value;
     }
 
     private addArrayHistoryOperations(field: string, dirtyValue: unknown, originalValue: unknown): void {
-        const originalValues = this.getOperationValue<unknown[]>(field, originalValue);
-        const dirtyValues = this.getOperationValue<unknown[]>(field, dirtyValue);
-
+        const originalValues = arrayFrom(this.getOperationValue(field, originalValue), true);
+        const dirtyValues = arrayFrom(this.getOperationValue(field, dirtyValue), true);
         const { added, removed } = arrayDiff(
             originalValues,
             dirtyValues,
-            originalValues[0] instanceof ModelKey
-                ? (a, b) => (a as ModelKey).equals(b as ModelKey)
-                : undefined,
+            (a, b) => {
+                if (a instanceof ModelKey && b instanceof ModelKey) {
+                    return a.equals(b);
+                }
+
+                return a === b;
+            },
         );
 
-        if (added.length > 0)
+        if (added.length > 0) {
             this.relatedOperations.attachAddOperation({
                 property: this.static().getFieldRdfProperty(field),
                 date: this.metadata.updatedAt,
-                value: added,
+                value: arrayFilter(added),
             });
+        }
 
-        if (removed.length > 0)
+        if (removed.length > 0) {
             this.relatedOperations.attachRemoveOperation({
                 property: this.static().getFieldRdfProperty(field),
                 date: this.metadata.updatedAt,
-                value: removed,
+                value: arrayFilter(removed),
             });
+        }
     }
 
     private reconcileModelTimestamps(wasTouchedBeforeSaving: boolean): void {

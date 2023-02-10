@@ -1,5 +1,6 @@
+import type { Pretty } from '@noeldemartin/utils';
 import { objectWithoutEmpty } from '@noeldemartin/utils';
-import { FieldType, ModelKey } from 'soukai';
+import { FieldType, ModelKey, isArrayFieldDefinition } from 'soukai';
 import type {
     BootedFieldDefinition,
     BootedFieldsDefinition,
@@ -8,6 +9,8 @@ import type {
     FieldsDefinition,
     SchemaDefinition,
 } from 'soukai';
+
+export type FieldLiteralTypeValue = Exclude<FieldTypeValue, typeof FieldType.Array | typeof FieldType.Object>;
 
 export type SolidFieldDefinition = FieldDefinition<{
     rdfProperty?: string;
@@ -24,6 +27,10 @@ export type SolidFieldsDefinition = FieldsDefinition<{
 export type SolidBootedFieldsDefinition = BootedFieldsDefinition<{
     rdfProperty: string;
     rdfPropertyAliases: string[];
+}>;
+export type SolidBootedArrayFieldDefinition = Pretty<Omit<SolidBootedFieldDefinition, 'items'> & {
+    type: typeof FieldType.Array;
+    items: Omit<BootedFieldDefinition, 'required' | 'type'> & { type: FieldLiteralTypeValue };
 }>;
 
 /* eslint-disable max-len */
@@ -86,6 +93,12 @@ export function inferFieldDefinition(
         default:
             return fieldDefinition(FieldType.Any);
     }
+}
+
+export function isSolidArrayFieldDefinition(
+    fieldDefinition: Omit<SolidBootedFieldDefinition, 'required'>,
+): fieldDefinition is SolidBootedArrayFieldDefinition {
+    return isArrayFieldDefinition(fieldDefinition);
 }
 
 export type SolidSchemaDefinition = SchemaDefinition<{

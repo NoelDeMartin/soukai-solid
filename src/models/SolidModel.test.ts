@@ -1683,7 +1683,7 @@ describe('SolidModel', () => {
         // Arrange
         const firstName = Faker.random.word();
         const secondName = Faker.random.word();
-        const initialMembers = [Faker.random.word(), Faker.random.word(), Faker.random.word()];
+        const initialMembers = [Faker.random.word(), Faker.random.word(), Faker.random.word(), undefined];
         const firstAddedMembers = [Faker.random.word(), Faker.random.word()];
         const secondAddedMember = Faker.random.word();
         const removedMembers = [initialMembers[1], firstAddedMembers[1]];
@@ -1730,8 +1730,14 @@ describe('SolidModel', () => {
 
         assertInstanceOf(operations[1], SetPropertyOperation, operation => {
             expect(operation.property).toEqual(expandIRI('foaf:member'));
-            expect(operation.value).toHaveLength(initialMembers.length);
+            expect(operation.value).toHaveLength(initialMembers.length - 1);
             initialMembers.forEach((memberUrl, index) => {
+                if (memberUrl === undefined) {
+                    expect(index in operation.value).toBeFalsy();
+
+                    return;
+                }
+
                 expect(operation.value[index]).toBeInstanceOf(ModelKey);
                 expect(toString(operation.value[index])).toEqual(memberUrl);
             });

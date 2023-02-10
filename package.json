@@ -34,7 +34,7 @@
   "dependencies": {
     "@babel/runtime": "^7.13.8",
     "@noeldemartin/solid-utils": "^0.2.0",
-    "@noeldemartin/utils": "^0.3.0-next.bbb6e221b71ce3a304763fe38c1d5f8de0fb301c",
+    "@noeldemartin/utils": "^0.3.0-next.4e8641b2bd16389b65055466f4875fc565dd2c2f",
     "core-js": "^3.9.0"
   },
   "devDependencies": {
