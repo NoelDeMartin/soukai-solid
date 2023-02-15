@@ -35,6 +35,7 @@ export interface SolidEngineConfig {
     useGlobbing: boolean;
     globbingBatchSize: number | null;
     concurrentFetchBatchSize: number | null;
+    cachesDocuments: boolean;
 }
 
 export interface SolidEngineListener {
@@ -46,6 +47,7 @@ export class SolidEngine implements Engine {
     private config: SolidEngineConfig;
     private helper: EngineHelper;
     private client: SolidClient;
+    private cache: Map<string, RDFDocument | null> = new Map();
     private listeners: SolidEngineListener[] = [];
 
     public constructor(fetch?: Fetch, config: Partial<SolidEngineConfig> = {}) {
@@ -54,6 +56,7 @@ export class SolidEngine implements Engine {
             useGlobbing: false,
             globbingBatchSize: 5,
             concurrentFetchBatchSize: 10,
+            cachesDocuments: false,
             ...config,
         };
         this.client = new SolidClient(fetch);
@@ -85,7 +88,7 @@ export class SolidEngine implements Engine {
     }
 
     public async readOne(_: string, id: string): Promise<EngineDocument> {
-        const rdfDocument = await this.client.getDocument(id);
+        const rdfDocument = await this.getDocument(id);
 
         if (rdfDocument === null)
             throw new DocumentNotFound(id);
@@ -145,6 +148,24 @@ export class SolidEngine implements Engine {
         this.listeners.splice(index, 1);
     }
 
+    public clearCache(): void {
+        this.cache = new Map();
+    }
+
+    protected async getDocument(url: string): Promise<RDFDocument | null> {
+        if (!this.config.cachesDocuments) {
+            return this.client.getDocument(url);
+        }
+
+        if (!this.cache.has(url)) {
+            const document = await this.client.getDocument(url);
+
+            this.cache.set(url, document);
+        }
+
+        return this.cache.get(url)?.clone() ?? null;
+    }
+
     private emit<Event extends keyof SolidEngineListener>(
         event: Event,
         ...params: Parameters<Exclude<SolidEngineListener[Event], undefined>>
@@ -183,7 +204,7 @@ export class SolidEngine implements Engine {
                 )
                     return this.client.getDocuments(containerUrl, rdfsClasses.includes(IRI('ldp:Container')));
 
-                const documentPromises = documentUrls.map(url => this.client.getDocument(url));
+                const documentPromises = documentUrls.map(url => this.getDocument(url));
                 const documents = await Promise.all(documentPromises);
 
                 return documents.filter(document => document != null) as RDFDocument[];

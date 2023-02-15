@@ -15,6 +15,7 @@ import { SolidEngine } from '@/engines/SolidEngine';
 
 import ChangeUrlOperation from '@/solid/operations/ChangeUrlOperation';
 import IRI from '@/solid/utils/IRI';
+import RDFDocument from '@/solid/RDFDocument';
 import RDFResourceProperty from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
@@ -22,6 +23,7 @@ import type { Fetch } from '@/solid/SolidClient';
 
 import SolidClientMock from '@/solid/__mocks__';
 
+import { fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@/testing/utils';
 import { jsonLDGraph, stubMoviesCollectionJsonLD, stubPersonJsonLD } from '@/testing/lib/stubs/helpers';
 
 describe('SolidEngine', () => {
@@ -568,6 +570,33 @@ describe('SolidEngine', () => {
     it('fails when attributes are not a JSON-LD graph', async () => {
         await expect(engine.create('', {}, '')).rejects.toBeInstanceOf(SoukaiError);
         await expect(engine.update('', '', {})).rejects.toBeInstanceOf(SoukaiError);
+    });
+
+    it('caches documents', async () => {
+        // Arrange
+        const containerUrl = fakeContainerUrl();
+        const documentUrl = fakeDocumentUrl({ containerUrl });
+        const person = stubPersonJsonLD(fakeResourceUrl({ documentUrl }), 'John Doe');
+        const { properties } = await RDFDocument.fromJsonLD(person);
+
+        await SolidClientMock.createDocument(containerUrl, documentUrl, properties);
+
+        engine.setConfig({ cachesDocuments: true });
+
+        // Act
+        const results = [
+            await engine.readOne(containerUrl, documentUrl),
+            await engine.readOne(containerUrl, documentUrl),
+            (await engine.readMany(containerUrl, { $in: [documentUrl] }))[documentUrl],
+            (await engine.readMany(containerUrl, { $in: [documentUrl] }))[documentUrl],
+        ];
+
+        // Assert
+        expect(results).toHaveLength(4);
+
+        results.forEach(result => expect(result).toEqualJsonLD(person));
+
+        expect(SolidClientMock.getDocument).toHaveBeenCalledTimes(1);
     });
 
 });
