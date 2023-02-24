@@ -152,7 +152,7 @@ export class SolidEngine implements Engine {
         this.cache = new Map();
     }
 
-    protected async getDocument(url: string): Promise<RDFDocument | null> {
+    private async getDocument(url: string): Promise<RDFDocument | null> {
         if (!this.config.cachesDocuments) {
             return this.client.getDocument(url);
         }
