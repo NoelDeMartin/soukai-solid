@@ -911,7 +911,7 @@ export class SolidModel extends SolidModelBase {
         unfilledAttributes.forEach(attribute => this.unsetAttribute(attribute));
 
         this.setAttribute('createdAt', operations[0]?.date);
-        this.setAttribute('updatedAt', operations.slice(-1)[0]?.date);
+        this.setAttribute('updatedAt', operations[operations.length - 1]?.date);
     }
 
     public getDocumentUrl(): string | null {
@@ -1770,12 +1770,15 @@ export class SolidModel extends SolidModelBase {
     }
 
     private reconcileModelTimestamps(wasTouchedBeforeSaving: boolean): void {
-        const operationsLength = this.operations?.length ?? 0;
+        const [firstOperation, ...otherOperations] = this.operations ?? [];
 
-        if (operationsLength > 0) {
+        if (firstOperation) {
             this.setAttribute(
                 TimestampField.UpdatedAt,
-                this.operations[operationsLength - 1]?.date,
+                otherOperations.reduce(
+                    (updatedAt, operation) => updatedAt > operation.date ? updatedAt : operation.date,
+                    firstOperation.date,
+                ),
             );
 
             return;

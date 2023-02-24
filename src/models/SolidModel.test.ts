@@ -303,6 +303,27 @@ describe('SolidModel', () => {
         expect(document['@graph'][0]?.sameAs).toHaveLength(2);
     });
 
+    it('uses latest operation date on save', async () => {
+        // Arrange
+        const person = await PersonWithHistory.create({ name: Faker.random.word() });
+        const updatedAt = new Date(Date.now() + 60000);
+
+        await person.update({ name: Faker.random.word() });
+        await person.update({ name: Faker.random.word() });
+        await person.update({ name: Faker.random.word() });
+        await person.update({ name: Faker.random.word() });
+        await person.operations[1]?.update({ date: updatedAt });
+
+        // Act
+        person.updatedAt = updatedAt;
+
+        await person.save();
+
+        // Assert
+        expect(person.updatedAt).toEqual(updatedAt);
+        expect(person.operations).toHaveLength(5);
+    });
+
     it('sends JSON-LD with related models in the same document', async () => {
         // Arrange
         const containerUrl = urlResolveDirectory(Faker.internet.url());

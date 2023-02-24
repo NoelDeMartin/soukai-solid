@@ -10,6 +10,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - `cachesDocuments` config option to `SolidEngine` (cache can be cleared calling `clearCache`).
 
+## Fixed
+
+- Saving using latest operation date.
+
 ## [v0.5.0](https://github.com/NoelDeMartin/soukai-solid/releases/tag/v0.5.0) - 2023-01-20
 
 This is the first release after 2 years under development, so it's a huge update and the changes listed here are not exhaustive. However, although many of the internals have changed, the public API and core concepts are mostly the same. So upgrading should be mostly straightforward. In any case, you should test that everything is working as expected. And be sure to [ask for assistance](https://github.com/NoelDeMartin/soukai-solid/issues) if you need it!
