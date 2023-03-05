@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@noeldemartin/faker';
 import { bootModels, setEngine } from 'soukai';
 import { expandIRI } from '@noeldemartin/solid-utils';
 import { stringToSlug, urlResolve } from '@noeldemartin/utils';
@@ -34,19 +34,19 @@ describe('SolidHasManyRelation', () => {
 
     it('uses document models for resolving models', async () => {
         // Arrange
-        const firstContainerUrl = Faker.internet.url() + '/';
-        const secondContainerUrl = Faker.internet.url() + '/';
-        const firstDocumentUrl = urlResolve(firstContainerUrl, stringToSlug(Faker.random.word()));
-        const secondDocumentUrl = urlResolve(secondContainerUrl, stringToSlug(Faker.random.word()));
-        const thirdDocumentUrl = urlResolve(secondContainerUrl, stringToSlug(Faker.random.word()));
+        const firstContainerUrl = faker.internet.url() + '/';
+        const secondContainerUrl = faker.internet.url() + '/';
+        const firstDocumentUrl = urlResolve(firstContainerUrl, stringToSlug(faker.random.word()));
+        const secondDocumentUrl = urlResolve(secondContainerUrl, stringToSlug(faker.random.word()));
+        const thirdDocumentUrl = urlResolve(secondContainerUrl, stringToSlug(faker.random.word()));
         const firstFriendUrl = firstDocumentUrl + '#it';
-        const firstFriendName = Faker.random.word();
+        const firstFriendName = faker.random.word();
         const secondFriendUrl = secondDocumentUrl + '#it';
-        const secondFriendName = Faker.random.word();
+        const secondFriendName = faker.random.word();
         const thirdFriendUrl = thirdDocumentUrl + '#it';
-        const thirdFriendName = Faker.random.word();
+        const thirdFriendName = faker.random.word();
         const person = new Person({
-            name: Faker.random.word(),
+            name: faker.random.word(),
             friendUrls: [
                 firstFriendUrl,
                 secondFriendUrl,

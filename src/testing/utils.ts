@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@noeldemartin/faker';
 import { readFileSync } from 'fs';
 import { stringToSlug } from '@noeldemartin/utils';
 import type { Constructor } from '@noeldemartin/utils';
@@ -28,14 +28,14 @@ export function assertInstanceOf<T>(
 }
 
 export function fakeContainerUrl(options: Partial<ContainerOptions> = {}): string {
-    const baseUrl = options.baseUrl ?? Faker.internet.url();
+    const baseUrl = options.baseUrl ?? faker.internet.url();
 
     return baseUrl.endsWith('/') ? baseUrl : baseUrl + '/';
 }
 
 export function fakeDocumentUrl(options: Partial<DocumentOptions> = {}): string {
     const containerUrl = options.containerUrl ?? fakeContainerUrl(options);
-    const name = options.name ?? Faker.random.word();
+    const name = options.name ?? faker.random.word();
 
     return containerUrl + stringToSlug(name);
 }

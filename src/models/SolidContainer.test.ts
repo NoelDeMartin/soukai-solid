@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@noeldemartin/faker';
 import { FieldType, bootModels, setEngine } from 'soukai';
 import { stringToSlug, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 import type { EngineDocument } from 'soukai';
@@ -85,15 +85,15 @@ describe('SolidContainer', () => {
 
     it('adds documents relation', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
-        const firstDocumentUrl = urlResolve(containerUrl, Faker.random.uuid());
-        const secondDocumentUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const firstDocumentUrl = urlResolve(containerUrl, faker.datatype.uuid());
+        const secondDocumentUrl = urlResolve(containerUrl, faker.datatype.uuid());
 
         engine.setOne({
             '@graph': [
                 stubMoviesCollectionJsonLD(
                     containerUrl,
-                    Faker.lorem.word(),
+                    faker.lorem.word(),
                     [firstDocumentUrl, secondDocumentUrl],
                 )['@graph'][0],
                 stubSolidDocumentJsonLD(firstDocumentUrl, '1997-07-21T23:42:00.000Z')['@graph'][0],
@@ -118,7 +118,7 @@ describe('SolidContainer', () => {
 
     it('implements contains relationship', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
         const theLordOfTheRingsUrl = urlResolve(containerUrl, 'the-lord-of-the-rings');
         const spiritedAwayUrl = urlResolve(containerUrl, 'spirited-away');
         const collection = new MoviesCollection({
@@ -190,8 +190,8 @@ describe('SolidContainer', () => {
 
         }
 
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
-        const name = Faker.random.word();
+        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const name = faker.random.word();
 
         jest.spyOn(engine, 'create');
 
@@ -220,9 +220,9 @@ describe('SolidContainer', () => {
 
         }
 
-        const name = Faker.random.word();
+        const name = faker.random.word();
         const slug = stringToSlug(name);
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
         const escapedContainerUrl = containerUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const resourceUrl = urlResolveDirectory(containerUrl, slug);
 
@@ -253,7 +253,7 @@ describe('SolidContainer', () => {
     });
 
     it('empty documents relation gets initialized', async () => {
-        const collection = await MoviesCollection.create({ name: Faker.random.word() }) as MoviesCollection;
+        const collection = await MoviesCollection.create({ name: faker.random.word() }) as MoviesCollection;
 
         expect(collection.isRelationLoaded('documents')).toBe(true);
         expect(collection.documents).toEqual([]);

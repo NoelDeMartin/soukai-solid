@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@noeldemartin/faker';
 import { MalformedSolidDocumentError } from '@noeldemartin/solid-utils';
 import { range, stringToSlug, urlResolve, urlResolveDirectory, urlRoute, uuid } from '@noeldemartin/utils';
 import type { Tuple } from '@noeldemartin/utils';
@@ -26,13 +26,13 @@ describe('SolidClient', () => {
 
     it('creates documents', async () => {
         // Arrange
-        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
-        const documentUrl = urlResolve(parentUrl, Faker.random.uuid());
+        const parentUrl = urlResolveDirectory(faker.internet.url(), stringToSlug(faker.random.word()));
+        const documentUrl = urlResolve(parentUrl, faker.datatype.uuid());
         const resourceUrl = `${documentUrl}#it`;
         const secondResourceUrl = `${documentUrl}#someone-else`;
-        const name = Faker.random.word();
-        const firstType = urlResolve(Faker.internet.url(), stringToSlug(Faker.random.word()));
-        const secondType = urlResolve(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const name = faker.random.word();
+        const firstType = urlResolve(faker.internet.url(), stringToSlug(faker.random.word()));
+        const secondType = urlResolve(faker.internet.url(), stringToSlug(faker.random.word()));
 
         StubFetcher.addFetchResponse();
 
@@ -73,8 +73,8 @@ describe('SolidClient', () => {
 
     it('creates documents without minted url', async () => {
         // Arrange
-        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
-        const documentUrl = urlResolve(parentUrl, Faker.random.uuid());
+        const parentUrl = urlResolveDirectory(faker.internet.url(), stringToSlug(faker.random.word()));
+        const documentUrl = urlResolve(parentUrl, faker.datatype.uuid());
 
         StubFetcher.addFetchResponse('', { Location: documentUrl }, 201);
 
@@ -98,8 +98,8 @@ describe('SolidClient', () => {
 
     it('creates container documents', async () => {
         // Arrange
-        const label = Faker.random.word();
-        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const label = faker.random.word();
+        const parentUrl = urlResolveDirectory(faker.internet.url(), stringToSlug(faker.random.word()));
         const containerUrl = urlResolveDirectory(parentUrl, stringToSlug(label));
 
         StubFetcher.addFetchResponse('', {}, 201); // PUT create container
@@ -141,9 +141,9 @@ describe('SolidClient', () => {
 
     it('falls back to creating container documents using POST', async () => {
         // Arrange
-        const grandParentSlug = stringToSlug(Faker.random.word());
-        const parentSlug = stringToSlug(Faker.random.word());
-        const label = Faker.random.word();
+        const grandParentSlug = stringToSlug(faker.random.word());
+        const parentSlug = stringToSlug(faker.random.word());
+        const label = faker.random.word();
         const rootUrl = fakeContainerUrl();
         const metaUrl = fakeDocumentUrl();
         const grandParentUrl = urlResolveDirectory(rootUrl, grandParentSlug);
@@ -222,7 +222,7 @@ describe('SolidClient', () => {
 
     it('gets one document', async () => {
         // Arrange
-        const url = Faker.internet.url();
+        const url = faker.internet.url();
         const data = `<${url}> <http://xmlns.com/foaf/0.1/name> "Foo Bar" .`;
 
         StubFetcher.addFetchResponse(data);
@@ -244,7 +244,7 @@ describe('SolidClient', () => {
         StubFetcher.addFetchNotFoundResponse();
 
         // Act
-        const document = await client.getDocument(Faker.internet.url());
+        const document = await client.getDocument(faker.internet.url());
 
         // Assert
         expect(document).toBeNull();
@@ -253,8 +253,8 @@ describe('SolidClient', () => {
     it('gets documents using a trailing slash', async () => {
         // Arrange
         const containerUrl = urlResolveDirectory(
-            Faker.internet.url(),
-            stringToSlug(Faker.random.word()),
+            faker.internet.url(),
+            stringToSlug(faker.random.word()),
         );
 
         StubFetcher.addFetchResponse(`
@@ -304,7 +304,7 @@ describe('SolidClient', () => {
 
     it('getting documents with globbing does not mix document properties', async () => {
         // Arrange
-        const containerUrl = Faker.internet.url();
+        const containerUrl = faker.internet.url();
         const data = `
             <${containerUrl}/foo>
                 a <http://xmlns.com/foaf/0.1/Person> ;
@@ -384,8 +384,8 @@ describe('SolidClient', () => {
 
     it('getting container documents does not use globbing', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
-        const type = urlResolve(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const containerUrl = urlResolveDirectory(faker.internet.url(), stringToSlug(faker.random.word()));
+        const type = urlResolve(faker.internet.url(), stringToSlug(faker.random.word()));
 
         client.setConfig({ useGlobbing: true });
         StubFetcher.addFetchResponse(`
@@ -439,7 +439,7 @@ describe('SolidClient', () => {
 
     it('updates documents', async () => {
         // Arrange
-        const documentUrl = Faker.internet.url();
+        const documentUrl = faker.internet.url();
         const url = `${documentUrl}#it`;
         const data = `
             <${url}>
@@ -483,8 +483,8 @@ describe('SolidClient', () => {
 
     it('updates container documents', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
-        const metaDocumentName = '.' + stringToSlug(Faker.random.word());
+        const containerUrl = urlResolveDirectory(faker.internet.url(), stringToSlug(faker.random.word()));
+        const metaDocumentName = '.' + stringToSlug(faker.random.word());
         const metaDocumentUrl = containerUrl + metaDocumentName;
         const data = `
             <${containerUrl}>
@@ -532,10 +532,10 @@ describe('SolidClient', () => {
 
     it('changes resource urls', async () => {
         // Arrange
-        const legacyParentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
-        const legacyDocumentUrl = urlResolve(legacyParentUrl, Faker.random.uuid());
-        const parentUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
-        const documentUrl = urlResolve(parentUrl, Faker.random.uuid());
+        const legacyParentUrl = urlResolveDirectory(faker.internet.url(), stringToSlug(faker.random.word()));
+        const legacyDocumentUrl = urlResolve(legacyParentUrl, faker.datatype.uuid());
+        const parentUrl = urlResolveDirectory(faker.internet.url(), stringToSlug(faker.random.word()));
+        const documentUrl = urlResolve(parentUrl, faker.datatype.uuid());
         const firstResourceUrl = legacyDocumentUrl;
         const secondResourceUrl = `${legacyDocumentUrl}#someone-else`;
         const newFirstResourceUrl = `${documentUrl}#it`;
@@ -600,7 +600,7 @@ describe('SolidClient', () => {
 
     it('adds new properties when updating', async () => {
         // Arrange
-        const url = Faker.internet.url();
+        const url = faker.internet.url();
         const data = `<${url}> a <http://xmlns.com/foaf/0.1/Person> .`;
         const operations = [
             new UpdatePropertyOperation(RDFResourceProperty.literal(url, 'http://xmlns.com/foaf/0.1/name', 'John Doe')),
@@ -631,7 +631,7 @@ describe('SolidClient', () => {
 
     it('deletes all properties from a resource within a document', async () => {
         // Arrange
-        const documentUrl = Faker.internet.url();
+        const documentUrl = faker.internet.url();
         const url = `${documentUrl}#it`;
         const data = `
             <${documentUrl}>
@@ -669,7 +669,7 @@ describe('SolidClient', () => {
 
     it('deletes all properties from a resource within a container document', async () => {
         // Arrange
-        const documentUrl = urlResolve(Faker.internet.url(), stringToSlug(Faker.random.word()));
+        const documentUrl = urlResolve(faker.internet.url(), stringToSlug(faker.random.word()));
         const metaDocumentUrl = `${documentUrl}.meta`;
         const resourceUrl = `${documentUrl}#it`;
         const metadataUrl = `${resourceUrl}-metadata`;
@@ -722,7 +722,7 @@ describe('SolidClient', () => {
 
     it('fails updating non-existent documents', async () => {
         // Arrange
-        const url = Faker.internet.url();
+        const url = faker.internet.url();
         const data = `<${url}> a <http://xmlns.com/foaf/0.1/Person> .`;
 
         StubFetcher.addFetchResponse(data);
@@ -735,7 +735,7 @@ describe('SolidClient', () => {
     });
 
     it('ignores empty updates', async () => {
-        await client.updateDocument(Faker.internet.url(), []);
+        await client.updateDocument(faker.internet.url(), []);
 
         expect(StubFetcher.fetch).not.toHaveBeenCalled();
     });
@@ -773,7 +773,7 @@ describe('SolidClient', () => {
 
     it('deletes non-container documents', async () => {
         // Arrange
-        const url = Faker.internet.url();
+        const url = faker.internet.url();
         const data = `
             <${url}>
                 a <http://xmlns.com/foaf/0.1/Person> ;
@@ -792,8 +792,8 @@ describe('SolidClient', () => {
 
     it('deletes container documents', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(Faker.random.word()));
-        const documentUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(faker.internet.url(), stringToSlug(faker.random.word()));
+        const documentUrl = urlResolve(containerUrl, faker.datatype.uuid());
         const containerData = `
             <${containerUrl}>
                 a <http://www.w3.org/ns/ldp#Container> ;
@@ -823,7 +823,7 @@ describe('SolidClient', () => {
 
     it('checks if a document exists', async () => {
         // Arrange
-        const url = Faker.internet.url();
+        const url = faker.internet.url();
 
         StubFetcher.addFetchResponse(`<${url}> a <http://xmlns.com/foaf/0.1/Person> .`);
 
@@ -836,7 +836,7 @@ describe('SolidClient', () => {
 
     it('checks if a document does not exist', async () => {
         // Arrange
-        const url = Faker.internet.url();
+        const url = faker.internet.url();
 
         StubFetcher.addFetchNotFoundResponse();
 
@@ -850,7 +850,7 @@ describe('SolidClient', () => {
     it('handles malformed document errors', async () => {
         // Arrange
         let error!: MalformedSolidDocumentError;
-        const url = Faker.internet.url();
+        const url = faker.internet.url();
 
         StubFetcher.addFetchResponse('this is not turtle');
 
@@ -870,8 +870,8 @@ describe('SolidClient', () => {
         // Arrange
         let error!: MalformedSolidDocumentError;
         const containerUrl = urlResolveDirectory(
-            Faker.internet.url(),
-            stringToSlug(Faker.random.word()),
+            faker.internet.url(),
+            stringToSlug(faker.random.word()),
         );
 
         StubFetcher.addFetchResponse('this is not turtle');

@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@noeldemartin/faker';
 import { bootModels, setEngine } from 'soukai';
 import { SolidDocumentPermission } from '@noeldemartin/solid-utils';
 
@@ -26,7 +26,7 @@ describe('WAC', () => {
         const documentUrl = fakeDocumentUrl();
         const movie = new Movie({
             url: `${documentUrl}#it`,
-            name: Faker.random.word(),
+            name: faker.random.word(),
         }, true);
 
         StubFetcher.addFetchResponse('', { 'WAC-Allow': 'user="append control read write"' });

@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@noeldemartin/faker';
 import { bootModels, setEngine } from 'soukai';
 import { urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 import type { EngineDocument } from 'soukai';
@@ -24,14 +24,14 @@ describe('SolidHasManyRelation', () => {
 
     it('loads models from different containers', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
-        const movieUrl = urlResolve(containerUrl, Faker.random.uuid());
-        const firstActionUrl = `${movieUrl}#${Faker.random.uuid()}`;
-        const secondActionUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const movieUrl = urlResolve(containerUrl, faker.datatype.uuid());
+        const firstActionUrl = `${movieUrl}#${faker.datatype.uuid()}`;
+        const secondActionUrl = urlResolve(containerUrl, faker.datatype.uuid());
 
         engine.setOne({
             '@graph': [
-                stubMovieJsonLD(movieUrl, Faker.lorem.word())['@graph'][0],
+                stubMovieJsonLD(movieUrl, faker.lorem.word())['@graph'][0],
                 stubWatchActionJsonLD(firstActionUrl, movieUrl, '1997-07-21T23:42:00.000Z')['@graph'][0],
                 {
                     '@id': secondActionUrl,

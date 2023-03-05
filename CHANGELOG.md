@@ -13,6 +13,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ## Fixed
 
 - Saving using latest operation date.
+- Tree-shaking by declaring `"sideEffects": false`.
 
 ## [v0.5.0](https://github.com/NoelDeMartin/soukai-solid/releases/tag/v0.5.0) - 2023-01-20
 
@@ -20,7 +21,7 @@ This is the first release after 2 years under development, so it's a huge update
 
 Also, make sure to check [soukai's release notes](https://github.com/NoelDeMartin/soukai/blob/main/CHANGELOG.md), which also changed significantly.
 
-## Added
+### Added
 
 - [Authorization helpers](./README.md#authorization) (only for [WAC](https://solidproject.org/TR/wac)).
 - [History tracking](./README.md#history-tracking).
@@ -28,7 +29,7 @@ Also, make sure to check [soukai's release notes](https://github.com/NoelDeMarti
 - Inverse relationships will be set automatically.
 - New `SolidTypeIndex` and `SolidTypeRegistration` models to help working with [type indexes](https://solid.github.io/type-indexes/).
 
-## Changed
+### Changed
 
 - Upgraded TypeScript to 4.1.
 - [Automatic timestamps](./README.md#automatic-timestamps) have been moved to a separate RDF resource, so they'll be accessible from a `metadata` relationship instead of being directly within a model's attributes. Some shortcuts have been implemented such as getters and setters from the parent model, but not everything is backwards compatible.
@@ -37,16 +38,16 @@ Also, make sure to check [soukai's release notes](https://github.com/NoelDeMarti
 - Renamed `SolidContainerModel` to `SolidContainer`.
 - Replaced RDF library dependencies with [@noeldemartin/solid-utils](https://github.com/NoelDeMartin/solid-utils).
 
-## Deprecated
+### Deprecated
 
 - Globbing. You can continue using it by setting `useGlobbing` to true in `SolidEngine.setConfig`, but it is highly discouraged and it will be removed in future versions.
 - The `SoukaiSolid.loadSolidModels` has been deprecated in favour of `bootSolidModels`.
 
-## Removed
+### Removed
 
 - The `MalformedDocumentError` class has been removed in favour of `MalformedSolidDocumentError` from the `@noeldemartin/solid-utils` dependency.
 
-## Fixed
+### Fixed
 
 - Creating and updating container metadata, now it requires a separate request.
 

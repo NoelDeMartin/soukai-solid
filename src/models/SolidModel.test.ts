@@ -3,7 +3,7 @@ import { after, arrayWithout, range, stringToSlug, tap, toString, tt, urlParentD
 import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
 import { FieldType, InMemoryEngine, ModelKey, bootModels, setEngine } from 'soukai';
 import dayjs from 'dayjs';
-import Faker from 'faker';
+import { faker } from '@noeldemartin/faker';
 import type { EngineDocument, Relation } from 'soukai';
 import type { Constructor, Equals, Expect , Tuple } from '@noeldemartin/utils';
 import type { JsonLDGraph, JsonLDResource } from '@noeldemartin/solid-utils';
@@ -240,7 +240,7 @@ describe('SolidModel', () => {
     it('allows adding undefined fields', async () => {
         class StubModel extends SolidModel {}
 
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
         const createSpy = jest.spyOn(engine, 'create');
 
         bootModels({ StubModel });
@@ -289,7 +289,7 @@ describe('SolidModel', () => {
     it('removes duplicated array values', async () => {
         // Arrange
         const url = fakeResourceUrl();
-        const name = Faker.random.word();
+        const name = faker.random.word();
         const movie = new Movie({ url, name, externalUrls: ['https://example.com', 'https://example.org', 'https://example.com'] });
         const createSpy = jest.spyOn(engine, 'create');
 
@@ -305,13 +305,13 @@ describe('SolidModel', () => {
 
     it('uses latest operation date on save', async () => {
         // Arrange
-        const person = await PersonWithHistory.create({ name: Faker.random.word() });
+        const person = await PersonWithHistory.create({ name: faker.random.word() });
         const updatedAt = new Date(Date.now() + 60000);
 
-        await person.update({ name: Faker.random.word() });
-        await person.update({ name: Faker.random.word() });
-        await person.update({ name: Faker.random.word() });
-        await person.update({ name: Faker.random.word() });
+        await person.update({ name: faker.random.word() });
+        await person.update({ name: faker.random.word() });
+        await person.update({ name: faker.random.word() });
+        await person.update({ name: faker.random.word() });
         await person.operations[1]?.update({ date: updatedAt });
 
         // Act
@@ -326,9 +326,9 @@ describe('SolidModel', () => {
 
     it('sends JSON-LD with related models in the same document', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
-        const movieName = Faker.name.title();
-        const directorName = Faker.name.firstName();
+        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const movieName = faker.lorem.sentence();
+        const directorName = faker.name.firstName();
         const movieUrl = urlResolve(containerUrl, stringToSlug(movieName));
         const movie = new Movie({ url: movieUrl, name: movieName });
         const action = await movie.relatedActions.create({ startTime: new Date('1997-07-21T23:42:00Z') });
@@ -381,8 +381,8 @@ describe('SolidModel', () => {
 
     it('sends JSON-LD with related models in the same document without minted url', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
-        const movieName = Faker.name.title();
+        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const movieName = faker.lorem.sentence();
         const movie = new Movie({ name: movieName });
         const action = await movie.relatedActions.create({ startTime: new Date('1997-07-21T23:42:00Z') });
 
@@ -421,13 +421,13 @@ describe('SolidModel', () => {
 
     it('sends JSON-LD with related model updates using parent engine', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
-        const documentUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const documentUrl = urlResolve(containerUrl, faker.datatype.uuid());
         const movieUrl = `${documentUrl}#it`;
         const actionUrl = `${documentUrl}#action`;
         const document = {
             '@graph': [
-                ...stubMovieJsonLD(movieUrl, Faker.lorem.sentence())['@graph'],
+                ...stubMovieJsonLD(movieUrl, faker.lorem.sentence())['@graph'],
                 ...stubWatchActionJsonLD(actionUrl, movieUrl)['@graph'],
             ],
         } as EngineDocument;
@@ -439,7 +439,7 @@ describe('SolidModel', () => {
         action.setEngine(new InMemoryEngine);
 
         // Act
-        movie.title = Faker.lorem.sentence();
+        movie.title = faker.lorem.sentence();
         action.startTime = new Date();
 
         await movie.save();
@@ -530,11 +530,11 @@ describe('SolidModel', () => {
 
         bootModels({ StubModel });
 
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
         const model = new StubModel(
             {
-                url: urlResolve(containerUrl, Faker.random.uuid()),
-                surname: Faker.name.lastName(),
+                url: urlResolve(containerUrl, faker.datatype.uuid()),
+                surname: faker.name.lastName(),
             },
             true,
         );
@@ -565,17 +565,17 @@ describe('SolidModel', () => {
 
     it('reads many from multiple documents with related models', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
-        const firstDocumentUrl = urlResolve(containerUrl, Faker.random.uuid());
-        const secondDocumentUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const firstDocumentUrl = urlResolve(containerUrl, faker.datatype.uuid());
+        const secondDocumentUrl = urlResolve(containerUrl, faker.datatype.uuid());
         const firstMovieUrl = `${firstDocumentUrl}#it`;
         const secondMovieUrl = `${secondDocumentUrl}#it`;
-        const thirdMovieUrl = `${secondDocumentUrl}#${Faker.random.uuid()}`;
-        const firstWatchActionUrl = `${secondDocumentUrl}#${Faker.random.uuid()}`;
-        const secondWatchActionUrl = `${secondDocumentUrl}#${Faker.random.uuid()}`;
-        const firstMovieName = Faker.name.title();
-        const secondMovieName = Faker.name.title();
-        const thirdMovieName = Faker.name.title();
+        const thirdMovieUrl = `${secondDocumentUrl}#${faker.datatype.uuid()}`;
+        const firstWatchActionUrl = `${secondDocumentUrl}#${faker.datatype.uuid()}`;
+        const secondWatchActionUrl = `${secondDocumentUrl}#${faker.datatype.uuid()}`;
+        const firstMovieName = faker.lorem.sentence();
+        const secondMovieName = faker.lorem.sentence();
+        const thirdMovieName = faker.lorem.sentence();
         const collection = new MoviesCollection({
             url: containerUrl,
             resourceUrls: [firstDocumentUrl, secondDocumentUrl],
@@ -627,7 +627,7 @@ describe('SolidModel', () => {
     it('mints url for new models', async () => {
         class StubModel extends SolidModel {}
 
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
 
         jest.spyOn(engine, 'create');
 
@@ -653,7 +653,7 @@ describe('SolidModel', () => {
 
         }
 
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
 
         jest.spyOn(engine, 'create');
 
@@ -681,7 +681,7 @@ describe('SolidModel', () => {
 
         }
 
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
 
         jest.spyOn(engine, 'create');
 
@@ -704,7 +704,7 @@ describe('SolidModel', () => {
         const escapedContainerUrl = containerUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         const resourceUrl = fakeResourceUrl({ containerUrl });
 
-        urlResolve(containerUrl, stringToSlug(Faker.random.word()));
+        urlResolve(containerUrl, stringToSlug(faker.random.word()));
 
         engine.setOne({ url: resourceUrl });
         jest.spyOn(engine, 'create');
@@ -797,7 +797,7 @@ describe('SolidModel', () => {
     it('uses explicit containerUrl for minting url on save', async () => {
         class StubModel extends SolidModel {}
 
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
 
         jest.spyOn(engine, 'create');
 
@@ -819,7 +819,7 @@ describe('SolidModel', () => {
 
     it('uses hash fragment for minting model urls in the same document', async () => {
         // Arrange
-        const movieUrl = urlResolve(Faker.internet.url(), Faker.random.uuid());
+        const movieUrl = urlResolve(faker.internet.url(), faker.datatype.uuid());
         const movie = new Movie({ url: movieUrl }, true);
 
         movie.setRelationModels('actions', []);
@@ -852,8 +852,8 @@ describe('SolidModel', () => {
 
     it('creates models in existing documents', async () => {
         // Arrange
-        const documentUrl = urlResolve(Faker.internet.url(), Faker.random.uuid());
-        const movieUrl = documentUrl + '#' + Faker.random.uuid();
+        const documentUrl = urlResolve(faker.internet.url(), faker.datatype.uuid());
+        const movieUrl = documentUrl + '#' + faker.datatype.uuid();
         const movie = new Movie({ url: movieUrl });
 
         movie.setDocumentExists(true);
@@ -876,9 +876,9 @@ describe('SolidModel', () => {
 
     it('updates models', async () => {
         // Arrange
-        const documentUrl = urlResolve(Faker.internet.url(), Faker.random.uuid());
-        const movieName = Faker.name.title();
-        const movieUrl = documentUrl + '#' + Faker.random.uuid();
+        const documentUrl = urlResolve(faker.internet.url(), faker.datatype.uuid());
+        const movieName = faker.lorem.sentence();
+        const movieUrl = documentUrl + '#' + faker.datatype.uuid();
         const movie = new Movie({ url: movieUrl }, true);
 
         movie.title = movieName;
@@ -906,12 +906,12 @@ describe('SolidModel', () => {
     it('uses model url container on find', async () => {
         class StubModel extends SolidModel {}
 
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
         const readOneSpy = jest.spyOn(engine, 'readOne');
 
         bootModels({ StubModel });
 
-        await StubModel.find(urlResolve(containerUrl, Faker.random.uuid()));
+        await StubModel.find(urlResolve(containerUrl, faker.datatype.uuid()));
 
         const collection = readOneSpy.mock.calls[0]?.[0];
 
@@ -921,13 +921,13 @@ describe('SolidModel', () => {
     it('uses model url container on save', async () => {
         class StubModel extends SolidModel {}
 
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
         const updateSpy = jest.spyOn(engine, 'update');
 
         bootModels({ StubModel });
 
         const model = new StubModel(
-            { url: urlResolve(containerUrl, Faker.random.uuid()) },
+            { url: urlResolve(containerUrl, faker.datatype.uuid()) },
             true,
         );
 
@@ -940,8 +940,8 @@ describe('SolidModel', () => {
 
     it('deletes the entire document if all stored resources are deleted', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
-        const documentUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const documentUrl = urlResolve(containerUrl, faker.datatype.uuid());
         const movieUrl = `${documentUrl}#it`;
         const actionUrl = `${documentUrl}#action`;
         const movie = new Movie({ url: movieUrl }, true);
@@ -973,10 +973,10 @@ describe('SolidModel', () => {
         bootModels({ StubModel });
         jest.spyOn(engine, 'update');
 
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
-        const documentUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const documentUrl = urlResolve(containerUrl, faker.datatype.uuid());
         const url = `${documentUrl}#it`;
-        const model = new StubModel({ url, name: Faker.name.firstName() }, true);
+        const model = new StubModel({ url, name: faker.name.firstName() }, true);
 
         engine.setMany(containerUrl, {
             [documentUrl]: {
@@ -1007,11 +1007,11 @@ describe('SolidModel', () => {
 
     it('deletes complex document structures properly', async () => {
         // Arrange - create models & urls
-        const firstContainerUrl = urlResolveDirectory(Faker.internet.url());
-        const secondContainerUrl = urlResolveDirectory(Faker.internet.url());
-        const firstDocumentUrl = urlResolve(firstContainerUrl, Faker.random.uuid());
-        const secondDocumentUrl = urlResolve(firstContainerUrl, Faker.random.uuid());
-        const thirdDocumentUrl = urlResolve(secondContainerUrl, Faker.random.uuid());
+        const firstContainerUrl = urlResolveDirectory(faker.internet.url());
+        const secondContainerUrl = urlResolveDirectory(faker.internet.url());
+        const firstDocumentUrl = urlResolve(firstContainerUrl, faker.datatype.uuid());
+        const secondDocumentUrl = urlResolve(firstContainerUrl, faker.datatype.uuid());
+        const thirdDocumentUrl = urlResolve(secondContainerUrl, faker.datatype.uuid());
         const movieUrl = `${firstDocumentUrl}#it`;
         const firstActionUrl = `${firstDocumentUrl}#action`;
         const secondActionUrl = `${secondDocumentUrl}#it`;
@@ -1077,7 +1077,7 @@ describe('SolidModel', () => {
         // Arrange
         class TrackedPerson extends solidModelWithHistory(Person) { }
 
-        const name = Faker.random.word();
+        const name = faker.random.word();
         const person = await TrackedPerson.create({ name });
 
         // Act
@@ -1193,12 +1193,12 @@ describe('SolidModel', () => {
 
     it('loads related models in the same document', async () => {
         // Arrange
-        const movieUrl = urlResolve(Faker.internet.url(), stringToSlug(Faker.random.word()));
-        const watchActionUrl = `${movieUrl}#${Faker.random.uuid()}`;
+        const movieUrl = urlResolve(faker.internet.url(), stringToSlug(faker.random.word()));
+        const watchActionUrl = `${movieUrl}#${faker.datatype.uuid()}`;
 
         engine.setOne({
             '@graph': [
-                ...stubMovieJsonLD(movieUrl, Faker.lorem.sentence())['@graph'],
+                ...stubMovieJsonLD(movieUrl, faker.lorem.sentence())['@graph'],
                 ...stubWatchActionJsonLD(watchActionUrl, movieUrl)['@graph'],
             ],
         } as EngineDocument);
@@ -1217,10 +1217,10 @@ describe('SolidModel', () => {
 
     it('implements is contained by relationship', async () => {
         // Arrange
-        const name = Faker.random.word();
-        const containerUrl = urlResolveDirectory(Faker.internet.url(), stringToSlug(name));
+        const name = faker.random.word();
+        const containerUrl = urlResolveDirectory(faker.internet.url(), stringToSlug(name));
         const movie = new Movie({
-            url: urlResolve(containerUrl, Faker.random.uuid()),
+            url: urlResolve(containerUrl, faker.datatype.uuid()),
         });
 
         jest.spyOn(engine, 'readOne');
@@ -1245,14 +1245,14 @@ describe('SolidModel', () => {
     it('serializes to JSON-LD', () => {
         // Arrange
         const containerUrl = fakeContainerUrl();
-        const name = Faker.random.word();
+        const name = faker.random.word();
         const person = new Person({
             name,
-            url: urlResolve(containerUrl, Faker.random.uuid()),
+            url: urlResolve(containerUrl, faker.datatype.uuid()),
             friendUrls: [
-                urlResolve(containerUrl, Faker.random.uuid()),
-                urlResolve(containerUrl, Faker.random.uuid()),
-                urlResolve(containerUrl, Faker.random.uuid()),
+                urlResolve(containerUrl, faker.datatype.uuid()),
+                urlResolve(containerUrl, faker.datatype.uuid()),
+                urlResolve(containerUrl, faker.datatype.uuid()),
             ],
             createdAt: new Date('1997-07-21T23:42:00Z'),
         });
@@ -1285,9 +1285,9 @@ describe('SolidModel', () => {
 
     it('serializes to JSON-LD with relations', () => {
         // Arrange
-        const movieName = Faker.name.title();
-        const movieUrl = urlResolve(Faker.internet.url(), stringToSlug(movieName));
-        const watchActionUrl = `${movieUrl}#${Faker.random.uuid()}`;
+        const movieName = faker.lorem.sentence();
+        const movieUrl = urlResolve(faker.internet.url(), stringToSlug(movieName));
+        const watchActionUrl = `${movieUrl}#${faker.datatype.uuid()}`;
         const movie = new Movie({ url: movieUrl, name: movieName });
 
         movie.setRelationModels('actions', [
@@ -1428,18 +1428,18 @@ describe('SolidModel', () => {
 
     it('parses JSON-LD', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
-        const name = Faker.random.word();
+        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const name = faker.random.word();
         const friendUrls = [
-            urlResolve(containerUrl, Faker.random.uuid()),
-            urlResolve(containerUrl, Faker.random.uuid()),
-            urlResolve(containerUrl, Faker.random.uuid()),
+            urlResolve(containerUrl, faker.datatype.uuid()),
+            urlResolve(containerUrl, faker.datatype.uuid()),
+            urlResolve(containerUrl, faker.datatype.uuid()),
         ];
 
         // Act
         const person = await Person.newFromJsonLD({
             '@context': { '@vocab': 'http://xmlns.com/foaf/0.1/' },
-            '@id': urlResolve(containerUrl, Faker.random.uuid()),
+            '@id': urlResolve(containerUrl, faker.datatype.uuid()),
             '@type': [
                 'http://xmlns.com/foaf/0.1/Person',
             ],
@@ -1462,17 +1462,17 @@ describe('SolidModel', () => {
 
     it('parses JSON-LD with related models', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
-        const movieName = Faker.random.word();
-        const directorName = Faker.random.word();
-        const groupName = Faker.random.word();
-        const creatorName = Faker.random.word();
+        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const movieName = faker.random.word();
+        const directorName = faker.random.word();
+        const groupName = faker.random.word();
+        const creatorName = faker.random.word();
         const actions = range(2);
         const memberNames = [
-            Faker.random.word(),
-            Faker.random.word(),
+            faker.random.word(),
+            faker.random.word(),
         ];
-        const documentUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const documentUrl = urlResolve(containerUrl, faker.datatype.uuid());
         const movieUrl = `${documentUrl}#it`;
         const groupUrl = `${documentUrl}#it`;
 
@@ -1590,7 +1590,7 @@ describe('SolidModel', () => {
 
     it('imports from JSON-LD', async () => {
         // Arrange
-        const name = Faker.random.word();
+        const name = faker.random.word();
 
         // Act
         const person = await Person.createFromJsonLD({
@@ -1608,7 +1608,7 @@ describe('SolidModel', () => {
 
     it('imports from JSON-LD without an @id', async () => {
         // Arrange
-        const name = Faker.random.word();
+        const name = faker.random.word();
 
         // Act
         const person = await Person.createFromJsonLD({
@@ -1628,7 +1628,7 @@ describe('SolidModel', () => {
             '@context': { '@vocab': 'https://schema.org/' },
             '@type': 'Movie',
             '@id': fakeDocumentUrl(),
-            'name': Faker.random.word(),
+            'name': faker.random.word(),
         });
 
         await expect(promisedPerson).rejects.toThrowError('Couldn\'t find matching resource in JSON-LD');
@@ -1644,7 +1644,7 @@ describe('SolidModel', () => {
         }
 
         // Act
-        const person = await TrackedPerson.create({ name: Faker.random.word() });
+        const person = await TrackedPerson.create({ name: faker.random.word() });
 
         // Assert
         expect(person.operations).toHaveLength(0);
@@ -1652,10 +1652,10 @@ describe('SolidModel', () => {
 
     it('Tracks operations with history enabled', async () => {
         // Arrange
-        const firstName = Faker.random.word();
-        const secondName = Faker.random.word();
-        const firstLastName = Faker.random.word();
-        const secondLastName = Faker.random.word();
+        const firstName = faker.random.word();
+        const secondName = faker.random.word();
+        const firstLastName = faker.random.word();
+        const secondLastName = faker.random.word();
 
         // Act
         const person = await PersonWithHistory.create({ name: firstName });
@@ -1702,11 +1702,11 @@ describe('SolidModel', () => {
 
     it('Tracks history properly for array fields', async () => {
         // Arrange
-        const firstName = Faker.random.word();
-        const secondName = Faker.random.word();
-        const initialMembers = [Faker.random.word(), Faker.random.word(), Faker.random.word(), undefined];
-        const firstAddedMembers = [Faker.random.word(), Faker.random.word()];
-        const secondAddedMember = Faker.random.word();
+        const firstName = faker.random.word();
+        const secondName = faker.random.word();
+        const initialMembers = [faker.random.word(), faker.random.word(), faker.random.word(), undefined];
+        const firstAddedMembers = [faker.random.word(), faker.random.word()];
+        const secondAddedMember = faker.random.word();
         const removedMembers = [initialMembers[1], firstAddedMembers[1]];
 
         // Act
@@ -1809,9 +1809,9 @@ describe('SolidModel', () => {
                 'purl': 'http://purl.org/dc/terms/',
                 'xls': 'http://www.w3.org/2001/XMLSchema#',
             },
-            '@id': urlResolve(urlResolveDirectory(Faker.internet.url()), Faker.random.uuid()) + '#it',
+            '@id': urlResolve(urlResolveDirectory(faker.internet.url()), faker.datatype.uuid()) + '#it',
             '@type': 'Person',
-            'name': Faker.random.word(),
+            'name': faker.random.word(),
             'purl:created': {
                 '@type': 'xls:dateTime',
                 '@value': date.toISOString(),
@@ -1866,42 +1866,42 @@ describe('SolidModel', () => {
 
     it('Rebuilds attributes from history', () => {
         // Arrange
-        const name = Faker.random.word();
-        const lastName = Faker.random.word();
-        const initialFriends = [Faker.internet.url(), Faker.internet.url()];
-        const firstAddedFriends = [Faker.internet.url(), Faker.internet.url()];
-        const secondAddedFriend = Faker.internet.url();
+        const name = faker.random.word();
+        const lastName = faker.random.word();
+        const initialFriends = [faker.internet.url(), faker.internet.url()];
+        const firstAddedFriends = [faker.internet.url(), faker.internet.url()];
+        const secondAddedFriend = faker.internet.url();
         const removedFriends = [initialFriends[1], firstAddedFriends[0]];
-        const createdAt = Faker.date.between(
+        const createdAt = faker.date.between(
             dayjs().subtract(3, 'months').toDate(),
             dayjs().subtract(1, 'month').toDate(),
         );
-        const firstUpdatedAt = Faker.date.between(
+        const firstUpdatedAt = faker.date.between(
             dayjs().subtract(1, 'month').toDate(),
             dayjs().add(1, 'month').toDate(),
         );
-        const deletedAt = Faker.date.between(
+        const deletedAt = faker.date.between(
             dayjs().add(1, 'month').toDate(),
             dayjs().add(3, 'months').toDate(),
         );
-        const updatedAt = Faker.date.between(
+        const updatedAt = faker.date.between(
             dayjs().add(3, 'month').toDate(),
             dayjs().add(4, 'months').toDate(),
         );
         const person = new Person({
-            name: Faker.random.word(),
-            lastName: Faker.random.word(),
-            givenName: Faker.random.word(),
+            name: faker.random.word(),
+            lastName: faker.random.word(),
+            givenName: faker.random.word(),
             friendUrls: [
-                Faker.internet.url(),
-                Faker.internet.url(),
+                faker.internet.url(),
+                faker.internet.url(),
             ],
         });
 
         // Arrange - initial operations
         person.relatedOperations.attachSetOperation({
             property: Person.getFieldRdfProperty('name'),
-            value: Faker.random.word(),
+            value: faker.random.word(),
             date: createdAt,
         });
 
@@ -1939,7 +1939,7 @@ describe('SolidModel', () => {
         // Arrange - first update operation (use wrong order on purpose to test sorting)
         person.relatedOperations.attachSetOperation({
             property: Person.getFieldRdfProperty('name'),
-            value: Faker.random.word(),
+            value: faker.random.word(),
             date: firstUpdatedAt,
         });
 

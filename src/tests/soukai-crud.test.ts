@@ -1,6 +1,6 @@
 import { InMemoryEngine, bootModels, setEngine } from 'soukai';
 import { tap } from '@noeldemartin/utils';
-import Faker from 'faker';
+import { faker } from '@noeldemartin/faker';
 import type { EngineDocument, InMemoryEngineCollection } from 'soukai';
 
 import Movie from '@/testing/lib/stubs/Movie';
@@ -19,7 +19,7 @@ describe('Soukai CRUD', () => {
 
     it('Creates models', async () => {
         // Arrange
-        const title = Faker.name.title();
+        const title = faker.lorem.sentence();
 
         // Act
         const movie = await Movie.create({ title });
@@ -41,7 +41,7 @@ describe('Soukai CRUD', () => {
 
     it('Reads models', async () => {
         // Arrange
-        const title = Faker.name.title();
+        const title = faker.lorem.sentence();
         const stub = createStub(title);
 
         // Act
@@ -54,8 +54,8 @@ describe('Soukai CRUD', () => {
 
     it('Updates models', async () => {
         // Arrange
-        const title = Faker.name.title();
-        const stub = createStub(Faker.name.title());
+        const title = faker.lorem.sentence();
+        const stub = createStub(faker.lorem.sentence());
         const movie = new Movie(stub.getAttributes(), true);
 
         // Act
@@ -92,7 +92,7 @@ describe('Soukai CRUD', () => {
 });
 
 function createStub(title?: string): Movie {
-    return tap(new Movie({ title: title ?? Faker.name.title() }), stub => {
+    return tap(new Movie({ title: title ?? faker.lorem.sentence() }), stub => {
         stub.mintUrl();
 
         engine.database[Movie.collection] = {

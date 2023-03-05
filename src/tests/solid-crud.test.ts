@@ -1,6 +1,6 @@
 import { bootModels, setEngine } from 'soukai';
 import { tap, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
-import Faker from 'faker';
+import { faker } from '@noeldemartin/faker';
 
 import Group from '@/testing/lib/stubs/Group';
 import Movie from '@/testing/lib/stubs/Movie';
@@ -30,7 +30,7 @@ describe('Solid CRUD', () => {
 
     it('Creates models', async () => {
         // Arrange
-        const title = Faker.name.title();
+        const title = faker.lorem.sentence();
         const releaseDate = new Date('1997-07-21T23:42:00Z');
         const watchDate = new Date('2002-09-15T23:42:00Z');
 
@@ -66,7 +66,7 @@ describe('Solid CRUD', () => {
 
     it('Creates models in existing documents', async () => {
         // Arrange
-        const title = Faker.name.title();
+        const title = faker.lorem.sentence();
         const watchDate = new Date('2002-09-15T23:42:00Z');
         const movie = new Movie({ title });
         const documentUrl = fakeDocumentUrl();
@@ -105,7 +105,7 @@ describe('Solid CRUD', () => {
 
     it('Updates models', async () => {
         // Arrange
-        const title = Faker.name.title();
+        const title = faker.lorem.sentence();
         const stub = await createStub();
         const movie = new Movie(stub.getAttributes(), true);
 
@@ -227,8 +227,8 @@ describe('Solid CRUD', () => {
 
     it('Deletes models', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
-        const documentUrl = urlResolve(containerUrl, Faker.random.uuid());
+        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const documentUrl = urlResolve(containerUrl, faker.datatype.uuid());
         const url = `${documentUrl}#it`;
         const movie = new Movie({ url }, true);
 
@@ -251,7 +251,7 @@ describe('Solid CRUD', () => {
     it('Deletes models in existing documents', async () => {
         // Arrange
         const documentUrl = fakeDocumentUrl();
-        const title = Faker.name.title();
+        const title = faker.lorem.sentence();
         const watchDate = new Date('2002-09-15T23:42:00Z');
         const movie = new Movie({ url: `${documentUrl}#movie`, title }, true);
         const action = new WatchAction({ url: `${documentUrl}#action`, startTime: watchDate }, true);
@@ -306,8 +306,8 @@ describe('Solid CRUD', () => {
     it('Deletes related models in existing documents', async () => {
         // Arrange
         const documentUrl = fakeDocumentUrl();
-        const groupName = Faker.name.title();
-        const memberName = Faker.name.title();
+        const groupName = faker.lorem.sentence();
+        const memberName = faker.lorem.sentence();
         const group = new Group({
             url: `${documentUrl}#group`,
             name: groupName,
@@ -362,7 +362,7 @@ describe('Solid CRUD', () => {
 
 async function createStub(title?: string): Promise<Movie> {
     const attributes = {
-        title: title ?? Faker.name.title(),
+        title: title ?? faker.lorem.sentence(),
         externalUrls: [
             'https://example.org/foo',
             'https://example.org/bar',

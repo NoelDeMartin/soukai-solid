@@ -6,6 +6,7 @@
   "browser": "dist/soukai-solid.umd.js",
   "module": "dist/soukai-solid.esm.js",
   "types": "dist/soukai-solid.d.ts",
+  "sideEffects": false,
   "scripts": {
     "build": "rm dist -rf && npm run build:js && npm run build:types",
     "build:js": "noeldemartin-build-javascript",
@@ -33,8 +34,8 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.13.8",
-    "@noeldemartin/solid-utils": "^0.2.0",
-    "@noeldemartin/utils": "^0.3.0-next.4e8641b2bd16389b65055466f4875fc565dd2c2f",
+    "@noeldemartin/solid-utils": "^0.2.0-next.1b9830994a89d900e969b890901e13f7f04df993",
+    "@noeldemartin/utils": "^0.3.0-next.32ce15e2a6d00e46d31ca0e263876f6cf4acbc2a",
     "core-js": "^3.9.0"
   },
   "devDependencies": {
@@ -42,8 +43,8 @@
     "@babel/plugin-transform-runtime": "^7.13.8",
     "@microsoft/api-extractor": "^7.18.5",
     "@noeldemartin/eslint-config-typescript": "^0.1.1",
+    "@noeldemartin/faker": "^7.6.0",
     "@noeldemartin/scripts": "^0.1.2",
-    "@types/faker": "^4.1.5",
     "@types/jest": "^24.0.0",
     "@types/jsonld": "^1.5.5",
     "@types/n3": "^1.1.6",
@@ -51,10 +52,9 @@
     "cross-env": "^5.2.0",
     "dayjs": "^1.10.5",
     "eslint": "^7.20.0",
-    "faker": "^4.1.0",
     "jest": "^26.6.3",
     "jest-summary-reporter": "0.0.2",
-    "soukai": "^0.5.0",
+    "soukai": "^0.5.0-next.f487c63bb64a017c3840b0cf76974fea762ff40d",
     "ts-jest": "^26.5.2",
     "typescript": "^4.1.5"
   }

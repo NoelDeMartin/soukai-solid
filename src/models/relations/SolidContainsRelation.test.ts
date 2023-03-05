@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@noeldemartin/faker';
 import { InMemoryEngine, bootModels, setEngine } from 'soukai';
 import { urlResolveDirectory } from '@noeldemartin/utils';
 
@@ -15,8 +15,8 @@ describe('SolidContainsRelation', () => {
         // Arrange
         setEngine(new StubEngine());
 
-        const containerUrl = urlResolveDirectory(Faker.internet.url());
-        const movieTitle = Faker.name.title();
+        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const movieTitle = faker.lorem.sentence();
         const collection = new MoviesCollection({ url: containerUrl }, true);
 
         collection.relatedMovies.related = [];
@@ -38,7 +38,7 @@ describe('SolidContainsRelation', () => {
         // Arrange
         setEngine(new InMemoryEngine());
 
-        const movieTitle = Faker.name.title();
+        const movieTitle = faker.lorem.sentence();
         const collection = await MoviesCollection.create({ url: fakeContainerUrl({ baseUrl: fakeDocumentUrl() }) });
 
         // Act

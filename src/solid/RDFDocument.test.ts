@@ -1,4 +1,4 @@
-import Faker from 'faker';
+import { faker } from '@noeldemartin/faker';
 
 import RDFDocument from './RDFDocument';
 
@@ -6,8 +6,8 @@ describe('RDFDocument', () => {
 
     it('parses Turtle', async () => {
         // Arrange
-        const url = Faker.internet.url();
-        const name = Faker.name.firstName();
+        const url = faker.internet.url();
+        const name = faker.name.firstName();
 
         // Act
         const document = await RDFDocument.fromTurtle(`
@@ -28,8 +28,8 @@ describe('RDFDocument', () => {
 
     it('parses JSON-LD', async () => {
         // Arrange
-        const url = Faker.internet.url();
-        const name = Faker.name.firstName();
+        const url = faker.internet.url();
+        const name = faker.name.firstName();
 
         // Act
         const document = await RDFDocument.fromJsonLD({
