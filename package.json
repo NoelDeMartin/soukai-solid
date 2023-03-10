@@ -1,6 +1,6 @@
 {
   "name": "soukai-solid",
-  "version": "0.5.0",
+  "version": "0.5.1",
   "description": "Solid engine for Soukai ODM",
   "main": "dist/soukai-solid.cjs.js",
   "browser": "dist/soukai-solid.umd.js",
@@ -30,12 +30,12 @@
     "url": "https://github.com/NoelDeMartin/soukai-solid/issues"
   },
   "peerDependencies": {
-    "soukai": "~0.5.0"
+    "soukai": "~0.5.1"
   },
   "dependencies": {
     "@babel/runtime": "^7.13.8",
-    "@noeldemartin/solid-utils": "^0.2.0-next.1b9830994a89d900e969b890901e13f7f04df993",
-    "@noeldemartin/utils": "^0.3.0-next.32ce15e2a6d00e46d31ca0e263876f6cf4acbc2a",
+    "@noeldemartin/solid-utils": "^0.3.0",
+    "@noeldemartin/utils": "^0.4.0",
     "core-js": "^3.9.0"
   },
   "devDependencies": {
@@ -54,7 +54,7 @@
     "eslint": "^7.20.0",
     "jest": "^26.6.3",
     "jest-summary-reporter": "0.0.2",
-    "soukai": "^0.5.0-next.f487c63bb64a017c3840b0cf76974fea762ff40d",
+    "soukai": "~0.5.1",
     "ts-jest": "^26.5.2",
     "typescript": "^4.1.5"
   }
