@@ -172,7 +172,7 @@ function getDescribedBy(options: Partial<TurtleParsingOptions> = {}): string | u
     if (!options.headers?.has('Link'))
         return undefined;
 
-    const matches = options.headers.get('Link')?.match(/<([^>]+)>; rel="describedBy"/i);
+    const matches = options.headers.get('Link')?.match(/<([^>]+)>;\s*rel="describedBy"/i);
 
     if (!matches)
         return undefined;
