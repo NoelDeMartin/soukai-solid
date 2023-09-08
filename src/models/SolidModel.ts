@@ -55,7 +55,7 @@ import type {
     SingleModelRelation,
     TimestampFieldValue,
 } from 'soukai';
-import type { JsonLD, JsonLDGraph, SubjectParts } from '@noeldemartin/solid-utils';
+import type { Fetch, JsonLD, JsonLDGraph, SubjectParts } from '@noeldemartin/solid-utils';
 import type { Quad } from 'rdf-js';
 
 import { SolidEngine } from '@/engines';
@@ -163,6 +163,16 @@ export class SolidModel extends SolidModelBase {
         ));
 
         return fields[rdfProperty] ?? null;
+    }
+
+    public static requireFetch(): Fetch {
+        const engine = this.requireFinalEngine();
+
+        if (!(engine instanceof SolidEngine)) {
+            throw new SoukaiError(`Could not get fetch from ${this.modelName} model`);
+        }
+
+        return engine.getFetch();
     }
 
     public static requireFieldRdfProperty(field: string): string {

@@ -1,8 +1,5 @@
-import { SoukaiError } from 'soukai';
 import { SolidDocumentPermission } from '@noeldemartin/solid-utils';
-
-import { SolidEngine } from '@/engines';
-import type { Fetch } from '@/engines';
+import type { Fetch } from '@noeldemartin/solid-utils';
 
 import Model from './SolidACLAuthorization.schema';
 
@@ -15,14 +12,11 @@ const PERMISSION_MODES: Record<SolidDocumentPermission, string> = {
 
 export default class SolidACLAuthorization extends Model {
 
+    /**
+     * @deprecated Use requireFetch() instead.
+     */
     public static get fetch(): Fetch {
-        const engine = this.requireFinalEngine();
-
-        if (!(engine instanceof SolidEngine)) {
-            throw new SoukaiError('ACL authorizations can only be fetched with Solid engines');
-        }
-
-        return engine.getFetch();
+        return this.requireFetch();
     }
 
     public static modeFromSolidDocumentPermission(permission: SolidDocumentPermission): string {

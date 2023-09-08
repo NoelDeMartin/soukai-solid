@@ -37,7 +37,8 @@ export default class ManagesPermissions {
     public async fetchPublicPermissions(this: This): Promise<void> {
         const aclAuthorizationClass = requireBootedModel<typeof SolidACLAuthorization>('SolidACLAuthorization');
         const documentUrl = this.requireDocumentUrl();
-        const resourceHead = await aclAuthorizationClass.fetch(documentUrl, { method: 'HEAD' });
+        const fetch = aclAuthorizationClass.requireFetch();
+        const resourceHead = await fetch(documentUrl, { method: 'HEAD' });
         const document = new SolidDocument(documentUrl, [], resourceHead.headers);
 
         this._publicPermissions = document.getPublicPermissions();
