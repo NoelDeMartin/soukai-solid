@@ -30,7 +30,7 @@
     "url": "https://github.com/NoelDeMartin/soukai-solid/issues"
   },
   "peerDependencies": {
-    "soukai": "~0.5.1"
+    "soukai": "*"
   },
   "dependencies": {
     "@babel/runtime": "^7.13.8",
