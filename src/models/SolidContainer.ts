@@ -26,7 +26,7 @@ export default class SolidContainer extends Model {
         this: SolidModelConstructor<T>,
         typeIndexUrl: string,
         childrenModelClass: typeof SolidModel,
-    ): Promise<T | null> {
+    ): Promise<T[]> {
         const engine = this.requireFinalEngine();
         const fetch = engine instanceof SolidEngine ? engine.getFetch() : undefined;
         const urls = await findContainerRegistrations(
@@ -35,9 +35,7 @@ export default class SolidContainer extends Model {
             fetch,
         );
 
-        return urls[0]
-            ? this.newInstance({ url: urls[0] }, true)
-            : null;
+        return urls.map(url => this.newInstance({ url }, true));
     }
 
     public documents!: SolidDocument[];
