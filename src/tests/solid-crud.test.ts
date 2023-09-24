@@ -118,6 +118,7 @@ describe('Solid CRUD', () => {
             'https://example.org/one',
             'https://example.org/two',
         ]);
+        movie.setAttribute('releaseDate', null);
 
         await movie.save();
 
@@ -126,7 +127,12 @@ describe('Solid CRUD', () => {
         expect(fetch).toHaveBeenCalledTimes(2);
 
         expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(`
-            DELETE DATA { <#it> <${IRI('schema:name')}> "${stub.title}" . } ;
+            DELETE DATA {
+                <#it>
+                    <${IRI('schema:name')}> "${stub.title}" ;
+                    <${IRI('schema:datePublished')}>
+                        "${stub.releaseDate?.toISOString()}"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+            } ;
             INSERT DATA {
                 <#it>
                     <${IRI('schema:name')}> "${title}" ;
@@ -367,6 +373,7 @@ async function createStub(title?: string): Promise<Movie> {
             'https://example.org/foo',
             'https://example.org/bar',
         ],
+        releaseDate: new Date(),
     };
 
     return tap(new Movie(attributes, true), async stub => {

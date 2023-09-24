@@ -282,6 +282,10 @@ export default class JsonLDModelSerializer {
             case FieldType.Key:
                 return { '@id': toString(value) };
             case FieldType.Date:
+                if (typeof value === 'object' && value !== null && '$unset' in value) {
+                    return value;
+                }
+
                 return {
                     '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
                     '@value': (new Date(value as string)).toISOString(),
