@@ -4,7 +4,7 @@
     <img width="180" src="./logo.svg" alt="Soukai Solid logo">
 </p>
 
-This library allows you to store and read data from a [Solid POD](https://solidproject.org/) using the [Soukai ODM](https://soukai.js.org). Before going into Solid specifics, you should be familiar with Soukai basics so make sure to read the [Soukai documentation](https://soukai.js.org/guide/) first.
+This library allows you to store and read data from a [Solid POD](https://solidproject.org/) using [Soukai](https://soukai.js.org). Before going into Solid specifics, you should be familiar with Soukai basics so make sure to read the [Soukai documentation](https://soukai.js.org/guide/) first.
 
 There are two extensions to the core Soukai library, a Solid engine and a some Solid models (with their respective relationships). To get started, you can install both packages as npm dependencies:
 
@@ -37,7 +37,7 @@ Person.at('https://example.org/people/').create({ name: 'John Doe' });
 
 ## Solid Models vs Solid Documents
 
-Soukai is a library designed to work with document databases, hence calling it an ODM (Object Document Mapper). This usually means that a Soukai model maps to a database document, and documents are stored within collections in the database.
+Soukai is a library designed to work with document databases using the [Active Record](https://en.wikipedia.org/wiki/Active_record_pattern) pattern. This usually means that a Soukai model maps to a database document, and documents are stored within collections in the database.
 
 In Solid, however, things work a little different. A Solid container is the equivalent of a collection, but Solid documents don't map directly to Soukai models. Instead, Soukai models represent RDF resources. This is an irrelevant distinction when a Solid document only contains a single RDF resource, but that's rarely the case. Proper RDF modeling often results in documents containing information about multiple resources.
 
