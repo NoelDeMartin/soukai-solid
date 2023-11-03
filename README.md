@@ -421,6 +421,33 @@ In order to manage documents' permissions, you can take advantage of the built-i
 
 At the moment, authorization support is limited to [WAC](https://solidproject.org/TR/wac) resources.
 
+## Interoperability
+
+In order to improve interoperability between apps, you can make use of [Type Indexes](https://solid.github.io/type-indexes/). There are some utilities built in the library to read and write type registrations:
+
+```js
+// Read containers and documents registered in the type index
+const movieContainers = await SolidContainer.fromTypeIndex(typeIndexUrl, Movie);
+const movieDocuments = await SolidDocument.fromTypeIndex(typeIndexUrl, Movie);
+
+// Register documents in the type index
+await movie.registerInTypeIndex(typeIndexUrl);
+
+// Register containers in the type index
+const movies = new SolidContainer({ url: moviesContainerUrl });
+
+await movies.register(typeIndexUrl, Movie);
+```
+
+You should be able to obtain the `typeIndexUrl` from user profiles, and in case they don't exist you can create them as well:
+
+```js
+await SolidTypeIndex.createPublic(userProfile);
+await SolidTypeIndex.createPrivate(userProfile);
+```
+
+You can obtain the user profile using `fetchLoginUserProfile` from [@noeldemartin/solid-utils](https://github.com/noelDeMartin/solid-utils).
+
 ## Caveats and limitations
 
 Given the nature of Solid and RDF, there are some things that don't work the same way as the core library:
