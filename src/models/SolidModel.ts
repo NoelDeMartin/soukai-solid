@@ -38,7 +38,13 @@ import {
     isArrayFieldDefinition,
     requireBootedModel,
 } from 'soukai';
-import { expandIRI, mintJsonLDIdentifiers, parseResourceSubject } from '@noeldemartin/solid-utils';
+import {
+    expandIRI,
+    jsonldToQuads,
+    mintJsonLDIdentifiers,
+    parseResourceSubject,
+    quadsToTurtle,
+} from '@noeldemartin/solid-utils';
 import type {
     Attributes,
     BootedFieldsDefinition,
@@ -99,6 +105,12 @@ import type { SolidModelConstructor } from './inference';
 import type { SolidRelation } from './relations/inference';
 
 export const SolidModelBase = mixed(Model, [DeletesModels, SerializesToJsonLD, ManagesPermissions]);
+
+export interface SolidModelSerializationOptions {
+    ids?: boolean;
+    timestamps?: boolean;
+    history?: boolean;
+}
 
 export class SolidModel extends SolidModelBase {
 
@@ -710,9 +722,7 @@ export class SolidModel extends SolidModelBase {
             this._documentExists = documentExists ?? true;
     }
 
-    public toJsonLD(
-        options: Partial<{ ids: boolean; timestamps: boolean; history: boolean}> = {},
-    ): Record<string, unknown> {
+    public toJsonLD(options: SolidModelSerializationOptions = {}): Record<string, unknown> {
         options = {
             ids: true,
             timestamps: true,
@@ -741,6 +751,12 @@ export class SolidModel extends SolidModelBase {
             });
 
         return model.serializeToJsonLD();
+    }
+
+    public async toTurtle(options: SolidModelSerializationOptions = {}): Promise<string> {
+        const quads = await jsonldToQuads(this.toJsonLD(options));
+
+        return quadsToTurtle(quads);
     }
 
     public getIdAttribute(): string {
