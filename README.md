@@ -1,4 +1,4 @@
-# Soukai Solid [![Build Status](https://semaphoreci.com/api/v1/noeldemartin/soukai-solid/branches/main/badge.svg)](https://semaphoreci.com/noeldemartin/soukai-solid)
+# Soukai Solid ![CI](https://github.com/NoelDeMartin/soukai-solid/actions/workflows/ci.yml/badge.svg)
 
 <p align="center">
     <img width="180" src="./logo.svg" alt="Soukai Solid logo">
