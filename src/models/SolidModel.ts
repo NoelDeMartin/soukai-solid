@@ -90,6 +90,7 @@ import { operationClass } from './history/operations';
 import type Metadata from './history/Metadata';
 import type Operation from './history/Operation';
 import type SolidACLAuthorization from './SolidACLAuthorization';
+import type SolidDocument from './SolidDocument';
 import type SolidContainer from './SolidContainer';
 import type Tombstone from './history/Tombstone';
 import type { SolidBootedFieldDefinition, SolidBootedFieldsDefinition, SolidFieldsDefinition } from './fields';
@@ -693,6 +694,13 @@ export class SolidModel extends SolidModelBase {
         await this.save();
 
         return this;
+    }
+
+    public async registerInTypeIndex(typeIndexUrl: string): Promise<void> {
+        const documentModelClass = requireBootedModel<typeof SolidDocument>('SolidDocument');
+        const document = new documentModelClass({ url: this.getDocumentUrl() });
+
+        await document.register(typeIndexUrl, this.static());
     }
 
     public mintUrl(documentUrl?: string, documentExists?: boolean, resourceHash?: string): void {
