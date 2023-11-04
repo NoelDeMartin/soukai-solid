@@ -10,6 +10,15 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - [#17](https://github.com/NoelDeMartin/soukai-solid/issues/17) Improved utilities to work with the type index, find more in the documentation for [interoperability](./README.md#interoperability).
 - `toTurtle` method in `SolidModel`.
+- `requireFetch` static method in `SolidModel`.
+
+## Changed
+
+- `SolidContainer.fromTypeIndex` now returns an array of models, rather than a single instance or null.
+
+## Deprecated
+
+- `SolidACLAuthorization.fetch` method has been deprecated, you should use `SolidACLAuthorization.requireFetch` instead.
 
 ## Fixed
 
