@@ -254,7 +254,7 @@ describe('Solid CRUD', () => {
         expect(theLordOfTheRings.actions).toHaveLength(0);
 
         expect(fetch).toHaveBeenCalledTimes(1);
-        expect(fetch.mock.calls[1]?.[0]).toEqual(documentUrl);
+        expect(fetch.mock.calls[0]?.[0]).toEqual(documentUrl);
     });
 
     it('Deletes models', async () => {
