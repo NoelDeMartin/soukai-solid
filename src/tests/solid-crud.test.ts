@@ -162,7 +162,7 @@ describe('Solid CRUD', () => {
         `);
     });
 
-    it('Reads models', async () => {
+    it('Reads single models', async () => {
         // Arrange
         StubFetcher.addFetchResponse(fixture('spirited-away.ttl'), {
             'WAC-Allow': 'public="read"',
@@ -205,9 +205,9 @@ describe('Solid CRUD', () => {
         expect(alice?.name).toEqual('Alice');
     });
 
-    it('Reads many models', async () => {
+    it('Reads many models from containers', async () => {
         // Arrange
-        StubFetcher.addFetchResponse(fixture('movies.ttl'));
+        StubFetcher.addFetchResponse(fixture('movies-container.ttl'));
         StubFetcher.addFetchResponse(fixture('the-lord-of-the-rings.ttl'));
         StubFetcher.addFetchResponse(fixture('spirited-away.ttl'));
         StubFetcher.addFetchResponse(fixture('the-tale-of-princess-kaguya.ttl'));
@@ -229,6 +229,32 @@ describe('Solid CRUD', () => {
         expect(spiritedAway).not.toBeUndefined();
         expect(spiritedAway.title).toEqual('Spirited Away');
         expect(spiritedAway.actions).toHaveLength(1);
+    });
+
+    it('Reads many models from documents', async () => {
+        // Arrange
+        const documentUrl = fakeDocumentUrl();
+
+        StubFetcher.addFetchResponse(fixture('movies-document.ttl'));
+
+        // Act
+        const movies = await Movie.all({ $in: [documentUrl] });
+
+        // Assert
+        expect(movies).toHaveLength(2);
+        const spiritedAway = movies.find(movie => movie.url.endsWith('#spirited-away')) as Movie;
+        const theLordOfTheRings = movies.find(movie => movie.url.endsWith('#the-lord-of-the-rings')) as Movie;
+
+        expect(spiritedAway).not.toBeUndefined();
+        expect(spiritedAway.title).toEqual('Spirited Away');
+        expect(spiritedAway.actions).toHaveLength(1);
+
+        expect(theLordOfTheRings).not.toBeUndefined();
+        expect(theLordOfTheRings.title).toEqual('The Lord of the Rings: The Fellowship of the Ring');
+        expect(theLordOfTheRings.actions).toHaveLength(0);
+
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(fetch.mock.calls[1]?.[0]).toEqual(documentUrl);
     });
 
     it('Deletes models', async () => {

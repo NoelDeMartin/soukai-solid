@@ -45,6 +45,41 @@ All of this complexity is dealt with under the hood, but it is important to be a
 
 The way that models are stored in documents can be configured with relations, and there are some methods to get document information. `getDocumentUrl()` returns the document url inferred from the resource id, whilst `getSourceDocumentUrl()` returns the document url where the resource is actually stored. Most of the time, both should be the same document, but there is nothing in Solid that prevents doing otherwise.
 
+### Data modeling and retrieval strategies
+
+Given the mental model we just introduced, the easiest way to work with Soukai is with a single document per model within a container. But there are some other patterns you may encounter working with Solid data in the wild. We'll discuss some.
+
+Let's say we have a collection of movies. Ideally, each movie will stored within a single document, and so the collection of documents within a container will correspond to the collection of movies. This is the typical way to retrieve a list of `Movie` models from a container following this pattern:
+
+```js
+const movies = await Movie.from('https://example.org/movies/').all();
+```
+
+This approach is Soukai's bread and butter, but it has some limitations.
+
+For example, if you have a collection of movies in your POD, you may want to share movie lists publicly. But the way Solid works at the moment, it's not possible to selectively change the visibility of documents listed in a container. You either publish the entire container, or you don't. One solution to this problem would be to simply use different containers for each list. For example classified by genre: `/movies/comedy/`, `/movies/horror/`, etc. But that approach also has some drawbacks. It would complicate the retrieval of models using the `all()` method, you'd need to call it for each container. It also requires changing the url of a model if it has moved between lists. And finally, it doesn't support having the same movie in more than one list (unless you duplicate it).
+
+One solution to this problem is to create another model that points to a list of movies. For example, using the [schema:ItemList](https://schema.org/ItemList) class you can hold a list of items using the `schema:itemListElement` property that each points to a movie with `schema:item`. Using [relations](#relations), you could model these relationships and retrieve the movies as such:
+
+```js
+const horrorMovies = await MoviesList.find('https://example.org/movies/lists/horror#it');
+const movies = horrorMovies.items.map(async item => {
+    item.loadRelationIfUnloaded('movie');
+
+    return item.movie;
+})
+```
+
+These two techniques should be enough to model most common use-cases in your apps. However, you won't always read data that has been created by your app (or Soukai, for that matter). Because of that, there is a final tool you can use to read models from a single document rather than from containers, and that is using the `$in` filter:
+
+```js
+const movies = await Movie.all({
+    $in: ['https://example.org/movies/horror'],
+});
+```
+
+This is a special behaviour in `SolidEngine`. Using [the `$in` filter](https://soukai.js.org/guide/using-models.html#using-filters) with any other engine will still retrieve one single model per id, given that all the models will always be stored in the same collection. But this was implemented in order to handle the fact that models can be spread throughout containers and documents in Solid.
+
 ## Defining Solid Models
 
 All standard [model definition](https://soukai.js.org/guide/defining-models.html) rules apply, with some extra things to keep in mind.
