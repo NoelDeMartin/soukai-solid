@@ -360,7 +360,9 @@ export class SolidModel extends SolidModelBase {
         const jsonld = mintJsonLDIdentifiers(sourceJsonLD);
         const rdfDocument = await RDFDocument.fromJsonLD(jsonld, baseUrl ?? this.collection);
         const flatJsonLD = await rdfDocument.toJsonLD();
-        const resourceId = sourceResourceId ?? this.findResourceId(rdfDocument.statements, baseUrl);
+        const resourceId = sourceResourceId
+            ?? this.findMatchingResourceIds(rdfDocument.statements, baseUrl)[0]
+            ?? fail<string>(SoukaiError, 'Couldn\'t find matching resource in JSON-LD');
         const resource = rdfDocument.resource(resourceId);
         const documentUrl = baseUrl || urlRoute(resourceId);
         const attributes = await this.instance().parseEngineDocumentAttributes(
@@ -445,6 +447,26 @@ export class SolidModel extends SolidModelBase {
             await when(relationA, synchronizesRelatedModels).__synchronizeRelated(relationB);
             await when(relationB, synchronizesRelatedModels).__synchronizeRelated(relationA);
         }
+    }
+
+    public static findMatchingResourceIds(quads: Quad[], baseUrl?: string): string[] {
+        const resourcesTypes = quads.reduce(
+            (resourcesTypes, quad) => {
+                if (quad.predicate.value === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') {
+                    resourcesTypes[quad.subject.value] = resourcesTypes[quad.subject.value] ?? [];
+
+                    resourcesTypes[quad.subject.value]?.push(quad.object.value);
+                }
+
+                return resourcesTypes;
+            },
+            {} as Record<string, string[]>,
+        );
+
+        return Object
+            .entries(resourcesTypes)
+            .filter(([_, types]) => !this.rdfsClasses.some(rdfsClass => !types.includes(rdfsClass)))
+            .map(([resourceId]) => baseUrl ? urlResolve(baseUrl, resourceId) : resourceId);
     }
 
     protected static bootRdfContexts(
@@ -558,30 +580,6 @@ export class SolidModel extends SolidModelBase {
         this.collection = oldCollection;
 
         return result;
-    }
-
-    protected static findResourceId(quads: Quad[], baseUrl?: string): string {
-        const resourcesTypes = quads.reduce(
-            (resourcesTypes, quad) => {
-                if (quad.predicate.value === 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type') {
-                    resourcesTypes[quad.subject.value] = resourcesTypes[quad.subject.value] ?? [];
-
-                    resourcesTypes[quad.subject.value]?.push(quad.object.value);
-                }
-
-                return resourcesTypes;
-            },
-            {} as Record<string, string[]>,
-        );
-        const resourceId = Object
-            .entries(resourcesTypes)
-            .find(([_, types]) => !this.rdfsClasses.some(rdfsClass => !types.includes(rdfsClass)))?.[0];
-
-        if (!resourceId) {
-            throw new SoukaiError('Couldn\'t find matching resource in JSON-LD');
-        }
-
-        return baseUrl ? urlResolve(baseUrl, resourceId) : resourceId;
     }
 
     // TODO this should be optional
