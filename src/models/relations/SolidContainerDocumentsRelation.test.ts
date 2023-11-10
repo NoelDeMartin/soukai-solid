@@ -1,7 +1,7 @@
 import { setEngine } from 'soukai';
 
 import { SolidContainer } from '@/models';
-import { SolidEngine } from '@/engines';
+import { SolidEngine } from '@/engines/SolidEngine';
 
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';
 import { fakeContainerUrl } from '@/testing/utils';

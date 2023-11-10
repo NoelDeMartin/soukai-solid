@@ -1,15 +1,15 @@
 import { bootModels, setEngine } from 'soukai';
+import { fakeDocumentUrl } from '@noeldemartin/solid-utils';
 import { faker } from '@noeldemartin/faker';
+
+import SolidContainer from '@/models/SolidContainer';
+import SolidDocument from '@/models/SolidDocument';
+import { SolidEngine } from '@/engines/SolidEngine';
 
 import Movie from '@/testing/lib/stubs/Movie';
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';
 import WatchAction from '@/testing/lib/stubs/WatchAction';
 import { loadFixture } from '@/testing/utils';
-
-import SolidContainer from '@/models/SolidContainer';
-import SolidDocument from '@/models/SolidDocument';
-import { SolidEngine } from '@/engines/SolidEngine';
-import { fakeDocumentUrl } from '@noeldemartin/solid-utils';
 
 class MovieWithTimestamps extends Movie {
 

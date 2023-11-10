@@ -1,6 +1,6 @@
 import { bootModels, setEngine } from 'soukai';
 
-import { SolidEngine } from '@/engines';
+import { SolidEngine } from '@/engines/SolidEngine';
 
 import { loadFixture } from '@/testing/utils';
 import Group from '@/testing/lib/stubs/Group';

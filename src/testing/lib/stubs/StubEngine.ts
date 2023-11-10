@@ -10,7 +10,7 @@ import type {
     EngineUpdates,
 } from 'soukai';
 
-import { SolidEngine } from '@/engines';
+import { SolidEngine } from '@/engines/SolidEngine';
 import type { Fetch } from '@/engines';
 
 export default class StubEngine extends SolidEngine {

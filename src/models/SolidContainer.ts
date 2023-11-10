@@ -9,7 +9,7 @@ import {
 import { findContainerRegistrations } from '@noeldemartin/solid-utils';
 import type { Relation } from 'soukai';
 
-import { SolidEngine } from '@/engines';
+import { SolidEngine } from '@/engines/SolidEngine';
 
 import SolidContainerDocumentsRelation from './relations/SolidContainerDocumentsRelation';
 import SolidContainsRelation from './relations/SolidContainsRelation';

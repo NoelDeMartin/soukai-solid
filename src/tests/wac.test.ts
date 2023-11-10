@@ -2,7 +2,7 @@ import { faker } from '@noeldemartin/faker';
 import { bootModels, setEngine } from 'soukai';
 import { SolidDocumentPermission } from '@noeldemartin/solid-utils';
 
-import { SolidEngine } from '@/engines';
+import { SolidEngine } from '@/engines/SolidEngine';
 import { SolidACLAuthorization } from '@/models';
 
 import Movie from '@/testing/lib/stubs/Movie';

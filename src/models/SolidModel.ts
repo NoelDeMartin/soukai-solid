@@ -64,7 +64,7 @@ import type {
 import type { Fetch, JsonLD, JsonLDGraph, SubjectParts } from '@noeldemartin/solid-utils';
 import type { Quad } from 'rdf-js';
 
-import { SolidEngine } from '@/engines';
+import { SolidEngine } from '@/engines/SolidEngine';
 
 import IRI from '@/solid/utils/IRI';
 import RDFDocument from '@/solid/RDFDocument';

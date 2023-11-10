@@ -9,7 +9,7 @@ import StubFetcher from '@/testing/lib/stubs/StubFetcher';
 import WatchAction from '@/testing/lib/stubs/WatchAction';
 
 import { fakeDocumentUrl, loadFixture } from '@/testing/utils';
-import { SolidEngine } from '@/engines';
+import { SolidEngine } from '@/engines/SolidEngine';
 import IRI from '@/solid/utils/IRI';
 import RDFDocument from '@/solid/RDFDocument';
 import RDFResourceProperty from '@/solid/RDFResourceProperty';

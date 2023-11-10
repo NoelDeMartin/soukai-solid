@@ -5,7 +5,7 @@ import type { Relation } from 'soukai';
 import type { Tuple } from '@noeldemartin/utils';
 
 import IRI from '@/solid/utils/IRI';
-import { SolidEngine } from '@/engines';
+import { SolidEngine } from '@/engines/SolidEngine';
 import {
     AddPropertyOperation,
     PropertyOperation,
