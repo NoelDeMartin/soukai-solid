@@ -1,4 +1,5 @@
 import {
+    arrayFilter,
     arrayFrom,
     arrayRemove,
     map,
@@ -186,7 +187,7 @@ export default class SolidBelongsToManyRelation<
         );
 
         this.related = [
-            ...related.filter((model): model is Related => !!model),
+            ...arrayFilter(related),
             ...this.__newModels,
         ];
     }

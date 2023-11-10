@@ -1,13 +1,12 @@
-import type { JsonLDGraph } from '@noeldemartin/solid-utils';
 import type { Relation } from 'soukai';
 
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
+import type { DocumentContainsRelation } from '@/models/relations/DocumentContainsRelation';
 
 // Workaround for https://github.com/microsoft/TypeScript/issues/35356
-export interface ISolidDocumentRelation<Related extends SolidModel = SolidModel> {
+export interface ISolidDocumentRelation<Related extends SolidModel = SolidModel> extends DocumentContainsRelation {
     reset(related?: Related[]): void;
-    __loadDocumentModels(documentUrl: string, document: JsonLDGraph): Promise<void>;
     __beforeParentCreate(): void;
 }
 

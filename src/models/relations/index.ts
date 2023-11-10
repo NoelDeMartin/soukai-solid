@@ -1,3 +1,4 @@
+import DocumentContainsManyRelation from './DocumentContainsManyRelation';
 import OperationsRelation from './OperationsRelation';
 import SolidACLAuthorizationsRelation from './SolidACLAuthorizationsRelation';
 import SolidBelongsToManyRelation from './SolidBelongsToManyRelation';
@@ -8,6 +9,7 @@ import SolidHasManyRelation from './SolidHasManyRelation';
 import SolidHasOneRelation from './SolidHasOneRelation';
 import SolidIsContainedByRelation from './SolidIsContainedByRelation';
 import TombstoneRelation from './TombstoneRelation';
+import { DocumentContainsRelation } from './DocumentContainsRelation';
 
 SolidContainsRelation.inverseRelationClasses = [SolidIsContainedByRelation];
 SolidIsContainedByRelation.inverseRelationClasses = [SolidContainsRelation];
@@ -16,6 +18,8 @@ export * from './guards';
 export * from './cardinality-guards';
 
 export {
+    DocumentContainsManyRelation,
+    DocumentContainsRelation,
     OperationsRelation,
     SolidACLAuthorizationsRelation,
     SolidBelongsToManyRelation,

@@ -91,6 +91,7 @@ import SolidHasManyRelation from './relations/SolidHasManyRelation';
 import SolidHasOneRelation from './relations/SolidHasOneRelation';
 import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
 import TombstoneRelation from '@/models/relations/TombstoneRelation';
+import DocumentContainsManyRelation from '@/models/relations/DocumentContainsManyRelation';
 import { inferFieldDefinition, isSolidArrayFieldDefinition } from './fields';
 import { operationClass } from './history/operations';
 import type Metadata from './history/Metadata';
@@ -1241,7 +1242,9 @@ export class SolidModel extends SolidModelBase {
                 .values(this._relations)
                 .filter(
                     (relation: Relation): relation is SolidDocumentRelationInstance =>
-                        relation.enabled && isSolidDocumentRelation(relation),
+                        relation.enabled && (
+                            isSolidDocumentRelation(relation) || relation instanceof DocumentContainsManyRelation
+                        ),
                 )
                 .map(async relation => {
                     return relation.relatedClass.withEngine(
@@ -1584,6 +1587,10 @@ export class SolidModel extends SolidModelBase {
 
     protected isContainedBy<T extends typeof SolidContainer>(model: T): SolidIsContainedByRelation {
         return new SolidIsContainedByRelation(this, model);
+    }
+
+    protected documentContainsMany<T extends typeof SolidModel>(model: T): DocumentContainsManyRelation {
+        return new DocumentContainsManyRelation(this, model);
     }
 
     protected toEngineDocument(): EngineDocument {
