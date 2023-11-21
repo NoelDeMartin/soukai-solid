@@ -2375,6 +2375,33 @@ describe('SolidModel', () => {
         expect(person.friendUrls).toEqual([]);
     });
 
+    it('mints url slugs using fields', async () => {
+        // Arrange
+        class Recipe extends defineSolidModelSchema({
+            rdfContext: 'https://schema.org/',
+            rdfsClass: 'Recipe',
+            documentSlugField: 'name',
+            fields: { name: FieldType.String },
+        }) {}
+
+        const createSpy = jest.spyOn(engine, 'create');
+
+        bootModels({ Recipe });
+
+        // Act
+        await Recipe.create({ name: 'Chickpeas Stew' });
+
+        // Assert
+        const document = createSpy.mock.calls[0]?.[1] as { '@graph': [{ nickname: string }] };
+
+        expect(document['@graph'][0]).toEqualJsonLD({
+            '@context': { '@vocab': 'https://schema.org/' },
+            '@id': 'solid://recipes/chickpeas-stew#it',
+            '@type': 'Recipe',
+            'name': 'Chickpeas Stew',
+        });
+    });
+
 });
 
 describe('SolidModel types', () => {

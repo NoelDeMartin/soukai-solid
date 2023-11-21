@@ -17,6 +17,7 @@ import {
     objectWithoutEmpty,
     requireUrlParentDirectory,
     shortId,
+    stringToSlug,
     tap,
     urlClean,
     urlParentDirectory,
@@ -125,6 +126,7 @@ export class SolidModel extends SolidModelBase {
     public static rdfsClassesAliases: string[][] = [];
     public static reservedRelations: string[] = ['metadata', 'operations', 'tombstone', 'authorizations'];
     public static defaultResourceHash: string = 'it';
+    public static documentSlugField?: string;
     public static mintsUrls: boolean = true;
     public static history: boolean = false;
     public static tombstone: boolean = true;
@@ -1712,10 +1714,27 @@ export class SolidModel extends SolidModelBase {
     }
 
     protected newUrl(documentUrl?: string, resourceHash?: string): string {
-        documentUrl = documentUrl ?? urlResolve(this.static('collection'), this._sourceSubject?.documentName ?? uuid());
-        resourceHash = resourceHash ?? this._sourceSubject?.resourceHash ?? this.static('defaultResourceHash');
+        documentUrl = documentUrl ?? this.newUrlDocumentUrl();
+        resourceHash = resourceHash ?? this.newUrlResourceHash();
 
         return `${documentUrl}#${resourceHash}`;
+    }
+
+    protected newUrlDocumentUrl(): string {
+        const slug = this._sourceSubject?.documentName ?? this.newUrlDocumentUrlSlug() ?? uuid();
+
+        return urlResolve(this.static('collection'), slug);
+    }
+
+    protected newUrlDocumentUrlSlug(): string | null {
+        const documentSlugField = this.static('documentSlugField');
+        const documentSlugFieldValue = documentSlugField && this.getAttribute<string>(documentSlugField);
+
+        return (documentSlugFieldValue && stringToSlug(documentSlugFieldValue)) ?? null;
+    }
+
+    protected newUrlResourceHash(): string {
+        return this._sourceSubject?.resourceHash ?? this.static('defaultResourceHash');
     }
 
     protected newUniqueUrl(url?: string): string {

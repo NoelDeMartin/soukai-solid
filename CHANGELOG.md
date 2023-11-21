@@ -4,33 +4,39 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## Unreleased
+
+### Added
+
+- You can now specify `documentSlugField` in model definitions to configure which field will be used to create document names when [minting urls](./README.md#url-minting).
+
 ## [v0.5.2](https://github.com/NoelDeMartin/soukai-solid/releases/tag/v0.5.2) - 2023-11-03
 
-## Added
+### Added
 
 - [#17](https://github.com/NoelDeMartin/soukai-solid/issues/17) Improved utilities to work with the type index, find more in the documentation for [interoperability](./README.md#interoperability).
 - `toTurtle` method in `SolidModel`.
 - `requireFetch` static method in `SolidModel`.
 
-## Changed
+### Changed
 
 - `SolidContainer.fromTypeIndex` now returns an array of models, rather than a single instance or null.
 
-## Deprecated
+### Deprecated
 
 - `SolidACLAuthorization.fetch` method has been deprecated, you should use `SolidACLAuthorization.requireFetch` instead.
 
-## Fixed
+### Fixed
 
 - Unsetting date values (previously it would write an invalid date instead).
 
 ## [v0.5.1](https://github.com/NoelDeMartin/soukai-solid/releases/tag/v0.5.1) - 2023-03-10
 
-## Added
+### Added
 
 - `cachesDocuments` config option to `SolidEngine` (cache can be cleared calling `clearCache`).
 
-## Fixed
+### Fixed
 
 - Saving using latest operation date.
 - Tree-shaking by declaring `"sideEffects": false`.
