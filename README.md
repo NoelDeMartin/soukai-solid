@@ -224,7 +224,7 @@ There is also a `SolidContainer` class that should be used to declare container 
 
 The default behavior when creating new models is that the url will be minted in the client side, using the container url and generating a UUID. It will also add a hash at the end which can be configured defining the `defaultResourceHash` static property in the model (it'll be defined as "it" by default).
 
-If the model is a `SolidContainer` and has a `name` attribute, this will be used to create a slug instead. Container models don't use a hash in the url and end with a trailing slash.
+If the model is a `SolidContainer` and has a `name` attribute, this will be used to create a slug instead. Container models don't use a hash in the url and end with a trailing slash. For models that are not container, the same behaviour can be configured using `slugField`.
 
 Url minting is useful in order to perform operations with a new model before the server request has been resolved, but it can be disabled by setting the `mintsUrls` property to `false`. You can also mint it manually calling the `mintUrl` method or setting the `url` attribute:
 

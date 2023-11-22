@@ -8,7 +8,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Added
 
-- You can now specify `documentSlugField` in model definitions to configure which field will be used to create document names when [minting urls](./README.md#url-minting).
+- You can now specify `slugField` in model definitions to configure which field will be used to create slugs when [minting urls](./README.md#url-minting).
 
 ## [v0.5.2](https://github.com/NoelDeMartin/soukai-solid/releases/tag/v0.5.2) - 2023-11-03
 

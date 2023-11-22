@@ -126,7 +126,7 @@ export class SolidModel extends SolidModelBase {
     public static rdfsClassesAliases: string[][] = [];
     public static reservedRelations: string[] = ['metadata', 'operations', 'tombstone', 'authorizations'];
     public static defaultResourceHash: string = 'it';
-    public static documentSlugField?: string;
+    public static slugField?: string;
     public static mintsUrls: boolean = true;
     public static history: boolean = false;
     public static tombstone: boolean = true;
@@ -1727,10 +1727,10 @@ export class SolidModel extends SolidModelBase {
     }
 
     protected newUrlDocumentUrlSlug(): string | null {
-        const documentSlugField = this.static('documentSlugField');
-        const documentSlugFieldValue = documentSlugField && this.getAttribute<string>(documentSlugField);
+        const slugField = this.static('slugField');
+        const slugFieldValue = slugField && this.getAttribute<string>(slugField);
 
-        return (documentSlugFieldValue && stringToSlug(documentSlugFieldValue)) ?? null;
+        return (slugFieldValue && stringToSlug(slugFieldValue)) ?? null;
     }
 
     protected newUrlResourceHash(): string {

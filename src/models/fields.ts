@@ -111,7 +111,7 @@ export type SolidSchemaDefinition = SchemaDefinition<{
     rdfsClasses: string[];
     rdfsClassesAliases: string[][];
     defaultResourceHash: string;
-    documentSlugField: string;
+    slugField: string;
     history: boolean;
     tombstone: boolean;
 }>;

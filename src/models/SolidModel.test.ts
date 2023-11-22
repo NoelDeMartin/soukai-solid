@@ -2380,7 +2380,7 @@ describe('SolidModel', () => {
         class Recipe extends defineSolidModelSchema({
             rdfContext: 'https://schema.org/',
             rdfsClass: 'Recipe',
-            documentSlugField: 'name',
+            slugField: 'name',
             fields: { name: FieldType.String },
         }) {}
 

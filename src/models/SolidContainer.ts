@@ -1,7 +1,6 @@
 import {
     requireUrlParentDirectory,
     shortId,
-    stringToSlug,
     urlDirectoryName,
     urlResolveDirectory,
     uuid,
@@ -21,6 +20,12 @@ import type { SolidModel } from './SolidModel';
 import type { SolidModelConstructor } from './inference';
 
 export default class SolidContainer extends Model {
+
+    public static boot(name?: string): void {
+        super.boot(name);
+
+        this.slugField = this.slugField ?? 'name';
+    }
 
     public static async fromTypeIndex<T extends SolidContainer>(
         this: SolidModelConstructor<T>,
@@ -64,9 +69,7 @@ export default class SolidContainer extends Model {
     }
 
     protected newUrl(): string {
-        const slug = this.hasAttribute('name') ? stringToSlug(this.getAttribute('name')) || uuid() : uuid();
-
-        return urlResolveDirectory(this.static('collection'), slug);
+        return urlResolveDirectory(this.newUrlDocumentUrl());
     }
 
     protected newUniqueUrl(url?: string): string {

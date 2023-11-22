@@ -211,6 +211,39 @@ describe('SolidContainer', () => {
         );
     });
 
+    it('overrides slugField', async () => {
+        // Arrange
+        class StubModel extends SolidContainer {
+
+            public static slugField = 'label';
+
+            public static rdfContexts = {
+                rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+            };
+
+        }
+
+        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const label = faker.random.word();
+
+        jest.spyOn(engine, 'create');
+
+        bootModels({ StubModel });
+
+        // Act
+        const model = await StubModel.at(containerUrl).create({ label });
+
+        // Assert
+        expect(typeof model.url).toEqual('string');
+        expect(model.url).toEqual(urlResolveDirectory(containerUrl, stringToSlug(label)));
+
+        expect(engine.create).toHaveBeenCalledWith(
+            containerUrl,
+            expect.anything(),
+            model.url,
+        );
+    });
+
     it('mints unique urls when urls are already in use', async () => {
         class StubModel extends SolidContainer {
 
