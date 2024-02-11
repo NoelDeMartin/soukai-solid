@@ -45,7 +45,7 @@ export default class RemovePropertyOperation extends Model {
         const casterInstance = CasterClass.pureInstance();
 
         return tap(
-            (field, value) => casterInstance.castAttribute(value, {
+            <T>(field: string, value: T) => casterInstance.castAttribute(value, {
                 definition: casterInstance.static().getFieldDefinition(field),
             }),
             caster => RemovePropertyOperation.attributeCasters.set(ModelClass, caster),
