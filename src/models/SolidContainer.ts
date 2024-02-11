@@ -1,4 +1,5 @@
 import {
+    arrayFrom,
     requireUrlParentDirectory,
     shortId,
     urlDirectoryName,
@@ -50,9 +51,12 @@ export default class SolidContainer extends Model {
         return new SolidContainerDocumentsRelation(this);
     }
 
-    public async register(typeIndexUrl: string, childrenModelClass: typeof SolidModel): Promise<void> {
+    public async register(
+        typeIndexUrl: string,
+        childrenModelClasses: typeof SolidModel | Array<typeof SolidModel>,
+    ): Promise<void> {
         const typeRegistration = new SolidTypeRegistration({
-            forClass: childrenModelClass.rdfsClasses[0],
+            forClass: arrayFrom(childrenModelClasses).map(modelClass => modelClass.rdfsClasses).flat(),
             instanceContainer: this.url,
         });
 

@@ -1,4 +1,4 @@
-import { asyncFirst } from '@noeldemartin/utils';
+import { arrayEquals, asyncFirst } from '@noeldemartin/utils';
 import { SolidDocumentPermission, createPrivateTypeIndex, createPublicTypeIndex } from '@noeldemartin/solid-utils';
 import type { Relation } from 'soukai';
 import type { SolidUserProfile } from '@noeldemartin/solid-utils';
@@ -48,7 +48,7 @@ export default class SolidTypeIndex extends Model {
         containerClass?: SolidModelConstructor<T>,
     ): Promise<T | null> {
         const containerRegistrations = this.registrations.filter(registration => {
-            return registration.instanceContainer && registration.forClass === modelClass.rdfsClasses[0];
+            return registration.instanceContainer && arrayEquals(registration.forClass, modelClass.rdfsClasses);
         });
 
         return asyncFirst(

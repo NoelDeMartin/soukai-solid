@@ -8,8 +8,8 @@ export default defineSolidModelSchema({
     timestamps: false,
     fields: {
         forClass: {
-            type: FieldType.Key,
-            required: true,
+            type: FieldType.Array,
+            items: FieldType.Key,
         },
         instance: FieldType.Key,
         instanceContainer: FieldType.Key,

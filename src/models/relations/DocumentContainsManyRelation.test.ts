@@ -65,19 +65,19 @@ describe('DocumentContainsManyRelation', () => {
         expect(typeIndex).not.toBeNull();
         expect(typeIndex?.registrations).toHaveLength(4);
 
-        expect(registration('movies')?.forClass).toEqual('https://schema.org/Movie');
+        expect(registration('movies')?.forClass).toEqual(['https://schema.org/Movie']);
         expect(registration('movies')?.instanceContainer).toEqual(`${podUrl}/movies`);
         expect(registration('movies')?.instance).toBeUndefined();
 
-        expect(registration('recipes')?.forClass).toEqual('https://schema.org/Recipe');
+        expect(registration('recipes')?.forClass).toEqual(['https://schema.org/Recipe']);
         expect(registration('recipes')?.instanceContainer).toEqual(`${podUrl}/recipes`);
         expect(registration('recipes')?.instance).toBeUndefined();
 
-        expect(registration('spirited-away')?.forClass).toEqual('https://schema.org/Movie');
+        expect(registration('spirited-away')?.forClass).toEqual(['https://schema.org/Movie']);
         expect(registration('spirited-away')?.instance).toEqual(`${podUrl}/movies/spirited-away`);
         expect(registration('spirited-away')?.instanceContainer).toBeUndefined();
 
-        expect(registration('ramen')?.forClass).toEqual('https://schema.org/Recipe');
+        expect(registration('ramen')?.forClass).toEqual(['https://schema.org/Recipe']);
         expect(registration('ramen')?.instance).toEqual(`${podUrl}/recipes/ramen`);
         expect(registration('ramen')?.instanceContainer).toBeUndefined();
     });
