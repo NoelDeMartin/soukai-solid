@@ -129,10 +129,20 @@ export default class SolidBelongsToManyRelation<
     }
 
     public __beforeParentCreate(): void {
-        if (this.documentModelsLoaded)
+        if (this.documentModelsLoaded) {
             return;
+        }
 
-        this.loadDocumentModels([], this.parent.getAttribute(this.foreignKeyName));
+        const foreignKeys = this.parent.getAttribute(this.foreignKeyName);
+
+        if (!Array.isArray(foreignKeys)) {
+            throw new Error(
+                `Foreign key (${this.foreignKeyName}) for '${this.name}' relation ` +
+                `in '${this.parent.static('modelName')}' model is missing.`,
+            );
+        }
+
+        this.loadDocumentModels([], foreignKeys);
     }
 
     public async __synchronizeRelated(other: this): Promise<void> {
