@@ -17,6 +17,7 @@ import SolidContainsRelation from './relations/SolidContainsRelation';
 import Model from './SolidContainer.schema';
 import SolidTypeRegistration from './SolidTypeRegistration';
 import type SolidDocument from './SolidDocument';
+import type SolidTypeIndex from './SolidTypeIndex';
 import type { SolidModel } from './SolidModel';
 import type { SolidModelConstructor } from './inference';
 
@@ -52,7 +53,7 @@ export default class SolidContainer extends Model {
     }
 
     public async register(
-        typeIndexUrl: string,
+        typeIndex: string | SolidTypeIndex,
         childrenModelClasses: typeof SolidModel | Array<typeof SolidModel>,
     ): Promise<void> {
         const typeRegistration = new SolidTypeRegistration({
@@ -60,12 +61,20 @@ export default class SolidContainer extends Model {
             instanceContainer: this.url,
         });
 
-        typeRegistration.mintUrl(typeIndexUrl, true, uuid());
+        if (typeof typeIndex === 'string') {
+            typeRegistration.mintUrl(typeIndex, true, uuid());
 
-        await typeRegistration.withEngine(
-            this.requireEngine(),
-            () => typeRegistration.save(requireUrlParentDirectory(typeIndexUrl)),
-        );
+            await typeRegistration.withEngine(
+                this.requireEngine(),
+                () => typeRegistration.save(requireUrlParentDirectory(typeIndex)),
+            );
+
+            return;
+        }
+
+        typeIndex.relatedRegistrations.attach(typeRegistration);
+
+        await typeRegistration.withEngine(this.requireEngine(), () => typeIndex.save());
     }
 
     protected contains<T extends typeof SolidModel>(model: T): SolidContainsRelation {

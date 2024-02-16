@@ -1,12 +1,13 @@
 import { findInstanceRegistrations } from '@noeldemartin/solid-utils';
 import { requireUrlParentDirectory, uuid } from '@noeldemartin/utils';
 
-import SolidTypeRegistration from '@/models/SolidTypeRegistration';
 import { SolidEngine } from '@/engines/SolidEngine';
-import type { SolidModel } from '@/models/SolidModel';
-import type { SolidModelConstructor } from '@/models/inference';
 
 import Model from './SolidDocument.schema';
+import SolidTypeRegistration from './SolidTypeRegistration';
+import type SolidTypeIndex from './SolidTypeIndex';
+import type { SolidModel } from './SolidModel';
+import type { SolidModelConstructor } from './inference';
 
 export default class SolidDocument extends Model {
 
@@ -26,18 +27,26 @@ export default class SolidDocument extends Model {
         return urls.map(url => this.newInstance({ url }, true));
     }
 
-    public async register(typeIndexUrl: string, modelClass: typeof SolidModel): Promise<void> {
+    public async register(typeIndex: string | SolidTypeIndex, modelClass: typeof SolidModel): Promise<void> {
         const typeRegistration = new SolidTypeRegistration({
             forClass: modelClass.rdfsClasses[0],
             instance: this.url,
         });
 
-        typeRegistration.mintUrl(typeIndexUrl, true, uuid());
+        if (typeof typeIndex === 'string') {
+            typeRegistration.mintUrl(typeIndex, true, uuid());
 
-        await typeRegistration.withEngine(
-            this.requireEngine(),
-            () => typeRegistration.save(requireUrlParentDirectory(typeIndexUrl)),
-        );
+            await typeRegistration.withEngine(
+                this.requireEngine(),
+                () => typeRegistration.save(requireUrlParentDirectory(typeIndex)),
+            );
+
+            return;
+        }
+
+        typeIndex.relatedRegistrations.attach(typeRegistration);
+
+        await typeRegistration.withEngine(this.requireEngine(), () => typeIndex.save());
     }
 
 }

@@ -482,7 +482,7 @@ describe('Solid history tracking', () => {
 
         // TODO this could be improved to fetch only once
         StubFetcher.addFetchResponse(bandTurtle); // Fetch document to see if it can be deleted entirely
-        StubFetcher.addFetchResponse(bandTurtle);// Fetch document under SolidClient.update to prepare PATCH
+        StubFetcher.addFetchResponse(bandTurtle); // Fetch document under SolidClient.update to prepare PATCH
         StubFetcher.addFetchResponse(); // PATCH document
 
         const band = await Group.find('solid://band-of-the-falcon#it') as Group;
