@@ -1026,8 +1026,9 @@ export class SolidModel extends SolidModelBase {
     public getDocumentModels(_documentModels?: Set<SolidModel>): SolidModel[] {
         const documentModels = _documentModels ?? new Set();
 
-        if (documentModels.has(this))
+        if (documentModels.has(this)) {
             return [...documentModels];
+        }
 
         const documentUrl = this.getDocumentUrl();
         const addModels = (models: SolidModel[]) => models.forEach(model => documentModels.add(model));
@@ -1035,11 +1036,13 @@ export class SolidModel extends SolidModelBase {
         documentModels.add(this);
 
         for (const relation of Object.values(this._relations)) {
+            const isDocumentContainsManyRelation = relation instanceof DocumentContainsManyRelation;
+
             if (
                 !relation.enabled ||
                 !relation.loaded ||
-                !isSolidDocumentRelation(relation) ||
-                !relation.useSameDocument
+                (!isDocumentContainsManyRelation && !isSolidDocumentRelation(relation)) ||
+                (isSolidDocumentRelation(relation) && !relation.useSameDocument)
             ) {
                 continue;
             }
@@ -1055,7 +1058,7 @@ export class SolidModel extends SolidModelBase {
             addModels(
                 relation
                     .getLoadedModels()
-                    .filter(model => model.getDocumentUrl() === documentUrl)
+                    .filter(model => isDocumentContainsManyRelation || model.getDocumentUrl() === documentUrl)
                     .map(model => model.getDocumentModels(documentModels))
                     .flat(),
             );

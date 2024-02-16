@@ -1,6 +1,6 @@
-import { arrayFilter } from '@noeldemartin/utils';
+import { arrayFilter, tap } from '@noeldemartin/utils';
 import { MultiModelRelation } from 'soukai';
-import type { EngineDocument } from 'soukai';
+import type { Attributes, EngineDocument } from 'soukai';
 
 import RDFDocument from '@/solid/RDFDocument';
 import type { SolidModel } from '@/models/SolidModel';
@@ -26,6 +26,10 @@ export default class DocumentContainsManyRelation<
         this.related ??= [];
 
         return this.related;
+    }
+
+    public create(attributes?: Attributes): Promise<Related> {
+        return tap(this.attach(attributes ?? {}), () => this.parent.save());
     }
 
     public async __loadDocumentModels(documentUrl: string, document: JsonLDGraph): Promise<void> {

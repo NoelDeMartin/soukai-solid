@@ -4,6 +4,7 @@ import { faker } from '@noeldemartin/faker';
 
 import SolidContainer from '@/models/SolidContainer';
 import SolidDocument from '@/models/SolidDocument';
+import SolidTypeIndex from '@/models/SolidTypeIndex';
 import { SolidEngine } from '@/engines/SolidEngine';
 
 import Movie from '@/testing/lib/stubs/Movie';
@@ -187,6 +188,40 @@ describe('Solid Interoperability', () => {
         // Assert
         expect(fetch).toHaveBeenCalledTimes(2);
 
+        expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(`
+            INSERT DATA {
+                @prefix solid: <http://www.w3.org/ns/solid/terms#> .
+                @prefix schema: <https://schema.org/>.
+
+                <#[[.*]]> a solid:TypeRegistration;
+                    solid:forClass schema:Movie;
+                    solid:instanceContainer <${moviesContainerUrl}>.
+            }
+        `);
+    });
+
+    it('Registers containers with type index instances', async () => {
+        // Arrange
+        const podUrl = faker.internet.url();
+        const typeIndexUrl = fakeDocumentUrl({ baseUrl: podUrl });
+        const moviesContainerUrl = `${podUrl}/great-movies`;
+
+        StubFetcher.addFetchResponse(fixture('type-index.ttl'));
+        StubFetcher.addFetchResponse();
+
+        // Act
+        const movies = new SolidContainer({ url: moviesContainerUrl });
+        const typeIndex = new SolidTypeIndex({ url: typeIndexUrl }, true);
+
+        typeIndex.setRelationModels('registrations', []);
+
+        await movies.register(typeIndex, Movie);
+
+        // Assert
+        expect(typeIndex.registrations).toHaveLength(1);
+        expect(typeIndex.registrations[0]?.instanceContainer).toEqual(moviesContainerUrl);
+
+        expect(fetch).toHaveBeenCalledTimes(2);
         expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(`
             INSERT DATA {
                 @prefix solid: <http://www.w3.org/ns/solid/terms#> .

@@ -72,9 +72,10 @@ export default class SolidContainer extends Model {
             return;
         }
 
-        typeIndex.relatedRegistrations.attach(typeRegistration);
-
-        await typeRegistration.withEngine(this.requireEngine(), () => typeIndex.save());
+        await typeIndex.withEngine(this.requireEngine(), async () => {
+            await typeIndex.loadRelationIfUnloaded('registrations');
+            await typeIndex.relatedRegistrations.create(typeRegistration);
+        });
     }
 
     protected contains<T extends typeof SolidModel>(model: T): SolidContainsRelation {

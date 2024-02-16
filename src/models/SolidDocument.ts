@@ -44,9 +44,10 @@ export default class SolidDocument extends Model {
             return;
         }
 
-        typeIndex.relatedRegistrations.attach(typeRegistration);
-
-        await typeRegistration.withEngine(this.requireEngine(), () => typeIndex.save());
+        await typeIndex.withEngine(this.requireEngine(), async () => {
+            await typeIndex.loadRelationIfUnloaded('registrations');
+            await typeIndex.relatedRegistrations.create(typeRegistration);
+        });
     }
 
 }
