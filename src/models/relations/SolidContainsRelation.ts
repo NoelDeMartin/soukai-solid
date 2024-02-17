@@ -1,4 +1,4 @@
-import { arrayUnique } from '@noeldemartin/utils';
+import { arrayUnique, tap } from '@noeldemartin/utils';
 import { BelongsToManyRelation, SoukaiError } from 'soukai';
 import type { Attributes } from 'soukai';
 
@@ -19,13 +19,17 @@ export default class SolidContainsRelation<
     }
 
     public setForeignAttributes(related: Related): void {
-        if (!related.url)
+        if (!related.url) {
             return;
+        }
 
-        this.parent.resourceUrls = arrayUnique([
-            ...this.parent.resourceUrls,
-            related.getDocumentUrl(),
-        ]);
+        const resourceUrls = arrayUnique([...this.parent.resourceUrls, related.getDocumentUrl()]);
+
+        if (this.parent.requireFinalEngine() instanceof SolidEngine) {
+            this.parent.setOriginalAttribute('resourceUrls', resourceUrls);
+        } else {
+            this.parent.setAttribute('resourceUrls', resourceUrls);
+        }
     }
 
     public async load(): Promise<Related[]> {
@@ -39,11 +43,7 @@ export default class SolidContainsRelation<
     }
 
     public async create(attributes: Attributes = {}): Promise<Related> {
-        const model = this.relatedClass.newInstance<Related>(attributes);
-
-        await this.save(model);
-
-        return model;
+        return tap(this.attach(attributes), model => this.save(model));
     }
 
     public async save(model: Related): Promise<Related> {
@@ -51,19 +51,10 @@ export default class SolidContainsRelation<
             throw new SoukaiError('Cannot save a model because the container doesn\'t exist');
         }
 
-        if (this.loaded) {
-            this.related?.push(model);
-        }
-
-        await model.save(this.parent.url);
-
-        if (this.parent.requireFinalEngine() instanceof SolidEngine) {
-            this.parent.setOriginalAttribute('resourceUrls', [...this.parent.resourceUrls, model.getDocumentUrl()]);
-        } else {
-            await this.parent.update({ resourceUrls: [...this.parent.resourceUrls, model.getDocumentUrl()] });
-        }
-
-        return model;
+        return tap(model, async () => {
+            await model.save(this.parent.url);
+            await this.parent.save();
+        });
     }
 
 }

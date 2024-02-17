@@ -1,9 +1,9 @@
 import { arrayUnique, requireUrlParentDirectory, urlParentDirectory, urlRoot } from '@noeldemartin/utils';
 import { SingleModelRelation } from 'soukai';
 
-import type { SolidModel } from '@/models/SolidModel';
-
+import { SolidEngine } from '@/engines/SolidEngine';
 import type SolidContainer from '@/models/SolidContainer';
+import type { SolidModel } from '@/models/SolidModel';
 import type { SolidContainerConstructor } from '@/models/inference';
 
 export default class SolidIsContainedByRelation<
@@ -21,13 +21,17 @@ export default class SolidIsContainedByRelation<
     }
 
     public setForeignAttributes(related: Related): void {
-        if (!this.parent.url)
+        if (!this.parent.url) {
             return;
+        }
 
-        related.resourceUrls = arrayUnique([
-            ...related.resourceUrls,
-            this.parent.url,
-        ]);
+        const resourceUrls = arrayUnique([...related.resourceUrls, this.parent.getDocumentUrl()]);
+
+        if (this.parent.requireFinalEngine() instanceof SolidEngine) {
+            related.setOriginalAttribute('resourceUrls', resourceUrls);
+        } else {
+            related.setAttribute('resourceUrls', resourceUrls);
+        }
     }
 
     public async load(): Promise<Related | null> {
