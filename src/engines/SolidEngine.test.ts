@@ -1,4 +1,5 @@
 import { DocumentAlreadyExists, DocumentNotFound, SoukaiError } from 'soukai';
+import { fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@noeldemartin/solid-utils';
 import {
     arrayZip,
     range,
@@ -23,7 +24,6 @@ import type { Fetch } from '@/solid/SolidClient';
 
 import SolidClientMock from '@/solid/__mocks__';
 
-import { fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@/testing/utils';
 import { jsonLDGraph, stubMoviesCollectionJsonLD, stubPersonJsonLD } from '@/testing/lib/stubs/helpers';
 
 describe('SolidEngine', () => {

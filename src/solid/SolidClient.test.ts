@@ -1,5 +1,10 @@
+import {
+    MalformedSolidDocumentError,
+    fakeContainerUrl,
+    fakeDocumentUrl,
+    fakeResourceUrl,
+} from '@noeldemartin/solid-utils';
 import { faker } from '@noeldemartin/faker';
-import { MalformedSolidDocumentError } from '@noeldemartin/solid-utils';
 import { range, stringToSlug, urlResolve, urlResolveDirectory, urlRoute, uuid } from '@noeldemartin/utils';
 import type { Tuple } from '@noeldemartin/utils';
 
@@ -12,7 +17,6 @@ import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation'
 import type RDFDocument from '@/solid/RDFDocument';
 
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';
-import { fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@/testing/utils';
 
 describe('SolidClient', () => {
 

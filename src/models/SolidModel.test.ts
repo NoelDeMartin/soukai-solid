@@ -1,6 +1,6 @@
 /* eslint-disable max-len */
 import { after, arrayWithout, range, stringToSlug, tap, toString, tt, urlParentDirectory, urlResolve, urlResolveDirectory, urlRoute, uuid } from '@noeldemartin/utils';
-import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
+import { expandIRI as defaultExpandIRI, fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@noeldemartin/solid-utils';
 import { FieldType, InMemoryEngine, ModelKey, bootModels, setEngine } from 'soukai';
 import dayjs from 'dayjs';
 import { faker } from '@noeldemartin/faker';
@@ -23,7 +23,7 @@ import MoviesCollection from '@/testing/lib/stubs/MoviesCollection';
 import Person from '@/testing/lib/stubs/Person';
 import StubEngine from '@/testing/lib/stubs/StubEngine';
 import WatchAction from '@/testing/lib/stubs/WatchAction';
-import { assertInstanceOf, fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@/testing/utils';
+import { assertInstanceOf } from '@/testing/utils';
 import { stubMovieJsonLD, stubMoviesCollectionJsonLD, stubPersonJsonLD, stubWatchActionJsonLD } from '@/testing/lib/stubs/helpers';
 
 import { SolidModel } from './SolidModel';
