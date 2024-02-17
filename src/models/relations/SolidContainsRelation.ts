@@ -24,7 +24,7 @@ export default class SolidContainsRelation<
 
         this.parent.resourceUrls = arrayUnique([
             ...this.parent.resourceUrls,
-            related.url,
+            related.getDocumentUrl(),
         ]);
     }
 
@@ -47,21 +47,21 @@ export default class SolidContainsRelation<
     }
 
     public async save(model: Related): Promise<Related> {
-        if (!this.parent.exists())
+        if (!this.parent.exists()) {
             throw new SoukaiError('Cannot save a model because the container doesn\'t exist');
+        }
+
+        if (this.loaded) {
+            this.related?.push(model);
+        }
 
         await model.save(this.parent.url);
 
         if (this.parent.requireFinalEngine() instanceof SolidEngine) {
             this.parent.setOriginalAttribute('resourceUrls', [...this.parent.resourceUrls, model.getDocumentUrl()]);
         } else {
-            await this.parent.update({
-                resourceUrls: [...this.parent.resourceUrls, model.getDocumentUrl()],
-            });
+            await this.parent.update({ resourceUrls: [...this.parent.resourceUrls, model.getDocumentUrl()] });
         }
-
-        if (this.loaded)
-            this.related?.push(model);
 
         return model;
     }

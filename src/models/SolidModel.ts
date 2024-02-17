@@ -82,6 +82,7 @@ import {
     isSolidSingleModelDocumentRelation,
 } from './relations/cardinality-guards';
 import DeletesModels from './mixins/DeletesModels';
+import DocumentContainsManyRelation from '@/models/relations/DocumentContainsManyRelation';
 import ManagesPermissions from './mixins/ManagesPermissions';
 import OperationsRelation from './relations/OperationsRelation';
 import SerializesToJsonLD from './mixins/SerializesToJsonLD';
@@ -92,7 +93,6 @@ import SolidHasManyRelation from './relations/SolidHasManyRelation';
 import SolidHasOneRelation from './relations/SolidHasOneRelation';
 import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
 import TombstoneRelation from '@/models/relations/TombstoneRelation';
-import DocumentContainsManyRelation from '@/models/relations/DocumentContainsManyRelation';
 import { inferFieldDefinition, isSolidArrayFieldDefinition } from './fields';
 import { operationClass } from './history/operations';
 import type Metadata from './history/Metadata';
