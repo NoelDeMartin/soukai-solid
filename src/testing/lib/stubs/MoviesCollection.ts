@@ -10,7 +10,7 @@ export default class MoviesCollection extends SolidContainer {
     public static timestamps = false;
 
     public movies?: Movie[];
-    public relatedMovies!: SolidContainsRelation<MoviesCollection, Movie, typeof Movie>;
+    public relatedMovies!: SolidContainsRelation<this, Movie, typeof Movie>;
 
     public moviesRelationship(): Relation {
         return this.contains(Movie);

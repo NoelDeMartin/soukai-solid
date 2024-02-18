@@ -19,7 +19,7 @@ export default class SolidContainsRelation<
     }
 
     public setForeignAttributes(related: Related): void {
-        if (!related.url) {
+        if (!related.url || this.parent.resourceUrls.includes(related.getDocumentUrl())) {
             return;
         }
 
@@ -53,6 +53,9 @@ export default class SolidContainsRelation<
 
         return tap(model, async () => {
             await model.save(this.parent.url);
+
+            this.setForeignAttributes(model);
+
             await this.parent.save();
         });
     }
