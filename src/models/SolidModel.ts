@@ -497,17 +497,19 @@ export class SolidModel extends SolidModelBase {
             solid: 'http://www.w3.org/ns/solid/terms#',
             xsd: 'http://www.w3.org/2001/XMLSchema#',
         };
-        const rdfContextFromClass = () => Object.values({ ...rdfContexts, ...buildInRdfContexts }).find(
-            rdfContext => modelClass.rdfsClass?.startsWith(toString(rdfContext)),
-        );
+        const rdfContextFromClass = () => Object.entries({ ...rdfContexts, ...buildInRdfContexts }).find(
+            ([shorthand, url]) =>
+                modelClass.rdfsClass?.startsWith(`${shorthand}:`) ||
+                modelClass.rdfsClass?.startsWith(toString(url)),
+        )?.[1];
 
         rdfContexts.default ??= rdfContext ?? rdfContextFromClass() ?? Object.values(rdfContexts).find(url => !!url);
 
         if (!parentModelClass) {
             return {
                 ...rdfContexts,
-                default: rdfContexts.default ?? 'http://www.w3.org/ns/solid/terms#',
                 ...buildInRdfContexts,
+                default: rdfContexts.default ?? 'http://www.w3.org/ns/solid/terms#',
             };
         }
 
