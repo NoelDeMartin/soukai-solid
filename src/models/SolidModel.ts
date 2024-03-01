@@ -19,6 +19,7 @@ import {
     shortId,
     stringToSlug,
     tap,
+    toString,
     urlClean,
     urlParentDirectory,
     urlParse,
@@ -483,19 +484,30 @@ export class SolidModel extends SolidModelBase {
             ...initialRdfContexts,
             ...Object.getOwnPropertyDescriptor(modelClass, 'rdfContexts')?.value ?? {} as Record<string, string>,
         };
+        const buildInRdfContexts = {
+            crdt: 'https://vocab.noeldemartin.com/crdt/',
+            foaf: 'http://xmlns.com/foaf/0.1/',
+            ldp: 'http://www.w3.org/ns/ldp#',
+            pim: 'http://www.w3.org/ns/pim/space#',
+            posix: 'http://www.w3.org/ns/posix/stat#',
+            purl: 'http://purl.org/dc/terms/',
+            rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
+            rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+            schema: 'https://schema.org/',
+            solid: 'http://www.w3.org/ns/solid/terms#',
+            xsd: 'http://www.w3.org/2001/XMLSchema#',
+        };
+        const rdfContextFromClass = () => Object.values({ ...rdfContexts, ...buildInRdfContexts }).find(
+            rdfContext => modelClass.rdfsClass?.startsWith(toString(rdfContext)),
+        );
 
-        rdfContexts.default ??= rdfContext ?? Object.values(rdfContexts).find(url => !!url);
+        rdfContexts.default ??= rdfContext ?? rdfContextFromClass() ?? Object.values(rdfContexts).find(url => !!url);
 
         if (!parentModelClass) {
             return {
                 ...rdfContexts,
                 default: rdfContexts.default ?? 'http://www.w3.org/ns/solid/terms#',
-                solid: 'http://www.w3.org/ns/solid/terms#',
-                crdt: 'https://vocab.noeldemartin.com/crdt/',
-                ldp: 'http://www.w3.org/ns/ldp#',
-                purl: 'http://purl.org/dc/terms/',
-                rdf: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#',
-                rdfs: 'http://www.w3.org/2000/01/rdf-schema#',
+                ...buildInRdfContexts,
             };
         }
 

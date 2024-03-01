@@ -193,6 +193,18 @@ describe('SolidModel', () => {
         expect(fields.title?.rdfPropertyAliases).toEqual([]);
     });
 
+    it('defaults to rdfsClass context if default rdfContext is missing', () => {
+        class StubModel extends SolidModel {
+
+            public static rdfsClass = 'http://xmlns.com/foaf/0.1/Stub';
+
+        }
+
+        bootModels({ StubModel });
+
+        expect(StubModel.rdfContexts.default).toEqual('http://xmlns.com/foaf/0.1/');
+    });
+
     it('defaults to first context if rdfProperty is missing', () => {
         class StubModel extends SolidModel {
 
