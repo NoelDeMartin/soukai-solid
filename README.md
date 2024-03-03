@@ -32,7 +32,7 @@ setEngine(new SolidEngine());
 Person.at('https://example.org/people/').create({ name: 'John Doe' });
 ```
 
-> **Warning**
+> [!WARNING]
 > This example is just illustrative to get you started; in a real application you would define static properties in the `Person` model to configure the mapping to RDF. You can read the rest of this documentation to learn how.
 
 ## Solid Models vs Solid Documents
@@ -222,11 +222,30 @@ There is also a `SolidContainer` class that should be used to declare container 
 
 ### Url minting
 
-The default behavior when creating new models is that the url will be minted in the client side, using the container url and generating a UUID. It will also add a hash at the end which can be configured defining the `defaultResourceHash` static property in the model (it'll be defined as "it" by default).
+New models mint the url in the client side by default, using the container url and generating a UUID. They also add a hash at the end which can be configured with the `defaultResourceHash` static property (the default is "it"):
 
-If the model is a `SolidContainer` and has a `name` attribute, this will be used to create a slug instead. Container models don't use a hash in the url and end with a trailing slash. For models that are not container, the same behaviour can be configured using `slugField`.
+```js
+// The url will be something like "https://example.org/people/2be06383-20ab-41c4-90f1-b506f5c00bde#it"
+await Person.at('https://example.org/people/').create({ name: 'Alice' });
+```
 
-Url minting is useful in order to perform operations with a new model before the server request has been resolved, but it can be disabled by setting the `mintsUrls` property to `false`. You can also mint it manually calling the `mintUrl` method or setting the `url` attribute:
+If the model is a `SolidContainer` and has a `name` attribute, this will be used to create a slug instead. Container models don't use a hash in the url and end with a trailing slash. For models that are not containers, you can configure the same slug behaviour using `slugField`:
+
+```js
+class People extends SolidContainer {}
+
+class Person extends SolidModel {
+    static slugField = 'name';
+}
+
+// The url will be "https://example.org/friends/"
+const container = await People.at('https://example.org/').create({ name: 'Friends' });
+
+// The url will be "https://example.org/friends/alice#it"
+await Person.at(container.url).create({ name: 'Alice' });
+```
+
+Url minting is useful in order to perform operations with models before they have been saved in the server, but it can be disabled by setting the `mintsUrls` property to `false`. You can also mint urls explicitly calling the `mintUrl` method or setting the `url` attribute:
 
 ```js
 class Person extends SolidModel {
@@ -234,22 +253,20 @@ class Person extends SolidModel {
 }
 
 // You can do this...
-const person = new Person({ name: 'Amy Doe' });
+const person = new Person({ name: 'Alice' });
 
 person.mintUrl();
 
 await person.save();
 
 // Or you could set the url yourself.
-const person = new Person({
-    url: 'http://example.org/amy#it',
-    name: 'Amy Doe',
+await Person.create({
+    url: 'http://example.org/people/alice#it',
+    name: 'Alice',
 });
-
-await person.save();
 ```
 
-> **Warning**
+> [!WARNING]
 > Keep in mind that disabling this may break some relationships' initialization, when they rely on foreign keys existing. If you're disabling this and you're using such relationships, make sure to always provide an url when you're creating models.
 
 ### Relations
@@ -321,7 +338,7 @@ await acdc.save();
 await acdc.relatedMembers.create({ name: 'Angus Young' });
 ```
 
-> **Note**
+> [!NOTE]
 > Given the nature of Solid, related models defined with `hasMany` will only be loaded if they can be found in the same document as the parent model (the one who defines the relationship). This also works if the foreign key is the only attribute found in the document.
 
 #### contains and isContainedBy
