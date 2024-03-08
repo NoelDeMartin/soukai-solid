@@ -13,6 +13,7 @@ import type ManagesPermissions from './mixins/ManagesPermissions';
 import type SerializesToJsonLD from './mixins/SerializesToJsonLD';
 import type { PermissionsTracker } from './mixins/ManagesPermissions';
 
+export * from './helpers';
 export * from './history/index';
 export * from './inference';
 export * from './relations/index';
