@@ -7,7 +7,7 @@ import {
     uuid,
 } from '@noeldemartin/utils';
 import { findContainerRegistrations } from '@noeldemartin/solid-utils';
-import type { Relation } from 'soukai';
+import type { ModelConstructor, Relation } from 'soukai';
 
 import { SolidEngine } from '@/engines/SolidEngine';
 
@@ -19,7 +19,7 @@ import SolidTypeRegistration from './SolidTypeRegistration';
 import type SolidDocument from './SolidDocument';
 import type SolidTypeIndex from './SolidTypeIndex';
 import type { SolidModel } from './SolidModel';
-import type { SolidModelConstructor } from './inference';
+import type { SolidContainerConstructor, SolidModelConstructor } from './inference';
 
 export default class SolidContainer extends Model {
 
@@ -76,6 +76,12 @@ export default class SolidContainer extends Model {
             await typeIndex.loadRelationIfUnloaded('registrations');
             await typeIndex.relatedRegistrations.create(typeRegistration);
         });
+    }
+
+    public static(): SolidContainerConstructor<this>;
+    public static<T extends keyof SolidContainerConstructor<this>>(property: T): SolidContainerConstructor<this>[T];
+    public static<T extends keyof SolidContainerConstructor<this>>(property?: T): SolidContainerConstructor<this>[T] {
+        return super.static(property as keyof ModelConstructor<this>);
     }
 
     protected contains<T extends typeof SolidModel>(model: T): SolidContainsRelation {
