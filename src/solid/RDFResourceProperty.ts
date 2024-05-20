@@ -46,7 +46,7 @@ abstract class RDFResourceProperty {
         }
 
         if (statement.object.termType === 'NamedNode') {
-            return this.reference(resourceUrl, statement.predicate.value, statement.object.value);
+            return this.reference(resourceUrl, statement.predicate.value, decodeURI(statement.object.value));
         }
 
         if (statement.object.termType === 'BlankNode') {
