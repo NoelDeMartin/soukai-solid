@@ -1,5 +1,5 @@
 import { arrayUnique, tap } from '@noeldemartin/utils';
-import { MultiModelRelation } from 'soukai';
+import { MultiModelRelation, requireBootedModel } from 'soukai';
 import type { Attributes, Key } from 'soukai';
 import type { ClosureArgs } from '@noeldemartin/utils';
 
@@ -106,8 +106,9 @@ export default class SolidMultiModelDocumentRelation<
         await this.parent.save();
     }
 
-    public detach(this: This<Parent, Related, RelatedClass>, keyOrModel: string | Related): void {
-        const localKey = typeof keyOrModel === 'string' ? keyOrModel : keyOrModel.getAttribute(this.localKeyName);
+    public detach(this: This<Parent, Related, RelatedClass>, keyOrModel: Key | Related): void {
+        const isRelated = (related: unknown): related is Related => related instanceof this.relatedClass;
+        const localKey = isRelated(keyOrModel) ? keyOrModel.getAttribute(this.localKeyName) : keyOrModel;
         const detachedModel = this.related?.find(model => model.getAttribute(this.localKeyName) === localKey);
 
         if (!detachedModel) {

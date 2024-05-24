@@ -4,6 +4,8 @@ import Model from './PropertyOperation.schema';
 
 export default class PropertyOperation extends Model {
 
+    declare public property: string;
+
     public apply(model: SolidModel): void {
         const field = model.static().getRdfPropertyField(this.property);
 

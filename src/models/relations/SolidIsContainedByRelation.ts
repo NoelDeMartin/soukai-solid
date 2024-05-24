@@ -21,7 +21,12 @@ export default class SolidIsContainedByRelation<
     }
 
     public setForeignAttributes(related: Related): void {
-        if (!this.parent.url || related.resourceUrls.includes(this.parent.getDocumentUrl())) {
+        const parentDocumentUrl = this.parent.getDocumentUrl();
+
+        if (
+            !this.parent.url ||
+            (parentDocumentUrl && related.resourceUrls.includes(parentDocumentUrl))
+        ) {
             return;
         }
 

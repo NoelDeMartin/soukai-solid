@@ -53,7 +53,9 @@ export default class SolidTypeIndex extends Model {
 
         return asyncFirst(
             containerRegistrations,
-            registration => (containerClass ?? SolidContainer).find(registration?.instanceContainer) as Promise<T>,
+            async registration => registration?.instanceContainer
+                ? (containerClass ?? SolidContainer).find(registration.instanceContainer) as Promise<T>
+                : null,
         );
     }
 

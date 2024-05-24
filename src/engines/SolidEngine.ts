@@ -1,4 +1,4 @@
-import { arrayFrom, arrayUnique, isObject, urlParentDirectory, urlRoot } from '@noeldemartin/utils';
+import { arrayFrom, arrayUnique, isObject, toString, urlParentDirectory, urlRoot } from '@noeldemartin/utils';
 import { compactJsonLDGraph, quadsToJsonLD } from '@noeldemartin/solid-utils';
 import {
     DocumentAlreadyExists,
@@ -177,7 +177,7 @@ export class SolidEngine implements Engine {
         const rdfsClasses = this.extractJsonLDGraphTypes(filters);
 
         return filters.$in
-            ? await this.getDocumentsFromUrls(filters.$in, rdfsClasses)
+            ? await this.getDocumentsFromUrls(filters.$in.map(toString), rdfsClasses)
             : await this.client.getDocuments(collection, rdfsClasses.includes(IRI('ldp:Container')));
     }
 

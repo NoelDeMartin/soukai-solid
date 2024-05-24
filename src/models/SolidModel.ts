@@ -1222,13 +1222,14 @@ export class SolidModel extends SolidModelBase {
             return this.newInstance(attributes, true);
         };
 
-        const resource = await RDFDocument.resourceFromJsonLDGraph(document as JsonLDGraph, resourceId || id);
+        const documentUrl = toString(id);
+        const resource = await RDFDocument.resourceFromJsonLDGraph(document as JsonLDGraph, resourceId || documentUrl);
         const model = await createModel();
 
-        await model.loadDocumentModels(id, document);
+        await model.loadDocumentModels(documentUrl, document);
 
         return tap(model, m => {
-            m._sourceDocumentUrl = urlClean(id, { fragment: false });
+            m._sourceDocumentUrl = urlClean(documentUrl, { fragment: false });
             m._usesRdfAliases = this.static('rdfsClassesAliases').some(
                 types => !types.some(type => !resource.isType(type)),
             );
