@@ -1,6 +1,6 @@
-import { toString, urlParse } from '@noeldemartin/utils';
+import { after, randomInt, range, toString, urlParse } from '@noeldemartin/utils';
 import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
-import { InMemoryEngine, ModelKey, bootModels, setEngine } from 'soukai';
+import { InMemoryEngine, ModelKey, ProxyEngine, bootModels, setEngine } from 'soukai';
 import type { Relation } from 'soukai';
 import type { Tuple } from '@noeldemartin/utils';
 
@@ -17,7 +17,9 @@ import type { SolidBelongsToManyRelation } from '@/models';
 
 import BaseGroup from '@/testing/lib/stubs/Group';
 import BasePerson from '@/testing/lib/stubs/Person';
+import Movie from '@/testing/lib/stubs/Movie';
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';
+import WatchAction from '@/testing/lib/stubs/WatchAction';
 import { assertInstanceOf, loadFixture } from '@/testing/utils';
 
 const expandIRI = (iri: string) => defaultExpandIRI(iri, {
@@ -67,7 +69,7 @@ describe('Solid history tracking', () => {
         fetch = jest.fn((...args) => StubFetcher.fetch(...args));
 
         setEngine(new SolidEngine(fetch));
-        bootModels({ Person, Group });
+        bootModels({ Movie, WatchAction, Person, Group });
     });
 
     it('Updates metadata and creates operations', async () => {
@@ -508,6 +510,42 @@ describe('Solid history tracking', () => {
                     crdt:deletedAt  "[[.*]]"^^xsd:dateTime .
             } .
         `);
+    });
+
+    it('Serializes concurrent updates', async () => {
+        // Arrange - Engine and class
+        const concurrency = 10;
+        const engine = new InMemoryEngine;
+
+        class MovieWithTimestamps extends Movie {
+
+            public static timestamps = true;
+            public static history = true;
+
+        }
+
+        setEngine(engine);
+        bootModels({ MovieWithTimestamps });
+
+        // Arrange - Model and slow engine
+        const model = await MovieWithTimestamps.create({ title: 'Default' });
+
+        setEngine(new ProxyEngine(engine, {
+            update: async (...args) => {
+                await after({ ms: randomInt(10, 100) });
+
+                return engine.update(...args);
+            },
+        }));
+
+        // Act
+        await Promise.all(range(concurrency).map(async i => model.update({ title: `Update ${i}` })));
+
+        const freshModel = await model.fresh();
+
+        // Assert
+        expect(freshModel.title).toEqual('Update 9');
+        expect(freshModel.operations).toHaveLength(11);
     });
 
 });

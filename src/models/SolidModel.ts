@@ -1,4 +1,5 @@
 import {
+    Semaphore,
     arrayDiff,
     arrayFilter,
     arrayFrom,
@@ -620,6 +621,7 @@ export class SolidModel extends SolidModelBase {
     declare protected _relations: Record<string, SolidRelation>;
 
     private _sourceSubject: SubjectParts = {};
+    private _lock = new Semaphore();
     declare private _history?: boolean;
     declare private _tombstone?: boolean;
 
@@ -680,6 +682,10 @@ export class SolidModel extends SolidModelBase {
     public static<T extends keyof SolidModelConstructor<this>>(property: T): SolidModelConstructor<this>[T];
     public static<T extends keyof SolidModelConstructor<this>>(property?: T): SolidModelConstructor<this>[T] {
         return super.static(property as keyof ModelConstructor<this>);
+    }
+
+    public update(attributes?: Attributes): Promise<this> {
+        return this._lock.run(() => super.update(attributes));
     }
 
     public save(collection?: string): Promise<this> {
