@@ -1,5 +1,5 @@
 import { arrayUnique, tap } from '@noeldemartin/utils';
-import { MultiModelRelation, requireBootedModel } from 'soukai';
+import { MultiModelRelation } from 'soukai';
 import type { Attributes, Key } from 'soukai';
 import type { ClosureArgs } from '@noeldemartin/utils';
 
