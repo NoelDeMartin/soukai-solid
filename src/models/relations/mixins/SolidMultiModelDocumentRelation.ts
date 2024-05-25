@@ -100,15 +100,14 @@ export default class SolidMultiModelDocumentRelation<
         return model;
     }
 
-    public async remove(this: This<Parent, Related, RelatedClass>, keyOrModel: Key | Related): Promise<void> {
+    public async remove(this: This<Parent, Related, RelatedClass>, keyOrModel: string | Related): Promise<void> {
         this.detach(keyOrModel);
 
         await this.parent.save();
     }
 
-    public detach(this: This<Parent, Related, RelatedClass>, keyOrModel: Key | Related): void {
-        const isRelated = (related: unknown): related is Related => related instanceof this.relatedClass;
-        const localKey = isRelated(keyOrModel) ? keyOrModel.getAttribute(this.localKeyName) : keyOrModel;
+    public detach(this: This<Parent, Related, RelatedClass>, keyOrModel: string | Related): void {
+        const localKey = typeof keyOrModel === 'string' ? keyOrModel : keyOrModel.getAttribute(this.localKeyName);
         const detachedModel = this.related?.find(model => model.getAttribute(this.localKeyName) === localKey);
 
         if (!detachedModel) {

@@ -9,8 +9,8 @@ export type SolidMagicAttributes<
     S extends SolidSchemaDefinition,
     F extends SolidFieldsDefinition = GetFieldsDefinition<S>
 > = Pretty<
-    MagicAttributes<S> &
-    MagicAttributeProperties<Pick<F, GetArrayFields<F>>>
+    MagicAttributes<S, string> &
+    MagicAttributeProperties<Pick<F, GetArrayFields<F>>, string>
 >;
 
 export type SolidModelConstructor<T extends SolidModel = SolidModel> = Constructor<T> & typeof SolidModel;
