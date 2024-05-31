@@ -22,7 +22,7 @@ class RDF {
             return null;
 
         const propertyPrefix = (contextProperty[0] === '@vocab' ? '' : `${contextProperty[0]}:`);
-        const propertyValue = json[propertyPrefix + property.substr(contextProperty[1].length)];
+        const propertyValue = json[propertyPrefix + property.slice(contextProperty[1].length)];
 
         return this.getJsonLDPropertyValue(propertyValue);
     }

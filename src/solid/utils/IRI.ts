@@ -27,7 +27,7 @@ export default function IRI(value: string, namespaces: IRINamespacesMap = {}, de
         ...namespaces,
     };
 
-    const namespace = value.substr(0, colonIndex);
+    const namespace = value.slice(0, colonIndex);
 
-    return namespace in namespaces ? namespaces[namespace] + value.substr(namespace.length + 1) : value;
+    return namespace in namespaces ? namespaces[namespace] + value.slice(namespace.length + 1) : value;
 }

@@ -157,7 +157,7 @@ abstract class RDFResourceProperty {
             return `<${encodeURI(value)}>`;
         }
 
-        return `<#${value.substr(hashIndex + 1)}>`;
+        return `<#${value.slice(hashIndex + 1)}>`;
     }
 
     protected getTurtleSubject(documentUrl: string | null, explicitSelfReference: boolean = false): string {
