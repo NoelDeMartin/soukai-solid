@@ -4,6 +4,7 @@ import { faker } from '@noeldemartin/faker';
 import type { EngineDocument, InMemoryEngineCollection } from 'soukai';
 
 import Movie from '@/testing/lib/stubs/Movie';
+import Task from '@/testing/lib/stubs/Task';
 import WatchAction from '@/testing/lib/stubs/WatchAction';
 
 let engine: InMemoryEngine;
@@ -14,7 +15,7 @@ describe('Soukai CRUD', () => {
         engine = new InMemoryEngine;
 
         setEngine(engine);
-        bootModels({ Movie, WatchAction });
+        bootModels({ Movie, Task, WatchAction });
     });
 
     it('Creates models', async () => {
@@ -74,6 +75,19 @@ describe('Soukai CRUD', () => {
                 },
             ],
         });
+    });
+
+    it('Adds new fields', async () => {
+        // Arrange
+        const task = await Task.create({ name: 'testing' });
+
+        // Act
+        await task.update({ important: true });
+
+        // Assert
+        const freshTask = await task.fresh();
+
+        expect(freshTask.important).toBe(true);
     });
 
     it('Deletes models', async () => {

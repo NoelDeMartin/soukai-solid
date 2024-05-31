@@ -1,11 +1,11 @@
-import { tap, toString } from '@noeldemartin/utils';
+import { arrayFilter, tap, toString } from '@noeldemartin/utils';
 import { FieldType, SoukaiError } from 'soukai';
 import type { Attributes, BootedArrayFieldDefinition } from 'soukai';
 import type { JsonLD } from '@noeldemartin/solid-utils';
 
 import { inferFieldDefinition } from '@/models/fields';
 import { isSolidDocumentRelation, isSolidHasRelation } from '@/models/relations/guards';
-import type { SolidBootedFieldDefinition } from '@/models/fields';
+import type { SolidBootedFieldDefinition, SolidBootedFieldsDefinition } from '@/models/fields';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidRelation } from '@/models/relations/inference';
 
@@ -34,20 +34,26 @@ enum IRIFormat {
 
 class JsonLDContext {
 
-    public static fromRdfClasses(rdfContexts: Record<string, string>): JsonLDContext {
-        const terms = Object.entries(rdfContexts).map(([name, value]) => ({
-            name,
-            value,
-            compactingPrefix: `${name}:`,
-            used: false,
-        }));
-
-        terms.unshift({
+    public static fromRdfClasses(rdfContexts: Record<string, string>, rdfsProperties: string[]): JsonLDContext {
+        const [defaultContext, ...otherContexts] = Object.entries(rdfContexts);
+        const defaultTerm = {
             name: '@vocab',
             compactingPrefix: '',
-            value: terms[0]?.value as string,
-            used: false,
-        });
+            value: defaultContext?.[1] as string,
+            used: true,
+        };
+        const terms = otherContexts.reduce((termsIndex, [name, value]) => {
+            if (value !== defaultTerm.value) {
+                termsIndex.push({
+                    name,
+                    value,
+                    compactingPrefix: `${name}:`,
+                    used: rdfsProperties.some(rdfProperty => rdfProperty.startsWith(value)),
+                });
+            }
+
+            return termsIndex;
+        }, [defaultTerm]);
 
         return new JsonLDContext(terms);
     }
@@ -64,21 +70,28 @@ class JsonLDContext {
         this.reverseProperties.set(alias, value);
     }
 
-    public addTerms(rdfContexts: Record<string, string>): void {
+    public addTerms(rdfContexts: Record<string, string>, rdfsProperties: string[]): void {
         for (const [name, value] of Object.entries(rdfContexts)) {
-            if (this.terms.some(term => term.value === value))
+            const existingTerm = this.terms.find(term => term.value === value);
+
+            if (existingTerm) {
+                existingTerm.used ||= rdfsProperties.some(rdfProperty => rdfProperty.startsWith(value));
+
                 continue;
+            }
 
             let termName = name;
             let counter = 1;
-            while (this.terms.some(term => term.name === termName))
+
+            while (this.terms.some(term => term.name === termName)) {
                 termName = `${name}${++counter}`;
+            }
 
             this.terms.push({
                 name,
                 value,
                 compactingPrefix: `${name}`,
-                used: false,
+                used: rdfsProperties.some(rdfProperty => rdfProperty.startsWith(value)),
             });
         }
     }
@@ -89,8 +102,9 @@ class JsonLDContext {
 
     public render(): Record<string, unknown> {
         const rendered = this.terms.reduce((rendered, term) => {
-            if (term.used)
+            if (term.used) {
                 rendered[term.name] = term.value;
+            }
 
             return rendered;
         }, {} as Record<string, unknown>);
@@ -107,7 +121,9 @@ class JsonLDContext {
 export default class JsonLDModelSerializer {
 
     public static forModel(model: typeof SolidModel, compactsIRIs: boolean = true): JsonLDModelSerializer {
-        const context = JsonLDContext.fromRdfClasses(model.rdfContexts);
+        const bootedFields = model.fields as SolidBootedFieldsDefinition;
+        const fieldsRdfProperties = arrayFilter(Object.values(bootedFields).map(definition => definition.rdfProperty));
+        const context = JsonLDContext.fromRdfClasses(model.rdfContexts, fieldsRdfProperties);
 
         return new JsonLDModelSerializer(context, compactsIRIs ? IRIFormat.Compacted : IRIFormat.Expanded);
     }
@@ -155,7 +171,7 @@ export default class JsonLDModelSerializer {
         const term = this.context.getTermForExpandedIRI(expandedIRI);
 
         return term
-            ? tap(term.compactingPrefix + expandedIRI.substr(term.value.length), () => term.used = true)
+            ? tap(term.compactingPrefix + expandedIRI.slice(term.value.length), () => term.used = true)
             : expandedIRI;
     }
 
@@ -195,7 +211,12 @@ export default class JsonLDModelSerializer {
                 continue;
             }
 
-            this.context.addTerms(relation.relatedClass.rdfContexts);
+            const bootedFields = relation.relatedClass.fields as SolidBootedFieldsDefinition;
+            const fieldsRdfProperties = arrayFilter(
+                Object.values(bootedFields).map(definition => definition.rdfProperty),
+            );
+
+            this.context.addTerms(relation.relatedClass.rdfContexts, fieldsRdfProperties);
             this.setJsonLDRelation(jsonld, relation, ignoredModels);
         }
     }
