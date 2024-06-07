@@ -18,6 +18,7 @@ export * from './history/index';
 export * from './inference';
 export * from './relations/index';
 export * from './schema';
+export * from './schema-container';
 export * from './SolidModel';
 
 export {

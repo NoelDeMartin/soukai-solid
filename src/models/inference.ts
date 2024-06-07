@@ -15,4 +15,4 @@ export type SolidMagicAttributes<
 
 export type SolidModelConstructor<T extends SolidModel = SolidModel> = Constructor<T> & typeof SolidModel;
 export type SolidContainerConstructor<T extends SolidContainer = SolidContainer> =
-    SolidModelConstructor<T> & typeof SolidContainer;
+    Constructor<T> & typeof SolidContainer;
