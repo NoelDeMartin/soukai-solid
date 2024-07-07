@@ -48,19 +48,19 @@ export default class SolidContainsRelation<
     }
 
     public async create(attributes: Attributes = {}): Promise<Related> {
+        this.assertParentExists();
+
         const related = this.relatedClass.newInstance(attributes);
 
         if (!related.url && related.static('mintsUrls')) {
-            related.mintUrl();
+            this.relatedClass.withCollection(this.parent.url, () => related.mintUrl());
         }
 
         return tap(this.attach(related), model => this.save(model));
     }
 
     public async save(model: Related): Promise<Related> {
-        if (!this.parent.exists()) {
-            throw new SoukaiError('Cannot save a model because the container doesn\'t exist');
-        }
+        this.assertParentExists();
 
         return tap(model, async () => {
             await model.save(this.parent.url);
@@ -69,6 +69,14 @@ export default class SolidContainsRelation<
 
             await this.parent.save();
         });
+    }
+
+    protected assertParentExists(): void {
+        if (this.parent.exists()) {
+            return;
+        }
+
+        throw new SoukaiError('Cannot save a model because the container doesn\'t exist');
     }
 
 }
