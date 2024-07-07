@@ -48,7 +48,13 @@ export default class SolidContainsRelation<
     }
 
     public async create(attributes: Attributes = {}): Promise<Related> {
-        return tap(this.attach(attributes), model => this.save(model));
+        const related = this.relatedClass.newInstance(attributes);
+
+        if (!related.url && related.static('mintsUrls')) {
+            related.mintUrl();
+        }
+
+        return tap(this.attach(related), model => this.save(model));
     }
 
     public async save(model: Related): Promise<Related> {
