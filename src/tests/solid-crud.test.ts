@@ -1,5 +1,5 @@
 import { bootModels, setEngine } from 'soukai';
-import { fakeDocumentUrl } from '@noeldemartin/solid-utils';
+import { fakeDocumentUrl } from '@noeldemartin/testing';
 import { tap, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
 import { faker } from '@noeldemartin/faker';
 

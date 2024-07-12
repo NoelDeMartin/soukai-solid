@@ -1,4 +1,4 @@
-import { fakeContainerUrl } from '@noeldemartin/solid-utils';
+import { fakeContainerUrl } from '@noeldemartin/testing';
 import { setEngine } from 'soukai';
 
 import { SolidContainer } from '@/models';

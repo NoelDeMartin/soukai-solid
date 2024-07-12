@@ -34,7 +34,7 @@
   },
   "dependencies": {
     "@babel/runtime": "^7.13.8",
-    "@noeldemartin/solid-utils": "0.4.0-next.852c9f9e65275fc2a2e67a9750784fb43a0fd64b",
+    "@noeldemartin/solid-utils": "0.4.0-next.30aceafb9d58f505d02a146d8e81f2e3a041b92f",
     "@noeldemartin/utils": "0.5.1-next.d01c5dd7a42656e2ed6f6a0279c98dd6e2ff5a10",
     "core-js": "^3.9.0"
   },
@@ -45,6 +45,7 @@
     "@noeldemartin/eslint-config-typescript": "^0.1.1",
     "@noeldemartin/faker": "^7.6.0",
     "@noeldemartin/scripts": "^0.1.2",
+    "@noeldemartin/testing": "0.0.0",
     "@rdfjs/types": "^1.1.0",
     "@types/jest": "^24.0.0",
     "@types/jsonld": "^1.5.5",

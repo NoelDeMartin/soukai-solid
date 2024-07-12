@@ -1,5 +1,5 @@
 import { faker } from '@noeldemartin/faker';
-import { fakeContainerUrl } from '@noeldemartin/solid-utils';
+import { fakeContainerUrl } from '@noeldemartin/testing';
 import { InMemoryEngine, bootModels, setEngine } from 'soukai';
 
 import Movie from '@/testing/lib/stubs/Movie';

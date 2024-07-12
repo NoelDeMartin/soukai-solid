@@ -1,5 +1,5 @@
 import { DocumentAlreadyExists, DocumentNotFound, SoukaiError } from 'soukai';
-import { fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@noeldemartin/solid-utils';
+import { fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@noeldemartin/testing';
 import {
     arrayZip,
     range,

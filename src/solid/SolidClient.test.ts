@@ -1,9 +1,9 @@
 import {
-    MalformedSolidDocumentError,
     fakeContainerUrl,
     fakeDocumentUrl,
     fakeResourceUrl,
-} from '@noeldemartin/solid-utils';
+} from '@noeldemartin/testing';
+import { MalformedSolidDocumentError } from '@noeldemartin/solid-utils';
 import { faker } from '@noeldemartin/faker';
 import { range, stringToSlug, urlResolve, urlResolveDirectory, urlRoute, uuid } from '@noeldemartin/utils';
 import type { Tuple } from '@noeldemartin/utils';

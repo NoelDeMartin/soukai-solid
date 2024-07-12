@@ -1,6 +1,7 @@
 /* eslint-disable max-len */
 import { after, arrayWithout, range, stringToSlug, tap, toString, tt, urlParentDirectory, urlResolve, urlResolveDirectory, urlRoute, uuid } from '@noeldemartin/utils';
-import { expandIRI as defaultExpandIRI, fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@noeldemartin/solid-utils';
+import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
+import { fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@noeldemartin/testing';
 import { FieldType, InMemoryEngine, ModelKey, bootModels, setEngine } from 'soukai';
 import dayjs from 'dayjs';
 import { faker } from '@noeldemartin/faker';

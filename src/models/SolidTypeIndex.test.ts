@@ -1,4 +1,4 @@
-import { fakeDocumentUrl } from '@noeldemartin/solid-utils';
+import { fakeDocumentUrl } from '@noeldemartin/testing';
 import { setEngine } from 'soukai';
 
 import { SolidEngine } from '@/engines/SolidEngine';
