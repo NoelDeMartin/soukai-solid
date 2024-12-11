@@ -696,6 +696,7 @@ describe('SolidModel', () => {
     });
 
     it('doesn\'t mint urls for new models if disabled', async () => {
+        // Arrange
         class StubModel extends SolidModel {
 
             public static mintsUrls = false;
@@ -703,18 +704,82 @@ describe('SolidModel', () => {
         }
 
         const containerUrl = urlResolveDirectory(faker.internet.url());
-
-        jest.spyOn(engine, 'create');
+        const createSpy = jest.spyOn(engine, 'create');
 
         bootModels({ StubModel });
 
-        await StubModel.at(containerUrl).create();
+        // Act
+        const model = await StubModel.at(containerUrl).create();
 
+        // Assert
         expect(engine.create).toHaveBeenCalledWith(
             containerUrl,
-            expect.anything(),
+            {
+                '@graph': [
+                    {
+                        '@context': { '@vocab': 'http://www.w3.org/ns/solid/terms#' },
+                        '@id': '#it',
+                        '@type': 'StubModel',
+                    },
+                    {
+                        '@context': { '@vocab': 'https://vocab.noeldemartin.com/crdt/' },
+                        '@id': '#it-metadata',
+                        '@type': 'Metadata',
+                        'resource': { '@id': '#it' },
+                        'createdAt': {
+                            '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+                            '@value': expect.anything(),
+                        },
+                        'updatedAt': {
+                            '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
+                            '@value': expect.anything(),
+                        },
+                    },
+                ],
+            },
             undefined,
         );
+
+        const documentUrl = await createSpy.mock.results[0]?.value;
+        expect(model.url).toEqual(`${documentUrl}#it`);
+        expect(model.metadata.url).toEqual(`${documentUrl}#it-metadata`);
+        expect(model.metadata.resourceUrl).toEqual(`${documentUrl}#it`);
+    });
+
+    it('doesn\'t mint urls nor hashes for new models if disabled', async () => {
+        // Arrange
+        class StubModel extends SolidModel {
+
+            public static timestamps = false;
+            public static mintsUrls = false;
+            public static defaultResourceHash = null;
+
+        }
+
+        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const createSpy = jest.spyOn(engine, 'create');
+
+        bootModels({ StubModel });
+
+        // Act
+        const model = await StubModel.at(containerUrl).create();
+
+        // Assert
+        expect(engine.create).toHaveBeenCalledWith(
+            containerUrl,
+            {
+                '@graph': [
+                    {
+                        '@context': { '@vocab': 'http://www.w3.org/ns/solid/terms#' },
+                        '@type': 'StubModel',
+                    },
+                ],
+            },
+            undefined,
+        );
+
+        const documentUrl = await createSpy.mock.results[0]?.value;
+        expect(model.url).toEqual(documentUrl);
     });
 
     it('mints unique urls when urls are already in use', async () => {

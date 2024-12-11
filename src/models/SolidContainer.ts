@@ -23,6 +23,8 @@ import type { SolidContainerConstructor, SolidModelConstructor } from './inferen
 
 export default class SolidContainer extends Model {
 
+    public static defaultResourceHash = null;
+
     public static boot(name?: string): void {
         super.boot(name);
 

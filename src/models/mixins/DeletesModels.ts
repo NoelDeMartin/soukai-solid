@@ -98,7 +98,7 @@ export default class DeletesModels {
                 ? await engine.delete(containerUrl, documentUrl)
                 : await engine.update(containerUrl, documentUrl, {
                     $overwrite: {
-                        '@graph': tombstones.map(tombstone => tombstone.serializeToJsonLD(false)),
+                        '@graph': tombstones.map(tombstone => tombstone.serializeToJsonLD({ includeRelations: false })),
                     } as EngineDocument,
                 });
 

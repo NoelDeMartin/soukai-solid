@@ -18,15 +18,6 @@ interface JsonLDContextTerm {
     used: boolean;
 }
 
-type SerializeOptions = Partial<{
-    includeRelations: boolean;
-    includeContext: boolean;
-    includeTypes: boolean;
-    keepEmptyValues: boolean;
-    attributes: Attributes;
-    ignoreModels: Set<SolidModel>;
-}>;
-
 enum IRIFormat {
     Compacted = 'compacted',
     Expanded = 'expanded',
@@ -118,6 +109,16 @@ class JsonLDContext {
 
 }
 
+export type SerializeOptions = Partial<{
+    includeRelations: boolean;
+    includeContext: boolean;
+    includeTypes: boolean;
+    includeAnonymousHashes: boolean;
+    keepEmptyValues: boolean;
+    attributes: Attributes;
+    ignoreModels: Set<SolidModel>;
+}>;
+
 export default class JsonLDModelSerializer {
 
     public static forModel(model: typeof SolidModel, compactsIRIs: boolean = true): JsonLDModelSerializer {
@@ -137,26 +138,39 @@ export default class JsonLDModelSerializer {
     }
 
     public serialize(model: SolidModel, options: SerializeOptions = {}): JsonLD {
+        const attributes = options.attributes ?? model.getAttributes();
         const ignoredModels = new Set(options.ignoreModels ?? []);
         const jsonld: JsonLD = { '@context': {}, '@type': null };
 
         ignoredModels.add(model);
 
-        for (const [field, value] of Object.entries(options.attributes ?? model.getAttributes()))
+        for (const [field, value] of Object.entries(attributes)) {
             this.setJsonLDField(jsonld, model, field, value, options);
+        }
 
-        if (options.includeRelations ?? true)
+        if (!(model.static('primaryKey') in attributes) && options.includeAnonymousHashes) {
+            const defaultResourceHash = model.static('defaultResourceHash');
+
+            if (defaultResourceHash) {
+                jsonld['@id'] = `#${defaultResourceHash}`;
+            }
+        }
+
+        if (options.includeRelations ?? true) {
             this.setJsonLDRelations(jsonld, model, ignoredModels);
+        }
 
-        if (options.includeTypes ?? true)
+        if (options.includeTypes ?? true) {
             this.setJsonLDTypes(jsonld, model);
-        else
+        } else {
             delete jsonld['@type'];
+        }
 
-        if (options.includeContext ?? true)
+        if (options.includeContext ?? true) {
             this.setJsonLDContext(jsonld);
-        else
+        } else {
             delete jsonld['@context'];
+        }
 
         return jsonld;
     }

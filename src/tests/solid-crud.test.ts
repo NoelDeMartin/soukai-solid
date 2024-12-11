@@ -1,6 +1,6 @@
 import { bootModels, setEngine } from 'soukai';
 import { fakeDocumentUrl } from '@noeldemartin/testing';
-import { tap, urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
+import { tap, urlResolve, urlResolveDirectory, uuid } from '@noeldemartin/utils';
 import { faker } from '@noeldemartin/faker';
 
 import Group from '@/testing/lib/stubs/Group';
@@ -101,6 +101,75 @@ describe('Solid CRUD', () => {
                     schema:object <#movie> ;
                     schema:startTime "${watchDate.toISOString()}"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
             }
+        `);
+    });
+
+    it('Creates model without url minting', async () => {
+        // Arrange
+        class MovieWithoutUrlMinting extends Movie {
+
+            public static mintsUrls = false;
+
+        }
+
+        const title = faker.lorem.sentence();
+        const releaseDate = new Date('1997-07-21T23:42:00Z');
+
+        StubFetcher.addFetchResponse('', { Location: Movie.collection + uuid() });
+
+        bootModels({ MovieWithoutUrlMinting });
+
+        // Act
+        const movie = await MovieWithoutUrlMinting.create({ title, releaseDate });
+
+        // Assert
+        expect(movie.url.startsWith(Movie.collection)).toBe(true);
+        expect(movie.url.endsWith('#it')).toBe(true);
+        expect(movie.url.length).toBeGreaterThan(Movie.collection.length + 3);
+
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(fetch.mock.calls[0]?.[1]?.body).toEqualTurtle(`
+            @prefix schema: <https://schema.org/>.
+
+            <#it>
+                a schema:Movie ;
+                schema:name "${title}" ;
+                schema:datePublished "${releaseDate.toISOString()}"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+        `);
+    });
+
+    it('Creates model without url minting nor hash', async () => {
+        // Arrange
+        class MovieWithoutUrlMinting extends Movie {
+
+            public static mintsUrls = false;
+            public static defaultResourceHash = null;
+
+        }
+
+        const title = faker.lorem.sentence();
+        const releaseDate = new Date('1997-07-21T23:42:00Z');
+
+        StubFetcher.addFetchResponse('', { Location: Movie.collection + uuid() });
+
+        bootModels({ MovieWithoutUrlMinting });
+
+        // Act
+        const movie = await MovieWithoutUrlMinting.create({ title, releaseDate });
+
+        // Assert
+        expect(movie.url.startsWith(Movie.collection)).toBe(true);
+        expect(movie.url.length).toBeGreaterThan(Movie.collection.length);
+        expect(movie.url.includes('#')).toBe(false);
+
+        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(fetch.mock.calls[0]?.[1]?.body).toEqualTurtle(`
+            @prefix schema: <https://schema.org/>.
+
+            <>
+                a schema:Movie ;
+                schema:name "${title}" ;
+                schema:datePublished "${releaseDate.toISOString()}"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
         `);
     });
 

@@ -12,6 +12,7 @@ import type DeletesModels from './mixins/DeletesModels';
 import type ManagesPermissions from './mixins/ManagesPermissions';
 import type SerializesToJsonLD from './mixins/SerializesToJsonLD';
 import type { PermissionsTracker } from './mixins/ManagesPermissions';
+import type { SerializeOptions } from './mixins/SerializesToJsonLD';
 
 export * from './helpers';
 export * from './history/index';
@@ -36,7 +37,7 @@ export { default as SolidDocumentSchema } from './SolidDocument.schema';
 export { default as SolidTypeIndexSchema } from './SolidTypeIndex.schema';
 export { default as SolidTypeRegistrationSchema } from './SolidTypeRegistration.schema';
 
-export type { DeletesModels, SerializesToJsonLD, ManagesPermissions, PermissionsTracker };
+export type { DeletesModels, SerializesToJsonLD, ManagesPermissions, PermissionsTracker, SerializeOptions };
 
 export type { This as DeletesModelsThis } from './mixins/DeletesModels';
 export type { This as ManagesPermissionsThis } from './mixins/ManagesPermissions';

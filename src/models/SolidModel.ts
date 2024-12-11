@@ -127,7 +127,7 @@ export class SolidModel extends SolidModelBase {
     public static rdfsClasses: string[] = [];
     public static rdfsClassesAliases: string[][] = [];
     public static reservedRelations: string[] = ['metadata', 'operations', 'tombstone', 'authorizations'];
-    public static defaultResourceHash: string = 'it';
+    public static defaultResourceHash: string | null = 'it';
     public static slugField?: string;
     public static mintsUrls: boolean = true;
     public static history: boolean = false;
@@ -1308,6 +1308,11 @@ export class SolidModel extends SolidModelBase {
 
             relation.__beforeParentCreate();
         }
+
+        if (this.metadata && !this.metadata.resourceUrl && this.static('defaultResourceHash')) {
+            this.metadata.resourceUrl = this.url ?? `#${this.static('defaultResourceHash')}`;
+            this.metadata.mintUrl(this.getDocumentUrl() || undefined, this._documentExists);
+        }
     }
 
     protected async beforeUpdate(): Promise<void> {
@@ -1359,8 +1364,14 @@ export class SolidModel extends SolidModelBase {
     protected async afterSave(ignoreRelations?: boolean): Promise<void> {
         await super.afterSave();
 
-        if (ignoreRelations)
+        if (ignoreRelations) {
             return;
+        }
+
+        if (this.metadata && this.metadata.resourceUrl !== this.url) {
+            this.metadata.resourceUrl = this.url;
+            this.metadata.mintUrl(this.getDocumentUrl() || undefined, this._documentExists);
+        }
 
         await Promise.all(this.getDirtyDocumentModels().map(model => model.afterSave(true)));
     }
@@ -1412,19 +1423,27 @@ export class SolidModel extends SolidModelBase {
             documentUrl as string,
             this.getDirtyEngineDocumentUpdates(),
         );
-        const updateDatabase = () => {
-            if (!this._documentExists)
-                return createDocument();
+        const updateDatabase = async () => {
+            if (!this._documentExists) {
+                const defaultResourceHash = this.static('defaultResourceHash');
+                const documentUrl = await createDocument();
 
-            if (!this._exists)
-                return addToDocument();
+                return this.getSerializedPrimaryKey()
+                    ?? (defaultResourceHash ? `${documentUrl}#${defaultResourceHash}` : documentUrl);
+            }
 
-            return updateDocument();
+            if (!this._exists) {
+                await addToDocument();
+
+                return this.getSerializedPrimaryKey();
+            }
+
+            await updateDocument();
+
+            return this.getSerializedPrimaryKey();
         };
 
-        await updateDatabase();
-
-        return this.getSerializedPrimaryKey() as string;
+        return await updateDatabase() ?? fail(SoukaiError, 'Missing primary key');
     }
 
     protected async deleteModelsFromEngine(models: this[]): Promise<void> {
@@ -1599,7 +1618,10 @@ export class SolidModel extends SolidModelBase {
     protected toEngineDocument(): EngineDocument {
         return {
             '@graph': [
-                ...this.getDirtyDocumentModels().map(model => model.serializeToJsonLD(false)),
+                ...this.getDirtyDocumentModels().map(model => model.serializeToJsonLD({
+                    includeRelations: false,
+                    includeAnonymousHashes: true,
+                })),
             ],
         } as EngineDocument;
     }
@@ -1616,7 +1638,9 @@ export class SolidModel extends SolidModelBase {
                     continue;
 
                 if (!documentModel.exists()) {
-                    graphUpdates.push({ $push: documentModel.serializeToJsonLD(false) as EngineAttributeValue });
+                    graphUpdates.push({
+                        $push: documentModel.serializeToJsonLD({ includeRelations: false }) as EngineAttributeValue,
+                    });
 
                     continue;
                 }
@@ -1714,11 +1738,11 @@ export class SolidModel extends SolidModelBase {
         return super.castAttribute(prepareValue(), options);
     }
 
-    protected newUrl(documentUrl?: string, resourceHash?: string): string {
+    protected newUrl(documentUrl?: string, resourceHash?: string | null): string {
         documentUrl = documentUrl ?? this.newUrlDocumentUrl();
         resourceHash = resourceHash ?? this.newUrlResourceHash();
 
-        return `${documentUrl}#${resourceHash}`;
+        return resourceHash ? `${documentUrl}#${resourceHash}` : documentUrl;
     }
 
     protected newUrlDocumentUrl(): string {
@@ -1734,7 +1758,7 @@ export class SolidModel extends SolidModelBase {
         return (slugFieldValue && stringToSlug(slugFieldValue)) ?? null;
     }
 
-    protected newUrlResourceHash(): string {
+    protected newUrlResourceHash(): string | null {
         return this._sourceSubject?.resourceHash ?? this.static('defaultResourceHash');
     }
 

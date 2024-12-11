@@ -20,10 +20,17 @@ import JsonLDModelSerializer from '@/models/internals/JsonLDModelSerializer';
 
 export type This = SolidModel;
 
+export type SerializeOptions = Partial<{
+    includeRelations: boolean;
+    includeAnonymousHashes: boolean;
+}>;
+
 export default class SerializesToJsonLD {
 
-    protected serializeToJsonLD(this: This, includeRelations: boolean = true): JsonLD {
-        return JsonLDModelSerializer.forModel(this.static()).serialize(this, { includeRelations });
+    protected serializeToJsonLD(this: This, options: SerializeOptions = {}): JsonLD {
+        options.includeRelations ??= true;
+
+        return JsonLDModelSerializer.forModel(this.static()).serialize(this, options);
     }
 
     protected async parseEngineDocumentAttributesFromJsonLD(
