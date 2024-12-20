@@ -1,4 +1,5 @@
 export * from './engines/index';
+export * from './experimental/index';
 export * from './models/index';
 
 export { SoukaiSolid } from './SoukaiSolid';

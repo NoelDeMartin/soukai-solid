@@ -3,12 +3,20 @@ import {
     arrayDiff,
     arrayFilter,
     arrayRemove,
+    isEmpty,
     requireUrlDirectoryName,
     requireUrlParentDirectory,
     urlClean,
+    urlFileName,
     urlResolve,
 } from '@noeldemartin/utils';
-import { NetworkRequestError, UnsuccessfulNetworkRequestError } from '@noeldemartin/solid-utils';
+import type { JsonLD } from '@noeldemartin/solid-utils';
+import {
+    NetworkRequestError,
+    UnsuccessfulNetworkRequestError,
+    quadsToJsonLD,
+    turtleToQuads,
+} from '@noeldemartin/solid-utils';
 import type { Quad, Quad_Object } from 'rdf-js';
 
 import IRI from '@/solid/utils/IRI';
@@ -44,6 +52,11 @@ export type SolidClientConfig = {
     useGlobbing: boolean;
     concurrentFetchBatchSize: number | null;
 };
+
+export interface QueryOptions {
+    format?: string;
+    method?: string;
+}
 
 export default class SolidClient {
 
@@ -82,6 +95,7 @@ export default class SolidClient {
         parentUrl: string,
         url: string | null = null,
         properties: RDFResourceProperty[] = [],
+        options: QueryOptions = {},
     ): Promise<string> {
         const ldpContainer = IRI('ldp:Container');
         const isContainer = () => properties.some(
@@ -96,7 +110,7 @@ export default class SolidClient {
         // in the engine before calling this method, but it should be fixed for correctness.
         return url && isContainer()
             ? this.createContainerDocument(parentUrl, url, properties)
-            : this.createNonContainerDocument(parentUrl, url, properties);
+            : this.createNonContainerDocument(parentUrl, url, properties, options);
     }
 
     public async getDocument(url: string): Promise<RDFDocument | null> {
@@ -135,9 +149,14 @@ export default class SolidClient {
         }
     }
 
-    public async updateDocument(url: string, operations: UpdateOperation[]): Promise<void> {
-        if (operations.length === 0)
+    public async updateDocument(
+        url: string,
+        operations: UpdateOperation[],
+        options: QueryOptions = {},
+    ): Promise<void> {
+        if (operations.length === 0) {
             return;
+        }
 
         const document = await this.getDocument(url);
 
@@ -149,7 +168,7 @@ export default class SolidClient {
 
         document.resource(url)?.isType(IRI('ldp:Container'))
             ? await this.updateContainerDocument(document, operations)
-            : await this.updateNonContainerDocument(document, operations);
+            : await this.updateNonContainerDocument(document, operations, options);
     }
 
     public async overwriteDocument(url: string, properties: RDFResourceProperty[]): Promise<void> {
@@ -302,12 +321,21 @@ export default class SolidClient {
         parentUrl: string,
         url: string | null,
         properties: RDFResourceProperty[],
+        options: QueryOptions = {},
     ): Promise<string> {
-        if (!url) {
+        if (!url || options.method?.toLowerCase() === 'post') {
+            const format = options.format ?? 'text/turtle';
+            const body = await this.renderProperties(url, properties, format);
+            const headers: Record<string, string> = { 'Content-Type': format };
+
+            if (url) {
+                headers['Slug'] = urlFileName(url);
+            }
+
             const response = await this.fetch(parentUrl, {
-                headers: { 'Content-Type': 'text/turtle' },
-                method: 'POST',
-                body: RDFResourceProperty.toTurtle(properties, url),
+                method: options.method ?? 'POST',
+                headers,
+                body,
             });
 
             this.assertSuccessfulResponse(response, `Error creating document under ${parentUrl}`);
@@ -399,7 +427,27 @@ export default class SolidClient {
         );
     }
 
-    private async updateNonContainerDocument(document: RDFDocument, operations: UpdateOperation[]): Promise<void> {
+    private async updateNonContainerDocument(
+        document: RDFDocument,
+        operations: UpdateOperation[],
+        options: QueryOptions = {},
+    ): Promise<void> {
+        const format = options.format ?? 'application/sparql-update';
+
+        switch (format) {
+            case 'application/sparql-update':
+                return this.updateNonContainerDocumentWithSparql(document, operations);
+            case 'application/ld+json':
+                return this.updateNonContainerDocumentWithJsonLD(document, operations);
+        }
+
+        throw new Error(`Unsupported update format: '${format}'`);
+    }
+
+    private async updateNonContainerDocumentWithSparql(
+        document: RDFDocument,
+        operations: UpdateOperation[],
+    ): Promise<void> {
         const [updatedProperties, removedProperties] = decantUpdateOperationsData(operations);
         const inserts = RDFResourceProperty.toTurtle(updatedProperties.flat(), document.url);
         const deletes = RDFResourceProperty.toTurtle(
@@ -420,6 +468,34 @@ export default class SolidClient {
                 deletes.length > 0 && `DELETE DATA { ${deletes} }`,
                 inserts.length > 0 && `INSERT DATA { ${inserts} }`,
             ]).join(' ; '),
+        });
+
+        this.assertSuccessfulResponse(response, `Error updating document at ${document.url}`);
+    }
+
+    private async updateNonContainerDocumentWithJsonLD(
+        document: RDFDocument,
+        operations: UpdateOperation[],
+    ): Promise<void> {
+        if (!document.url) {
+            throw new Error('Missing document url for JsonLD update');
+        }
+
+        const [updatedProperties, removedProperties] = decantUpdateOperationsData(operations);
+        const documentProperties = document.properties
+            .filter(
+                property =>
+                    !removedProperties.some(([resourceUrl, name, value]) =>
+                        resourceUrl === property.resourceUrl &&
+                            (!name || name === property.name) &&
+                            (!value || value === property.value)),
+            )
+            .concat(updatedProperties.flat());
+
+        const response = await this.fetch(document.url, {
+            headers: { 'Content-Type': 'application/ld+json' },
+            method: 'PUT',
+            body: await this.renderProperties(document.url, documentProperties, 'application/ld+json'),
         });
 
         this.assertSuccessfulResponse(response, `Error updating document at ${document.url}`);
@@ -564,6 +640,35 @@ export default class SolidClient {
                 new RemovePropertyOperation(operation.propertyResourceUrl as string, operation.propertyName),
             );
         }
+    }
+
+    private async renderProperties(
+        url: string | null,
+        properties: RDFResourceProperty[],
+        format: string,
+    ): Promise<string> {
+        switch (format) {
+            case 'text/turtle':
+                return RDFResourceProperty.toTurtle(properties, url);
+            case 'application/ld+json': {
+                const quads = await turtleToQuads(RDFResourceProperty.toTurtle(properties, url));
+                const json = await quadsToJsonLD(quads);
+
+                if (json['@graph'].length !== 1) {
+                    throw new Error('Cannot render JSONLD with multiple or no subjects');
+                }
+
+                const main = json['@graph'][0] as JsonLD;
+
+                if (isEmpty(main['@id'])) {
+                    delete main['@id'];
+                }
+
+                return JSON.stringify(main);
+            }
+        }
+
+        throw new Error(`Unsupported render format: '${format}'`);
     }
 
     private assertSuccessfulResponse(response: Response, errorMessage: string): void {

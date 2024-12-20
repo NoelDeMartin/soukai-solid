@@ -67,10 +67,10 @@ import type {
 import type { Fetch, JsonLD, JsonLDGraph, SubjectParts } from '@noeldemartin/solid-utils';
 import type { Quad } from 'rdf-js';
 
-import { SolidEngine } from '@/engines/SolidEngine';
-
 import IRI from '@/solid/utils/IRI';
 import RDFDocument from '@/solid/RDFDocument';
+import { SolidEngine } from '@/engines/SolidEngine';
+import { usingExperimentalActivityPods } from '@/experimental';
 import type RDFResource from '@/solid/RDFResource';
 
 import {
@@ -777,7 +777,7 @@ export class SolidModel extends SolidModelBase {
         Object
             .values(this._relations)
             .filter(isSolidDocumentRelation)
-            .filter(relation => relation.enabled && relation.useSameDocument)
+            .filter(relation => relation.enabled && relation.useSameDocument && !usingExperimentalActivityPods())
             .map(relation => relation.getLoadedModels())
             .flat()
             .forEach(relatedModel => relatedModel.setDocumentExists(documentExists));
@@ -836,7 +836,7 @@ export class SolidModel extends SolidModelBase {
         Object
             .values(this._relations)
             .filter(isSolidMultiModelDocumentRelation)
-            .filter(relation => relation.enabled && relation.useSameDocument)
+            .filter(relation => relation.enabled && relation.useSameDocument && !usingExperimentalActivityPods())
             .forEach(relation => {
                 relation.__modelsInSameDocument = relation.__modelsInSameDocument || [];
                 relation.__modelsInSameDocument.push(...relation.__newModels);
@@ -847,7 +847,13 @@ export class SolidModel extends SolidModelBase {
         Object
             .values(this._relations)
             .filter(isSolidSingleModelDocumentRelation)
-            .filter(relation => relation.enabled && relation.useSameDocument && !!relation.__newModel)
+            .filter(
+                relation =>
+                    relation.useSameDocument &&
+                    relation.enabled &&
+                    !!relation.__newModel &&
+                    !usingExperimentalActivityPods(),
+            )
             .forEach(relation => {
                 relation.__modelInSameDocument = relation.__newModel;
 
@@ -1039,7 +1045,7 @@ export class SolidModel extends SolidModelBase {
                 !relation.enabled ||
                 !relation.loaded ||
                 (!isDocumentContainsManyRelation && !isSolidDocumentRelation(relation)) ||
-                (isSolidDocumentRelation(relation) && !relation.useSameDocument)
+                (isSolidDocumentRelation(relation) && (!relation.useSameDocument || usingExperimentalActivityPods()))
             ) {
                 continue;
             }
@@ -1154,13 +1160,13 @@ export class SolidModel extends SolidModelBase {
 
         return this
             .hasOne(metadataModelClass, 'resourceUrl')
-            .usingSameDocument(true)
+            .usingSameDocument(!usingExperimentalActivityPods())
             .onDelete('cascade');
     }
 
     public operationsRelationship(): Relation {
         return (new OperationsRelation(this))
-            .usingSameDocument(true)
+            .usingSameDocument(!usingExperimentalActivityPods())
             .onDelete('cascade');
     }
 
@@ -1265,8 +1271,9 @@ export class SolidModel extends SolidModelBase {
 
         await super.beforeSave();
 
-        if (!this.url && this.static('mintsUrls'))
+        if (!this.url && this.static('mintsUrls') && !usingExperimentalActivityPods()) {
             this.mintUrl();
+        }
 
         if (ignoreRelations)
             return;
@@ -1288,8 +1295,9 @@ export class SolidModel extends SolidModelBase {
         };
 
         while (hasUnprocessedModels()) {
-            if (this.static('mintsUrls'))
+            if (this.static('mintsUrls') && !usingExperimentalActivityPods()) {
                 this.mintDocumentModelsKeys(unprocessedModels);
+            }
 
             await Promise.all(unprocessedModels.map(async model => {
                 if (model !== this && model.isDirty())
@@ -1309,7 +1317,12 @@ export class SolidModel extends SolidModelBase {
             relation.__beforeParentCreate();
         }
 
-        if (this.metadata && !this.metadata.resourceUrl && this.static('defaultResourceHash')) {
+        if (
+            this.metadata &&
+            !this.metadata.resourceUrl &&
+            this.static('defaultResourceHash') &&
+            !usingExperimentalActivityPods()
+        ) {
             this.metadata.resourceUrl = this.url ?? `#${this.static('defaultResourceHash')}`;
             this.metadata.mintUrl(this.getDocumentUrl() || undefined, this._documentExists);
         }
@@ -1370,7 +1383,10 @@ export class SolidModel extends SolidModelBase {
 
         if (this.metadata && this.metadata.resourceUrl !== this.url) {
             this.metadata.resourceUrl = this.url;
-            this.metadata.mintUrl(this.getDocumentUrl() || undefined, this._documentExists);
+
+            if (!usingExperimentalActivityPods()) {
+                this.metadata.mintUrl(this.getDocumentUrl() || undefined, this._documentExists);
+            }
         }
 
         await Promise.all(this.getDirtyDocumentModels().map(model => model.afterSave(true)));
@@ -1399,8 +1415,10 @@ export class SolidModel extends SolidModelBase {
             });
         }
 
-        this.metadata?.mintUrl(documentUrl, documentExists);
-        this.operations?.map(operation => operation.mintUrl(documentUrl, documentExists));
+        if (!usingExperimentalActivityPods()) {
+            this.metadata?.mintUrl(documentUrl, documentExists);
+            this.operations?.map(operation => operation.mintUrl(documentUrl, documentExists));
+        }
     }
 
     protected async syncDirty(): Promise<string> {
@@ -1429,7 +1447,11 @@ export class SolidModel extends SolidModelBase {
                 const documentUrl = await createDocument();
 
                 return this.getSerializedPrimaryKey()
-                    ?? (defaultResourceHash ? `${documentUrl}#${defaultResourceHash}` : documentUrl);
+                    ?? (
+                        (defaultResourceHash && !usingExperimentalActivityPods())
+                            ? `${documentUrl}#${defaultResourceHash}`
+                            : documentUrl
+                    );
             }
 
             if (!this._exists) {

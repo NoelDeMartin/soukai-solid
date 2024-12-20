@@ -4,6 +4,7 @@ import type { Attributes, Key } from 'soukai';
 import type { ClosureArgs } from '@noeldemartin/utils';
 
 import { isSolidBelongsToRelation, isSolidHasRelation } from '@/models/relations/guards';
+import { usingExperimentalActivityPods } from '@/experimental';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
@@ -92,10 +93,13 @@ export default class SolidMultiModelDocumentRelation<
         this.protectedSolidMulti.assertLoaded('save');
         this.attach(model);
 
-        if (!this.useSameDocument)
+        if (!this.useSameDocument || usingExperimentalActivityPods()) {
             await model.save();
-        else if (this.parent.exists())
+
+            this.setForeignAttributes(model);
+        } else if (this.parent.exists()) {
             await this.parent.save();
+        }
 
         return model;
     }

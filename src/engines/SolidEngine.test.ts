@@ -56,6 +56,7 @@ describe('SolidEngine', () => {
             containerUrl,
             personUrl,
             expect.anything(),
+            {},
         );
 
         const properties = SolidClientMock.createDocumentSpy.mock.calls[0]?.[2];
@@ -86,6 +87,7 @@ describe('SolidEngine', () => {
             parentUrl,
             documentUrl,
             expect.anything(),
+            {},
         );
 
         const properties = SolidClientMock.createDocumentSpy.mock.calls[0]?.[2];
@@ -449,6 +451,7 @@ describe('SolidEngine', () => {
                 new UpdatePropertyOperation(RDFResourceProperty.literal(documentUrl, IRI('foaf:name'), name)),
                 new UpdatePropertyOperation(RDFResourceProperty.literal(documentUrl, IRI('purl:modified'), date)),
             ],
+            {},
         );
     });
 
@@ -474,6 +477,7 @@ describe('SolidEngine', () => {
         expect(SolidClientMock.updateDocument).toHaveBeenCalledWith(
             documentUrl,
             [new RemovePropertyOperation(documentUrl, IRI('foaf:name'))],
+            {},
         );
     });
 
@@ -507,6 +511,7 @@ describe('SolidEngine', () => {
                 new RemovePropertyOperation(firstResourceUrl),
                 new RemovePropertyOperation(secondResourceUrl),
             ],
+            {},
         );
     });
 
@@ -556,6 +561,7 @@ describe('SolidEngine', () => {
                     RDFResourceProperty.reference(secondResourceUrl, 'reference', newFirstResourceUrl),
                 ),
             ],
+            {},
         );
     });
 

@@ -24,12 +24,12 @@ import RDFResourceProperty from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import SolidClient from '@/solid/SolidClient';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
+import IRI from '@/solid/utils/IRI';
+import { usingExperimentalActivityPods } from '@/experimental';
 import type { Fetch } from '@/solid/SolidClient';
 import type { LiteralValue } from '@/solid/RDFResourceProperty';
 import type { RDFDocumentMetadata } from '@/solid/RDFDocument';
 import type { UpdateOperation } from '@/solid/operations/Operation';
-
-import IRI from '@/solid/utils/IRI';
 
 export interface SolidEngineConfig {
     useGlobbing: boolean;
@@ -82,7 +82,17 @@ export class SolidEngine implements Engine {
             throw new DocumentAlreadyExists(id);
 
         const properties = await this.getJsonLDGraphProperties(document);
-        const url = await this.client.createDocument(collection, id, properties);
+        const url = await this.client.createDocument(
+            collection,
+            id,
+            properties,
+            usingExperimentalActivityPods()
+                ? {
+                    method: 'post',
+                    format: 'application/ld+json',
+                }
+                : {},
+        );
 
         return url;
     }
@@ -126,7 +136,13 @@ export class SolidEngine implements Engine {
 
         const operations = await this.extractJsonLDGraphUpdate(updates);
 
-        await this.client.updateDocument(id, operations);
+        await this.client.updateDocument(
+            id,
+            operations,
+            usingExperimentalActivityPods()
+                ? { format: 'application/ld+json' }
+                : {},
+        );
     }
 
     public async delete(collection: string, id: string): Promise<void> {

@@ -4,6 +4,7 @@ import type { Attributes } from 'soukai';
 
 import { SolidEngine } from '@/engines/SolidEngine';
 
+import { usingExperimentalActivityPods } from '@/experimental';
 import type SolidContainer from '@/models/SolidContainer';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
@@ -52,7 +53,7 @@ export default class SolidContainsRelation<
 
         const related = this.relatedClass.newInstance(attributes);
 
-        if (!related.url && related.static('mintsUrls')) {
+        if (!related.url && related.static('mintsUrls') && !usingExperimentalActivityPods()) {
             this.relatedClass.withCollection(this.parent.url, () => related.mintUrl());
         }
 

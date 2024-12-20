@@ -3,6 +3,7 @@ import { tap } from '@noeldemartin/utils';
 import type { Attributes } from 'soukai';
 import type { ClosureArgs } from '@noeldemartin/utils';
 
+import { usingExperimentalActivityPods } from '@/experimental';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 
@@ -79,10 +80,11 @@ export default class SolidSingleModelDocumentRelation<
         this.assertNotLoaded('save');
         this.attach(model);
 
-        if (!this.useSameDocument)
+        if (!this.useSameDocument || usingExperimentalActivityPods()) {
             await model.save();
-        else if (this.parent.exists())
+        } else if (this.parent.exists()) {
             await this.parent.save();
+        }
 
         return model;
     }

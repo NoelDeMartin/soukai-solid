@@ -9,6 +9,7 @@ import DocumentContainsManyRelation from './relations/DocumentContainsManyRelati
 import Model from './SolidTypeIndex.schema';
 import SolidContainer from './SolidContainer';
 import SolidTypeRegistration from './SolidTypeRegistration';
+import { usingExperimentalActivityPods } from '@/experimental';
 
 export default class SolidTypeIndex extends Model {
 
@@ -40,6 +41,10 @@ export default class SolidTypeIndex extends Model {
     >;
 
     public registrationsRelationship(): Relation {
+        if (usingExperimentalActivityPods()) {
+            return this.belongsToMany(SolidTypeRegistration, 'registrationUrls');
+        }
+
         return new DocumentContainsManyRelation(this, SolidTypeRegistration);
     }
 
@@ -47,6 +52,8 @@ export default class SolidTypeIndex extends Model {
         modelClass: SolidModelConstructor,
         containerClass?: SolidModelConstructor<T>,
     ): Promise<T | null> {
+        await this.loadRelationIfUnloaded('registrations');
+
         const containerRegistrations = this.registrations.filter(registration => {
             return registration.instanceContainer && arrayEquals(registration.forClass, modelClass.rdfsClasses);
         });

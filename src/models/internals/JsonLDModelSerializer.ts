@@ -5,6 +5,7 @@ import type { JsonLD } from '@noeldemartin/solid-utils';
 
 import { inferFieldDefinition } from '@/models/fields';
 import { isSolidDocumentRelation, isSolidHasRelation } from '@/models/relations/guards';
+import { usingExperimentalActivityPods } from '@/experimental';
 import type { SolidBootedFieldDefinition, SolidBootedFieldsDefinition } from '@/models/fields';
 import type { SolidModel } from '@/models/SolidModel';
 import type { SolidRelation } from '@/models/relations/inference';
@@ -151,7 +152,7 @@ export default class JsonLDModelSerializer {
         if (!(model.static('primaryKey') in attributes) && options.includeAnonymousHashes) {
             const defaultResourceHash = model.static('defaultResourceHash');
 
-            if (defaultResourceHash) {
+            if (defaultResourceHash && !usingExperimentalActivityPods()) {
                 jsonld['@id'] = `#${defaultResourceHash}`;
             }
         }
