@@ -306,7 +306,6 @@ export default class SolidClient {
         const turtle = RDFResourceProperty.toTurtle(
             this.withoutReservedContainerProperties(url, properties),
             url,
-            true,
         );
         const response = await this.fetch(metaUrl, {
             method: 'PATCH',

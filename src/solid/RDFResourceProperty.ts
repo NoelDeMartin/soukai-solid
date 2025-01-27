@@ -91,10 +91,9 @@ abstract class RDFResourceProperty {
     public static toTurtle(
         properties: RDFResourceProperty[],
         documentUrl: string | null = null,
-        explicitSelfReference: boolean = false,
     ): string {
         return properties
-            .map(property => property.toTurtle(documentUrl, explicitSelfReference) + ' .')
+            .map(property => property.toTurtle(documentUrl) + ' .')
             .join('\n');
     }
 
@@ -121,8 +120,8 @@ abstract class RDFResourceProperty {
         this.value = value;
     }
 
-    public toTurtle(documentUrl: string | null = null, explicitSelfReference: boolean = false): string {
-        const subject = this.getTurtleSubject(documentUrl, explicitSelfReference);
+    public toTurtle(documentUrl: string | null = null): string {
+        const subject = this.getTurtleSubject(documentUrl);
         const predicate = this.getTurtlePredicate();
         const object = this.getTurtleObject(documentUrl);
 
@@ -145,12 +144,11 @@ abstract class RDFResourceProperty {
     protected getTurtleReference(
         value: string | null,
         documentUrl: string | null,
-        explicitSelfReference: boolean = false,
     ): string {
         const hashIndex = value?.indexOf('#') ?? -1;
 
         if (!value || value === documentUrl) {
-            return documentUrl && explicitSelfReference ? `<${encodeURI(documentUrl)}>` : '<>';
+            return '<>';
         }
 
         if (documentUrl === null || !value.startsWith(documentUrl) || hashIndex === -1) {
@@ -160,8 +158,8 @@ abstract class RDFResourceProperty {
         return `<#${value.slice(hashIndex + 1)}>`;
     }
 
-    protected getTurtleSubject(documentUrl: string | null, explicitSelfReference: boolean = false): string {
-        return this.getTurtleReference(this.resourceUrl, documentUrl, explicitSelfReference);
+    protected getTurtleSubject(documentUrl: string | null): string {
+        return this.getTurtleReference(this.resourceUrl, documentUrl);
     }
 
     protected getTurtlePredicate(): string {

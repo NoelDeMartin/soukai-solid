@@ -11,10 +11,13 @@ export default class Metadata extends Model {
     }
 
     protected newUrl(documentUrl?: string, resourceHash?: string): string {
-        if (!this.resourceUrl)
+        if (!this.resourceUrl) {
             return super.newUrl(documentUrl, resourceHash);
+        }
 
-        return `${this.resourceUrl}-metadata`;
+        return this.resourceUrl.endsWith('/')
+            ? `${this.resourceUrl}#metadata`
+            : `${this.resourceUrl}-metadata`;
     }
 
 }

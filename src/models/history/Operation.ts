@@ -12,12 +12,15 @@ export default class Operation extends Model {
     }
 
     protected newUrl(documentUrl?: string, resourceHash?: string): string {
-        if (!this.resourceUrl)
+        if (!this.resourceUrl) {
             return super.newUrl(documentUrl, resourceHash);
+        }
 
         const hashSuffix = resourceHash ?? uuid();
 
-        return `${this.resourceUrl}-operation-${hashSuffix}`;
+        return this.resourceUrl.endsWith('/')
+            ? `${this.resourceUrl}#operation-${hashSuffix}`
+            : `${this.resourceUrl}-operation-${hashSuffix}`;
     }
 
 }

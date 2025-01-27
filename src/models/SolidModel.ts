@@ -167,8 +167,9 @@ export class SolidModel extends SolidModelBase {
     public static getFieldRdfProperty(field: string): string | null {
         const fieldDefinition = (this.fields as SolidBootedFieldsDefinition)[field];
 
-        if (fieldDefinition && !fieldDefinition.rdfProperty)
+        if (fieldDefinition && !fieldDefinition.rdfProperty) {
             return null;
+        }
 
         return fieldDefinition?.rdfProperty
             ?? this.getDefaultRdfContext() + field;
@@ -716,8 +717,9 @@ export class SolidModel extends SolidModelBase {
     public mintUrl(documentUrl?: string, documentExists?: boolean, resourceHash?: string): void {
         this.setAttribute(this.static('primaryKey'), this.newUrl(documentUrl, resourceHash));
 
-        if (documentUrl)
+        if (documentUrl) {
             this._documentExists = documentExists ?? true;
+        }
     }
 
     public toJsonLD(options: SolidModelSerializationOptions = {}): Record<string, unknown> {
@@ -1329,8 +1331,9 @@ export class SolidModel extends SolidModelBase {
     }
 
     protected async beforeUpdate(): Promise<void> {
-        if (!this.tracksHistory())
+        if (!this.tracksHistory()) {
             return;
+        }
 
         if (this.isDirty(undefined, true)) {
             await this.addDirtyHistoryOperations();
@@ -1488,11 +1491,17 @@ export class SolidModel extends SolidModelBase {
             );
 
             for (const [field, value] of Object.entries(originalAttributes)) {
-                if (value === null || Array.isArray(value) && value.length === 0)
+                if (value === null || Array.isArray(value) && value.length === 0) {
                     continue;
+                }
 
-                if (field in this._trackedDirtyAttributes && this._trackedDirtyAttributes[field] === value)
+                if (field in this._trackedDirtyAttributes && this._trackedDirtyAttributes[field] === value) {
                     continue;
+                }
+
+                if (this.static().getFieldRdfProperty(field) === IRI('ldp:contains')) {
+                    continue;
+                }
 
                 this.relatedOperations.attachSetOperation({
                     property: this.static().requireFieldRdfProperty(field),

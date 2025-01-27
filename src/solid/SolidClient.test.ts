@@ -139,7 +139,7 @@ describe('SolidClient', () => {
         expect(StubFetcher.fetch).toHaveBeenNthCalledWith(3, `${containerUrl}.meta`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/sparql-update' },
-            body: `INSERT DATA { <${containerUrl}> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" . }`,
+            body: `INSERT DATA { <> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" . }`,
         });
     });
 
@@ -220,7 +220,7 @@ describe('SolidClient', () => {
         expect(StubFetcher.fetch).toHaveBeenNthCalledWith(8, metaUrl, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/sparql-update' },
-            body: `INSERT DATA { <${containerUrl}> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" . }`,
+            body: `INSERT DATA { <> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" . }`,
         });
     });
 
@@ -678,7 +678,7 @@ describe('SolidClient', () => {
         const resourceUrl = `${documentUrl}#it`;
         const metadataUrl = `${resourceUrl}-metadata`;
         const data = `
-            <${documentUrl}>
+            <>
                 a <http://www.w3.org/ns/ldp#Container>, <https://schema.org/Collection> ;
                 <http://www.w3.org/2000/01/rdf-schema#label> "Container name" ;
                 <http://purl.org/dc/terms/modified>

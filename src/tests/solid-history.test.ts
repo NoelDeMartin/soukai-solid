@@ -16,6 +16,7 @@ import {
 import type { SolidBelongsToManyRelation } from '@/models';
 
 import BaseGroup from '@/testing/lib/stubs/Group';
+import BaseMoviesCollection from '@/testing/lib/stubs/MoviesCollection';
 import BasePerson from '@/testing/lib/stubs/Person';
 import Movie from '@/testing/lib/stubs/Movie';
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';
@@ -59,6 +60,13 @@ class Group extends BaseGroup {
 
 }
 
+class MoviesCollection extends BaseMoviesCollection {
+
+    public static timestamps = true;
+    public static history = true;
+
+}
+
 const fixture = <T=string>(name: string) => loadFixture<T>(`solid-history/${name}`);
 
 describe('Solid history tracking', () => {
@@ -69,7 +77,7 @@ describe('Solid history tracking', () => {
         fetch = jest.fn((...args) => StubFetcher.fetch(...args));
 
         setEngine(new SolidEngine(fetch));
-        bootModels({ Movie, WatchAction, Person, Group });
+        bootModels({ Movie, WatchAction, Person, Group, MoviesCollection });
     });
 
     it('Updates metadata and creates operations', async () => {
@@ -546,6 +554,39 @@ describe('Solid history tracking', () => {
         // Assert
         expect(freshModel.title).toEqual('Update 9');
         expect(freshModel.operations).toHaveLength(11);
+    });
+
+    it('Works with containers', async () => {
+        // Arrange - Create
+        StubFetcher.addFetchNotFoundResponse(); // Check if container exists
+        StubFetcher.addFetchResponse(); // Create container
+        StubFetcher.addFetchResponse(); // Get container headers
+        StubFetcher.addFetchResponse(); // Update container .meta
+
+        // Arrange - Add document
+        StubFetcher.addFetchNotFoundResponse(); // Check if movie exists
+        StubFetcher.addFetchResponse(); // Create movie
+
+        // Arrange - Update name
+        StubFetcher.addFetchResponse(fixture('movies.ttl')); // Get container
+        StubFetcher.addFetchResponse(); // Update container
+
+        // Act - Create
+        const movies = await MoviesCollection.create({ name: 'Movies' });
+
+        // Act - Add document
+        await movies.relatedMovies.create({ name: 'Spirited Away' });
+
+        // Act - Update name
+        await movies.update({ name: 'Great Movies' });
+
+        // Assert
+        expect(movies.name).toEqual('Great Movies');
+
+        expect(StubFetcher.fetch).toHaveBeenCalledTimes(8);
+
+        expect(fetch.mock.calls[3]?.[1]?.body).toEqualSparql(fixture('create-movies.sparql'));
+        expect(fetch.mock.calls[7]?.[1]?.body).toEqualSparql(fixture('update-movies.sparql'));
     });
 
 });
