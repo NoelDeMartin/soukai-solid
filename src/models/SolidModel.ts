@@ -69,6 +69,7 @@ import type { Quad } from 'rdf-js';
 
 import IRI from '@/solid/utils/IRI';
 import RDFDocument from '@/solid/RDFDocument';
+import { isDevelopment } from '@/utils/env';
 import { SolidEngine } from '@/engines/SolidEngine';
 import { usingExperimentalActivityPods } from '@/experimental';
 import type RDFResource from '@/solid/RDFResource';
@@ -317,6 +318,10 @@ export class SolidModel extends SolidModelBase {
 
             return model;
         } catch (error) {
+            if (isDevelopment()) {
+                throw new Error;
+            }
+
             return null;
         }
     }
