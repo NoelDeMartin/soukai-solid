@@ -920,6 +920,11 @@ export class SolidModel extends SolidModelBase {
             : restoreHistoryTracking() && result;
     }
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    public ignoreRdfPropertyHistory(rdfProperty: string, withSolidEngine?: boolean): boolean {
+        return false;
+    }
+
     public getHistoryHash(): string | null {
         const relatedOperations = this.getRelatedModels().map(model => model.operations ?? []).flat();
 
@@ -1597,6 +1602,10 @@ export class SolidModel extends SolidModelBase {
             }
         }
 
+        if (!newOperations.some(operation => !operation.isInception(this))) {
+            return;
+        }
+
         this.setRelationModels('operations', arraySorted([...this.operations, ...newOperations], ['date', 'url']));
         this.removeDuplicatedHistoryOperations();
         this.rebuildAttributesFromHistory();
@@ -1608,18 +1617,11 @@ export class SolidModel extends SolidModelBase {
         }
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    protected ignoreRdfPropertyHistory(rdfProperty: string): boolean {
-        return false;
-    }
-
     protected removeDuplicatedHistoryOperations(): void {
         const PropertyOperation = operationClass('PropertyOperation');
         const inceptionProperties: string[] = [];
         const duplicatedOperationUrls: string[] = [];
-        const inceptionOperations = this.operations.filter(
-            operation => operation.date.getTime() === this.metadata.createdAt?.getTime(),
-        );
+        const inceptionOperations = this.operations.filter(operation => operation.isInception(this));
         const isNotDuplicated = (operation: Operation): boolean => !duplicatedOperationUrls.includes(operation.url);
 
         for (const inceptionOperation of inceptionOperations) {

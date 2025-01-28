@@ -11,6 +11,10 @@ export default class Operation extends Model {
         //
     }
 
+    public isInception(parent: SolidModel): boolean {
+        return parent.metadata?.createdAt?.getTime() === this.date.getTime();
+    }
+
     protected newUrl(documentUrl?: string, resourceHash?: string): string {
         if (!this.resourceUrl) {
             return super.newUrl(documentUrl, resourceHash);

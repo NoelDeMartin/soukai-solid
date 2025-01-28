@@ -95,6 +95,12 @@ export default class SolidContainer extends Model {
         return super.static(property as keyof ModelConstructor<this>);
     }
 
+    public ignoreRdfPropertyHistory(rdfProperty: string, withSolidEngine?: boolean): boolean {
+        withSolidEngine ??= this.usingSolidEngine();
+
+        return withSolidEngine && rdfProperty === LDP_CONTAINS;
+    }
+
     protected contains<T extends typeof SolidModel>(model: T): SolidContainsRelation {
         return new SolidContainsRelation(this, model);
     }
@@ -109,10 +115,6 @@ export default class SolidContainer extends Model {
         const directoryName = urlDirectoryName(url);
 
         return urlResolveDirectory(requireUrlParentDirectory(url), `${directoryName}-${shortId()}`);
-    }
-
-    protected ignoreRdfPropertyHistory(rdfProperty: string): boolean {
-        return this.usingSolidEngine() && rdfProperty === LDP_CONTAINS;
     }
 
 }
