@@ -14,6 +14,7 @@ import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourc
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import SolidClient from '@/solid/SolidClient';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
+import { LDP_CONTAINER } from '@/solid/constants';
 import type RDFDocument from '@/solid/RDFDocument';
 
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';
@@ -107,7 +108,7 @@ describe('SolidClient', () => {
         const containerUrl = urlResolveDirectory(parentUrl, stringToSlug(label));
 
         StubFetcher.addFetchResponse('', {}, 201); // PUT create container
-        StubFetcher.addFetchResponse('', {}, 200); // GET container describedBy
+        StubFetcher.addFetchResponse(`<> a <${LDP_CONTAINER}> .`, {}, 200); // GET container describedBy
         StubFetcher.addFetchResponse('', {}, 205); // PATCH container meta
 
         // Act
@@ -117,7 +118,7 @@ describe('SolidClient', () => {
             [
                 RDFResourceProperty.literal(containerUrl, IRI('rdfs:label'), label),
                 RDFResourceProperty.literal(containerUrl, IRI('purl:modified'), new Date()),
-                RDFResourceProperty.type(containerUrl, IRI('ldp:Container')),
+                RDFResourceProperty.type(containerUrl, LDP_CONTAINER),
             ],
         );
 
@@ -139,7 +140,7 @@ describe('SolidClient', () => {
         expect(StubFetcher.fetch).toHaveBeenNthCalledWith(3, `${containerUrl}.meta`, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/sparql-update' },
-            body: `INSERT DATA { <> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" . }`,
+            body: `INSERT DATA { <${containerUrl}> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" . }`,
         });
     });
 
@@ -160,7 +161,11 @@ describe('SolidClient', () => {
         StubFetcher.addFetchResponse('', {}, 201); // POST grandparent
         StubFetcher.addFetchResponse('', {}, 201); // POST parent
         StubFetcher.addFetchResponse('', {}, 201); // POST new container
-        StubFetcher.addFetchResponse('', { Link: `<${metaUrl}>; rel="describedby"` }, 200); // GET container describedBy
+        StubFetcher.addFetchResponse(
+            `<> a <${LDP_CONTAINER}> .`,
+            { Link: `<${metaUrl}>; rel="describedby"` },
+            200,
+        ); // GET container describedBy
         StubFetcher.addFetchResponse('', {}, 205); // PATCH container meta
 
         // Act
@@ -170,7 +175,7 @@ describe('SolidClient', () => {
             [
                 RDFResourceProperty.literal(containerUrl, IRI('rdfs:label'), label),
                 RDFResourceProperty.literal(containerUrl, IRI('purl:modified'), new Date()),
-                RDFResourceProperty.type(containerUrl, IRI('ldp:Container')),
+                RDFResourceProperty.type(containerUrl, LDP_CONTAINER),
             ],
         );
 
@@ -220,7 +225,7 @@ describe('SolidClient', () => {
         expect(StubFetcher.fetch).toHaveBeenNthCalledWith(8, metaUrl, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/sparql-update' },
-            body: `INSERT DATA { <> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" . }`,
+            body: `INSERT DATA { <${containerUrl}> <http://www.w3.org/2000/01/rdf-schema#label> "${label}" . }`,
         });
     });
 
@@ -292,7 +297,7 @@ describe('SolidClient', () => {
         expect(documents[1].url).toEqual(containerUrl + 'another-container');
         expect(documents[1].requireResource(containerUrl + 'another-container').url)
             .toEqual(containerUrl + 'another-container');
-        expect(documents[1].requireResource(containerUrl + 'another-container').types).toEqual([IRI('ldp:Container')]);
+        expect(documents[1].requireResource(containerUrl + 'another-container').types).toEqual([LDP_CONTAINER]);
 
         expect(StubFetcher.fetch).toHaveBeenCalledTimes(3);
         expect(StubFetcher.fetch).toHaveBeenNthCalledWith(1, containerUrl, {
@@ -421,14 +426,14 @@ describe('SolidClient', () => {
         expect(documents[0].requireResource(`${containerUrl}foo`).url).toEqual(`${containerUrl}foo`);
         expect(documents[0].requireResource(`${containerUrl}foo`).name).toEqual('Foo');
         expect(documents[0].requireResource(`${containerUrl}foo`).types).toEqual([
-            IRI('ldp:Container'),
+            LDP_CONTAINER,
             type,
         ]);
 
         expect(documents[1].url).toEqual(`${containerUrl}bar`);
         expect(documents[1].requireResource(`${containerUrl}bar`).url).toEqual(`${containerUrl}bar`);
         expect(documents[1].requireResource(`${containerUrl}bar`).name).toEqual('Bar');
-        expect(documents[1].requireResource(`${containerUrl}bar`).types).toEqual([IRI('ldp:Container')]);
+        expect(documents[1].requireResource(`${containerUrl}bar`).types).toEqual([LDP_CONTAINER]);
 
         expect(StubFetcher.fetch).toHaveBeenCalledWith(containerUrl, {
             headers: { Accept: 'text/turtle' },
@@ -523,7 +528,6 @@ describe('SolidClient', () => {
 
         expect(StubFetcher.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             DELETE DATA {
-                <${containerUrl}> a <http://www.w3.org/ns/ldp#Container> .
                 <${containerUrl}> <http://xmlns.com/foaf/0.1/name> "Jonathan" .
                 <${containerUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
                 <${containerUrl}> <http://xmlns.com/foaf/0.1/givenName> "John" .
@@ -710,10 +714,6 @@ describe('SolidClient', () => {
 
         expect(StubFetcher.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             DELETE DATA {
-                <${documentUrl}> a <http://www.w3.org/ns/ldp#Container> .
-                <${documentUrl}>
-                    <http://purl.org/dc/terms/modified>
-                        "2020-03-08T14:33:09.123Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
                 <${resourceUrl}> <http://xmlns.com/foaf/0.1/name> "Jonathan" .
                 <${resourceUrl}> <http://xmlns.com/foaf/0.1/surname> "Doe" .
                 <${resourceUrl}> <http://xmlns.com/foaf/0.1/givenName> "John" .

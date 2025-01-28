@@ -9,6 +9,7 @@ import {
 import { findContainerRegistrations } from '@noeldemartin/solid-utils';
 import type { ModelConstructor, Relation } from 'soukai';
 
+import { LDP_CONTAINS } from '@/solid/constants';
 import { SolidEngine } from '@/engines/SolidEngine';
 
 import SolidContainerDocumentsRelation from './relations/SolidContainerDocumentsRelation';
@@ -52,6 +53,14 @@ export default class SolidContainer extends Model {
 
     public documentsRelationship(): Relation {
         return new SolidContainerDocumentsRelation(this);
+    }
+
+    protected markAttributeDirty(field: string, originalValue: unknown, newValue: unknown): boolean {
+        if (field === 'resourceUrls' && this.usingSolidEngine()) {
+            return false;
+        }
+
+        return super.markAttributeDirty(field, originalValue, newValue);
     }
 
     public async register(
@@ -100,6 +109,10 @@ export default class SolidContainer extends Model {
         const directoryName = urlDirectoryName(url);
 
         return urlResolveDirectory(requireUrlParentDirectory(url), `${directoryName}-${shortId()}`);
+    }
+
+    protected ignoreRdfPropertyHistory(rdfProperty: string): boolean {
+        return this.usingSolidEngine() && rdfProperty === LDP_CONTAINS;
     }
 
 }

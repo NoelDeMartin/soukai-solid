@@ -5,6 +5,7 @@ import type { EngineDocument } from 'soukai';
 import type { Tuple } from '@noeldemartin/utils';
 
 import IRI from '@/solid/utils/IRI';
+import { LDP_CONTAINER } from '@/solid/constants';
 
 import { stubMovieJsonLD, stubMoviesCollectionJsonLD, stubSolidDocumentJsonLD } from '@/testing/lib/stubs/helpers';
 import Movie from '@/testing/lib/stubs/Movie';
@@ -27,7 +28,7 @@ describe('SolidContainer', () => {
 
         bootModels({ StubModel });
 
-        expect(StubModel.rdfsClasses).toEqual([IRI('ldp:Container')]);
+        expect(StubModel.rdfsClasses).toEqual([LDP_CONTAINER]);
     });
 
     it('adds resourceUrls field', () => {

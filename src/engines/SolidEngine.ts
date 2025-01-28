@@ -24,7 +24,7 @@ import RDFResourceProperty from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import SolidClient from '@/solid/SolidClient';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
-import IRI from '@/solid/utils/IRI';
+import { LDP_CONTAINER } from '@/solid/constants';
 import { usingExperimentalActivityPods } from '@/experimental';
 import type { Fetch } from '@/solid/SolidClient';
 import type { LiteralValue } from '@/solid/RDFResourceProperty';
@@ -194,7 +194,7 @@ export class SolidEngine implements Engine {
 
         return filters.$in
             ? await this.getDocumentsFromUrls(filters.$in.map(toString), rdfsClasses)
-            : await this.client.getDocuments(collection, rdfsClasses.includes(IRI('ldp:Container')));
+            : await this.client.getDocuments(collection, rdfsClasses.includes(LDP_CONTAINER));
     }
 
     private async getDocumentsFromUrls(urls: string[], rdfsClasses: string[]): Promise<RDFDocument[]> {
@@ -218,7 +218,7 @@ export class SolidEngine implements Engine {
                     this.config.globbingBatchSize !== null &&
                     this.config.globbingBatchSize <= documentUrls.length
                 )
-                    return this.client.getDocuments(containerUrl, rdfsClasses.includes(IRI('ldp:Container')));
+                    return this.client.getDocuments(containerUrl, rdfsClasses.includes(LDP_CONTAINER));
 
                 const documentPromises = documentUrls.map(url => this.getDocument(url));
                 const documents = await Promise.all(documentPromises);

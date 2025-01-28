@@ -1,6 +1,7 @@
 import type { Literal, Quad } from 'rdf-js';
 
 import IRI from '@/solid/utils/IRI';
+import { RDF_TYPE } from '@/solid/constants';
 
 export type LiteralValue = string | number | boolean | Date;
 
@@ -41,7 +42,7 @@ abstract class RDFResourceProperty {
             ? statement.subject.value
             : null;
 
-        if (statement.predicate.value === IRI('rdf:type')) {
+        if (statement.predicate.value === RDF_TYPE) {
             return this.type(resourceUrl, statement.object.value);
         }
 
@@ -230,7 +231,7 @@ class RDFResourceTypeProperty extends RDFResourceProperty {
     public readonly type = RDFResourcePropertyType.Type;
 
     constructor(resourceUrl: string | null, value: string) {
-        super(resourceUrl, IRI('rdf:type'), value);
+        super(resourceUrl, RDF_TYPE, value);
     }
 
     protected getTurtlePredicate(): string {

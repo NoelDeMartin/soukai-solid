@@ -25,19 +25,20 @@ import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourc
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
 import { decantUpdateOperations, decantUpdateOperationsData } from '@/solid/operations/utils';
+import { LDP_CONTAINER, LDP_CONTAINS } from '@/solid/constants';
 import { OperationType } from '@/solid/operations/Operation';
 import type { LiteralValue } from '@/solid/RDFResourceProperty';
 import type { UpdateOperation } from '@/solid/operations/Operation';
 
 const RESERVED_CONTAINER_PROPERTIES = [
-    IRI('ldp:contains'),
+    LDP_CONTAINS,
     IRI('posix:mtime'),
     IRI('posix:size'),
     IRI('purl:modified'),
 ];
 
 const RESERVED_CONTAINER_TYPES = [
-    IRI('ldp:Container'),
+    LDP_CONTAINER,
     IRI('ldp:BasicContainer'),
 ];
 
@@ -97,12 +98,11 @@ export default class SolidClient {
         properties: RDFResourceProperty[] = [],
         options: QueryOptions = {},
     ): Promise<string> {
-        const ldpContainer = IRI('ldp:Container');
         const isContainer = () => properties.some(
             property =>
                 property.resourceUrl === url &&
                 property.type === RDFResourcePropertyType.Type &&
-                property.value === ldpContainer,
+                property.value === LDP_CONTAINER,
         );
 
         // TODO some of these operations can overwrite an existing document.
@@ -166,7 +166,7 @@ export default class SolidClient {
         this.processChangeUrlOperations(document, operations);
         this.processUpdatePropertyOperations(document, operations);
 
-        document.resource(url)?.isType(IRI('ldp:Container'))
+        document.resource(url)?.isType(LDP_CONTAINER)
             ? await this.updateContainerDocument(document, operations)
             : await this.updateNonContainerDocument(document, operations, options);
     }
@@ -197,7 +197,7 @@ export default class SolidClient {
         if (document === null)
             return;
 
-        if (document.resource(url)?.isType(IRI('ldp:Container'))) {
+        if (document.resource(url)?.isType(LDP_CONTAINER)) {
             const documents = this.config.useGlobbing
                 ? await this.getContainerDocumentsUsingGlobbing(url)
                 : await this.getDocumentsFromContainer(url, document);
@@ -234,7 +234,13 @@ export default class SolidClient {
         properties: RDFResourceProperty[],
     ): Promise<string> {
         await this.createContainerFolder(parentUrl, url);
-        await this.updateContainerMetadata(url, properties);
+
+        if (properties.length !== 0) {
+            const operations = this.withoutReservedContainerProperties(url, properties)
+                .map(property => new UpdatePropertyOperation(property));
+
+            await this.updateDocument(url, operations);
+        }
 
         return url;
     }
@@ -289,31 +295,6 @@ export default class SolidClient {
         }
 
         this.assertSuccessfulResponse(response, `Error creating container at ${url}`);
-    }
-
-    private async updateContainerMetadata(url: string, properties: RDFResourceProperty[]): Promise<void> {
-        if (properties.length === 0) {
-            return;
-        }
-
-        const document = await this.getDocument(url);
-
-        if (!document) {
-            throw new SoukaiError(`Could not get document ${url} after creation`);
-        }
-
-        const metaUrl = document.metadata.describedBy || `${document.url}.meta`;
-        const turtle = RDFResourceProperty.toTurtle(
-            this.withoutReservedContainerProperties(url, properties),
-            url,
-        );
-        const response = await this.fetch(metaUrl, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/sparql-update' },
-            body: `INSERT DATA { ${turtle} }`,
-        });
-
-        this.assertSuccessfulResponse(response, `Error updating container metadata at ${metaUrl}`);
     }
 
     private async createNonContainerDocument(
@@ -412,14 +393,6 @@ export default class SolidClient {
     }
 
     private async updateContainerDocument(document: RDFDocument, operations: UpdateOperation[]): Promise<void> {
-        const createRemovePropertyOperation =
-            (property: string) => new RemovePropertyOperation(document.url as string, property);
-        const createRemoveTypeOperation =
-            (type: string) => new RemovePropertyOperation(document.url as string, IRI('rdf:type'), type);
-
-        operations.push(...RESERVED_CONTAINER_PROPERTIES.map(createRemovePropertyOperation));
-        operations.push(...RESERVED_CONTAINER_TYPES.map(createRemoveTypeOperation));
-
         await this.updateNonContainerDocument(
             document.clone({ changeUrl: document.metadata.describedBy || `${document.url}.meta` }),
             operations,

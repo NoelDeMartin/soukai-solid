@@ -185,13 +185,11 @@ export class SolidModel extends SolidModelBase {
     }
 
     public static requireFetch(): Fetch {
-        const engine = this.requireFinalEngine();
-
-        if (!(engine instanceof SolidEngine)) {
+        if (!this.usingSolidEngine()) {
             throw new SoukaiError(`Could not get fetch from ${this.modelName} model`);
         }
 
-        return engine.getFetch();
+        return (this.requireFinalEngine() as SolidEngine).getFetch();
     }
 
     public static requireFieldRdfProperty(field: string): string {
@@ -345,7 +343,7 @@ export class SolidModel extends SolidModelBase {
         // This is necessary because a SolidEngine behaves differently than other engines.
         // Even if a document is stored using compacted IRIs, a SolidEngine will need them expanded
         // because it's ultimately stored in turtle, not json-ld.
-        const compactIRIs = !(this.requireFinalEngine() instanceof SolidEngine);
+        const compactIRIs = !this.usingSolidEngine();
 
         return this.instance().convertEngineFiltersToJsonLD(filters, compactIRIs);
     }
@@ -424,20 +422,24 @@ export class SolidModel extends SolidModelBase {
     }
 
     public static async synchronize<T extends SolidModel>(this: SolidModelConstructor<T>, a: T, b: T): Promise<void> {
-        if (this !== a.static())
+        if (this !== a.static()) {
             return a.static().synchronize(a, b);
+        }
 
-        if (a.getPrimaryKey() !== b.getPrimaryKey())
+        if (a.getPrimaryKey() !== b.getPrimaryKey()) {
             throw new SoukaiError('Can\'t synchronize different models');
+        }
 
         await a.loadRelationIfUnloaded('operations');
         await b.loadRelationIfUnloaded('operations');
 
-        if (a.operations.length === 0 && b.operations.length === 0)
+        if (a.operations.length === 0 && b.operations.length === 0) {
             return;
+        }
 
-        if (a.getHistoryHash() === b.getHistoryHash())
+        if (a.getHistoryHash() === b.getHistoryHash()) {
             return;
+        }
 
         a.addHistoryOperations(b.operations);
         b.addHistoryOperations(a.operations);
@@ -576,6 +578,10 @@ export class SolidModel extends SolidModelBase {
 
     protected static getDefaultRdfContext(): string {
         return this.rdfContexts.default ?? '';
+    }
+
+    protected static usingSolidEngine(): boolean {
+        return this.requireFinalEngine() instanceof SolidEngine;
     }
 
     // TODO this should be optional
@@ -1194,6 +1200,10 @@ export class SolidModel extends SolidModelBase {
         return `solid://${collection}/`;
     }
 
+    protected usingSolidEngine(): boolean {
+        return this.requireFinalEngine() instanceof SolidEngine;
+    }
+
     protected async createFromEngineDocument(
         id: Key,
         document: EngineDocument,
@@ -1499,7 +1509,9 @@ export class SolidModel extends SolidModelBase {
                     continue;
                 }
 
-                if (this.static().getFieldRdfProperty(field) === IRI('ldp:contains')) {
+                const rdfProperty = this.static().getFieldRdfProperty(field);
+
+                if (rdfProperty && this.ignoreRdfPropertyHistory(rdfProperty)) {
                     continue;
                 }
 
@@ -1512,8 +1524,15 @@ export class SolidModel extends SolidModelBase {
         }
 
         for (const [field, value] of Object.entries(this._dirtyAttributes)) {
-            if (field in this._trackedDirtyAttributes && this._trackedDirtyAttributes[field] === value)
+            if (field in this._trackedDirtyAttributes && this._trackedDirtyAttributes[field] === value) {
                 continue;
+            }
+
+            const rdfProperty = this.static().getFieldRdfProperty(field);
+
+            if (rdfProperty && this.ignoreRdfPropertyHistory(rdfProperty)) {
+                continue;
+            }
 
             if (Array.isArray(value)) {
                 this.addArrayHistoryOperations(field, value, this._originalAttributes[field]);
@@ -1545,15 +1564,21 @@ export class SolidModel extends SolidModelBase {
             .reduce((fieldProperties, field) => {
                 const rdfProperty = this.static().getFieldRdfProperty(field);
 
-                if (rdfProperty)
+                if (rdfProperty) {
                     fieldProperties[rdfProperty] = field;
+                }
 
                 return fieldProperties;
             }, {} as Record<string, string>);
 
         for (const operation of operations) {
-            if (knownOperationUrls.has(operation.url))
+            if (knownOperationUrls.has(operation.url)) {
                 continue;
+            }
+
+            if (operation instanceof PropertyOperation && this.ignoreRdfPropertyHistory(operation.property)) {
+                continue;
+            }
 
             const newOperation = operation.clone();
 
@@ -1562,8 +1587,9 @@ export class SolidModel extends SolidModelBase {
 
             newOperations.push(newOperation);
 
-            if ((operation instanceof PropertyOperation) && operation.property in fieldPropertiesMap)
+            if ((operation instanceof PropertyOperation) && operation.property in fieldPropertiesMap) {
                 trackedDirtyProperties.add(operation.property);
+            }
         }
 
         this.setRelationModels('operations', arraySorted([...this.operations, ...newOperations], ['date', 'url']));
@@ -1575,6 +1601,11 @@ export class SolidModel extends SolidModelBase {
 
             this._trackedDirtyAttributes[field] = this._dirtyAttributes[field];
         }
+    }
+
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    protected ignoreRdfPropertyHistory(rdfProperty: string): boolean {
+        return false;
     }
 
     protected removeDuplicatedHistoryOperations(): void {
@@ -1704,7 +1735,7 @@ export class SolidModel extends SolidModelBase {
             // This is necessary because a SolidEngine behaves differently than other engines.
             // Even if a document is stored using compacted IRIs, a SolidEngine will need them expanded
             // because it's ultimately stored in turtle, not json-ld.
-            const compactIRIs = !(this.requireFinalEngine() instanceof SolidEngine);
+            const compactIRIs = !this.usingSolidEngine();
 
             graphUpdates.push({
                 $updateItems: {

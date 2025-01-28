@@ -20,6 +20,7 @@ import RDFDocument from '@/solid/RDFDocument';
 import RDFResourceProperty from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
+import { LDP_CONTAINER } from '@/solid/constants';
 import type { Fetch } from '@/solid/SolidClient';
 
 import SolidClientMock from '@/solid/__mocks__';
@@ -93,7 +94,7 @@ describe('SolidEngine', () => {
         const properties = SolidClientMock.createDocumentSpy.mock.calls[0]?.[2];
 
         expect(properties).toHaveLength(2);
-        expect(properties).toContainEqual(RDFResourceProperty.type(documentUrl, IRI('ldp:Container')));
+        expect(properties).toContainEqual(RDFResourceProperty.type(documentUrl, LDP_CONTAINER));
         expect(properties).toContainEqual(RDFResourceProperty.literal(documentUrl, IRI('rdfs:label'), name));
     });
 
@@ -117,7 +118,7 @@ describe('SolidEngine', () => {
         const name = faker.name.firstName();
 
         await SolidClientMock.createDocument(parentUrl, documentUrl, [
-            RDFResourceProperty.type(documentUrl, IRI('ldp:Container')),
+            RDFResourceProperty.type(documentUrl, LDP_CONTAINER),
             RDFResourceProperty.literal(documentUrl, IRI('rdfs:label'), name),
         ]);
 
@@ -250,7 +251,7 @@ describe('SolidEngine', () => {
         const containerUrl = urlResolveDirectory(parentUrl, stringToSlug(containerName));
 
         await SolidClientMock.createDocument(parentUrl, containerUrl, [
-            RDFResourceProperty.type(containerUrl, IRI('ldp:Container')),
+            RDFResourceProperty.type(containerUrl, LDP_CONTAINER),
             RDFResourceProperty.literal(containerUrl, IRI('rdfs:label'), containerName),
         ]);
 
@@ -264,7 +265,7 @@ describe('SolidEngine', () => {
         await expect(documents[containerUrl]).toEqualJsonLD({
             '@graph': [{
                 '@id': containerUrl,
-                '@type': IRI('ldp:Container'),
+                '@type': LDP_CONTAINER,
                 [IRI('rdfs:label')]: containerName,
             }],
         });
