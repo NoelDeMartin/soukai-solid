@@ -538,6 +538,91 @@ describe('SolidClient', () => {
         `);
     });
 
+    it('reuses meta document on subsequent container updates', async () => {
+        // Arrange
+        const containerUrl = urlResolveDirectory(faker.internet.url(), stringToSlug(faker.random.word()));
+        const metaDocumentName = '.' + stringToSlug(faker.random.word());
+        const descriptionDocumentUrl = containerUrl + metaDocumentName;
+
+        StubFetcher.addFetchResponse(`
+            <${containerUrl}>
+                a <http://www.w3.org/ns/ldp#Container> ;
+                <http://www.w3.org/2000/01/rdf-schema#label> "Things" .
+        `, { Link: `<${metaDocumentName}>; rel="describedBy"` });
+        StubFetcher.addFetchResponse();
+        StubFetcher.addFetchResponse(`
+            <${containerUrl}>
+                a <http://www.w3.org/ns/ldp#Container> ;
+                <http://www.w3.org/2000/01/rdf-schema#label> "Updated Things" .
+        `);
+        StubFetcher.addFetchResponse();
+
+        // Act
+        await client.updateDocument(containerUrl, [
+            new UpdatePropertyOperation(
+                RDFResourceProperty.literal(
+                    containerUrl,
+                    'http://www.w3.org/2000/01/rdf-schema#label',
+                    'Updated Things',
+                ),
+            ),
+        ]);
+
+        await client.updateDocument(containerUrl, [
+            new UpdatePropertyOperation(
+                RDFResourceProperty.literal(
+                    containerUrl,
+                    'http://www.w3.org/2000/01/rdf-schema#label',
+                    'Updated Things again',
+                ),
+            ),
+        ]);
+
+        // Assert
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(1, containerUrl, { headers: { Accept: 'text/turtle' } });
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(
+            2,
+            descriptionDocumentUrl,
+            {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/sparql-update' },
+                body: expect.anything(),
+            },
+        );
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(
+            3,
+            descriptionDocumentUrl,
+            { headers: { Accept: 'text/turtle' } },
+        );
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(
+            4,
+            descriptionDocumentUrl,
+            {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/sparql-update' },
+                body: expect.anything(),
+            },
+        );
+
+        expect(StubFetcher.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
+            DELETE DATA {
+                <${containerUrl}> <http://www.w3.org/2000/01/rdf-schema#label> "Things" .
+            } ;
+            INSERT DATA {
+                <${containerUrl}> <http://www.w3.org/2000/01/rdf-schema#label> "Updated Things" .
+            }
+        `);
+
+        expect(StubFetcher.fetchSpy.mock.calls[3]?.[1]?.body).toEqualSparql(`
+            DELETE DATA {
+                <${containerUrl}> <http://www.w3.org/2000/01/rdf-schema#label> "Updated Things" .
+            } ;
+            INSERT DATA {
+                <${containerUrl}> <http://www.w3.org/2000/01/rdf-schema#label> "Updated Things again" .
+            }
+        `);
+    });
+
     it('changes resource urls', async () => {
         // Arrange
         const legacyParentUrl = urlResolveDirectory(faker.internet.url(), stringToSlug(faker.random.word()));
@@ -742,6 +827,32 @@ describe('SolidClient', () => {
         await client.updateDocument(faker.internet.url(), []);
 
         expect(StubFetcher.fetch).not.toHaveBeenCalled();
+    });
+
+    it('ignores idempotent operations', async () => {
+        // Arrange
+        const documentUrl = faker.internet.url();
+        const data = '<> <http://www.w3.org/2000/01/rdf-schema#label> "Things" .';
+
+        StubFetcher.addFetchResponse(data);
+        StubFetcher.addFetchResponse();
+
+        // Act
+        await client.updateDocument(documentUrl, [
+            new UpdatePropertyOperation(RDFResourceProperty.literal(documentUrl, IRI('rdfs:label'), 'Things')),
+            new UpdatePropertyOperation(RDFResourceProperty.literal(documentUrl, IRI('foaf:name'), 'Things')),
+        ]);
+
+        // Assert
+        expect(StubFetcher.fetch).toHaveBeenNthCalledWith(2, documentUrl, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/sparql-update' },
+            body: expect.anything(),
+        });
+
+        expect(StubFetcher.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
+            INSERT DATA { <> <http://xmlns.com/foaf/0.1/name> "Things" . }
+        `);
     });
 
     it('updates array properties', async () => {

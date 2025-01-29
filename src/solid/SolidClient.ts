@@ -42,6 +42,8 @@ const RESERVED_CONTAINER_TYPES = [
     IRI('ldp:BasicContainer'),
 ];
 
+const containerDescriptionUrls: Map<string, string> = new Map();
+
 // TODO extract file to @noeldemartin/solid-utils
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -157,6 +159,8 @@ export default class SolidClient {
         if (operations.length === 0) {
             return;
         }
+
+        url = containerDescriptionUrls.get(url) ?? url;
 
         const document = await this.getDocument(url);
 
@@ -393,8 +397,12 @@ export default class SolidClient {
     }
 
     private async updateContainerDocument(document: RDFDocument, operations: UpdateOperation[]): Promise<void> {
+        const descriptionUrl = document.metadata.describedBy || `${document.url}.meta`;
+
+        document.url && containerDescriptionUrls.set(document.url, descriptionUrl);
+
         await this.updateNonContainerDocument(
-            document.clone({ changeUrl: document.metadata.describedBy || `${document.url}.meta` }),
+            document.clone({ changeUrl: descriptionUrl }),
             operations,
         );
     }
@@ -421,24 +429,23 @@ export default class SolidClient {
         operations: UpdateOperation[],
     ): Promise<void> {
         const [updatedProperties, removedProperties] = decantUpdateOperationsData(operations);
-        const inserts = RDFResourceProperty.toTurtle(updatedProperties.flat(), document.url);
-        const deletes = RDFResourceProperty.toTurtle(
-            document.properties.filter(
-                property =>
-                    removedProperties.some(([resourceUrl, name, value]) =>
-                        resourceUrl === property.resourceUrl &&
-                            (!name || name === property.name) &&
-                            (!value || value === property.value)),
+        const inserts = updatedProperties.flat().map(property => property.toTurtle(document.url) + ' .');
+        const deletes = document.properties.filter(
+            property => removedProperties.some(
+                ([resourceUrl, name, value]) =>
+                    resourceUrl === property.resourceUrl &&
+                    (!name || name === property.name) &&
+                    (!value || value === property.value),
             ),
-            document.url,
-        );
+        )
+            .map(property => property.toTurtle(document.url) + ' .');
 
         const response = await this.fetch(document.url as string, {
             method: 'PATCH',
             headers: { 'Content-Type': 'application/sparql-update' },
             body: arrayFilter([
-                deletes.length > 0 && `DELETE DATA { ${deletes} }`,
-                inserts.length > 0 && `INSERT DATA { ${inserts} }`,
+                deletes.length > 0 && `DELETE DATA { ${deletes.join('\n')} }`,
+                inserts.length > 0 && `INSERT DATA { ${inserts.join('\n')} }`,
             ]).join(' ; '),
         });
 
@@ -533,20 +540,40 @@ export default class SolidClient {
     }
 
     // TODO this method should remove all UpdatePropertyOperation and use only
-    // SetPropertyOperation and RemovePropertyOperation
+    // SetPropertyOperation and RemovePropertyOperation for better performance
     private processUpdatePropertyOperations(document: RDFDocument, operations: UpdateOperation[]): void {
         // Diff arrays
         const arrayOperations: UpdateOperation[] = [];
+        const idempotentOperations: UpdateOperation[] = [];
         const arrayProperties: string[] = [];
 
         for (let index = 0; index < operations.length; index++) {
             const operation = operations[index] as UpdateOperation;
 
-            if (operation.type !== OperationType.UpdateProperty)
+            if (operation.type !== OperationType.UpdateProperty) {
                 continue;
+            }
 
-            if (!Array.isArray(operation.propertyOrProperties) || operation.propertyResourceUrl === null)
+            if (operation.propertyResourceUrl === null) {
                 continue;
+            }
+
+            if (!Array.isArray(operation.propertyOrProperties)) {
+                const property = operation.propertyOrProperties;
+                const [currentProperty, ...otherProperties] =
+                    document.resource(property.resourceUrl ?? '')?.propertiesIndex[property.name] ?? [];
+
+                if (
+                    currentProperty &&
+                    otherProperties.length === 0 &&
+                    property.value === currentProperty.value &&
+                    property.type === currentProperty.type
+                ) {
+                    idempotentOperations.push(operation);
+                }
+
+                continue;
+            }
 
             const documentValues = document
                 .statements
@@ -595,6 +622,7 @@ export default class SolidClient {
         }
 
         arrayOperations.forEach(operation => arrayRemove(operations, operation));
+        idempotentOperations.forEach(operation => arrayRemove(operations, operation));
 
         // Properties that are going to be updated have to be deleted or they'll end up duplicated.
         const updateOperations = operations.filter(
