@@ -10,6 +10,7 @@ import {
     assert,
     fail,
     invert,
+    isInstanceOf,
     isPromise,
     map,
     md5,
@@ -32,6 +33,7 @@ import {
 } from '@noeldemartin/utils';
 import {
     DocumentAlreadyExists,
+    DocumentNotFound,
     FieldType,
     InvalidModelDefinition,
     Model,
@@ -318,7 +320,7 @@ export class SolidModel extends SolidModelBase {
 
             return model;
         } catch (error) {
-            if (applyStrictChecks()) {
+            if (applyStrictChecks() && !isInstanceOf(error, DocumentNotFound)) {
                 throw error;
             }
 
