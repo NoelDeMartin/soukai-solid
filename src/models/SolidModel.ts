@@ -319,7 +319,7 @@ export class SolidModel extends SolidModelBase {
             return model;
         } catch (error) {
             if (applyStrictChecks()) {
-                throw new Error;
+                throw error;
             }
 
             return null;
