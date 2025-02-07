@@ -2,8 +2,6 @@ import { arrayUnique, tap } from '@noeldemartin/utils';
 import { BelongsToManyRelation, SoukaiError } from 'soukai';
 import type { Attributes } from 'soukai';
 
-import { SolidEngine } from '@/engines/SolidEngine';
-
 import { usingExperimentalActivityPods } from '@/experimental';
 import type SolidContainer from '@/models/SolidContainer';
 import type { SolidModel } from '@/models/SolidModel';
@@ -31,7 +29,7 @@ export default class SolidContainsRelation<
 
         const resourceUrls = arrayUnique([...this.parent.resourceUrls, related.getDocumentUrl()]);
 
-        if (this.parent.requireFinalEngine() instanceof SolidEngine) {
+        if (this.parent.usingSolidEngine()) {
             this.parent.setOriginalAttribute('resourceUrls', resourceUrls);
         } else {
             this.parent.setAttribute('resourceUrls', resourceUrls);

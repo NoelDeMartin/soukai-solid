@@ -199,6 +199,10 @@ export class SolidModel extends SolidModelBase {
         return this.getFieldRdfProperty(field) ?? fail(`Couldn't get required property for rdf field '${field}'`);
     }
 
+    public static usingSolidEngine(): boolean {
+        return this.requireFinalEngine() instanceof SolidEngine;
+    }
+
     public static from<T extends SolidModel>(
         this: SolidModelConstructor<T>,
         parentUrl: string,
@@ -585,10 +589,6 @@ export class SolidModel extends SolidModelBase {
 
     protected static getDefaultRdfContext(): string {
         return this.rdfContexts.default ?? '';
-    }
-
-    protected static usingSolidEngine(): boolean {
-        return this.requireFinalEngine() instanceof SolidEngine;
     }
 
     // TODO this should be optional
@@ -1175,6 +1175,10 @@ export class SolidModel extends SolidModelBase {
         return [...relatedModels];
     }
 
+    public usingSolidEngine(): boolean {
+        return this.requireFinalEngine() instanceof SolidEngine;
+    }
+
     public metadataRelationship(): Relation {
         const metadataModelClass = requireBootedModel<typeof Metadata>('Metadata');
 
@@ -1210,10 +1214,6 @@ export class SolidModel extends SolidModelBase {
         const collection = super.getDefaultCollection();
 
         return `solid://${collection}/`;
-    }
-
-    protected usingSolidEngine(): boolean {
-        return this.requireFinalEngine() instanceof SolidEngine;
     }
 
     protected async createFromEngineDocument(

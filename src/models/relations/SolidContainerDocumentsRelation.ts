@@ -42,7 +42,7 @@ export default class SolidContainerDocumentsRelation extends SolidBelongsToManyR
             return this.related = [];
         }
 
-        if (this.parent.requireFinalEngine() instanceof SolidEngine) {
+        if (this.parent.usingSolidEngine()) {
             return super.load();
         }
 
@@ -61,7 +61,7 @@ export default class SolidContainerDocumentsRelation extends SolidBelongsToManyR
     }
 
     public async __loadDocumentModels(documentUrl: string, document: JsonLDGraph): Promise<void> {
-        if (!(SolidDocument.requireFinalEngine() instanceof SolidEngine)) {
+        if (!SolidDocument.usingSolidEngine()) {
             return super.__loadDocumentModels(documentUrl, document);
         }
 
