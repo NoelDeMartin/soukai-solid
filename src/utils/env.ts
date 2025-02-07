@@ -7,8 +7,14 @@ function getEnv(): string | null {
         return window.$app.environment;
     }
 
-    if (typeof process === 'object' && process.env?.NODE_ENV) {
-        return process.env.NODE_ENV;
+    if (typeof process === 'object' && process.env) {
+        if (process.env.VITEST) {
+            return 'testing';
+        }
+
+        if (process.env.NODE_ENV) {
+            return process.env.NODE_ENV;
+        }
     }
 
     return null;
