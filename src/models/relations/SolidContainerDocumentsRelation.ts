@@ -5,7 +5,6 @@ import type { JsonLDGraph } from '@noeldemartin/solid-utils';
 import RDFDocument from '@/solid/RDFDocument';
 import SolidBelongsToManyRelation from '@/models/relations/SolidBelongsToManyRelation';
 import SolidDocument from '@/models/SolidDocument';
-import { SolidEngine } from '@/engines/SolidEngine';
 import type SolidContainer from '@/models/SolidContainer';
 
 interface GraphDocument {
