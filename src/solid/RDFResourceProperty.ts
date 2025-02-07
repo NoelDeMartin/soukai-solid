@@ -142,6 +142,13 @@ abstract class RDFResourceProperty {
         }
     }
 
+    public valueEquals(other: RDFResourceProperty): boolean {
+        const value = this.value instanceof Date ? this.value.getTime() : this.value;
+        const otherValue = other.value instanceof Date ? other.value.getTime() : other.value;
+
+        return value === otherValue;
+    }
+
     protected getTurtleReference(
         value: string | null,
         documentUrl: string | null,

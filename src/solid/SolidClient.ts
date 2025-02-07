@@ -170,6 +170,10 @@ export default class SolidClient {
         this.processChangeUrlOperations(document, operations);
         this.processUpdatePropertyOperations(document, operations);
 
+        if (operations.length === 0) {
+            return;
+        }
+
         document.resource(url)?.isType(LDP_CONTAINER)
             ? await this.updateContainerDocument(document, operations)
             : await this.updateNonContainerDocument(document, operations, options);
@@ -566,8 +570,8 @@ export default class SolidClient {
                 if (
                     currentProperty &&
                     otherProperties.length === 0 &&
-                    property.value === currentProperty.value &&
-                    property.type === currentProperty.type
+                    property.type === currentProperty.type &&
+                    property.valueEquals(currentProperty)
                 ) {
                     idempotentOperations.push(operation);
                 }

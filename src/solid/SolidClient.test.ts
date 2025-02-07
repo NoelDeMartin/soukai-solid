@@ -832,7 +832,13 @@ describe('SolidClient', () => {
     it('ignores idempotent operations', async () => {
         // Arrange
         const documentUrl = faker.internet.url();
-        const data = '<> <http://www.w3.org/2000/01/rdf-schema#label> "Things" .';
+        const now = new Date();
+        const data = `
+            <>
+                <http://www.w3.org/2000/01/rdf-schema#label> "Things" ;
+                <http://purl.org/dc/terms/modified>
+                    "${now.toISOString()}"^^<http://www.w3.org/2001/XMLSchema#dateTime> .
+        `;
 
         StubFetcher.addFetchResponse(data);
         StubFetcher.addFetchResponse();
@@ -840,6 +846,7 @@ describe('SolidClient', () => {
         // Act
         await client.updateDocument(documentUrl, [
             new UpdatePropertyOperation(RDFResourceProperty.literal(documentUrl, IRI('rdfs:label'), 'Things')),
+            new UpdatePropertyOperation(RDFResourceProperty.literal(documentUrl, IRI('purl:modified'), now)),
             new UpdatePropertyOperation(RDFResourceProperty.literal(documentUrl, IRI('foaf:name'), 'Things')),
         ]);
 
