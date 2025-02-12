@@ -696,7 +696,7 @@ describe('SolidModel', () => {
         );
     });
 
-    it('updates schema definitions', () => {
+    it('updates schema definitions', async () => {
         // Arrange
         class StubPerson extends PersonSchema {}
 
@@ -715,7 +715,7 @@ describe('SolidModel', () => {
         expect(StubPerson.rdfsClasses).toEqual(['http://xmlns.com/foaf/0.1/Person']);
 
         // Act
-        StubPerson.setSchema({
+        await StubPerson.updateSchema({
             primaryKey: 'uuid',
             rdfContext: 'https://schema.org/',
             rdfsClass: 'Person',
@@ -727,6 +727,66 @@ describe('SolidModel', () => {
                 },
             },
         });
+
+        // Assert
+        expect(StubPerson.primaryKey).toEqual('uuid');
+        expect(StubPerson.timestamps).toEqual([TimestampField.CreatedAt, TimestampField.UpdatedAt]);
+        expect(StubPerson.fields).toEqual({
+            uuid: {
+                type: FieldType.Key,
+                required: false,
+            },
+            name: {
+                type: FieldType.String,
+                required: false,
+                rdfProperty: 'https://schema.org/name',
+                rdfPropertyAliases: [],
+            },
+            bornAt: {
+                type: FieldType.Date,
+                required: false,
+                rdfProperty: 'https://schema.org/birthDate',
+                rdfPropertyAliases: [],
+            },
+        });
+        expect(StubPerson.rdfContexts.default).toEqual('https://schema.org/');
+        expect(StubPerson.rdfContexts.vcard).toBeUndefined();
+        expect(StubPerson.rdfsClasses).toEqual(['https://schema.org/Person']);
+    });
+
+    it('updates schema definitions using classes', async () => {
+        // Arrange
+        class StubPerson extends PersonSchema {}
+
+        bootModels({ StubPerson2: StubPerson });
+
+        expect(StubPerson.primaryKey).toEqual('url');
+        expect(StubPerson.timestamps).toEqual([TimestampField.CreatedAt]);
+        expect(StubPerson.fields.name).toEqual({
+            type: FieldType.String,
+            required: false,
+            rdfProperty: 'http://xmlns.com/foaf/0.1/name',
+            rdfPropertyAliases: [],
+        });
+        expect(StubPerson.rdfContexts.default).toEqual('http://xmlns.com/foaf/0.1/');
+        expect(StubPerson.rdfContexts.vcard).toEqual('http://www.w3.org/2006/vcard/ns#');
+        expect(StubPerson.rdfsClasses).toEqual(['http://xmlns.com/foaf/0.1/Person']);
+
+        // Act
+        const schema = defineSolidModelSchema({
+            primaryKey: 'uuid',
+            rdfContext: 'https://schema.org/',
+            rdfsClass: 'Person',
+            fields: {
+                name: FieldType.String,
+                bornAt: {
+                    type: FieldType.Date,
+                    rdfProperty: 'birthDate',
+                },
+            },
+        });
+
+        await StubPerson.updateSchema(schema);
 
         // Assert
         expect(StubPerson.primaryKey).toEqual('uuid');

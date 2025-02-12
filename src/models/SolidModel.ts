@@ -63,6 +63,7 @@ import type {
     ModelConstructor,
     MultiModelRelation,
     Relation,
+    SchemaDefinition,
     SingleModelRelation,
     TimestampFieldValue,
 } from 'soukai';
@@ -195,42 +196,10 @@ export class SolidModel extends SolidModelBase {
         return fields[rdfProperty] ?? null;
     }
 
-    public static setSchema(schema: SolidSchemaDefinition): void {
-        try {
-            schema.primaryKey ??= 'url';
-
-            const rdfContexts = this.bootRdfContexts(
-                schema.rdfContext ?? null,
-                schema.rdfContexts ?? {},
-                schema.rdfsClass,
-                { skipParentSchema: true },
-            );
-            const rdfsClasses = this.bootRdfsClasses(
-                schema.rdfsClass ?? null,
-                schema.rdfsClasses ?? null,
-                rdfContexts,
-            );
-            const rdfsClassesAliases = this.bootRdfsClassesAliases(
-                schema.rdfsClassesAliases ?? [],
-                rdfContexts,
-            );
-
-            startSchemaUpdate(this, rdfContexts);
-
-            super.setSchema(schema);
-
-            this.rdfContexts = rdfContexts;
-            this.rdfsClasses = rdfsClasses;
-            this.rdfsClassesAliases = rdfsClassesAliases;
-            this.rdfsClass = schema.rdfsClass;
-            this.rdfContext = schema.rdfContext;
-            this.defaultResourceHash = schema.defaultResourceHash ?? 'it';
-            this.slugField = schema.slugField;
-            this.history = schema.history ?? false;
-            this.tombstone = schema.tombstone ?? true;
-        } finally {
-            stopSchemaUpdate(this);
-        }
+    public static async updateSchema(schema: SolidSchemaDefinition | SolidModelConstructor): Promise<void>;
+    public static async updateSchema(schema: SchemaDefinition | ModelConstructor): Promise<void>;
+    public static async updateSchema(schema: SolidSchemaDefinition | SolidModelConstructor): Promise<void> {
+        return super.updateSchema(schema);
     }
 
     public static requireFetch(): Fetch {
@@ -534,7 +503,7 @@ export class SolidModel extends SolidModelBase {
         rdfContext: string | null,
         rdfContexts: RDFContexts,
         rdfsClass: string | undefined,
-        options: { modelClass?: typeof SolidModel; skipParentSchema?: boolean} = {},
+        options: { modelClass?: typeof SolidModel; skipParentSchema?: boolean } = {},
     ): RDFContexts {
         const modelClass = options.modelClass ?? this;
         const builtInRdfContexts = {
@@ -682,6 +651,44 @@ export class SolidModel extends SolidModelBase {
         rdfContexts ??= this.rdfContexts;
 
         return rdfContexts.default ?? '';
+    }
+
+    protected static async performSchemaUpdate(schema: SolidSchemaDefinition | SolidModelConstructor): Promise<void> {
+        try {
+            schema.primaryKey ??= 'url';
+
+            const rdfContexts = this.bootRdfContexts(
+                schema.rdfContext ?? null,
+                { ...schema.rdfContexts },
+                schema.rdfsClass,
+                { skipParentSchema: true },
+            );
+            const rdfsClasses = this.bootRdfsClasses(
+                schema.rdfsClass ?? null,
+                schema.rdfsClasses ?? null,
+                rdfContexts,
+            );
+            const rdfsClassesAliases = this.bootRdfsClassesAliases(
+                schema.rdfsClassesAliases ?? [],
+                rdfContexts,
+            );
+
+            startSchemaUpdate(this, rdfContexts);
+
+            await super.performSchemaUpdate(schema);
+
+            this.rdfContexts = rdfContexts;
+            this.rdfsClasses = rdfsClasses;
+            this.rdfsClassesAliases = rdfsClassesAliases;
+            this.rdfsClass = schema.rdfsClass;
+            this.rdfContext = schema.rdfContext;
+            this.defaultResourceHash = schema.defaultResourceHash ?? 'it';
+            this.slugField = schema.slugField;
+            this.history = schema.history ?? false;
+            this.tombstone = schema.tombstone ?? true;
+        } finally {
+            stopSchemaUpdate(this);
+        }
     }
 
     // TODO this should be optional

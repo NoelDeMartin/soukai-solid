@@ -55,7 +55,7 @@
     "eslint": "^7.20.0",
     "jest": "^26.6.3",
     "jest-summary-reporter": "0.0.2",
-    "soukai": "0.5.2-next.43d0e6f4702a065b10328dcc42d10626e28ed79f",
+    "soukai": "0.5.2-next.1d8e6bf684a0244b9f2178ef0e8405278dec69e4",
     "ts-jest": "^26.5.2",
     "typescript": "^4.1.5"
   }
