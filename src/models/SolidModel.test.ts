@@ -2,7 +2,7 @@
 import { after, arrayWithout, range, stringToSlug, tap, toString, tt, urlParentDirectory, urlResolve, urlResolveDirectory, urlRoute, uuid } from '@noeldemartin/utils';
 import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
 import { fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@noeldemartin/testing';
-import { FieldType, InMemoryEngine, ModelKey, bootModels, setEngine } from 'soukai';
+import { FieldType, InMemoryEngine, ModelKey, TimestampField, bootModels, setEngine } from 'soukai';
 import dayjs from 'dayjs';
 import { faker } from '@noeldemartin/faker';
 import type { EngineDocument, Relation } from 'soukai';
@@ -22,6 +22,7 @@ import Group from '@/testing/lib/stubs/Group';
 import Movie from '@/testing/lib/stubs/Movie';
 import MoviesCollection from '@/testing/lib/stubs/MoviesCollection';
 import Person from '@/testing/lib/stubs/Person';
+import PersonSchema from '@/testing/lib/stubs/Person.schema';
 import StubEngine from '@/testing/lib/stubs/StubEngine';
 import WatchAction from '@/testing/lib/stubs/WatchAction';
 import { assertInstanceOf } from '@/testing/utils';
@@ -695,6 +696,64 @@ describe('SolidModel', () => {
         );
     });
 
+    it('updates schema definitions', () => {
+        // Arrange
+        class StubPerson extends PersonSchema {}
+
+        bootModels({ StubPerson });
+
+        expect(StubPerson.primaryKey).toEqual('url');
+        expect(StubPerson.timestamps).toEqual([TimestampField.CreatedAt]);
+        expect(StubPerson.fields.name).toEqual({
+            type: FieldType.String,
+            required: false,
+            rdfProperty: 'http://xmlns.com/foaf/0.1/name',
+            rdfPropertyAliases: [],
+        });
+        expect(StubPerson.rdfContexts.default).toEqual('http://xmlns.com/foaf/0.1/');
+        expect(StubPerson.rdfContexts.vcard).toEqual('http://www.w3.org/2006/vcard/ns#');
+        expect(StubPerson.rdfsClasses).toEqual(['http://xmlns.com/foaf/0.1/Person']);
+
+        // Act
+        StubPerson.setSchema({
+            primaryKey: 'uuid',
+            rdfContext: 'https://schema.org/',
+            rdfsClass: 'Person',
+            fields: {
+                name: FieldType.String,
+                bornAt: {
+                    type: FieldType.Date,
+                    rdfProperty: 'birthDate',
+                },
+            },
+        });
+
+        // Assert
+        expect(StubPerson.primaryKey).toEqual('uuid');
+        expect(StubPerson.timestamps).toEqual([TimestampField.CreatedAt, TimestampField.UpdatedAt]);
+        expect(StubPerson.fields).toEqual({
+            uuid: {
+                type: FieldType.Key,
+                required: false,
+            },
+            name: {
+                type: FieldType.String,
+                required: false,
+                rdfProperty: 'https://schema.org/name',
+                rdfPropertyAliases: [],
+            },
+            bornAt: {
+                type: FieldType.Date,
+                required: false,
+                rdfProperty: 'https://schema.org/birthDate',
+                rdfPropertyAliases: [],
+            },
+        });
+        expect(StubPerson.rdfContexts.default).toEqual('https://schema.org/');
+        expect(StubPerson.rdfContexts.vcard).toBeUndefined();
+        expect(StubPerson.rdfsClasses).toEqual(['https://schema.org/Person']);
+    });
+
     it('doesn\'t mint urls for new models if disabled', async () => {
         // Arrange
         class StubModel extends SolidModel {
@@ -1332,8 +1391,10 @@ describe('SolidModel', () => {
         // Arrange
         const containerUrl = fakeContainerUrl();
         const name = faker.random.word();
+        const nickName = faker.random.word();
         const person = new Person({
             name,
+            nickName,
             url: urlResolve(containerUrl, faker.datatype.uuid()),
             friendUrls: [
                 urlResolve(containerUrl, faker.datatype.uuid()),
@@ -1354,9 +1415,11 @@ describe('SolidModel', () => {
                 '@vocab': 'http://xmlns.com/foaf/0.1/',
                 'crdt': 'https://vocab.noeldemartin.com/crdt/',
                 'metadata': { '@reverse': 'crdt:resource' },
+                'vcard': 'http://www.w3.org/2006/vcard/ns#',
             },
             '@type': 'Person',
             'name': name,
+            'vcard:nickname': nickName,
             'knows': friendUrls.map(url => ({ '@id': url })),
             'metadata': {
                 '@id': person.url + '-metadata',
@@ -1428,6 +1491,7 @@ describe('SolidModel', () => {
                 '@vocab': 'http://xmlns.com/foaf/0.1/',
                 'crdt': 'https://vocab.noeldemartin.com/crdt/',
                 'metadata': { '@reverse': 'crdt:resource' },
+                'vcard': 'http://www.w3.org/2006/vcard/ns#',
             },
             '@type': 'Group',
             '@id': mugiwara.url,
@@ -1494,7 +1558,10 @@ describe('SolidModel', () => {
 
         // Assert
         expect(jsonLd).toEqual({
-            '@context': { '@vocab': 'http://xmlns.com/foaf/0.1/' },
+            '@context': {
+                '@vocab': 'http://xmlns.com/foaf/0.1/',
+                'vcard': 'http://www.w3.org/2006/vcard/ns#',
+            },
             '@type': 'Group',
             'name': 'Mugiwara',
             'member': [

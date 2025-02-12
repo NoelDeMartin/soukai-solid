@@ -9,11 +9,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 ### Added
 
 - You can now specify `slugField` in model definitions to configure which field will be used to create slugs when [minting urls](./README.md#url-minting).
+- Added the ability to update model schemas with `setSchema`.
 
 ### Changed
 
 - `SolidTypeRegistration.forClass` is now declared as an array.
 - Default `rdfContext` resolution changed to prioritize the vocab used in `rdfsClass` if present.
+
+Also, check [soukai's release notes](https://github.com/NoelDeMartin/soukai/blob/main/CHANGELOG.md) for further changes.
 
 ## [v0.5.2](https://github.com/NoelDeMartin/soukai-solid/releases/tag/v0.5.2) - 2023-11-03
 

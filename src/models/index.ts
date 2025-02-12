@@ -44,6 +44,7 @@ export type { This as ManagesPermissionsThis } from './mixins/ManagesPermissions
 export type { This as SerializesToJsonLDThis } from './mixins/SerializesToJsonLD';
 
 export type {
+    RDFContexts,
     SolidBootedFieldDefinition,
     SolidBootedFieldsDefinition,
     SolidFieldDefinition,

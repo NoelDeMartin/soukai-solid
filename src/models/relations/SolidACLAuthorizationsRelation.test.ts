@@ -22,6 +22,7 @@ describe('SolidACLAuthorizationsRelation', () => {
                 '@vocab': 'http://xmlns.com/foaf/0.1/',
                 'crdt': 'https://vocab.noeldemartin.com/crdt/',
                 'metadata': { '@reverse': 'crdt:resource' },
+                'vcard': 'http://www.w3.org/2006/vcard/ns#',
             },
             '@type': 'Person',
             'name': 'John Doe',

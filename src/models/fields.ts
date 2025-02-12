@@ -32,6 +32,9 @@ export type SolidBootedArrayFieldDefinition = Pretty<Omit<SolidBootedFieldDefini
     type: typeof FieldType.Array;
     items: Omit<BootedFieldDefinition, 'required' | 'type'> & { type: FieldLiteralTypeValue };
 }>;
+export type RDFContexts = {
+    default?: string | null;
+} & Record<string, string>;
 
 /* eslint-disable max-len */
 export function inferFieldDefinition(value: unknown): Omit<SolidBootedFieldDefinition, 'required' | 'rdfProperty' | 'rdfPropertyAliases'>;

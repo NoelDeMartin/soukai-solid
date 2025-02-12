@@ -98,6 +98,7 @@ import SolidHasManyRelation from './relations/SolidHasManyRelation';
 import SolidHasOneRelation from './relations/SolidHasOneRelation';
 import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
 import TombstoneRelation from '@/models/relations/TombstoneRelation';
+import { getSchemaUpdateContext, startSchemaUpdate, stopSchemaUpdate } from './internals/helpers';
 import { inferFieldDefinition, isSolidArrayFieldDefinition } from './fields';
 import { operationClass } from './history/operations';
 import type Metadata from './history/Metadata';
@@ -106,7 +107,13 @@ import type SolidACLAuthorization from './SolidACLAuthorization';
 import type SolidDocument from './SolidDocument';
 import type SolidContainer from './SolidContainer';
 import type Tombstone from './history/Tombstone';
-import type { SolidBootedFieldDefinition, SolidBootedFieldsDefinition, SolidFieldsDefinition } from './fields';
+import type {
+    RDFContexts,
+    SolidBootedFieldDefinition,
+    SolidBootedFieldsDefinition,
+    SolidFieldsDefinition,
+    SolidSchemaDefinition,
+} from './fields';
 import type { SolidDocumentRelationInstance } from './relations/mixins/SolidDocumentRelation';
 import type { SolidModelConstructor } from './inference';
 import type { SolidRelation } from './relations/inference';
@@ -125,7 +132,7 @@ export class SolidModel extends SolidModelBase {
     public static fields: SolidFieldsDefinition;
     public static classFields = ['_history', '_publicPermissions', '_tombstone'];
     public static rdfContext?: string;
-    public static rdfContexts: Record<string, string> = {};
+    public static rdfContexts: RDFContexts = {};
     public static rdfsClass?: string;
     public static rdfsClasses: string[] = [];
     public static rdfsClassesAliases: string[][] = [];
@@ -135,6 +142,7 @@ export class SolidModel extends SolidModelBase {
     public static mintsUrls: boolean = true;
     public static history: boolean = false;
     public static tombstone: boolean = true;
+    declare public static __isSchema?: boolean;
 
     protected static rdfPropertyFields?: Record<string, string>;
     protected static historyDisabled: WeakMap<SolidModel, void> = new WeakMap;
@@ -187,6 +195,44 @@ export class SolidModel extends SolidModelBase {
         return fields[rdfProperty] ?? null;
     }
 
+    public static setSchema(schema: SolidSchemaDefinition): void {
+        try {
+            schema.primaryKey ??= 'url';
+
+            const rdfContexts = this.bootRdfContexts(
+                schema.rdfContext ?? null,
+                schema.rdfContexts ?? {},
+                schema.rdfsClass,
+                { skipParentSchema: true },
+            );
+            const rdfsClasses = this.bootRdfsClasses(
+                schema.rdfsClass ?? null,
+                schema.rdfsClasses ?? null,
+                rdfContexts,
+            );
+            const rdfsClassesAliases = this.bootRdfsClassesAliases(
+                schema.rdfsClassesAliases ?? [],
+                rdfContexts,
+            );
+
+            startSchemaUpdate(this, rdfContexts);
+
+            super.setSchema(schema);
+
+            this.rdfContexts = rdfContexts;
+            this.rdfsClasses = rdfsClasses;
+            this.rdfsClassesAliases = rdfsClassesAliases;
+            this.rdfsClass = schema.rdfsClass;
+            this.rdfContext = schema.rdfContext;
+            this.defaultResourceHash = schema.defaultResourceHash ?? 'it';
+            this.slugField = schema.slugField;
+            this.history = schema.history ?? false;
+            this.tombstone = schema.tombstone ?? true;
+        } finally {
+            stopSchemaUpdate(this);
+        }
+    }
+
     public static requireFetch(): Fetch {
         if (!this.usingSolidEngine()) {
             throw new SoukaiError(`Could not get fetch from ${this.modelName} model`);
@@ -220,26 +266,20 @@ export class SolidModel extends SolidModelBase {
     }
 
     public static boot(name?: string): void {
+        this.modelName = this.bootModelName(name);
+        this.rdfContexts = this.bootRdfContexts(
+            Object.getOwnPropertyDescriptor(this, 'rdfContext')?.value ?? null,
+            Object.getOwnPropertyDescriptor(this, 'rdfContexts')?.value ?? {},
+            this.rdfsClass,
+        );
+        this.rdfsClasses = this.bootRdfsClasses(
+            Object.getOwnPropertyDescriptor(this, 'rdfsClass')?.value ?? null,
+            Object.getOwnPropertyDescriptor(this, 'rdfsClasses')?.value ?? null,
+            this.rdfContexts,
+        );
+        this.rdfsClassesAliases = this.bootRdfsClassesAliases(this.rdfsClassesAliases, this.rdfContexts);
+
         super.boot(name);
-
-        const modelClass = this;
-
-        // Validate collection name.
-        if (!modelClass.collection.match(/^\w+:\/\/.*\/$/)) {
-            throw new InvalidModelDefinition(
-                modelClass.name,
-                'SolidModel collections must be valid container urls (ending with a trailing slash), ' +
-                `'${modelClass.collection}' isn't.`,
-            );
-        }
-
-        // Expand RDF definitions.
-        modelClass.rdfContexts = this.bootRdfContexts();
-        modelClass.rdfsClasses = this.bootRdfsClasses();
-        modelClass.rdfsClassesAliases = modelClass.rdfsClassesAliases.map(rdfsClasses => arrayUnique(
-            rdfsClasses.map(name => IRI(name, modelClass.rdfContexts, modelClass.getDefaultRdfContext())) ?? [],
-        ));
-        modelClass.fields = this.bootFields();
     }
 
     public static aliasRdfPrefixes(aliases: Record<string, string>): void {
@@ -359,11 +399,13 @@ export class SolidModel extends SolidModelBase {
         return this.instance().convertEngineFiltersToJsonLD(filters, compactIRIs);
     }
 
-    public static rdfTerm(property: string): string {
-        return expandIRI(property, {
-            extraContext: this.rdfContexts,
-            defaultPrefix: Object.values(this.rdfContexts).shift(),
-        });
+    public static rdfTerm(property: string, rdfContexts?: RDFContexts): string {
+        rdfContexts ??= this.rdfContexts;
+
+        return expandIRI(property, objectWithoutEmpty({
+            extraContext: rdfContexts,
+            defaultPrefix: Object.values(rdfContexts).shift(),
+        }));
     }
 
     public static async newFromJsonLD<T extends SolidModel>(
@@ -489,17 +531,13 @@ export class SolidModel extends SolidModelBase {
     }
 
     protected static bootRdfContexts(
-        initialClass?: typeof SolidModel,
-        initialRdfContexts: Record<string, string> = {},
-    ): Record<string, string> {
-        const modelClass = initialClass ?? this;
-        const parentModelClass = Object.getPrototypeOf(modelClass);
-        const rdfContext = Object.getOwnPropertyDescriptor(modelClass, 'rdfContext')?.value as string | null;
-        const rdfContexts = {
-            ...initialRdfContexts,
-            ...Object.getOwnPropertyDescriptor(modelClass, 'rdfContexts')?.value ?? {} as Record<string, string>,
-        };
-        const buildInRdfContexts = {
+        rdfContext: string | null,
+        rdfContexts: RDFContexts,
+        rdfsClass: string | undefined,
+        options: { modelClass?: typeof SolidModel; skipParentSchema?: boolean} = {},
+    ): RDFContexts {
+        const modelClass = options.modelClass ?? this;
+        const builtInRdfContexts = {
             crdt: 'https://vocab.noeldemartin.com/crdt/',
             foaf: 'http://xmlns.com/foaf/0.1/',
             ldp: 'http://www.w3.org/ns/ldp#',
@@ -512,83 +550,138 @@ export class SolidModel extends SolidModelBase {
             solid: 'http://www.w3.org/ns/solid/terms#',
             xsd: 'http://www.w3.org/2001/XMLSchema#',
         };
-        const rdfContextFromClass = () => Object.entries({ ...rdfContexts, ...buildInRdfContexts }).find(
+        const rdfContextFromClass = () => Object.entries({ ...rdfContexts, ...builtInRdfContexts }).find(
             ([shorthand, url]) =>
-                modelClass.rdfsClass?.startsWith(`${shorthand}:`) ||
-                modelClass.rdfsClass?.startsWith(toString(url)),
+                rdfsClass?.startsWith(`${shorthand}:`) ||
+                rdfsClass?.startsWith(toString(url)),
         )?.[1];
 
         rdfContexts.default ??= rdfContext ?? rdfContextFromClass() ?? Object.values(rdfContexts).find(url => !!url);
 
+        let parentModelClass = Object.getPrototypeOf(modelClass);
+
+        if (options.skipParentSchema && parentModelClass.__isSchema) {
+            parentModelClass = Object.getPrototypeOf(parentModelClass);
+        }
+
         if (!parentModelClass) {
             return {
                 ...rdfContexts,
-                ...buildInRdfContexts,
+                ...builtInRdfContexts,
                 default: rdfContexts.default ?? 'http://www.w3.org/ns/solid/terms#',
             };
         }
 
-        return this.bootRdfContexts(parentModelClass, rdfContexts);
+        return this.bootRdfContexts(
+            Object.getOwnPropertyDescriptor(parentModelClass, 'rdfContext')?.value ?? null,
+            {
+                ...rdfContexts,
+                ...Object.getOwnPropertyDescriptor(parentModelClass, 'rdfContexts')?.value ?? {},
+            },
+            parentModelClass.rdfsClass,
+            { modelClass: parentModelClass },
+        );
     }
 
-    protected static bootRdfsClasses(initialClass?: typeof SolidModel): string[] {
+    protected static bootRdfsClasses(
+        rdfsClass: string | null,
+        rdfsClasses: string[] | null,
+        rdfContexts: RDFContexts,
+        initialClass?: typeof SolidModel,
+    ): string[] {
         const modelClass = initialClass ?? this;
-        const rdfsClass = Object.getOwnPropertyDescriptor(modelClass, 'rdfsClass')?.value as string | null;
-        const rdfsClasses = Object.getOwnPropertyDescriptor(modelClass, 'rdfsClasses')?.value as string[] | null;
 
         if (rdfsClasses && rdfsClasses.length > 0) {
-            return arrayUnique(rdfsClasses?.map(name => this.rdfTerm(name)) ?? []);
+            return arrayUnique(rdfsClasses?.map(name => this.rdfTerm(name, rdfContexts)) ?? []);
         }
 
         if (rdfsClass) {
-            return [this.rdfTerm(rdfsClass)];
+            return [this.rdfTerm(rdfsClass, rdfContexts)];
         }
 
         const parentModelClass = Object.getPrototypeOf(modelClass);
 
         if (!parentModelClass) {
-            return [this.rdfTerm(this.getDefaultRdfContext() + this.modelName)];
+            return [this.rdfTerm(this.getDefaultRdfContext(rdfContexts) + this.modelName, rdfContexts)];
         }
 
-        return this.bootRdfsClasses(parentModelClass);
+        return this.bootRdfsClasses(
+            Object.getOwnPropertyDescriptor(parentModelClass, 'rdfsClass')?.value ?? null,
+            Object.getOwnPropertyDescriptor(parentModelClass, 'rdfsClasses')?.value ?? null,
+            {
+                ...rdfContexts,
+                ...Object.getOwnPropertyDescriptor(parentModelClass, 'rdfContexts')?.value ?? {},
+            },
+            parentModelClass,
+        );
     }
 
-    protected static bootFields(): SolidBootedFieldsDefinition {
-        const modelClass = this;
-        const instance = modelClass.pureInstance();
-        const fields = modelClass.fields as BootedFieldsDefinition<{
-            rdfProperty?: string;
-            rdfPropertyAliases?: string[];
-        }>;
-        const defaultRdfContext = modelClass.getDefaultRdfContext();
+    protected static bootRdfsClassesAliases(
+        rdfsClassesAliases: string[][],
+        rdfContexts: RDFContexts,
+    ): string[][] {
+        return rdfsClassesAliases.map(rdfsClasses => arrayUnique(
+            rdfsClasses.map(name => IRI(name, this.rdfContexts, this.getDefaultRdfContext(rdfContexts))) ?? [],
+        ));
+    }
 
-        if (instance.static().hasAutomaticTimestamp(TimestampField.CreatedAt)) {
-            delete fields[TimestampField.CreatedAt];
+    protected static bootCollection(): string {
+        const collection = super.bootCollection();
+
+        if (!collection.match(/^\w+:\/\/.*\/$/)) {
+            throw new InvalidModelDefinition(
+                this.modelName,
+                'SolidModel collections must be valid container urls (ending with a trailing slash), ' +
+                `'${collection}' isn't.`,
+            );
         }
 
-        if (instance.static().hasAutomaticTimestamp(TimestampField.UpdatedAt)) {
-            delete fields[TimestampField.UpdatedAt];
+        return collection;
+    }
+
+    protected static bootFields(
+        fields: SolidFieldsDefinition | undefined,
+        primaryKey: string,
+        timestamps: TimestampFieldValue[],
+        fieldDefinitions: SolidBootedFieldsDefinition,
+    ): BootedFieldsDefinition {
+        const rdfContexts = getSchemaUpdateContext(this) ?? this.rdfContexts;
+        const defaultRdfContext = this.getDefaultRdfContext(rdfContexts);
+
+        super.bootFields(fields, primaryKey, timestamps, fieldDefinitions);
+
+        if (timestamps.includes(TimestampField.CreatedAt)) {
+            delete fieldDefinitions[TimestampField.CreatedAt];
         }
 
-        for (const [name, field] of Object.entries(fields)) {
+        if (timestamps.includes(TimestampField.UpdatedAt)) {
+            delete fieldDefinitions[TimestampField.UpdatedAt];
+        }
+
+        for (const [name, field] of Object.entries(fieldDefinitions)) {
             field.rdfProperty = IRI(
                 field.rdfProperty ?? `${defaultRdfContext}${name}`,
-                modelClass.rdfContexts,
+                rdfContexts,
                 defaultRdfContext,
             );
             field.rdfPropertyAliases = field.rdfPropertyAliases
-                ?.map(property => IRI(property, modelClass.rdfContexts, defaultRdfContext))
+                ?.map(property => IRI(property, rdfContexts, defaultRdfContext))
                 ?? [];
         }
 
-        delete fields[modelClass.primaryKey]?.rdfProperty;
-        delete fields[modelClass.primaryKey]?.rdfPropertyAliases;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        delete (fieldDefinitions as any)[primaryKey]?.rdfProperty;
 
-        return fields as unknown as SolidBootedFieldsDefinition;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        delete (fieldDefinitions as any)[primaryKey]?.rdfPropertyAliases;
+
+        return fieldDefinitions;
     }
 
-    protected static getDefaultRdfContext(): string {
-        return this.rdfContexts.default ?? '';
+    protected static getDefaultRdfContext(rdfContexts?: RDFContexts): string {
+        rdfContexts ??= this.rdfContexts;
+
+        return rdfContexts.default ?? '';
     }
 
     // TODO this should be optional
@@ -651,7 +744,7 @@ export class SolidModel extends SolidModelBase {
             return;
         }
 
-        const metadataModelClass = requireBootedModel<typeof Metadata>('Metadata');
+        const metadataModelClass = this._proxy.relatedMetadata.relatedClass;
         const metadataModel = metadataModelClass.newInstance(objectWithoutEmpty({
             resourceUrl: this._attributes[this.static('primaryKey')],
             createdAt: this._attributes.createdAt,
