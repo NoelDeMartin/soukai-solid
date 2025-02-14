@@ -613,11 +613,11 @@ export class SolidModel extends SolidModelBase {
         primaryKey: string,
         timestamps: TimestampFieldValue[],
         fieldDefinitions: SolidBootedFieldsDefinition,
-    ): BootedFieldsDefinition {
+    ): { fields: BootedFieldsDefinition; fieldAliases: Record<string, string> } {
         const rdfContexts = getSchemaUpdateContext(this) ?? this.rdfContexts;
         const defaultRdfContext = this.getDefaultRdfContext(rdfContexts);
 
-        super.bootFields(fields, primaryKey, timestamps, fieldDefinitions);
+        const { fieldAliases } = super.bootFields(fields, primaryKey, timestamps, fieldDefinitions);
 
         if (timestamps.includes(TimestampField.CreatedAt)) {
             delete fieldDefinitions[TimestampField.CreatedAt];
@@ -644,7 +644,10 @@ export class SolidModel extends SolidModelBase {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         delete (fieldDefinitions as any)[primaryKey]?.rdfPropertyAliases;
 
-        return fieldDefinitions;
+        return {
+            fields: fieldDefinitions,
+            fieldAliases,
+        };
     }
 
     protected static getDefaultRdfContext(rdfContexts?: RDFContexts): string {
@@ -1652,7 +1655,14 @@ export class SolidModel extends SolidModelBase {
                 continue;
             }
 
-            // TODO handle unset operations
+            if (value === null || value === undefined) {
+                this.relatedOperations.attachUnsetOperation({
+                    property: this.static().requireFieldRdfProperty(field),
+                    date: this.metadata.updatedAt,
+                });
+
+                continue;
+            }
 
             this.relatedOperations.attachSetOperation({
                 property: this.static().requireFieldRdfProperty(field),

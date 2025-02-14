@@ -303,6 +303,10 @@ export default class JsonLDModelSerializer {
     private castJsonLDValue(value: unknown, fieldDefinition: SolidBootedFieldDefinition): unknown {
         switch (fieldDefinition.type) {
             case FieldType.Any: {
+                if (value === null || value === undefined) {
+                    return new EmptyJsonLDValue();
+                }
+
                 const inferredFieldDefinition = inferFieldDefinition(
                     value,
                     fieldDefinition.rdfProperty,
@@ -310,8 +314,9 @@ export default class JsonLDModelSerializer {
                     fieldDefinition.required,
                 );
 
-                if (inferredFieldDefinition.type === FieldType.Any)
+                if (inferredFieldDefinition.type === FieldType.Any) {
                     throw new SoukaiError('Couldn\'t infer field definition for a field declared as any');
+                }
 
                 return this.castJsonLDValue(value, inferredFieldDefinition);
             }

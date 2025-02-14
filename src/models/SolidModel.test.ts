@@ -15,6 +15,7 @@ import IRI from '@/solid/utils/IRI';
 import PropertyOperation from '@/models/history/PropertyOperation';
 import RemovePropertyOperation from '@/models/history/RemovePropertyOperation';
 import SetPropertyOperation from '@/models/history/SetPropertyOperation';
+import UnsetPropertyOperation from '@/models/history/UnsetPropertyOperation';
 import { defineSolidModelSchema } from '@/models/schema';
 import type { SolidMagicAttributes, SolidModelConstructor } from '@/models/inference';
 
@@ -1874,14 +1875,14 @@ describe('SolidModel', () => {
         const person = await PersonWithHistory.create({ name: firstName });
 
         await after({ ms: 100 });
-        await person.update({ name: secondName, lastName: firstLastName });
+        await person.update({ name: secondName, lastName: firstLastName, age: 42 });
         await after({ ms: 100 });
-        await person.update({ lastName: secondLastName });
+        await person.update({ lastName: secondLastName, age: null });
 
         // Assert
-        const operations = person.operations as Tuple<PropertyOperation, 4>;
+        const operations = person.operations as Tuple<PropertyOperation, 6>;
 
-        expect(operations).toHaveLength(4);
+        expect(operations).toHaveLength(6);
 
         operations.forEach(operation => expect(operation.url.startsWith(person.url)).toBe(true));
         operations.forEach(operation => expect(operation.resourceUrl).toEqual(person.url));
@@ -1907,8 +1908,20 @@ describe('SolidModel', () => {
         });
 
         assertInstanceOf(operations[3], SetPropertyOperation, operation => {
+            expect(operation.property).toEqual(IRI('foaf:age'));
+            expect(operation.value).toEqual(42);
+            expect(operation.date.getTime()).toBeGreaterThan(person.createdAt.getTime());
+            expect(operation.date.getTime()).toBeLessThan(person.updatedAt.getTime());
+        });
+
+        assertInstanceOf(operations[4], SetPropertyOperation, operation => {
             expect(operation.property).toEqual(IRI('foaf:lastName'));
             expect(operation.value).toEqual(secondLastName);
+            expect(operation.date).toEqual(person.updatedAt);
+        });
+
+        assertInstanceOf(operations[5], UnsetPropertyOperation, operation => {
+            expect(operation.property).toEqual(IRI('foaf:age'));
             expect(operation.date).toEqual(person.updatedAt);
         });
     });
@@ -2105,6 +2118,7 @@ describe('SolidModel', () => {
             name: faker.random.word(),
             lastName: faker.random.word(),
             givenName: faker.random.word(),
+            nickName: faker.random.word(),
             friendUrls: [
                 faker.internet.url(),
                 faker.internet.url(),
@@ -2125,6 +2139,12 @@ describe('SolidModel', () => {
         });
 
         person.relatedOperations.attachSetOperation({
+            property: Person.getFieldRdfProperty('nickName'),
+            value: faker.random.word(),
+            date: createdAt,
+        });
+
+        person.relatedOperations.attachSetOperation({
             property: Person.getFieldRdfProperty('friendUrls'),
             value: initialFriends.map(url => new ModelKey(url)),
             date: createdAt,
@@ -2140,6 +2160,11 @@ describe('SolidModel', () => {
         person.relatedOperations.attachAddOperation({
             property: Person.getFieldRdfProperty('friendUrls'),
             value: new ModelKey(secondAddedFriend),
+            date: updatedAt,
+        });
+
+        person.relatedOperations.attachUnsetOperation({
+            property: Person.getFieldRdfProperty('nickName'),
             date: updatedAt,
         });
 
@@ -2174,6 +2199,7 @@ describe('SolidModel', () => {
         expect(person.isSoftDeleted()).toBe(true);
         expect(person.name).toEqual(name);
         expect(person.lastName).toEqual(lastName);
+        expect(person.nickName).toBeUndefined();
         expect(person.givenName).toBeUndefined();
         expect(person.friendUrls).toEqual(
             arrayWithout(
