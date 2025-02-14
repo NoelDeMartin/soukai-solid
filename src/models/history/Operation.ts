@@ -22,9 +22,9 @@ export default class Operation extends Model {
 
         const hashSuffix = resourceHash ?? uuid();
 
-        return this.resourceUrl.endsWith('/')
-            ? `${this.resourceUrl}#operation-${hashSuffix}`
-            : `${this.resourceUrl}-operation-${hashSuffix}`;
+        return this.resourceUrl.includes('#')
+            ? `${this.resourceUrl}-operation-${hashSuffix}`
+            : `${this.resourceUrl}#operation-${hashSuffix}`;
     }
 
 }

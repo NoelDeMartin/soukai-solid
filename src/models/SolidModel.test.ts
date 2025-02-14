@@ -1482,7 +1482,7 @@ describe('SolidModel', () => {
             'vcard:nickname': nickName,
             'knows': friendUrls.map(url => ({ '@id': url })),
             'metadata': {
-                '@id': person.url + '-metadata',
+                '@id': person.url + '#metadata',
                 '@type': 'crdt:Metadata',
                 'crdt:createdAt': {
                     '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
