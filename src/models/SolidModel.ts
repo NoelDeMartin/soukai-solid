@@ -495,7 +495,7 @@ export class SolidModel extends SolidModelBase {
 
         return Object
             .entries(resourcesTypes)
-            .filter(([_, types]) => !this.rdfsClasses.some(rdfsClass => !types.includes(rdfsClass)))
+            .filter(([_, types]) => types.some(type => this.rdfsClasses.includes(type)))
             .map(([resourceId]) => baseUrl ? urlResolve(baseUrl, resourceId) : resourceId);
     }
 
@@ -1347,7 +1347,7 @@ export class SolidModel extends SolidModelBase {
     }
 
     protected async createManyFromEngineDocuments(documents: Record<string, EngineDocument>): Promise<this[]> {
-        const rdfsClasses = [this.static('rdfsClasses'), ...this.static('rdfsClassesAliases')];
+        const rdfsClasses = arrayUnique([this.static('rdfsClasses'), ...this.static('rdfsClassesAliases')].flat());
         const models = await Promise.all(Object.entries(documents).map(async ([documentUrl, engineDocument]) => {
             const rdfDocument = await RDFDocument.fromJsonLD(engineDocument);
 
@@ -1357,7 +1357,7 @@ export class SolidModel extends SolidModelBase {
                     .filter(
                         (resource): resource is RDFResource & { url: string } =>
                             !!resource.url &&
-                            rdfsClasses.some(types => !types.some(type => !resource.isType(type))),
+                            rdfsClasses.some(type => resource.isType(type)),
                     )
                     .map(async resource => this.createFromEngineDocument(
                         documentUrl,

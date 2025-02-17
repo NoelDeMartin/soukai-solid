@@ -1,6 +1,6 @@
 /* eslint-disable max-len */
 import { after, arrayWithout, range, stringToSlug, tap, toString, tt, urlParentDirectory, urlResolve, urlResolveDirectory, urlRoute, uuid } from '@noeldemartin/utils';
-import { expandIRI as defaultExpandIRI } from '@noeldemartin/solid-utils';
+import { expandIRI as defaultExpandIRI, turtleToQuadsSync } from '@noeldemartin/solid-utils';
 import { fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@noeldemartin/testing';
 import { FieldType, InMemoryEngine, ModelKey, TimestampField, bootModels, setEngine } from 'soukai';
 import dayjs from 'dayjs';
@@ -440,6 +440,27 @@ describe('SolidModel', () => {
         const url = actions[0].url as string;
         expect(url.startsWith(`${movie.getDocumentUrl()}#`)).toBe(true);
         expect(actions[0].object).toEqual(movie.url);
+    });
+
+    it('finds resource ids with partial class matches', () => {
+        // Arrange
+        class StubModel extends SolidModel {
+
+            public static rdfsClasses = ['https://schema.org/Action', 'http://www.w3.org/2002/12/cal/ical#Vtodo'];
+
+        }
+        const documentUrl = fakeDocumentUrl();
+        const quads = turtleToQuadsSync('<#it> a <https://schema.org/Action> .', {
+            baseIRI: documentUrl,
+        });
+
+        bootModels({ StubModel });
+
+        // Act
+        const ids = StubModel.findMatchingResourceIds(quads);
+
+        // Assert
+        expect(ids).toEqual([`${documentUrl}#it`]);
     });
 
     it('sends JSON-LD with related model updates using parent engine', async () => {
