@@ -62,10 +62,13 @@ abstract class RDFResourceProperty {
             );
         }
 
+        const object = statement.object as Literal;
+
         return this.literal(
             resourceUrl,
             statement.predicate.value,
-            this.castLiteralValue(statement.object.value, (statement.object as Literal).datatype.value),
+            this.castLiteralValue(statement.object.value, object.datatype.value),
+            object.value,
         );
     }
 
@@ -73,8 +76,9 @@ abstract class RDFResourceProperty {
         resourceUrl: string | null,
         name: string,
         value: LiteralValue,
+        originalValue?: unknown,
     ): RDFResourceProperty {
-        return new RDFResourceLiteralProperty(resourceUrl, name, value);
+        return new RDFResourceLiteralProperty(resourceUrl, name, value, originalValue);
     }
 
     public static reference(
@@ -133,8 +137,11 @@ abstract class RDFResourceProperty {
         resourceUrl = resourceUrl ?? this.resourceUrl;
 
         switch (this.type) {
-            case RDFResourcePropertyType.Literal:
-                return RDFResourceProperty.literal(resourceUrl, this.name, this.value as LiteralValue);
+            case RDFResourcePropertyType.Literal: {
+                const property = this as unknown as RDFResourceLiteralProperty;
+
+                return RDFResourceProperty.literal(resourceUrl, property.name, property.value, property.originalValue);
+            }
             case RDFResourcePropertyType.Type:
                 return RDFResourceProperty.type(resourceUrl, this.value as string);
             case RDFResourcePropertyType.Reference:
@@ -181,13 +188,20 @@ abstract class RDFResourceProperty {
 class RDFResourceLiteralProperty extends RDFResourceProperty {
 
     declare public readonly value: LiteralValue;
+    declare public readonly originalValue?: unknown;
     public readonly type = RDFResourcePropertyType.Literal;
 
-    constructor(resourceUrl: string | null, name: string, value: LiteralValue) {
+    constructor(resourceUrl: string | null, name: string, value: LiteralValue, originalValue?: unknown) {
         super(resourceUrl, name, value);
+
+        this.originalValue = originalValue;
     }
 
     protected getTurtleObject(): string {
+        if (this.originalValue && this.value instanceof Date) {
+            return `"${this.originalValue}"^^<${IRI('xsd:dateTime')}>`;
+        }
+
         if (this.value instanceof Date) {
             const digits = (...numbers: number[]) => numbers.map(number => number.toString().padStart(2, '0'));
             const date = digits(

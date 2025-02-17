@@ -64,8 +64,10 @@ describe('SolidEngine', () => {
 
         expect(properties).toHaveLength(3);
         expect(properties).toContainEqual(RDFResourceProperty.type(personUrl, IRI('foaf:Person')));
-        expect(properties).toContainEqual(RDFResourceProperty.literal(personUrl, IRI('foaf:name'), name));
-        expect(properties).toContainEqual(RDFResourceProperty.literal(personUrl, IRI('foaf:birthdate'), date));
+        expect(properties).toContainEqual(RDFResourceProperty.literal(personUrl, IRI('foaf:name'), name, name));
+        expect(properties).toContainEqual(
+            RDFResourceProperty.literal(personUrl, IRI('foaf:birthdate'), date, '1997-07-21T23:42:00.000Z'),
+        );
     });
 
     it('creates one container', async () => {
@@ -95,7 +97,7 @@ describe('SolidEngine', () => {
 
         expect(properties).toHaveLength(2);
         expect(properties).toContainEqual(RDFResourceProperty.type(documentUrl, LDP_CONTAINER));
-        expect(properties).toContainEqual(RDFResourceProperty.literal(documentUrl, IRI('rdfs:label'), name));
+        expect(properties).toContainEqual(RDFResourceProperty.literal(documentUrl, IRI('rdfs:label'), name, name));
     });
 
     it('fails creating documents if the provided url is already in use', async () => {

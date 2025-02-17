@@ -490,6 +490,47 @@ describe('SolidClient', () => {
         `);
     });
 
+    it('updates documents using the same notation for deleted triples', async () => {
+        // Arrange
+        const documentUrl = faker.internet.url();
+        const url = `${documentUrl}#it`;
+        const data = `
+            @prefix purl: <http://purl.org/dc/terms/> .
+            @prefix xml: <http://www.w3.org/2001/XMLSchema#> .
+
+            <#it>
+                purl:created "2018-11-14T00:00:00Z"^^xml:dateTime ;
+                purl:modified "2018-11-14T00:00:00.000Z"^^xml:dateTime .
+        `;
+        const operations = [
+            new RemovePropertyOperation(url, 'http://purl.org/dc/terms/created'),
+            new RemovePropertyOperation(url, 'http://purl.org/dc/terms/modified'),
+        ];
+
+        StubFetcher.addFetchResponse(data);
+        StubFetcher.addFetchResponse();
+
+        // Act
+        await client.updateDocument(documentUrl, operations);
+
+        // Assert
+        expect(StubFetcher.fetch).toHaveBeenCalledWith(
+            documentUrl,
+            {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/sparql-update' },
+                body: expect.anything(),
+            },
+        );
+
+        expect(StubFetcher.fetchSpy.mock.calls[1]?.[1]?.body).toContain(
+            '"2018-11-14T00:00:00.000Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .',
+        );
+        expect(StubFetcher.fetchSpy.mock.calls[1]?.[1]?.body).toContain(
+            '"2018-11-14T00:00:00Z"^^<http://www.w3.org/2001/XMLSchema#dateTime> .',
+        );
+    });
+
     it('updates container documents', async () => {
         // Arrange
         const containerUrl = urlResolveDirectory(faker.internet.url(), stringToSlug(faker.random.word()));
