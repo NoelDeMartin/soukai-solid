@@ -85,6 +85,16 @@ export default class SolidContainer extends Model {
 
         await typeIndex.withEngine(this.requireEngine(), async () => {
             await typeIndex.loadRelationIfUnloaded('registrations');
+
+            const alreadyRegistered = typeIndex.registrations.some(registration => {
+                return typeRegistration.instanceContainer === registration.instanceContainer
+                    && !typeRegistration.forClass.some(type => !registration.forClass.includes(type));
+            });
+
+            if (alreadyRegistered) {
+                return;
+            }
+
             await typeIndex.relatedRegistrations.create(typeRegistration);
         });
     }
