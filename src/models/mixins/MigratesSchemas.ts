@@ -73,10 +73,19 @@ export default class MigratesSchemas {
         }), true);
 
         model.setRelationModels('operations', this.operations);
-        addedFields.forEach(field => (model._dirtyAttributes[field] = model.getAttributeValue(field)));
+        addedFields.forEach(field => {
+            if (!model.hasAttribute(field)) {
+                return;
+            }
+
+            model._dirtyAttributes[field] = model.getAttributeValue(field);
+        });
 
         await model.static().hooks?.beforeSave?.call(model);
-        await model.addDirtyHistoryOperations();
+
+        if (model.operations.length > 0) {
+            await model.addDirtyHistoryOperations();
+        }
 
         return model;
     }

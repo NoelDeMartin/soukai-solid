@@ -5,6 +5,11 @@ import { FakeResponse, FakeServer } from '@noeldemartin/utils';
 
 import { defineSolidModelSchema } from '@/models/schema';
 
+import SchemaTaskSchema from '@/testing/lib/stubs/SchemaTask.schema';
+import ICalTaskSchema, { ICAL_TASK_FIELDS } from '@/testing/lib/stubs/ICalTask.schema';
+
+class Task extends SchemaTaskSchema {}
+
 describe('Solid Schema Migrations', () => {
 
     let server: FakeServer;
@@ -13,47 +18,51 @@ describe('Solid Schema Migrations', () => {
         server = new FakeServer();
 
         setEngine(new SolidEngine(server.fetch));
+        bootModels({ Task });
     });
 
     it('migrates schemas', async () => {
-        // Arrange - define models
-        const SchemaTaskSchema = defineSolidModelSchema({
-            history: true,
-            rdfsClass: 'Action',
-            rdfContexts: {
-                default: 'https://schema.org/',
-                ical: 'http://www.w3.org/2002/12/cal/ical#',
-            },
-            fields: {
-                name: FieldType.String,
-                status: FieldType.Key,
-                completedAt: {
-                    type: FieldType.Date,
-                    rdfProperty: 'ical:completed',
-                },
-            },
-        });
-        const ICalTaskSchema = defineSolidModelSchema({
-            history: true,
-            rdfsClass: 'Vtodo',
-            rdfContext: 'http://www.w3.org/2002/12/cal/ical#',
-            fields: {
-                name: {
-                    type: FieldType.String,
-                    rdfProperty: 'summary',
-                },
-                completedAt: {
-                    type: FieldType.Date,
-                    rdfProperty: 'completed',
-                },
-            },
+        // Arrange
+        const documentUrl = fakeDocumentUrl();
+
+        server.respondOnce(documentUrl, FakeResponse.notFound());
+        server.respondOnce(documentUrl, FakeResponse.success());
+
+        const task = await Task.create({
+            url: `${documentUrl}#it`,
+            name: 'Migrate schemas',
         });
 
-        class Task extends SchemaTaskSchema {}
+        server.respondOnce(documentUrl, FakeResponse.success(await task.toTurtle()));
+        server.respondOnce(documentUrl, FakeResponse.success());
 
-        bootModels({ Task });
+        // Act
+        await task.migrateSchema(ICalTaskSchema);
 
-        // Arrange - Create instance
+        // Assert
+        expect(server.getRequests()).toHaveLength(4);
+
+        expect(server.getRequests()[3]?.body).toEqualSparql(`
+            DELETE DATA {
+                @prefix schema: <https://schema.org/>.
+
+                <#it>
+                    a schema:Action ;
+                    schema:name "Migrate schemas" .
+            } ;
+
+            INSERT DATA {
+                @prefix ical: <http://www.w3.org/2002/12/cal/ical#>.
+
+                <#it>
+                    a ical:Vtodo ;
+                    ical:summary "Migrate schemas" .
+            } .
+        `);
+    });
+
+    it('migrates schemas with history', async () => {
+        // Arrange
         const documentUrl = fakeDocumentUrl();
 
         server.respondOnce(documentUrl, FakeResponse.notFound());
@@ -70,7 +79,6 @@ describe('Solid Schema Migrations', () => {
 
         await task.update({ name: 'Updated name' });
 
-        // Arrange - Set up responses
         server.respondOnce(documentUrl, FakeResponse.success(await task.toTurtle({ history: true })));
         server.respondOnce(documentUrl, FakeResponse.success());
 
@@ -118,55 +126,7 @@ describe('Solid Schema Migrations', () => {
     });
 
     it('changes urls when migrating schemas', async () => {
-        // Arrange - define models
-        const SchemaTaskSchema = defineSolidModelSchema({
-            history: true,
-            defaultResourceHash: '',
-            rdfsClass: 'Action',
-            rdfContexts: {
-                default: 'https://schema.org/',
-                ical: 'http://www.w3.org/2002/12/cal/ical#',
-            },
-            fields: {
-                name: FieldType.String,
-                status: FieldType.Key,
-                completedAt: {
-                    type: FieldType.Date,
-                    rdfProperty: 'ical:completed',
-                },
-            },
-        });
-        const ICalTaskSchema = defineSolidModelSchema({
-            history: true,
-            rdfsClass: 'Vtodo',
-            rdfContext: 'http://www.w3.org/2002/12/cal/ical#',
-            fields: {
-                name: {
-                    type: FieldType.String,
-                    rdfProperty: 'summary',
-                },
-                description: {
-                    type: FieldType.String,
-                    alias: 'name',
-                },
-                completedAt: {
-                    type: FieldType.Date,
-                    rdfProperty: 'completed',
-                },
-                priority: FieldType.Number,
-            },
-            hooks: {
-                beforeSave() {
-                    this.setAttribute('priority', 1);
-                },
-            },
-        });
-
-        class Task extends SchemaTaskSchema {}
-
-        bootModels({ Task });
-
-        // Arrange - Create instance
+        // Arrange
         const url = fakeDocumentUrl();
 
         server.respondOnce(url, FakeResponse.notFound());
@@ -183,12 +143,24 @@ describe('Solid Schema Migrations', () => {
 
         await task.update({ name: 'Updated name' });
 
-        // Arrange - Set up responses
         server.respondOnce(url, FakeResponse.success(await task.toTurtle({ history: true })));
         server.respondOnce(url, FakeResponse.success());
 
         // Act
-        await task.migrateSchema(ICalTaskSchema);
+        await task.migrateSchema(defineSolidModelSchema(ICalTaskSchema, {
+            fields: {
+                ...ICAL_TASK_FIELDS,
+                description: {
+                    type: FieldType.String,
+                    alias: 'name',
+                },
+            },
+            hooks: {
+                beforeSave() {
+                    this.setAttribute('priority', 1);
+                },
+            },
+        }));
 
         // Assert
         expect(server.getRequests()).toHaveLength(6);
