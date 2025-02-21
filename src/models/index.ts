@@ -35,6 +35,7 @@ export type { default as DeletesModels } from './mixins/DeletesModels';
 export type { default as ManagesPermissions } from './mixins/ManagesPermissions';
 export type { default as MigratesSchemas } from './mixins/MigratesSchemas';
 export type { default as SerializesToJsonLD } from './mixins/SerializesToJsonLD';
+export type { default as TracksHistory } from './mixins/TracksHistory';
 export type { PermissionsTracker } from './mixins/ManagesPermissions';
 export type { SerializeOptions } from './mixins/SerializesToJsonLD';
 
@@ -42,6 +43,7 @@ export type { This as DeletesModelsThis } from './mixins/DeletesModels';
 export type { This as ManagesPermissionsThis } from './mixins/ManagesPermissions';
 export type { This as MigratesSchemasThis } from './mixins/MigratesSchemas';
 export type { This as SerializesToJsonLDThis } from './mixins/SerializesToJsonLD';
+export type { This as TracksHistoryThis } from './mixins/TracksHistory';
 
 export type {
     RDFContexts,

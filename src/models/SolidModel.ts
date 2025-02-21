@@ -1,21 +1,14 @@
 import {
     Semaphore,
-    arrayDiff,
-    arrayFilter,
     arrayFrom,
     arrayReplace,
-    arraySorted,
     arrayUnique,
-    arrayWithout,
     assert,
     fail,
     invert,
     isInstanceOf,
-    isPromise,
     map,
-    md5,
     mixed,
-    objectWithout,
     objectWithoutEmpty,
     requireUrlParentDirectory,
     shortId,
@@ -40,7 +33,6 @@ import {
     ModelKey,
     SoukaiError,
     TimestampField,
-    isArrayFieldDefinition,
     requireBootedModel,
 } from 'soukai';
 import {
@@ -81,7 +73,6 @@ import {
     hasBeforeParentCreateHook,
     isSolidDocumentRelation,
     isSolidHasRelation,
-    synchronizesRelatedModels,
 } from './relations/guards';
 import {
     isSolidMultiModelDocumentRelation,
@@ -97,7 +88,7 @@ import type {
 import DeletesModels from './mixins/DeletesModels';
 import DocumentContainsManyRelation from '@/models/relations/DocumentContainsManyRelation';
 import ManagesPermissions from './mixins/ManagesPermissions';
-import MigratesSchemas from '@/models/mixins/MigratesSchemas';
+import MigratesSchemas from './mixins/MigratesSchemas';
 import OperationsRelation from './relations/OperationsRelation';
 import SerializesToJsonLD from './mixins/SerializesToJsonLD';
 import SolidACLAuthorizationsRelation from './relations/SolidACLAuthorizationsRelation';
@@ -107,9 +98,9 @@ import SolidHasManyRelation from './relations/SolidHasManyRelation';
 import SolidHasOneRelation from './relations/SolidHasOneRelation';
 import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
 import TombstoneRelation from '@/models/relations/TombstoneRelation';
+import TracksHistory, { synchronizeModels } from './mixins/TracksHistory';
 import { getSchemaUpdateContext, startSchemaUpdate, stopSchemaUpdate } from './internals/helpers';
 import { inferFieldDefinition, isSolidArrayFieldDefinition } from './fields';
-import { operationClass } from './history/operations';
 import type Metadata from './history/Metadata';
 import type Operation from './history/Operation';
 import type SolidACLAuthorization from './SolidACLAuthorization';
@@ -120,7 +111,13 @@ import type { SolidDocumentRelationInstance } from './relations/mixins/SolidDocu
 import type { SolidModelConstructor } from './inference';
 import type { SolidRelation } from './relations/inference';
 
-export const SolidModelBase = mixed(Model, [DeletesModels, SerializesToJsonLD, ManagesPermissions, MigratesSchemas]);
+export const SolidModelBase = mixed(Model, [
+    DeletesModels,
+    ManagesPermissions,
+    MigratesSchemas,
+    SerializesToJsonLD,
+    TracksHistory,
+]);
 
 export interface SolidModelSerializationOptions {
     ids?: boolean;
@@ -449,35 +446,7 @@ export class SolidModel extends SolidModelBase {
             return a.static().synchronize(a, b);
         }
 
-        if (a.getPrimaryKey() !== b.getPrimaryKey()) {
-            throw new SoukaiError('Can\'t synchronize different models');
-        }
-
-        await a.loadRelationIfUnloaded('operations');
-        await b.loadRelationIfUnloaded('operations');
-
-        if (a.operations.length === 0 && b.operations.length === 0) {
-            return;
-        }
-
-        if (a.getHistoryHash() === b.getHistoryHash()) {
-            return;
-        }
-
-        a.addHistoryOperations(b.operations);
-        b.addHistoryOperations(a.operations);
-
-        for (const relation of arrayWithout(this.relations, this.reservedRelations)) {
-            const relationA = a.requireRelation(relation);
-            const relationB = b.requireRelation(relation);
-
-            if (!relationA.enabled || !relationB.enabled) {
-                continue;
-            }
-
-            await when(relationA, synchronizesRelatedModels).__synchronizeRelated(relationB);
-            await when(relationB, synchronizesRelatedModels).__synchronizeRelated(relationA);
-        }
+        await synchronizeModels(a, b);
     }
 
     public static findMatchingResourceIds(quads: Quad[], baseUrl?: string): string[] {
@@ -717,8 +686,6 @@ export class SolidModel extends SolidModelBase {
 
     private _sourceSubject: SubjectParts = {};
     private _lock = new Semaphore();
-    declare private _history?: boolean;
-    declare private _tombstone?: boolean;
 
     protected initialize(attributes: Attributes, exists: boolean): void {
         this._documentExists = exists;
@@ -925,26 +892,6 @@ export class SolidModel extends SolidModelBase {
         return !!this.metadata?.deletedAt;
     }
 
-    public enableHistory(): void {
-        this._history = true;
-    }
-
-    public disableHistory(): void {
-        this._history = false;
-    }
-
-    public disableTombstone(): void {
-        this._tombstone = false;
-    }
-
-    public enableTombstone(): void {
-        this._tombstone = true;
-    }
-
-    public leavesTombstone(): boolean {
-        return this._tombstone ?? this.static('tombstone');
-    }
-
     public cleanDirty(ignoreRelations?: boolean): void {
         super.cleanDirty();
 
@@ -999,81 +946,9 @@ export class SolidModel extends SolidModelBase {
         }
     }
 
-    public tracksHistory(): boolean {
-        return this.static().historyDisabled.has(this)
-            ? false
-            : this._history ?? this.static('history');
-    }
-
-    public withoutTrackingHistory<T>(operation: () => T): T;
-    public withoutTrackingHistory<T>(operation: () => Promise<T>): Promise<T>;
-    public withoutTrackingHistory<T>(operation: () => T | Promise<T>): T | Promise<T> {
-        if (!this.tracksHistory())
-            return operation();
-
-        const restoreHistoryTracking = (): true => {
-            this.static().historyDisabled.delete(this);
-
-            return true;
-        };
-
-        this.static().historyDisabled.set(this);
-
-        const result = operation();
-
-        return isPromise(result)
-            ? result.then(result => restoreHistoryTracking() && result)
-            : restoreHistoryTracking() && result;
-    }
-
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     public ignoreRdfPropertyHistory(rdfProperty: string, withSolidEngine?: boolean): boolean {
         return false;
-    }
-
-    public getHistoryHash(): string | null {
-        const relatedOperations = this.getRelatedModels().map(model => model.operations ?? []).flat();
-
-        return relatedOperations.length === 0
-            ? null
-            : md5(arraySorted(relatedOperations, 'url').reduce((digest, operation) => digest + operation.url, ''));
-    }
-
-    public rebuildAttributesFromHistory(): void {
-        if (!this.hasRelation('operations') || !this.isRelationLoaded('operations')) {
-            throw new SoukaiError('Can\'t rebuild attributes from history if \'operations\'  relation isn\'t loaded');
-        }
-
-        if (this.operations.length === 0) {
-            return;
-        }
-
-        const PropertyOperation = operationClass('PropertyOperation');
-        const operations = arraySorted(this.operations, 'date');
-        const unfilledAttributes = new Set(Object.keys(this._attributes));
-        const arrayFields = Object
-            .entries(this.static('fields'))
-            .filter(([_, definition]) => definition.type === FieldType.Array)
-            .map(([field]) => field);
-
-        unfilledAttributes.delete(this.static('primaryKey'));
-        unfilledAttributes.delete(TimestampField.CreatedAt);
-        unfilledAttributes.delete(TimestampField.UpdatedAt);
-
-        arrayFields.forEach(field => this.setAttribute(field, []));
-        operations.forEach(operation => {
-            if (operation instanceof PropertyOperation) {
-                const field = this.static().getRdfPropertyField(operation.property);
-
-                field && unfilledAttributes.delete(field);
-            }
-
-            operation.apply(this);
-        });
-        unfilledAttributes.forEach(attribute => this.unsetAttribute(attribute));
-
-        this.setAttribute('createdAt', operations[0]?.date);
-        this.setAttribute('updatedAt', operations[operations.length - 1]?.date);
     }
 
     public getDocumentUrl(): string | null {
@@ -1601,162 +1476,6 @@ export class SolidModel extends SolidModelBase {
         await this.deleteModels(models);
     }
 
-    protected async addDirtyHistoryOperations(): Promise<void> {
-        await this.loadRelationIfUnloaded('operations');
-
-        if ('url' in this._dirtyAttributes) {
-            throw new SoukaiError(
-                'It wasn\'t possible to generate the changes history for a model because ' +
-                `its primary key was modified from '${this.url}' to '${this._originalAttributes.url}'.`,
-            );
-        }
-
-        if (this.operations.length === 0) {
-            const originalAttributes = objectWithoutEmpty(
-                objectWithout(this._originalAttributes, [this.static('primaryKey')]),
-            );
-
-            for (const [field, value] of Object.entries(originalAttributes)) {
-                if (value === null || Array.isArray(value) && value.length === 0) {
-                    continue;
-                }
-
-                if (field in this._trackedDirtyAttributes && this._trackedDirtyAttributes[field] === value) {
-                    continue;
-                }
-
-                const rdfProperty = this.static().getFieldRdfProperty(field);
-
-                if (rdfProperty && this.ignoreRdfPropertyHistory(rdfProperty)) {
-                    continue;
-                }
-
-                this.relatedOperations.attachSetOperation({
-                    property: this.static().requireFieldRdfProperty(field),
-                    date: this.metadata.createdAt,
-                    value: this.getOperationValue(field, value),
-                });
-            }
-        }
-
-        for (const [field, value] of Object.entries(this._dirtyAttributes)) {
-            if (field in this._trackedDirtyAttributes && this._trackedDirtyAttributes[field] === value) {
-                continue;
-            }
-
-            const rdfProperty = this.static().getFieldRdfProperty(field);
-
-            if (rdfProperty && this.ignoreRdfPropertyHistory(rdfProperty)) {
-                continue;
-            }
-
-            if (Array.isArray(value)) {
-                this.addArrayHistoryOperations(field, value, this._originalAttributes[field]);
-
-                continue;
-            }
-
-            if (value === null || value === undefined) {
-                this.relatedOperations.attachUnsetOperation({
-                    property: this.static().requireFieldRdfProperty(field),
-                    date: this.metadata.updatedAt,
-                });
-
-                continue;
-            }
-
-            this.relatedOperations.attachSetOperation({
-                property: this.static().requireFieldRdfProperty(field),
-                date: this.metadata.updatedAt,
-                value: this.getOperationValue(field, value),
-            });
-        }
-
-        if (this.metadata.isDirty('deletedAt') && !!this.metadata.deletedAt) {
-            this.relatedOperations.attachDeleteOperation({ date: this.metadata.deletedAt });
-        }
-    }
-
-    protected addHistoryOperations(operations: Operation[]): void {
-        const PropertyOperation = operationClass('PropertyOperation');
-        const knownOperationUrls = new Set(this.operations.map(operation => operation.url));
-        const newOperations: Operation[] = [];
-        const trackedDirtyProperties: Set<string> = new Set();
-        const fieldPropertiesMap = Object
-            .keys(this.static('fields'))
-            .reduce((fieldProperties, field) => {
-                const rdfProperty = this.static().getFieldRdfProperty(field);
-
-                if (rdfProperty) {
-                    fieldProperties[rdfProperty] = field;
-                }
-
-                return fieldProperties;
-            }, {} as Record<string, string>);
-
-        for (const operation of operations) {
-            if (knownOperationUrls.has(operation.url)) {
-                continue;
-            }
-
-            if (operation instanceof PropertyOperation && this.ignoreRdfPropertyHistory(operation.property)) {
-                continue;
-            }
-
-            const newOperation = operation.clone();
-
-            newOperation.reset();
-            newOperation.url = operation.url;
-
-            newOperations.push(newOperation);
-
-            if ((operation instanceof PropertyOperation) && operation.property in fieldPropertiesMap) {
-                trackedDirtyProperties.add(operation.property);
-            }
-        }
-
-        if (!newOperations.some(operation => !operation.isInception(this))) {
-            return;
-        }
-
-        this.setRelationModels('operations', arraySorted([...this.operations, ...newOperations], ['date', 'url']));
-        this.removeDuplicatedHistoryOperations();
-        this.rebuildAttributesFromHistory();
-
-        for (const trackedDirtyProperty of trackedDirtyProperties) {
-            const field = fieldPropertiesMap[trackedDirtyProperty] as string;
-
-            this._trackedDirtyAttributes[field] = this._dirtyAttributes[field];
-        }
-    }
-
-    protected removeDuplicatedHistoryOperations(): void {
-        const PropertyOperation = operationClass('PropertyOperation');
-        const inceptionProperties: string[] = [];
-        const duplicatedOperationUrls: string[] = [];
-        const inceptionOperations = this.operations.filter(operation => operation.isInception(this));
-        const isNotDuplicated = (operation: Operation): boolean => !duplicatedOperationUrls.includes(operation.url);
-
-        for (const inceptionOperation of inceptionOperations) {
-            if (!(inceptionOperation instanceof PropertyOperation)) {
-                continue;
-            }
-
-            if (!inceptionProperties.includes(inceptionOperation.property)) {
-                inceptionProperties.push(inceptionOperation.property);
-
-                continue;
-            }
-
-            duplicatedOperationUrls.push(inceptionOperation.url);
-
-            if (inceptionOperation.exists())
-                this._removedResourceUrls.push(inceptionOperation.url);
-        }
-
-        this.setRelationModels('operations', this.operations.filter(isNotDuplicated));
-    }
-
     /* eslint-disable max-len */
     protected hasOne<T extends typeof SolidModel>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): SolidHasOneRelation;
     protected hasOne<T extends typeof Model>(relatedClass: T, foreignKeyField?: string, localKeyField?: string): Relation;
@@ -1984,90 +1703,6 @@ export class SolidModel extends SolidModelBase {
                     .forEach(model => relation.setForeignAttributes(model));
             }
         }
-    }
-
-    private getOperationValue(field: string, value: unknown): unknown {
-        const definition = this.static().getFieldDefinition(field, value);
-
-        if (isArrayFieldDefinition(definition)) {
-            return arrayFilter(
-                arrayFrom(value, true).map(itemValue => this.getOperationValue(`${field}.*`, itemValue)),
-            );
-        }
-
-        if (value && definition.type === FieldType.Key) {
-            return new ModelKey(value);
-        }
-
-        return value;
-    }
-
-    private addArrayHistoryOperations(field: string, dirtyValue: unknown, originalValue: unknown): void {
-        const originalValues = arrayFrom(this.getOperationValue(field, originalValue), true);
-        const dirtyValues = arrayFrom(this.getOperationValue(field, dirtyValue), true);
-        const { added, removed } = arrayDiff(
-            originalValues,
-            dirtyValues,
-            (a, b) => {
-                if (a instanceof ModelKey && b instanceof ModelKey) {
-                    return a.equals(b);
-                }
-
-                return a === b;
-            },
-        );
-
-        if (added.length > 0) {
-            this.relatedOperations.attachAddOperation({
-                property: this.static().getFieldRdfProperty(field),
-                date: this.metadata.updatedAt,
-                value: arrayFilter(added),
-            });
-        }
-
-        if (removed.length > 0) {
-            this.relatedOperations.attachRemoveOperation({
-                property: this.static().getFieldRdfProperty(field),
-                date: this.metadata.updatedAt,
-                value: arrayFilter(removed),
-            });
-        }
-    }
-
-    private reconcileModelTimestamps(wasTouchedBeforeSaving: boolean): void {
-        const [firstOperation, ...otherOperations] = this.operations ?? [];
-
-        if (firstOperation) {
-            this.setAttribute(
-                TimestampField.UpdatedAt,
-                otherOperations.reduce(
-                    (updatedAt, operation) => updatedAt > operation.date ? updatedAt : operation.date,
-                    firstOperation.date,
-                ),
-            );
-
-            return;
-        }
-
-        if (wasTouchedBeforeSaving)
-            return;
-
-        const originalUpdatedAt =
-            this._originalAttributes[TimestampField.UpdatedAt]
-            ?? this.metadata?._originalAttributes[TimestampField.UpdatedAt];
-
-        if (!originalUpdatedAt)
-            return;
-
-        const dirtyAttributes = Object.keys(this._dirtyAttributes);
-
-        if (dirtyAttributes[1])
-            return;
-
-        if (dirtyAttributes[0] && dirtyAttributes[0] !== TimestampField.UpdatedAt)
-            return;
-
-        this.setAttribute(TimestampField.UpdatedAt, originalUpdatedAt);
     }
 
 }
