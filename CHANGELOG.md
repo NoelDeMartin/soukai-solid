@@ -10,6 +10,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 - You can now specify `slugField` in model definitions to configure which field will be used to create slugs when [minting urls](./README.md#url-minting).
 - Added the ability to update model schemas with `updateSchema`.
+- Added the ability to migrate model schemas with `migrateSchema`.
 
 ### Changed
 

@@ -23,10 +23,11 @@ import IRI from '@/solid/utils/IRI';
 import RDFDocument from '@/solid/RDFDocument';
 import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
+import ShieldPropertyOperation from '@/solid/operations/ShieldPropertyOperation';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
 import { decantUpdateOperations, decantUpdateOperationsData } from '@/solid/operations/utils';
 import { LDP_CONTAINER, LDP_CONTAINS } from '@/solid/constants';
-import { OperationType } from '@/solid/operations/Operation';
+import { OperationTypes } from '@/solid/operations/Operation';
 import type { LiteralValue } from '@/solid/RDFResourceProperty';
 import type { UpdateOperation } from '@/solid/operations/Operation';
 
@@ -436,13 +437,21 @@ export default class SolidClient {
         const inserts = updatedProperties.flat().map(property => property.toTurtle(document.url) + ' .');
         const deletes = document.properties.filter(
             property => removedProperties.some(
-                ([resourceUrl, name, value]) =>
+                ([resourceUrl, nameOrShields, value]) =>
                     resourceUrl === property.resourceUrl &&
-                    (!name || name === property.name) &&
+                    (
+                        !nameOrShields ||
+                        (typeof nameOrShields === 'string' && nameOrShields === property.name) ||
+                        (Array.isArray(nameOrShields) && !nameOrShields.includes(property.name))
+                    ) &&
                     (!value || value === property.value),
             ),
         )
             .map(property => property.toTurtle(document.url) + ' .');
+
+        if (inserts.length === 0 && deletes.length === 0) {
+            return;
+        }
 
         const response = await this.fetch(document.url as string, {
             method: 'PATCH',
@@ -468,10 +477,14 @@ export default class SolidClient {
         const documentProperties = document.properties
             .filter(
                 property =>
-                    !removedProperties.some(([resourceUrl, name, value]) =>
+                    !removedProperties.some(([resourceUrl, nameOrShields, value]) =>
                         resourceUrl === property.resourceUrl &&
-                            (!name || name === property.name) &&
-                            (!value || value === property.value)),
+                        (
+                            !nameOrShields ||
+                            (typeof nameOrShields === 'string' && nameOrShields === property.name) ||
+                            (Array.isArray(nameOrShields) && !nameOrShields.includes(property.name))
+                        ) &&
+                        (!value || value === property.value)),
             )
             .concat(updatedProperties.flat());
 
@@ -505,15 +518,15 @@ export default class SolidClient {
     private processChangeUrlOperations(document: RDFDocument, operations: UpdateOperation[]): void {
         const decantedOperations = decantUpdateOperations(operations);
 
-        for (const changeUrlOperation of decantedOperations[OperationType.ChangeUrl]) {
+        for (const changeUrlOperation of decantedOperations[OperationTypes.ChangeUrl]) {
             const resource = document.resource(changeUrlOperation.resourceUrl);
 
             if (!resource) continue;
 
-            const updatePropertyOperations = decantedOperations[OperationType.UpdateProperty]
+            const updatePropertyOperations = decantedOperations[OperationTypes.UpdateProperty]
                 .filter(operation => operation.propertyResourceUrl === changeUrlOperation.resourceUrl);
 
-            const removePropertyOperations = decantedOperations[OperationType.RemoveProperty]
+            const removePropertyOperations = decantedOperations[OperationTypes.RemoveProperty]
                 .filter(operation => operation.resourceUrl === changeUrlOperation.resourceUrl);
 
             updatePropertyOperations.forEach(operation => {
@@ -554,7 +567,7 @@ export default class SolidClient {
         for (let index = 0; index < operations.length; index++) {
             const operation = operations[index] as UpdateOperation;
 
-            if (operation.type !== OperationType.UpdateProperty) {
+            if (operation.type !== OperationTypes.UpdateProperty) {
                 continue;
             }
 
@@ -564,16 +577,19 @@ export default class SolidClient {
 
             if (!Array.isArray(operation.propertyOrProperties)) {
                 const property = operation.propertyOrProperties;
+                const resourceUrl = property.resourceUrl;
                 const [currentProperty, ...otherProperties] =
-                    document.resource(property.resourceUrl ?? '')?.propertiesIndex[property.name] ?? [];
+                    document.resource(resourceUrl ?? '')?.propertiesIndex[property.name] ?? [];
 
                 if (
+                    resourceUrl &&
                     currentProperty &&
                     otherProperties.length === 0 &&
                     property.type === currentProperty.type &&
                     property.valueEquals(currentProperty)
                 ) {
                     idempotentOperations.push(operation);
+                    operations.push(new ShieldPropertyOperation(resourceUrl, property.name));
                 }
 
                 continue;
@@ -631,7 +647,7 @@ export default class SolidClient {
         // Properties that are going to be updated have to be deleted or they'll end up duplicated.
         const updateOperations = operations.filter(
             operation =>
-                operation.type === OperationType.UpdateProperty &&
+                operation.type === OperationTypes.UpdateProperty &&
                 operation.propertyType !== RDFResourcePropertyType.Type &&
                 document.hasProperty(operation.propertyResourceUrl as string, operation.propertyName),
         ) as UpdatePropertyOperation[];

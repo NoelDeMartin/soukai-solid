@@ -14,7 +14,7 @@ import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourc
 import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
 import SolidClient from '@/solid/SolidClient';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
-import { LDP_CONTAINER } from '@/solid/constants';
+import { LDP_CONTAINER, RDF_TYPE } from '@/solid/constants';
 import type RDFDocument from '@/solid/RDFDocument';
 
 import StubFetcher from '@/testing/lib/stubs/StubFetcher';
@@ -859,7 +859,7 @@ describe('SolidClient', () => {
         StubFetcher.addFetchNotFoundResponse();
 
         // Act & Assert
-        await expect(client.updateDocument(url, [new RemovePropertyOperation(url, 'foobar')]))
+        await expect(client.updateDocument(url, [new RemovePropertyOperation(url, RDF_TYPE)]))
             .rejects
             .toThrowError(`Error updating document at ${url} (returned 404 status code)`);
     });

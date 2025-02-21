@@ -1,6 +1,6 @@
-import { defineModelSchema } from 'soukai';
 import type { Constructor } from '@noeldemartin/utils';
 
+import { defineSolidModelSchemaDecoupled } from './internals/helpers';
 import { SolidModel } from './SolidModel';
 import type { SolidMagicAttributes, SolidModelConstructor } from './inference';
 import type { SolidSchemaDefinition } from './fields';
@@ -14,13 +14,5 @@ export function defineSolidModelSchema<BaseModel extends SolidModel, Schema exte
     baseModelOrDefinition: SolidModelConstructor<BaseModel> | Schema,
     definition?: Schema,
 ): Constructor<SolidMagicAttributes<Schema>> & SolidModelConstructor<BaseModel> {
-    const baseModel = definition ? baseModelOrDefinition as SolidModelConstructor : SolidModel;
-    const schema = defineModelSchema(
-        baseModel,
-        definition ?? baseModelOrDefinition as Schema,
-    ) as unknown as Constructor<SolidMagicAttributes<Schema>> & SolidModelConstructor<BaseModel>;
-
-    schema.__isSchema = true;
-
-    return schema;
+    return defineSolidModelSchemaDecoupled(baseModelOrDefinition, SolidModel, definition);
 }

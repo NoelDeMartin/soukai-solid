@@ -257,12 +257,17 @@ export class SolidEngine implements Engine {
         const graphUpdates = '$apply' in updates['@graph'] ? updates['@graph'].$apply : [updates['@graph']];
 
         for (const graphUpdate of graphUpdates) {
-            if (graphUpdate.$updateItems)
-                operations.push(
-                    ...arrayFrom(graphUpdate.$updateItems)
-                        .map(update => this.extractJsonLDGraphItemsUpdate(update))
-                        .flat(),
+            if (graphUpdate.$updateItems) {
+                const updatesOperations = await Promise.all(
+                    arrayFrom(graphUpdate.$updateItems).map(async update => {
+                        const operations = await this.extractJsonLDGraphItemsUpdate(update);
+
+                        return operations;
+                    }),
                 );
+
+                operations.push(...updatesOperations.flat());
+            }
 
             if (graphUpdate.$push) {
                 const updateOperations = await this.extractJsonLDGraphItemPush(graphUpdate.$push);
@@ -274,9 +279,9 @@ export class SolidEngine implements Engine {
         return operations;
     }
 
-    private extractJsonLDGraphItemsUpdate(
-        { $where, $update, $unset }: EngineUpdateItemsOperatorData,
-    ): UpdateOperation[] {
+    private async extractJsonLDGraphItemsUpdate(
+        { $where, $update, $override, $unset }: EngineUpdateItemsOperatorData,
+    ): Promise<UpdateOperation[]> {
         // TODO use RDF libraries instead of implementing this conversion
         if (!$where || !('@id' in $where))
             throw new SoukaiError(
@@ -293,20 +298,40 @@ export class SolidEngine implements Engine {
             return ids.map(url => new RemovePropertyOperation(url));
         }
 
+        if ($override) {
+            const filters = $where['@id'] as EngineRootFilter;
+            const ids = typeof filters === 'string'
+                ? [filters]
+                : filters.$in as string[];
+            const updatesOperations = await Promise.all(ids.map(async (url) => {
+                const operations: UpdateOperation[] = [new RemovePropertyOperation(url)];
+                const properties = await this.getJsonLDGraphProperties($override);
+
+                for (const property of properties) {
+                    operations.push(new UpdatePropertyOperation(property));
+                }
+
+                return operations;
+            }));
+
+            return updatesOperations.flat();
+        }
+
         const resourceUrl = $where['@id'] as string;
         const updates = $update;
         const operations: UpdateOperation[] = [];
 
         for (const [attribute, value] of Object.entries(updates as Record<string, EngineAttributeLeafValue>)) {
-            if (value === null)
+            if (value === null) {
                 throw new SoukaiError('SolidEngine doesn\'t support setting properties to null, delete');
+            }
 
             if (typeof value === 'object' && '$unset' in value) {
                 operations.push(new RemovePropertyOperation(resourceUrl, attribute));
                 continue;
             }
 
-            if (attribute === '@id') {
+            if (attribute === '@id' && resourceUrl !== value) {
                 operations.push(new ChangeUrlOperation(resourceUrl, value as string));
                 continue;
             }

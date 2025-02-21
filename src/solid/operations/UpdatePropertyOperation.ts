@@ -1,12 +1,12 @@
 import type { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 import type RDFResourceProperty from '@/solid/RDFResourceProperty';
 
-import { OperationType } from './Operation';
+import { OperationTypes } from './Operation';
 import type Operation from './Operation';
 
 export default class UpdatePropertyOperation implements Operation {
 
-    public type: OperationType.UpdateProperty = OperationType.UpdateProperty;
+    public type: typeof OperationTypes.UpdateProperty = OperationTypes.UpdateProperty;
     public propertyOrProperties: RDFResourceProperty | ([RDFResourceProperty] & RDFResourceProperty[]);
 
     constructor(propertyOrProperties: RDFResourceProperty | RDFResourceProperty[]) {

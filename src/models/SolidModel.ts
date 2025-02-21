@@ -87,9 +87,17 @@ import {
     isSolidMultiModelDocumentRelation,
     isSolidSingleModelDocumentRelation,
 } from './relations/cardinality-guards';
+import type {
+    RDFContexts,
+    SolidBootedFieldDefinition,
+    SolidBootedFieldsDefinition,
+    SolidFieldsDefinition,
+    SolidSchemaDefinition,
+} from './fields';
 import DeletesModels from './mixins/DeletesModels';
 import DocumentContainsManyRelation from '@/models/relations/DocumentContainsManyRelation';
 import ManagesPermissions from './mixins/ManagesPermissions';
+import MigratesSchemas from '@/models/mixins/MigratesSchemas';
 import OperationsRelation from './relations/OperationsRelation';
 import SerializesToJsonLD from './mixins/SerializesToJsonLD';
 import SolidACLAuthorizationsRelation from './relations/SolidACLAuthorizationsRelation';
@@ -108,18 +116,11 @@ import type SolidACLAuthorization from './SolidACLAuthorization';
 import type SolidDocument from './SolidDocument';
 import type SolidContainer from './SolidContainer';
 import type Tombstone from './history/Tombstone';
-import type {
-    RDFContexts,
-    SolidBootedFieldDefinition,
-    SolidBootedFieldsDefinition,
-    SolidFieldsDefinition,
-    SolidSchemaDefinition,
-} from './fields';
 import type { SolidDocumentRelationInstance } from './relations/mixins/SolidDocumentRelation';
 import type { SolidModelConstructor } from './inference';
 import type { SolidRelation } from './relations/inference';
 
-export const SolidModelBase = mixed(Model, [DeletesModels, SerializesToJsonLD, ManagesPermissions]);
+export const SolidModelBase = mixed(Model, [DeletesModels, SerializesToJsonLD, ManagesPermissions, MigratesSchemas]);
 
 export interface SolidModelSerializationOptions {
     ids?: boolean;
