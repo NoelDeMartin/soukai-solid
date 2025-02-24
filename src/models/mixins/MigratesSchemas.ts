@@ -54,7 +54,7 @@ export default class MigratesSchemas {
             ...await this.getOperationSchemaUpdates(model, removedFields, dirtyUrl),
             ...this.getMetadataSchemaUpdates(dirtyUrl),
             ...this.getUrlSchemaUpdates(dirtyUrl),
-            this.getResourceSchemaUpdate(model),
+            this.getResourceSchemaUpdate(model, dirtyUrl),
         ];
     }
 
@@ -96,6 +96,8 @@ export default class MigratesSchemas {
         removedFields: string[],
         dirtyUrl: Nullable<string>,
     ): Promise<EngineAttributeUpdateOperation[]> {
+        const crdtResource = this.usingSolidEngine() ? CRDT_RESOURCE : 'resource';
+        const crdtProperty = this.usingSolidEngine() ? CRDT_PROPERTY : 'property';
         const graphUpdates: EngineAttributeUpdateOperation[] = [];
         const PropertyOperation = operationClass('PropertyOperation');
 
@@ -123,7 +125,7 @@ export default class MigratesSchemas {
                         $updateItems: {
                             $where: { '@id': operation.url },
                             $update: {
-                                [CRDT_RESOURCE]: { '@id': dirtyUrl },
+                                [crdtResource]: { '@id': dirtyUrl },
                             },
                         },
                     });
@@ -147,8 +149,8 @@ export default class MigratesSchemas {
 
             const newProperty = field && model.static().getFieldRdfProperty(field);
             const updates = objectWithoutEmpty({
-                [CRDT_RESOURCE]: dirtyUrl ? { '@id': dirtyUrl } : null,
-                [CRDT_PROPERTY]: newProperty && newProperty !== operation.property ? { '@id': newProperty } : null,
+                [crdtResource]: dirtyUrl ? { '@id': dirtyUrl } : null,
+                [crdtProperty]: newProperty && newProperty !== operation.property ? { '@id': newProperty } : null,
             });
 
             if (Object.keys(updates).length === 0) {
@@ -171,12 +173,14 @@ export default class MigratesSchemas {
             return [];
         }
 
+        const crdtResource = this.usingSolidEngine() ? CRDT_RESOURCE : 'resource';
+
         return [
             {
                 $updateItems: {
                     $where: { '@id': this.metadata.url },
                     $update: {
-                        [CRDT_RESOURCE]: { '@id': dirtyUrl },
+                        [crdtResource]: { '@id': dirtyUrl },
                     },
                 },
             },
@@ -198,10 +202,14 @@ export default class MigratesSchemas {
         ];
     }
 
-    protected getResourceSchemaUpdate(this: This, model: SolidModel): EngineAttributeUpdateOperation {
+    protected getResourceSchemaUpdate(
+        this: This,
+        model: SolidModel,
+        dirtyUrl?: Nullable<string>,
+    ): EngineAttributeUpdateOperation {
         return {
             $updateItems: {
-                $where: { '@id': this.url },
+                $where: { '@id': dirtyUrl ?? this.url },
                 $override: model.serializeToJsonLD({
                     includeRelations: false,
                     includeAnonymousHashes: true,

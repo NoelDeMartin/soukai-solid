@@ -253,18 +253,19 @@ export class SolidEngine implements Engine {
                 'Are you using a model that isn\'t a SolidModel?',
             );
 
+        const changedUrls = new Map<string, string>();
         const operations: UpdateOperation[] = [];
         const graphUpdates = '$apply' in updates['@graph'] ? updates['@graph'].$apply : [updates['@graph']];
 
         for (const graphUpdate of graphUpdates) {
             if (graphUpdate.$updateItems) {
-                const updatesOperations = await Promise.all(
-                    arrayFrom(graphUpdate.$updateItems).map(async update => {
-                        const operations = await this.extractJsonLDGraphItemsUpdate(update);
+                const updatesOperations = [];
 
-                        return operations;
-                    }),
-                );
+                for (const update of arrayFrom(graphUpdate.$updateItems)) {
+                    const operations = await this.extractJsonLDGraphItemsUpdate(update, changedUrls);
+
+                    updatesOperations.push(...operations);
+                }
 
                 operations.push(...updatesOperations.flat());
             }
@@ -281,13 +282,15 @@ export class SolidEngine implements Engine {
 
     private async extractJsonLDGraphItemsUpdate(
         { $where, $update, $override, $unset }: EngineUpdateItemsOperatorData,
+        changedUrls: Map<string, string>,
     ): Promise<UpdateOperation[]> {
         // TODO use RDF libraries instead of implementing this conversion
-        if (!$where || !('@id' in $where))
+        if (!$where || !('@id' in $where)) {
             throw new SoukaiError(
                 'Invalid JSON-LD graph updates provided for SolidEngine. ' +
                 'Are you using a model that isn\'t a SolidModel?',
             );
+        }
 
         if ($unset) {
             const filters = $where['@id'] as EngineRootFilter;
@@ -304,7 +307,8 @@ export class SolidEngine implements Engine {
                 ? [filters]
                 : filters.$in as string[];
             const updatesOperations = await Promise.all(ids.map(async (url) => {
-                const operations: UpdateOperation[] = [new RemovePropertyOperation(url)];
+                const resourceUrl = changedUrls.get(url) ?? url;
+                const operations: UpdateOperation[] = [new RemovePropertyOperation(resourceUrl)];
                 const properties = await this.getJsonLDGraphProperties($override);
 
                 for (const property of properties) {
@@ -317,7 +321,14 @@ export class SolidEngine implements Engine {
             return updatesOperations.flat();
         }
 
-        const resourceUrl = $where['@id'] as string;
+        if (typeof $where['@id'] !== 'string') {
+            throw new SoukaiError(
+                'Invalid JSON-LD graph updates provided for SolidEngine. ' +
+                'Are you using a model that isn\'t a SolidModel?',
+            );
+        }
+
+        const resourceUrl = changedUrls.get($where['@id']) ?? $where['@id'];
         const updates = $update;
         const operations: UpdateOperation[] = [];
 
@@ -333,6 +344,8 @@ export class SolidEngine implements Engine {
 
             if (attribute === '@id' && resourceUrl !== value) {
                 operations.push(new ChangeUrlOperation(resourceUrl, value as string));
+                changedUrls.set(value as string, resourceUrl);
+
                 continue;
             }
 
