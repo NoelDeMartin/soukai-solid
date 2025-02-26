@@ -5,6 +5,7 @@ import type { JsonLD, JsonLDGraph, JsonLDResource } from '@noeldemartin/solid-ut
 import type { Quad } from 'rdf-js';
 
 import RDFResource from '@/solid/RDFResource';
+import ResourceNotFound from '@/errors/ResourceNotFound';
 import type RDFResourceProperty from '@/solid/RDFResourceProperty';
 
 export interface TurtleParsingOptions {
@@ -47,7 +48,7 @@ export default class RDFDocument {
         const requireResourceJson = () => {
             return resourceJson
                 ?? documentJson['@graph'].find(entity => entity['@id'] === resourceId)
-                ?? fail<JsonLDResource>(SoukaiError, `Resource '${resourceId}' not found on document`);
+                ?? fail<JsonLDResource>(ResourceNotFound, resourceId);
         };
 
         const document = this.documentsCache.get(documentJson) ?? await this.fromJsonLD(requireResourceJson());
