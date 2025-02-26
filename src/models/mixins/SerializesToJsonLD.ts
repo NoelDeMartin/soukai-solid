@@ -1,5 +1,5 @@
 import { fail } from '@noeldemartin/utils';
-import { ModelKey, SoukaiError } from 'soukai';
+import { ModelKey } from 'soukai';
 import type {
     Attributes,
     EngineAttributeFilter,
@@ -8,15 +8,15 @@ import type {
     EngineFilters,
     EngineUpdates,
 } from 'soukai';
-import type { JsonLD, JsonLDGraph, JsonLDResource } from '@noeldemartin/solid-utils';
+import type { JsonLD, JsonLDGraph } from '@noeldemartin/solid-utils';
 
-import type { SolidModel } from '@/models/SolidModel';
-
+import ResourceNotFound from '@/errors/ResourceNotFound';
 import RDFDocument from '@/solid/RDFDocument';
 import { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
 import type RDFResourceProperty from '@/solid/RDFResourceProperty';
 
 import JsonLDModelSerializer from '@/models/internals/JsonLDModelSerializer';
+import type { SolidModel } from '@/models/SolidModel';
 
 export type This = SolidModel;
 
@@ -40,7 +40,7 @@ export default class SerializesToJsonLD {
     ): Promise<Attributes> {
         const jsonGraph = document as JsonLDGraph;
         const resourceJson = jsonGraph['@graph'].find(entity => entity['@id'] === resourceId)
-            ?? fail<JsonLDResource>(SoukaiError, `Resource '${resourceId}' not found on document`);
+            ?? fail(ResourceNotFound, resourceId, document.url);
         const resource = await RDFDocument.resourceFromJsonLDGraph(jsonGraph, resourceId, resourceJson);
         const fieldsDefinition = this.static('fields');
         const attributes: Attributes = {};

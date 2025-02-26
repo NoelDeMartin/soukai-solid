@@ -1,4 +1,5 @@
 export * from './engines/index';
+export * from './errors';
 export * from './experimental/index';
 export * from './models/index';
 

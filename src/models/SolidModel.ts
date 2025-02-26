@@ -64,6 +64,7 @@ import type { Quad } from 'rdf-js';
 
 import IRI from '@/solid/utils/IRI';
 import RDFDocument from '@/solid/RDFDocument';
+import ResourceNotFound from '@/errors/ResourceNotFound';
 import { applyStrictChecks } from '@/utils/env';
 import { SolidEngine } from '@/engines/SolidEngine';
 import { usingExperimentalActivityPods } from '@/experimental';
@@ -331,7 +332,11 @@ export class SolidModel extends SolidModelBase {
 
             return model;
         } catch (error) {
-            if (applyStrictChecks() && !isInstanceOf(error, DocumentNotFound)) {
+            if (
+                applyStrictChecks() &&
+                !isInstanceOf(error, DocumentNotFound) &&
+                !isInstanceOf(error, ResourceNotFound)
+            ) {
                 throw error;
             }
 
