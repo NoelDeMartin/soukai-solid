@@ -1,12 +1,18 @@
+import { fail } from '@noeldemartin/utils';
 import { SoukaiError, defineModelSchema } from 'soukai';
-import type { SchemaDefinition } from 'soukai';
 import type { Constructor } from '@noeldemartin/utils';
+import type { SchemaDefinition } from 'soukai';
 
-import type { RDFContexts } from '@/models/fields';
+import type { RDFContexts, SolidSchemaDefinition } from '@/models/fields';
 import type { SolidMagicAttributes, SolidModelConstructor } from '@/models/inference';
 import type { SolidModel } from '@/models/SolidModel';
 
 const ongoingUpdates = new WeakMap<SolidModelConstructor, RDFContexts>();
+const bootedSchemas = new WeakMap<SolidSchemaDefinition, SolidModelConstructor>();
+
+function isModelClass(schema: SolidSchemaDefinition | SolidModelConstructor): schema is SolidModelConstructor {
+    return Object.getPrototypeOf(schema)?.constructor !== Object;
+}
 
 export function startSchemaUpdate(modelClass: SolidModelConstructor, context: RDFContexts): void {
     if (ongoingUpdates.has(modelClass)) {
@@ -24,6 +30,31 @@ export function getSchemaUpdateContext(modelClass: SolidModelConstructor): RDFCo
 
 export function stopSchemaUpdate(modelClass: SolidModelConstructor): void {
     ongoingUpdates.delete(modelClass);
+}
+
+export function bootSolidSchemaDecoupled<BaseModel extends SolidModel, Schema extends SchemaDefinition>(
+    baseModelOrDefinition: SolidModelConstructor<BaseModel> | Schema,
+    defaultModel: SolidModelConstructor,
+    definition?: Schema,
+): SolidModelConstructor{
+    const baseModel = definition ? baseModelOrDefinition as SolidModelConstructor : defaultModel;
+    const schema = definition ?? baseModelOrDefinition;
+
+    if (isModelClass(schema)) {
+        schema.ensureBooted();
+
+        return schema;
+    }
+
+    if (!bootedSchemas.has(schema)) {
+        const bootedSchema = defineSolidModelSchemaDecoupled(schema, baseModel);
+
+        bootedSchema.ensureBooted();
+
+        bootedSchemas.set(schema, bootedSchema);
+    }
+
+    return bootedSchemas.get(schema) ?? fail('Couldn\'t boot schema');
 }
 
 export function defineSolidModelSchemaDecoupled<BaseModel extends SolidModel, Schema extends SchemaDefinition>(
