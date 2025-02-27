@@ -5,11 +5,6 @@ import { SolidModel } from './SolidModel';
 import type { SolidMagicAttributes, SolidModelConstructor } from './inference';
 import type { SolidSchemaDefinition } from './fields';
 
-/* eslint-disable max-len */
-export function bootSolidSchema<Schema extends SolidSchemaDefinition>(definition: Schema): Constructor<SolidMagicAttributes<Schema>> & SolidModelConstructor;
-export function bootSolidSchema<BaseModel extends SolidModel, Schema extends SolidSchemaDefinition>(baseModel: SolidModelConstructor<BaseModel>, definition: Schema): Constructor<SolidMagicAttributes<Schema>> & SolidModelConstructor<BaseModel>;
-/* eslint-enable max-len */
-
 export function bootSolidSchema<BaseModel extends SolidModel, Schema extends SolidSchemaDefinition>(
     baseModelOrDefinition: SolidModelConstructor<BaseModel> | Schema,
     definition?: Schema,

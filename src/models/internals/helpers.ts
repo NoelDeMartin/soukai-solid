@@ -37,7 +37,6 @@ export function bootSolidSchemaDecoupled<BaseModel extends SolidModel, Schema ex
     defaultModel: SolidModelConstructor,
     definition?: Schema,
 ): SolidModelConstructor{
-    const baseModel = definition ? baseModelOrDefinition as SolidModelConstructor : defaultModel;
     const schema = definition ?? baseModelOrDefinition;
 
     if (isModelClass(schema)) {
@@ -47,6 +46,7 @@ export function bootSolidSchemaDecoupled<BaseModel extends SolidModel, Schema ex
     }
 
     if (!bootedSchemas.has(schema)) {
+        const baseModel = isModelClass(baseModelOrDefinition) ? baseModelOrDefinition : defaultModel;
         const bootedSchema = defineSolidModelSchemaDecoupled(schema, baseModel);
 
         bootedSchema.ensureBooted();
