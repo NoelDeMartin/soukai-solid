@@ -1,9 +1,16 @@
-import { arrayDiff, isInstanceOf, objectWithoutEmpty, requireUrlParentDirectory, tap } from '@noeldemartin/utils';
+import {
+    arrayDiff,
+    isInstanceOf,
+    isObject,
+    objectWithoutEmpty,
+    requireUrlParentDirectory,
+    tap,
+} from '@noeldemartin/utils';
 import { SoukaiError } from 'soukai';
 import type { EngineAttributeUpdate, EngineAttributeUpdateOperation, EngineAttributeValueMap } from 'soukai';
 import type { Nullable } from '@noeldemartin/utils';
 
-import { defineSolidModelSchemaDecoupled } from '@/models/internals/helpers';
+import { bootSolidSchemaDecoupled } from '@/models/internals/helpers';
 import { operationClass } from '@/models/history/operations';
 import { CRDT_PROPERTY, CRDT_RESOURCE } from '@/solid/constants';
 import type { SolidModel } from '@/models/SolidModel';
@@ -14,28 +21,28 @@ export type This = SolidModel;
 
 export default class MigratesSchemas {
 
-    public async migrateSchema(this: This, schema: SolidSchemaDefinition | SolidModelConstructor): Promise<void> {
+    public async migrateSchema(
+        this: This,
+        schema: SolidSchemaDefinition | SolidModelConstructor,
+    ): Promise<string> {
         if (this.isDirty()) {
             throw new SoukaiError('Can\'t migrate dirty model, call save() before proceeding.');
         }
 
-        const bootedSchema = this.getBootedSchema(schema);
+        const bootedSchema = bootSolidSchemaDecoupled(schema, this.static());
         const graphUpdates = await this.getSchemaUpdates(bootedSchema);
 
         await this.updateEngineDocumentSchema(graphUpdates);
-    }
 
-    protected getBootedSchema(
-        this: This,
-        schema: SolidSchemaDefinition | SolidModelConstructor,
-    ): SolidModelConstructor {
-        const bootedSchema = Object.getPrototypeOf(schema)?.constructor === Object
-            ? defineSolidModelSchemaDecoupled(schema as SolidSchemaDefinition, this.static())
-            : schema as SolidModelConstructor;
+        const urlUpdate = graphUpdates.find(update => {
+            return '$updateItems' in update
+                && !Array.isArray(update.$updateItems)
+                && isObject(update.$updateItems.$update)
+                && '@id' in update.$updateItems.$update
+                && '@id' in (update.$updateItems.$where ?? {});
+        }) as Nullable<{ $updateItems: { $update: { '@id': string } } }>;
 
-        bootedSchema.ensureBooted();
-
-        return bootedSchema;
+        return urlUpdate?.$updateItems.$update['@id'] ?? this.url;
     }
 
     protected async getSchemaUpdates(

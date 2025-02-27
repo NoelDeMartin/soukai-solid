@@ -37,9 +37,11 @@ describe('Solid Schema Migrations', () => {
         server.respondOnce(documentUrl, FakeResponse.success());
 
         // Act
-        await task.migrateSchema(ICalTaskSchema);
+        const migratedUrl = await task.migrateSchema(ICalTaskSchema);
 
         // Assert
+        expect(migratedUrl).toEqual(`${documentUrl}#it`);
+
         expect(server.getRequests()).toHaveLength(4);
 
         expect(server.getRequests()[3]?.body).toEqualSparql(`
@@ -83,9 +85,11 @@ describe('Solid Schema Migrations', () => {
         server.respondOnce(documentUrl, FakeResponse.success());
 
         // Act
-        await task.migrateSchema(ICalTaskSchema);
+        const migratedUrl = await task.migrateSchema(ICalTaskSchema);
 
         // Assert
+        expect(migratedUrl).toEqual(`${documentUrl}#it`);
+
         expect(server.getRequests()).toHaveLength(6);
 
         expect(server.getRequests()[5]?.body).toEqualSparql(`
@@ -147,7 +151,7 @@ describe('Solid Schema Migrations', () => {
         server.respondOnce(url, FakeResponse.success());
 
         // Act
-        await task.migrateSchema(defineSolidModelSchema(ICalTaskSchema, {
+        const migratedUrl = await task.migrateSchema(defineSolidModelSchema(ICalTaskSchema, {
             fields: {
                 ...ICAL_TASK_FIELDS,
                 description: {
@@ -163,6 +167,8 @@ describe('Solid Schema Migrations', () => {
         }));
 
         // Assert
+        expect(migratedUrl).toEqual(`${url}#it`);
+
         expect(server.getRequests()).toHaveLength(6);
 
         expect(server.getRequests()[5]?.body).toEqualSparql(`
