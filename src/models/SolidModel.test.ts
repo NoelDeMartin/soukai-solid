@@ -735,6 +735,8 @@ describe('SolidModel', () => {
         expect(StubPerson.rdfContexts.default).toEqual('http://xmlns.com/foaf/0.1/');
         expect(StubPerson.rdfContexts.vcard).toEqual('http://www.w3.org/2006/vcard/ns#');
         expect(StubPerson.rdfsClasses).toEqual(['http://xmlns.com/foaf/0.1/Person']);
+        expect(StubPerson.getRdfPropertyField('https://schema.org/name')).toBeNull();
+        expect(StubPerson.getRdfPropertyField('http://xmlns.com/foaf/0.1/name')).toEqual('name');
 
         // Act
         await StubPerson.updateSchema({
@@ -774,6 +776,8 @@ describe('SolidModel', () => {
         expect(StubPerson.rdfContexts.default).toEqual('https://schema.org/');
         expect(StubPerson.rdfContexts.vcard).toBeUndefined();
         expect(StubPerson.rdfsClasses).toEqual(['https://schema.org/Person']);
+        expect(StubPerson.getRdfPropertyField('https://schema.org/name')).toEqual('name');
+        expect(StubPerson.getRdfPropertyField('http://xmlns.com/foaf/0.1/name')).toBeNull();
     });
 
     it('updates schema definitions using classes', async () => {

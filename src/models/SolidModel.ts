@@ -198,7 +198,9 @@ export class SolidModel extends SolidModelBase {
     public static async updateSchema(schema: SolidSchemaDefinition | SolidModelConstructor): Promise<void>;
     public static async updateSchema(schema: SchemaDefinition | ModelConstructor): Promise<void>;
     public static async updateSchema(schema: SolidSchemaDefinition | SolidModelConstructor): Promise<void> {
-        return super.updateSchema(schema);
+        await super.updateSchema(schema);
+
+        delete this.rdfPropertyFields;
     }
 
     public static requireFetch(): Fetch {
