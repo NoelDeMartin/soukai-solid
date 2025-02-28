@@ -37,10 +37,12 @@ describe('Solid Schema Migrations', () => {
         server.respondOnce(documentUrl, FakeResponse.success());
 
         // Act
-        const migratedUrl = await task.migrateSchema(ICalTaskSchema);
+        const migrated = await task.migrateSchema(ICalTaskSchema);
 
         // Assert
-        expect(migratedUrl).toEqual(`${documentUrl}#it`);
+        expect(migrated.url).toEqual(`${documentUrl}#it`);
+        expect(migrated.name).toEqual('Migrate schemas');
+        expect(migrated.operations).toHaveLength(0);
 
         expect(server.getRequests()).toHaveLength(4);
 
@@ -85,10 +87,12 @@ describe('Solid Schema Migrations', () => {
         server.respondOnce(documentUrl, FakeResponse.success());
 
         // Act
-        const migratedUrl = await task.migrateSchema(ICalTaskSchema);
+        const migrated = await task.migrateSchema(ICalTaskSchema);
 
         // Assert
-        expect(migratedUrl).toEqual(`${documentUrl}#it`);
+        expect(migrated.url).toEqual(`${documentUrl}#it`);
+        expect(migrated.name).toEqual('Updated name');
+        expect(migrated.operations).toHaveLength(3);
 
         expect(server.getRequests()).toHaveLength(6);
 
@@ -151,7 +155,7 @@ describe('Solid Schema Migrations', () => {
         server.respondOnce(url, FakeResponse.success());
 
         // Act
-        const migratedUrl = await task.migrateSchema(defineSolidModelSchema(ICalTaskSchema, {
+        const migrated = await task.migrateSchema(defineSolidModelSchema(ICalTaskSchema, {
             fields: {
                 ...ICAL_TASK_FIELDS,
                 description: {
@@ -167,7 +171,11 @@ describe('Solid Schema Migrations', () => {
         }));
 
         // Assert
-        expect(migratedUrl).toEqual(`${url}#it`);
+        expect(migrated.url).toEqual(`${url}#it`);
+        expect(migrated.name).toEqual('Updated name');
+        expect(migrated.description).toEqual('Updated name');
+        expect(migrated.priority).toEqual(1);
+        expect(migrated.operations).toHaveLength(5);
 
         expect(server.getRequests()).toHaveLength(6);
 

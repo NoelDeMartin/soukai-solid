@@ -1,7 +1,6 @@
 import {
     arrayDiff,
     isInstanceOf,
-    isObject,
     objectWithoutEmpty,
     requireUrlParentDirectory,
     tap,
@@ -10,6 +9,7 @@ import { SoukaiError } from 'soukai';
 import type { EngineAttributeUpdate, EngineAttributeUpdateOperation, EngineAttributeValueMap } from 'soukai';
 import type { Nullable } from '@noeldemartin/utils';
 
+import type Operation from '@/models/history/Operation';
 import { bootSolidSchemaDecoupled } from '@/models/internals/helpers';
 import { operationClass } from '@/models/history/operations';
 import { CRDT_PROPERTY, CRDT_RESOURCE } from '@/solid/constants';
@@ -17,38 +17,36 @@ import type { SolidModel } from '@/models/SolidModel';
 import type { SolidModelConstructor } from '@/models/inference';
 import type { SolidSchemaDefinition } from '@/models/fields';
 
+export interface MigrateSchemaOptions {
+    mintOperationUrl?(operation: Operation): Nullable<string>;
+}
+
 export type This = SolidModel;
 
 export default class MigratesSchemas {
 
-    public async migrateSchema(
+    public async migrateSchema<T extends SolidModel>(
         this: This,
-        schema: SolidSchemaDefinition | SolidModelConstructor,
-    ): Promise<string> {
+        schema: SolidSchemaDefinition | SolidModelConstructor<T>,
+        options: MigrateSchemaOptions = {},
+    ): Promise<T> {
         if (this.isDirty()) {
             throw new SoukaiError('Can\'t migrate dirty model, call save() before proceeding.');
         }
 
         const bootedSchema = bootSolidSchemaDecoupled(schema, this.static());
-        const graphUpdates = await this.getSchemaUpdates(bootedSchema);
+        const { model, updates } = await this.getSchemaUpdates(bootedSchema, options);
 
-        await this.updateEngineDocumentSchema(graphUpdates);
+        await this.updateEngineDocumentSchema(updates);
 
-        const urlUpdate = graphUpdates.find(update => {
-            return '$updateItems' in update
-                && !Array.isArray(update.$updateItems)
-                && isObject(update.$updateItems.$update)
-                && '@id' in update.$updateItems.$update
-                && '@id' in (update.$updateItems.$where ?? {});
-        }) as Nullable<{ $updateItems: { $update: { '@id': string } } }>;
-
-        return urlUpdate?.$updateItems.$update['@id'] ?? this.url;
+        return model as T;
     }
 
-    protected async getSchemaUpdates(
+    protected async getSchemaUpdates<T extends SolidModel>(
         this: This,
-        schema: SolidModelConstructor,
-    ): Promise<EngineAttributeUpdateOperation[]> {
+        schema: SolidModelConstructor<T>,
+        options: MigrateSchemaOptions,
+    ): Promise<{ model: T; updates: EngineAttributeUpdateOperation[] }> {
         const { removed: removedFields, added: addedFields } = arrayDiff(
             Object.keys(this.static().fields),
             Object.keys(schema.fields),
@@ -56,21 +54,23 @@ export default class MigratesSchemas {
 
         const model = await this.newInstanceForSchema(schema, addedFields, removedFields);
         const dirtyUrl = model.url !== this.url ? model.url : null;
-
-        return [
-            ...await this.getOperationSchemaUpdates(model, removedFields, dirtyUrl),
+        const updates = [
+            ...await this.getOperationSchemaUpdates(model, removedFields, dirtyUrl, options),
             ...this.getMetadataSchemaUpdates(dirtyUrl),
             ...this.getUrlSchemaUpdates(dirtyUrl),
             this.getResourceSchemaUpdate(model, dirtyUrl),
         ];
+
+        return { model, updates };
     }
 
-    protected async newInstanceForSchema(
+    protected async newInstanceForSchema<T extends SolidModel>(
         this: This,
-        schema: SolidModelConstructor,
+        schema: SolidModelConstructor<T>,
         addedFields: string[],
         removedFields: string[],
-    ): Promise<SolidModel> {
+    ): Promise<T> {
+        const PropertyOperation = operationClass('PropertyOperation');
         const model = schema.newInstance(tap(this.getAttributes(), (attributes) => {
             attributes['url'] = `${this.requireDocumentUrl()}#${schema.defaultResourceHash}`;
 
@@ -79,7 +79,16 @@ export default class MigratesSchemas {
             }
         }), true);
 
-        model.setRelationModels('operations', this.operations);
+        model.setRelationModels('operations', this.operations.filter(operation => {
+            if (!isInstanceOf(operation, PropertyOperation)) {
+                return true;
+            }
+
+            const field = this.static().getRdfPropertyField(operation.property);
+
+            return !field || !removedFields.includes(field);
+        }));
+
         addedFields.forEach(field => {
             if (!model.hasAttribute(field)) {
                 return;
@@ -102,20 +111,31 @@ export default class MigratesSchemas {
         model: SolidModel,
         removedFields: string[],
         dirtyUrl: Nullable<string>,
+        options: MigrateSchemaOptions,
     ): Promise<EngineAttributeUpdateOperation[]> {
-        const crdtResource = this.usingSolidEngine() ? CRDT_RESOURCE : 'resource';
-        const crdtProperty = this.usingSolidEngine() ? CRDT_PROPERTY : 'property';
+        const operationUrls: string[] = [];
         const graphUpdates: EngineAttributeUpdateOperation[] = [];
         const PropertyOperation = operationClass('PropertyOperation');
+        const crdtResource = this.usingSolidEngine() ? CRDT_RESOURCE : 'resource';
+        const crdtProperty = this.usingSolidEngine() ? CRDT_PROPERTY : 'property';
 
         await model.loadRelationIfUnloaded('operations');
 
         for (const operation of model.operations) {
+            operationUrls.push(operation.url);
+
             if (!operation.exists()) {
                 operation.date = this.getUpdatedAtAttribute();
                 operation.resourceUrl = model.url;
 
-                operation.mintUrl();
+                const url = options.mintOperationUrl?.(operation);
+
+                if (url) {
+                    operation.url = url;
+                } else {
+                    operation.mintUrl();
+                }
+
                 graphUpdates.push({
                     $push: operation.serializeToJsonLD({
                         includeRelations: false,
@@ -142,18 +162,6 @@ export default class MigratesSchemas {
             }
 
             const field = this.static().getRdfPropertyField(operation.property);
-
-            if (field && removedFields.includes(field)) {
-                graphUpdates.push({
-                    $updateItems: {
-                        $where: { '@id': operation.url },
-                        $unset: true,
-                    },
-                });
-
-                continue;
-            }
-
             const newProperty = field && model.static().getFieldRdfProperty(field);
             const updates = objectWithoutEmpty({
                 [crdtResource]: dirtyUrl ? { '@id': dirtyUrl } : null,
@@ -168,6 +176,19 @@ export default class MigratesSchemas {
                 $updateItems: {
                     $where: { '@id': operation.url },
                     $update: updates as EngineAttributeUpdate,
+                },
+            });
+        }
+
+        for (const operation of this.operations) {
+            if (operationUrls.includes(operation.url)) {
+                continue;
+            }
+
+            graphUpdates.push({
+                $updateItems: {
+                    $where: { '@id': operation.url },
+                    $unset: true,
                 },
             });
         }

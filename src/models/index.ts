@@ -36,6 +36,7 @@ export type { default as ManagesPermissions } from './mixins/ManagesPermissions'
 export type { default as MigratesSchemas } from './mixins/MigratesSchemas';
 export type { default as SerializesToJsonLD } from './mixins/SerializesToJsonLD';
 export type { default as TracksHistory } from './mixins/TracksHistory';
+export type { MigrateSchemaOptions } from './mixins/MigratesSchemas';
 export type { PermissionsTracker } from './mixins/ManagesPermissions';
 export type { SerializeOptions } from './mixins/SerializesToJsonLD';
 

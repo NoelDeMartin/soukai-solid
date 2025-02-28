@@ -35,7 +35,7 @@ describe('Solid Schema Migrations', () => {
         await task.update({ name: 'Updated name' });
 
         // Act
-        const migratedUrl = await task.migrateSchema(defineSolidModelSchema(ICalTaskSchema, {
+        const migrated = await task.migrateSchema(defineSolidModelSchema(ICalTaskSchema, {
             fields: {
                 ...ICAL_TASK_FIELDS,
                 description: {
@@ -51,7 +51,11 @@ describe('Solid Schema Migrations', () => {
         }));
 
         // Assert
-        expect(migratedUrl).toEqual(`${documentUrl}#it`);
+        expect(migrated.url).toEqual(`${documentUrl}#it`);
+        expect(migrated.name).toEqual('Updated name');
+        expect(migrated.description).toEqual('Updated name');
+        expect(migrated.priority).toEqual(1);
+        expect(migrated.operations).toHaveLength(5);
 
         const document = (await engine.readOne(containerUrl, documentUrl)) as JsonLDGraph;
         const taskResource = document['@graph'].find(resource => resource['@id'] === `${documentUrl}#it`);
