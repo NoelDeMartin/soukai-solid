@@ -285,9 +285,10 @@ describe('SolidModel', () => {
         bootModels({ StubModel });
 
         // Assert
-        expect(StubModel.classFields).toHaveLength(7);
+        expect(StubModel.classFields).toHaveLength(8);
         expect(StubModel.classFields).toContain('_history');
         expect(StubModel.classFields).toContain('_engine');
+        expect(StubModel.classFields).toContain('_recentlyDeletedPrimaryKey');
         expect(StubModel.classFields).toContain('_sourceSubject');
         expect(StubModel.classFields).toContain('_publicPermissions');
         expect(StubModel.classFields).toContain('_tombstone');
