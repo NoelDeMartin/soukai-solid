@@ -47,7 +47,7 @@ describe('Performance', () => {
         // Assert
         expect(cookies.name).toEqual('Vintage chocolate chip cookies!');
         expect(cookies.operations).toHaveLength(13);
-        expect(cookies.instructionsSteps?.[0]?.operations).toHaveLength(78);
+        expect(cookies.instructionsSteps?.[0]?.operations).toHaveLength(58);
     });
 
 });

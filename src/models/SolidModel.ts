@@ -1,5 +1,6 @@
 import {
     Semaphore,
+    arrayFilter,
     arrayFrom,
     arrayReplace,
     arrayUnique,
@@ -62,6 +63,7 @@ import type {
 import type { Fetch, JsonLD, JsonLDGraph, SubjectParts } from '@noeldemartin/solid-utils';
 import type { Quad } from 'rdf-js';
 
+import IncompleteDocument from '@/errors/IncompleteDocument';
 import IRI from '@/solid/utils/IRI';
 import RDFDocument from '@/solid/RDFDocument';
 import ResourceNotFound from '@/errors/ResourceNotFound';
@@ -87,7 +89,7 @@ import type {
     SolidSchemaDefinition,
 } from './fields';
 import DeletesModels from './mixins/DeletesModels';
-import DocumentContainsManyRelation from '@/models/relations/DocumentContainsManyRelation';
+import DocumentContainsManyRelation from './relations/DocumentContainsManyRelation';
 import ManagesPermissions from './mixins/ManagesPermissions';
 import MigratesSchemas from './mixins/MigratesSchemas';
 import OperationsRelation from './relations/OperationsRelation';
@@ -98,7 +100,7 @@ import SolidBelongsToOneRelation from './relations/SolidBelongsToOneRelation';
 import SolidHasManyRelation from './relations/SolidHasManyRelation';
 import SolidHasOneRelation from './relations/SolidHasOneRelation';
 import SolidIsContainedByRelation from './relations/SolidIsContainedByRelation';
-import TombstoneRelation from '@/models/relations/TombstoneRelation';
+import TombstoneRelation from './relations/TombstoneRelation';
 import TracksHistory, { synchronizeModels } from './mixins/TracksHistory';
 import { getSchemaUpdateContext, startSchemaUpdate, stopSchemaUpdate } from './internals/helpers';
 import { inferFieldDefinition, isSolidArrayFieldDefinition } from './fields';
@@ -337,7 +339,8 @@ export class SolidModel extends SolidModelBase {
             if (
                 applyStrictChecks() &&
                 !isInstanceOf(error, DocumentNotFound) &&
-                !isInstanceOf(error, ResourceNotFound)
+                !isInstanceOf(error, ResourceNotFound) &&
+                !isInstanceOf(error, IncompleteDocument)
             ) {
                 throw error;
             }
@@ -1221,6 +1224,10 @@ export class SolidModel extends SolidModelBase {
 
         await model.loadDocumentModels(documentUrl, document);
 
+        if (model.hasIncompleteAttributes()) {
+            throw new IncompleteDocument(documentUrl);
+        }
+
         return tap(model, m => {
             m._sourceDocumentUrl = urlClean(documentUrl, { fragment: false });
             m._usesRdfAliases = this.static('rdfsClassesAliases').some(
@@ -1242,15 +1249,27 @@ export class SolidModel extends SolidModelBase {
                             !!resource.url &&
                             rdfsClasses.some(type => resource.isType(type)),
                     )
-                    .map(async resource => this.createFromEngineDocument(
-                        documentUrl,
-                        engineDocument,
-                        resource.url,
-                    )),
+                    .map(async resource => {
+                        try {
+                            const model = await this.createFromEngineDocument(
+                                documentUrl,
+                                engineDocument,
+                                resource.url,
+                            );
+
+                            return model;
+                        } catch (error) {
+                            if (error instanceof IncompleteDocument) {
+                                return null;
+                            }
+
+                            throw error;
+                        }
+                    }),
             );
         }));
 
-        return models.flat();
+        return arrayFilter(models.flat());
     }
 
     protected async loadDocumentModels(documentUrl: string, document: EngineDocument): Promise<void> {

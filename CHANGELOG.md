@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 
 ### Changed
 
+- Creating models from documents with missing required attributes now throws an `IncompleteDocument` error.
 - `SolidTypeRegistration.forClass` is now declared as an array.
 - Default `rdfContext` resolution changed to prioritize the vocab used in `rdfsClass` if present.
 - Matching `rdfsClasses` is not exhaustive anymore. In previous versions, models with multiple classes defined would only be found when all classes were present.
