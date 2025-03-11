@@ -1,10 +1,14 @@
 import RDFDocument from '@/solid/RDFDocument';
 import { urlResolve, uuid } from '@noeldemartin/utils';
 import type RDFResourceProperty from '@/solid/RDFResourceProperty';
+import type { ResponseMetadata } from '@/solid/SolidClient';
 
 export class SolidClientMock {
 
-    public createDocumentSpy!: jest.SpyInstance<Promise<string>, [string, (string|null)?, (RDFResourceProperty[])?]>;
+    public createDocumentSpy!: jest.SpyInstance<
+        Promise<{ url: string; metadata: ResponseMetadata}>, [string, (string|null)?, (RDFResourceProperty[])?]
+    >;
+
     public getDocumentSpy!: jest.SpyInstance<Promise<RDFDocument | null>, [string]>;
     public getDocumentsSpy!: jest.SpyInstance<Promise<RDFDocument[]>, [string]>;
     public updateDocumentSpy!: jest.SpyInstance<Promise<void>, [string]>;
@@ -21,7 +25,7 @@ export class SolidClientMock {
         parentUrl: string,
         url: string | null = null,
         properties: RDFResourceProperty[] = [],
-    ): Promise<string> {
+    ): Promise<{ url: string; metadata: ResponseMetadata }> {
         const turtleData = properties
             .map(property => property.toTurtle() + ' .')
             .join('\n');
@@ -36,7 +40,7 @@ export class SolidClientMock {
 
         this.documents[url] = [document];
 
-        return url;
+        return { url, metadata: { headers: new Headers() } };
     }
 
     public async getDocument(url: string): Promise<RDFDocument | null> {

@@ -1,5 +1,12 @@
-import { arrayFrom, arrayUnique, isObject, toString, urlParentDirectory, urlRoot } from '@noeldemartin/utils';
-import { compactJsonLDGraph, quadsToJsonLD } from '@noeldemartin/solid-utils';
+import {
+    ListenersManager,
+    arrayFrom,
+    arrayUnique,
+    isObject,
+    toString,
+    urlParentDirectory,
+    urlRoot,
+} from '@noeldemartin/utils';
 import {
     DocumentAlreadyExists,
     DocumentNotFound,
@@ -16,7 +23,9 @@ import type {
     EngineUpdateItemsOperatorData,
     EngineUpdates,
 } from 'soukai';
+import { compactJsonLDGraph, quadsToJsonLD } from '@noeldemartin/solid-utils';
 import type { JsonLD } from '@noeldemartin/solid-utils';
+import type { Listeners } from '@noeldemartin/utils';
 
 import ChangeUrlOperation from '@/solid/operations/ChangeUrlOperation';
 import RDFDocument from '@/solid/RDFDocument';
@@ -26,7 +35,7 @@ import SolidClient from '@/solid/SolidClient';
 import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
 import { LDP_CONTAINER } from '@/solid/constants';
 import { usingExperimentalActivityPods } from '@/experimental';
-import type { Fetch } from '@/solid/SolidClient';
+import type { Fetch, ResponseMetadata } from '@/solid/SolidClient';
 import type { LiteralValue } from '@/solid/RDFResourceProperty';
 import type { RDFDocumentMetadata } from '@/solid/RDFDocument';
 import type { UpdateOperation } from '@/solid/operations/Operation';
@@ -39,6 +48,12 @@ export interface SolidEngineConfig {
 }
 
 export interface SolidEngineListener {
+    onDocumentCreated?(url: string, metadata: RDFDocumentMetadata): unknown;
+    onDocumentRead?(url: string, metadata: RDFDocumentMetadata): unknown;
+    onDocumentUpdated?(url: string, metadata: ResponseMetadata): unknown;
+    onDocumentDeleted?(url: string, metadata: ResponseMetadata): unknown;
+
+    /** @deprecated Use onRDFDocumentRead instead */
     onRDFDocumentLoaded?(url: string, metadata: RDFDocumentMetadata): void;
 }
 
@@ -48,7 +63,7 @@ export class SolidEngine implements Engine {
     private helper: EngineHelper;
     private client: SolidClient;
     private cache: Map<string, RDFDocument | null> = new Map();
-    private listeners: SolidEngineListener[] = [];
+    private _listeners = new ListenersManager<SolidEngineListener>();
 
     public constructor(fetch?: Fetch, config: Partial<SolidEngineConfig> = {}) {
         this.helper = new EngineHelper();
@@ -67,6 +82,10 @@ export class SolidEngine implements Engine {
         });
     }
 
+    public get listeners(): Listeners<SolidEngineListener> {
+        return this._listeners;
+    }
+
     public setConfig(config: Partial<SolidEngineConfig>): void {
         Object.assign(this.config, config);
     }
@@ -78,11 +97,12 @@ export class SolidEngine implements Engine {
     public async create(collection: string, document: EngineDocument, id?: string): Promise<string> {
         this.validateJsonLDGraph(document);
 
-        if (id && await this.client.documentExists(id))
+        if (id && await this.client.documentExists(id)) {
             throw new DocumentAlreadyExists(id);
+        }
 
         const properties = await this.getJsonLDGraphProperties(document);
-        const url = await this.client.createDocument(
+        const { url, metadata } = await this.client.createDocument(
             collection,
             id,
             properties,
@@ -94,18 +114,22 @@ export class SolidEngine implements Engine {
                 : {},
         );
 
+        await this._listeners.emit('onDocumentCreated', url, metadata);
+
         return url;
     }
 
     public async readOne(_: string, id: string): Promise<EngineDocument> {
         const rdfDocument = await this.getDocument(id);
 
-        if (rdfDocument === null)
+        if (rdfDocument === null) {
             throw new DocumentNotFound(id);
+        }
 
         const document = await this.convertToEngineDocument(rdfDocument);
 
-        this.emit('onRDFDocumentLoaded', rdfDocument.url as string, rdfDocument.metadata);
+        await this._listeners.emit('onRDFDocumentLoaded', rdfDocument.url as string, rdfDocument.metadata);
+        await this._listeners.emit('onDocumentRead', rdfDocument.url as string, rdfDocument.metadata);
 
         return document;
     }
@@ -118,7 +142,8 @@ export class SolidEngine implements Engine {
             documentsArray.map(async document => {
                 documents[document.url as string] = await this.convertToEngineDocument(document);
 
-                this.emit('onRDFDocumentLoaded', document.url as string, document.metadata);
+                await this._listeners.emit('onRDFDocumentLoaded', document.url as string, document.metadata);
+                await this._listeners.emit('onDocumentRead', document.url as string, document.metadata);
             }),
         );
 
@@ -128,40 +153,47 @@ export class SolidEngine implements Engine {
     public async update(collection: string, id: string, updates: EngineUpdates): Promise<void> {
         if ('$overwrite' in updates) {
             const properties = await this.getJsonLDGraphProperties(updates.$overwrite as JsonLD);
+            const metadata = await this.client.overwriteDocument(id, properties);
 
-            await this.client.overwriteDocument(id, properties);
+            await this._listeners.emit('onDocumentUpdated', id, metadata);
 
             return;
         }
 
         const operations = await this.extractJsonLDGraphUpdate(updates);
-
-        await this.client.updateDocument(
+        const metadata = await this.client.updateDocument(
             id,
             operations,
             usingExperimentalActivityPods()
                 ? { format: 'application/ld+json' }
                 : {},
         );
+
+        if (metadata) {
+            await this._listeners.emit('onDocumentUpdated', id, metadata);
+        }
     }
 
     public async delete(collection: string, id: string): Promise<void> {
-        await this.client.deleteDocument(id);
+        const metadata = await this.client.deleteDocument(id);
+
+        if (metadata) {
+            await this._listeners.emit('onDocumentDeleted', id, metadata);
+        }
     }
 
+    /**
+     * @deprecated Use .listeners instead.
+     */
     public addListener(listener: SolidEngineListener): () => void {
-        this.listeners.push(listener);
-
-        return () => this.removeListener(listener);
+        return this.listeners.add(listener);
     }
 
+    /**
+     * @deprecated Use .listeners instead.
+     */
     public removeListener(listener: SolidEngineListener): void {
-        const index = this.listeners.indexOf(listener);
-
-        if (index === -1)
-            return;
-
-        this.listeners.splice(index, 1);
+        this.listeners.remove(listener);
     }
 
     public clearCache(): void {
@@ -180,13 +212,6 @@ export class SolidEngine implements Engine {
         }
 
         return this.cache.get(url)?.clone() ?? null;
-    }
-
-    private emit<Event extends keyof SolidEngineListener>(
-        event: Event,
-        ...params: Parameters<Exclude<SolidEngineListener[Event], undefined>>
-    ): void {
-        this.listeners.forEach(listener => listener[event]?.call(listener, ...params));
     }
 
     private async getDocumentsForFilters(collection: string, filters: EngineFilters): Promise<RDFDocument[]> {

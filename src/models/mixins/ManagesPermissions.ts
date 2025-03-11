@@ -68,8 +68,8 @@ export default class ManagesPermissions {
         }
 
         const documentPermissions: Record<string, SolidDocumentPermission[]> = {};
-        const stopTracking = engine.addListener({
-            onRDFDocumentLoaded(url, metadata) {
+        const stopTracking = engine.listeners.add({
+            onDocumentRead(url, metadata) {
                 if (!metadata.headers) {
                     return;
                 }

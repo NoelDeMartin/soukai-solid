@@ -62,6 +62,10 @@ export interface QueryOptions {
     method?: string;
 }
 
+export interface ResponseMetadata {
+    headers: Headers;
+}
+
 export default class SolidClient {
 
     private fetch: TypedFetch;
@@ -100,7 +104,7 @@ export default class SolidClient {
         url: string | null = null,
         properties: RDFResourceProperty[] = [],
         options: QueryOptions = {},
-    ): Promise<string> {
+    ): Promise<{ url: string; metadata: ResponseMetadata }> {
         const isContainer = () => properties.some(
             property =>
                 property.resourceUrl === url &&
@@ -156,7 +160,7 @@ export default class SolidClient {
         url: string,
         operations: UpdateOperation[],
         options: QueryOptions = {},
-    ): Promise<void> {
+    ): Promise<ResponseMetadata | undefined> {
         if (operations.length === 0) {
             return;
         }
@@ -165,8 +169,9 @@ export default class SolidClient {
 
         const document = await this.getDocument(url);
 
-        if (document === null)
+        if (document === null) {
             throw new DocumentNotFound(url);
+        }
 
         this.processChangeUrlOperations(document, operations);
         this.processUpdatePropertyOperations(document, operations);
@@ -175,16 +180,19 @@ export default class SolidClient {
             return;
         }
 
-        document.resource(url)?.isType(LDP_CONTAINER)
+        const metadata = document.resource(url)?.isType(LDP_CONTAINER)
             ? await this.updateContainerDocument(document, operations)
             : await this.updateNonContainerDocument(document, operations, options);
+
+        return metadata;
     }
 
-    public async overwriteDocument(url: string, properties: RDFResourceProperty[]): Promise<void> {
+    public async overwriteDocument(url: string, properties: RDFResourceProperty[]): Promise<ResponseMetadata> {
         const document = await this.getDocument(url);
 
-        if (document === null)
+        if (document === null) {
             throw new DocumentNotFound(url);
+        }
 
         const response = await this.fetch(url, {
             method: 'PATCH',
@@ -198,13 +206,16 @@ export default class SolidClient {
         });
 
         this.assertSuccessfulResponse(response, `Error overwriting document at ${document.url}`);
+
+        return { headers: response.headers };
     }
 
-    public async deleteDocument(url: string, preloadedDocument?: RDFDocument): Promise<void> {
+    public async deleteDocument(url: string, preloadedDocument?: RDFDocument): Promise<ResponseMetadata | undefined> {
         const document = preloadedDocument ?? await this.getDocument(url);
 
-        if (document === null)
+        if (document === null) {
             return;
+        }
 
         if (document.resource(url)?.isType(LDP_CONTAINER)) {
             const documents = this.config.useGlobbing
@@ -217,6 +228,8 @@ export default class SolidClient {
         const response = await this.fetch(url, { method: 'DELETE' });
 
         this.assertSuccessfulResponse(response, `Error deleting document at ${url}`);
+
+        return { headers: response.headers };
     }
 
     public async documentExists(url: string): Promise<boolean> {
@@ -241,25 +254,27 @@ export default class SolidClient {
         parentUrl: string,
         url: string,
         properties: RDFResourceProperty[],
-    ): Promise<string> {
-        await this.createContainerFolder(parentUrl, url);
+    ): Promise<{ url: string; metadata: ResponseMetadata }> {
+        let metadata = await this.createContainerFolder(parentUrl, url);
 
         if (properties.length !== 0) {
             const operations = this.withoutReservedContainerProperties(url, properties)
                 .map(property => new UpdatePropertyOperation(property));
 
-            await this.updateDocument(url, operations);
+            metadata = await this.updateDocument(url, operations) ?? metadata;
         }
 
-        return url;
+        return { url, metadata };
     }
 
-    private async createContainerFolder(parentUrl: string, url: string): Promise<void> {
-        if (!url.startsWith(parentUrl))
+    private async createContainerFolder(parentUrl: string, url: string): Promise<ResponseMetadata> {
+        if (!url.startsWith(parentUrl)) {
             throw new SoukaiError('Explicit document url should start with the parent url');
+        }
 
-        if (!url.endsWith('/'))
+        if (!url.endsWith('/')) {
             throw new SoukaiError(`Container urls must end with a trailing slash, given ${url}`);
+        }
 
         const response = await this.fetch(
             url,
@@ -280,9 +295,14 @@ export default class SolidClient {
         }
 
         this.assertSuccessfulResponse(response, `Error creating container folder at ${url}`);
+
+        return { headers: response.headers };
     }
 
-    private async createContainerDocumentUsingPOST(url: string, createParent: boolean = true): Promise<void> {
+    private async createContainerDocumentUsingPOST(
+        url: string,
+        createParent: boolean = true,
+    ): Promise<ResponseMetadata> {
         const parentUrl = requireUrlParentDirectory(url);
         const response = await this.fetch(
             parentUrl,
@@ -304,6 +324,8 @@ export default class SolidClient {
         }
 
         this.assertSuccessfulResponse(response, `Error creating container at ${url}`);
+
+        return { headers: response.headers };
     }
 
     private async createNonContainerDocument(
@@ -311,7 +333,7 @@ export default class SolidClient {
         url: string | null,
         properties: RDFResourceProperty[],
         options: QueryOptions = {},
-    ): Promise<string> {
+    ): Promise<{ url: string; metadata: ResponseMetadata }> {
         if (!url || options.method?.toLowerCase() === 'post') {
             const format = options.format ?? 'text/turtle';
             const body = await this.renderProperties(url, properties, format);
@@ -327,9 +349,12 @@ export default class SolidClient {
                 body,
             });
 
+
             this.assertSuccessfulResponse(response, `Error creating document under ${parentUrl}`);
 
-            return urlResolve(parentUrl, response.headers.get('Location') || '');
+            const documentUrl = urlResolve(parentUrl, response.headers.get('Location') || '');
+
+            return { url: documentUrl, metadata: { headers: response.headers } };
         }
 
         if (!url.startsWith(parentUrl))
@@ -346,7 +371,7 @@ export default class SolidClient {
 
         this.assertSuccessfulResponse(response, `Error creating document at ${url}`);
 
-        return url;
+        return { url, metadata: { headers: response.headers } };
     }
 
     private async getContainerDocuments(containerUrl: string): Promise<RDFDocument[]> {
@@ -401,22 +426,27 @@ export default class SolidClient {
         return Object.entries(statementsByUrl).map(([url, statements]) => new RDFDocument(url, statements));
     }
 
-    private async updateContainerDocument(document: RDFDocument, operations: UpdateOperation[]): Promise<void> {
+    private async updateContainerDocument(
+        document: RDFDocument,
+        operations: UpdateOperation[],
+    ): Promise<ResponseMetadata | undefined> {
         const descriptionUrl = document.metadata.describedBy || `${document.url}.meta`;
 
         document.url && containerDescriptionUrls.set(document.url, descriptionUrl);
 
-        await this.updateNonContainerDocument(
+        const metadata = await this.updateNonContainerDocument(
             document.clone({ changeUrl: descriptionUrl }),
             operations,
         );
+
+        return metadata;
     }
 
     private async updateNonContainerDocument(
         document: RDFDocument,
         operations: UpdateOperation[],
         options: QueryOptions = {},
-    ): Promise<void> {
+    ): Promise<ResponseMetadata | undefined> {
         const format = options.format ?? 'application/sparql-update';
 
         switch (format) {
@@ -432,7 +462,7 @@ export default class SolidClient {
     private async updateNonContainerDocumentWithSparql(
         document: RDFDocument,
         operations: UpdateOperation[],
-    ): Promise<void> {
+    ): Promise<ResponseMetadata | undefined> {
         const [updatedProperties, removedProperties] = decantUpdateOperationsData(operations);
         const inserts = updatedProperties.flat().map(property => property.toTurtle(document.url) + ' .');
         const deletes = document.properties.filter(
@@ -463,12 +493,14 @@ export default class SolidClient {
         });
 
         this.assertSuccessfulResponse(response, `Error updating document at ${document.url}`);
+
+        return { headers: response.headers };
     }
 
     private async updateNonContainerDocumentWithJsonLD(
         document: RDFDocument,
         operations: UpdateOperation[],
-    ): Promise<void> {
+    ): Promise<ResponseMetadata> {
         if (!document.url) {
             throw new Error('Missing document url for JsonLD update');
         }
@@ -495,6 +527,8 @@ export default class SolidClient {
         });
 
         this.assertSuccessfulResponse(response, `Error updating document at ${document.url}`);
+
+        return { headers: response.headers };
     }
 
     private withoutReservedContainerProperties(

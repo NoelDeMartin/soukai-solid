@@ -42,7 +42,7 @@ describe('SolidClient', () => {
         StubFetcher.addFetchResponse();
 
         // Act
-        const url = await client.createDocument(
+        const { url } = await client.createDocument(
             parentUrl,
             documentUrl,
             [
@@ -84,7 +84,7 @@ describe('SolidClient', () => {
         StubFetcher.addFetchResponse('', { Location: documentUrl }, 201);
 
         // Act
-        const url = await client.createDocument(
+        const { url } = await client.createDocument(
             parentUrl,
             null,
             [
@@ -112,7 +112,7 @@ describe('SolidClient', () => {
         StubFetcher.addFetchResponse('', {}, 205); // PATCH container meta
 
         // Act
-        const url = await client.createDocument(
+        const { url } = await client.createDocument(
             parentUrl,
             containerUrl,
             [
@@ -169,7 +169,7 @@ describe('SolidClient', () => {
         StubFetcher.addFetchResponse('', {}, 205); // PATCH container meta
 
         // Act
-        const url = await client.createDocument(
+        const { url } = await client.createDocument(
             parentUrl,
             containerUrl,
             [
