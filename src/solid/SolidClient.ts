@@ -281,7 +281,6 @@ export default class SolidClient {
             {
                 method: 'PUT',
                 headers: {
-                    'Content-Type': 'text/turtle',
                     'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                     'If-None-Match': '*',
                 },
@@ -309,7 +308,6 @@ export default class SolidClient {
             {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'text/turtle',
                     'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                     'Slug': requireUrlDirectoryName(url),
                     'If-None-Match': '*',

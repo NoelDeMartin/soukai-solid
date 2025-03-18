@@ -129,7 +129,6 @@ describe('SolidClient', () => {
         expect(StubFetcher.fetch).toHaveBeenNthCalledWith(1, containerUrl, {
             method: 'PUT',
             headers: {
-                'Content-Type': 'text/turtle',
                 'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                 'If-None-Match': '*',
             },
@@ -188,7 +187,6 @@ describe('SolidClient', () => {
             expect(StubFetcher.fetchSpy.mock.calls[index]?.[1]).toEqual({
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'text/turtle',
                     'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                     'Slug': stringToSlug(label),
                     'If-None-Match': '*',
@@ -201,7 +199,6 @@ describe('SolidClient', () => {
             expect(StubFetcher.fetchSpy.mock.calls[index]?.[1]).toEqual({
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'text/turtle',
                     'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                     'Slug': parentSlug,
                     'If-None-Match': '*',
@@ -213,7 +210,6 @@ describe('SolidClient', () => {
         expect(StubFetcher.fetchSpy.mock.calls[3]?.[1]).toEqual({
             method: 'POST',
             headers: {
-                'Content-Type': 'text/turtle',
                 'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
                 'Slug': grandParentSlug,
                 'If-None-Match': '*',
