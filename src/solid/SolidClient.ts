@@ -17,31 +17,23 @@ import {
     quadsToJsonLD,
     turtleToQuads,
 } from '@noeldemartin/solid-utils';
-import type { Quad, Quad_Object } from 'rdf-js';
+import type { Quad, Quad_Object } from '@rdfjs/types';
 
-import IRI from '@/solid/utils/IRI';
-import RDFDocument from '@/solid/RDFDocument';
-import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
-import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
-import ShieldPropertyOperation from '@/solid/operations/ShieldPropertyOperation';
-import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
-import { decantUpdateOperations, decantUpdateOperationsData } from '@/solid/operations/utils';
-import { LDP_CONTAINER, LDP_CONTAINS } from '@/solid/constants';
-import { OperationTypes } from '@/solid/operations/Operation';
-import type { LiteralValue } from '@/solid/RDFResourceProperty';
-import type { UpdateOperation } from '@/solid/operations/Operation';
+import IRI from 'soukai-solid/solid/utils/IRI';
+import RDFDocument from 'soukai-solid/solid/RDFDocument';
+import RDFResourceProperty, { RDFResourcePropertyType } from 'soukai-solid/solid/RDFResourceProperty';
+import RemovePropertyOperation from 'soukai-solid/solid/operations/RemovePropertyOperation';
+import ShieldPropertyOperation from 'soukai-solid/solid/operations/ShieldPropertyOperation';
+import UpdatePropertyOperation from 'soukai-solid/solid/operations/UpdatePropertyOperation';
+import { decantUpdateOperations, decantUpdateOperationsData } from 'soukai-solid/solid/operations/utils';
+import { LDP_CONTAINER, LDP_CONTAINS } from 'soukai-solid/solid/constants';
+import { OperationTypes } from 'soukai-solid/solid/operations/Operation';
+import type { LiteralValue } from 'soukai-solid/solid/RDFResourceProperty';
+import type { UpdateOperation } from 'soukai-solid/solid/operations/Operation';
 
-const RESERVED_CONTAINER_PROPERTIES = [
-    LDP_CONTAINS,
-    IRI('posix:mtime'),
-    IRI('posix:size'),
-    IRI('purl:modified'),
-];
+const RESERVED_CONTAINER_PROPERTIES = [LDP_CONTAINS, IRI('posix:mtime'), IRI('posix:size'), IRI('purl:modified')];
 
-const RESERVED_CONTAINER_TYPES = [
-    LDP_CONTAINER,
-    IRI('ldp:BasicContainer'),
-];
+const RESERVED_CONTAINER_TYPES = [LDP_CONTAINER, IRI('ldp:BasicContainer')];
 
 const containerDescriptionUrls: Map<string, string> = new Map();
 
@@ -53,6 +45,7 @@ export declare type TypedFetch = (input: RequestInfo, options?: RequestInit) => 
 export declare type Fetch = TypedFetch | AnyFetch;
 
 export type SolidClientConfig = {
+    /** @deprecated */
     useGlobbing: boolean;
     concurrentFetchBatchSize: number | null;
 };
@@ -72,7 +65,7 @@ export default class SolidClient {
     private config: SolidClientConfig;
 
     constructor(defaultFetch?: Fetch) {
-        const fetch = defaultFetch ?? window?.fetch ?? global?.fetch;
+        const fetch = defaultFetch ?? globalThis?.fetch;
 
         this.fetch = async (input, options) => {
             try {
@@ -105,12 +98,13 @@ export default class SolidClient {
         properties: RDFResourceProperty[] = [],
         options: QueryOptions = {},
     ): Promise<{ url: string; metadata: ResponseMetadata }> {
-        const isContainer = () => properties.some(
-            property =>
-                property.resourceUrl === url &&
-                property.type === RDFResourcePropertyType.Type &&
-                property.value === LDP_CONTAINER,
-        );
+        const isContainer = () =>
+            properties.some(
+                (property) =>
+                    property.resourceUrl === url &&
+                    property.type === RDFResourcePropertyType.Type &&
+                    property.value === LDP_CONTAINER,
+            );
 
         // TODO some of these operations can overwrite an existing document.
         // In this project that's ok because the existence of the document is checked
@@ -125,8 +119,7 @@ export default class SolidClient {
             headers: { Accept: 'text/turtle' },
         });
 
-        if (response.status !== 200)
-            return null;
+        if (response.status !== 200) return null;
 
         const data = await response.text();
         const document = await RDFDocument.fromTurtle(data, {
@@ -139,7 +132,7 @@ export default class SolidClient {
 
     public async getDocuments(containerUrl: string, needsContainers: boolean = false): Promise<RDFDocument[]> {
         try {
-            return (this.config.useGlobbing && !needsContainers)
+            return this.config.useGlobbing && !needsContainers
                 ? await this.getContainerDocumentsUsingGlobbing(containerUrl)
                 : await this.getContainerDocuments(containerUrl);
         } catch (error) {
@@ -211,7 +204,7 @@ export default class SolidClient {
     }
 
     public async deleteDocument(url: string, preloadedDocument?: RDFDocument): Promise<ResponseMetadata | undefined> {
-        const document = preloadedDocument ?? await this.getDocument(url);
+        const document = preloadedDocument ?? (await this.getDocument(url));
 
         if (document === null) {
             return;
@@ -222,7 +215,7 @@ export default class SolidClient {
                 ? await this.getContainerDocumentsUsingGlobbing(url)
                 : await this.getDocumentsFromContainer(url, document);
 
-            await Promise.all(documents.map(document => this.deleteDocument(document.url as string, document)));
+            await Promise.all(documents.map((doc) => this.deleteDocument(doc.url as string, doc)));
         }
 
         const response = await this.fetch(url, { method: 'DELETE' });
@@ -244,9 +237,7 @@ export default class SolidClient {
         } else if (response.status === 404) {
             return false;
         } else {
-            throw new SoukaiError(
-                `Couldn't determine if document at ${url} exists, got ${response.status} response`,
-            );
+            throw new SoukaiError(`Couldn't determine if document at ${url} exists, got ${response.status} response`);
         }
     }
 
@@ -258,10 +249,11 @@ export default class SolidClient {
         let metadata = await this.createContainerFolder(parentUrl, url);
 
         if (properties.length !== 0) {
-            const operations = this.withoutReservedContainerProperties(url, properties)
-                .map(property => new UpdatePropertyOperation(property));
+            const operations = this.withoutReservedContainerProperties(url, properties).map(
+                (property) => new UpdatePropertyOperation(property),
+            );
 
-            metadata = await this.updateDocument(url, operations) ?? metadata;
+            metadata = (await this.updateDocument(url, operations)) ?? metadata;
         }
 
         return { url, metadata };
@@ -276,16 +268,13 @@ export default class SolidClient {
             throw new SoukaiError(`Container urls must end with a trailing slash, given ${url}`);
         }
 
-        const response = await this.fetch(
-            url,
-            {
-                method: 'PUT',
-                headers: {
-                    'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
-                    'If-None-Match': '*',
-                },
+        const response = await this.fetch(url, {
+            method: 'PUT',
+            headers: {
+                'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
+                'If-None-Match': '*',
             },
-        );
+        });
 
         if (this.isInternalErrorResponse(response)) {
             // Handle NSS internal error
@@ -303,17 +292,14 @@ export default class SolidClient {
         createParent: boolean = true,
     ): Promise<ResponseMetadata> {
         const parentUrl = requireUrlParentDirectory(url);
-        const response = await this.fetch(
-            parentUrl,
-            {
-                method: 'POST',
-                headers: {
-                    'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
-                    'Slug': requireUrlDirectoryName(url),
-                    'If-None-Match': '*',
-                },
+        const response = await this.fetch(parentUrl, {
+            method: 'POST',
+            headers: {
+                'Link': '<http://www.w3.org/ns/ldp#BasicContainer>; rel="type"',
+                'Slug': requireUrlDirectoryName(url),
+                'If-None-Match': '*',
             },
-        );
+        });
 
         if (response.status === 404 && createParent) {
             await this.createContainerDocumentUsingPOST(parentUrl);
@@ -347,7 +333,6 @@ export default class SolidClient {
                 body,
             });
 
-
             this.assertSuccessfulResponse(response, `Error creating document under ${parentUrl}`);
 
             const documentUrl = urlResolve(parentUrl, response.headers.get('Location') || '');
@@ -355,8 +340,7 @@ export default class SolidClient {
             return { url: documentUrl, metadata: { headers: response.headers } };
         }
 
-        if (!url.startsWith(parentUrl))
-            throw new SoukaiError('A minted document url should start with the parent url');
+        if (!url.startsWith(parentUrl)) throw new SoukaiError('A minted document url should start with the parent url');
 
         const response = await this.fetch(url, {
             method: 'PATCH',
@@ -386,12 +370,11 @@ export default class SolidClient {
     ): Promise<RDFDocument[]> {
         const documents = [];
         const resourceUrls =
-            containerDocument.resource(containerUrl)?.getPropertyValues('ldp:contains') as string[] ??
-            [];
+            (containerDocument.resource(containerUrl)?.getPropertyValues('ldp:contains') as string[]) ?? [];
 
         while (resourceUrls.length > 0) {
             const chunkUrls = resourceUrls.splice(0, this.config.concurrentFetchBatchSize || resourceUrls.length);
-            const chunkDocuments = await Promise.all(chunkUrls.map(url => this.getDocument(url)));
+            const chunkDocuments = await Promise.all(chunkUrls.map((url) => this.getDocument(url)));
 
             documents.push(...chunkDocuments);
         }
@@ -410,13 +393,13 @@ export default class SolidClient {
         const turtleData = await response.text();
         const globbingDocument = await RDFDocument.fromTurtle(turtleData, { baseIRI: containerUrl });
         const statementsByUrl = globbingDocument.statements.reduce(
-            (statementsByUrl, statement) => {
+            (statements, statement) => {
                 const baseUrl = urlClean(statement.subject.value, { fragment: false });
-                const urlStatements = statementsByUrl[baseUrl] = statementsByUrl[baseUrl] ?? [];
+                const urlStatements = (statements[baseUrl] = statements[baseUrl] ?? []);
 
                 urlStatements.push(statement);
 
-                return statementsByUrl;
+                return statements;
             },
             {} as Record<string, Quad[]>,
         );
@@ -462,20 +445,18 @@ export default class SolidClient {
         operations: UpdateOperation[],
     ): Promise<ResponseMetadata | undefined> {
         const [updatedProperties, removedProperties] = decantUpdateOperationsData(operations);
-        const inserts = updatedProperties.flat().map(property => property.toTurtle(document.url) + ' .');
-        const deletes = document.properties.filter(
-            property => removedProperties.some(
-                ([resourceUrl, nameOrShields, value]) =>
-                    resourceUrl === property.resourceUrl &&
-                    (
-                        !nameOrShields ||
-                        (typeof nameOrShields === 'string' && nameOrShields === property.name) ||
-                        (Array.isArray(nameOrShields) && !nameOrShields.includes(property.name))
-                    ) &&
-                    (!value || value === property.value),
-            ),
-        )
-            .map(property => property.toTurtle(document.url) + ' .');
+        const inserts = updatedProperties.flat().map((property) => property.toTurtle(document.url) + ' .');
+        const deletes = document.properties
+            .filter((property) =>
+                removedProperties.some(
+                    ([resourceUrl, nameOrShields, value]) =>
+                        resourceUrl === property.resourceUrl &&
+                        (!nameOrShields ||
+                            (typeof nameOrShields === 'string' && nameOrShields === property.name) ||
+                            (Array.isArray(nameOrShields) && !nameOrShields.includes(property.name))) &&
+                        (!value || value === property.value),
+                ))
+            .map((property) => property.toTurtle(document.url) + ' .');
 
         if (inserts.length === 0 && deletes.length === 0) {
             return;
@@ -506,15 +487,15 @@ export default class SolidClient {
         const [updatedProperties, removedProperties] = decantUpdateOperationsData(operations);
         const documentProperties = document.properties
             .filter(
-                property =>
-                    !removedProperties.some(([resourceUrl, nameOrShields, value]) =>
-                        resourceUrl === property.resourceUrl &&
-                        (
-                            !nameOrShields ||
-                            (typeof nameOrShields === 'string' && nameOrShields === property.name) ||
-                            (Array.isArray(nameOrShields) && !nameOrShields.includes(property.name))
-                        ) &&
-                        (!value || value === property.value)),
+                (property) =>
+                    !removedProperties.some(
+                        ([resourceUrl, nameOrShields, value]) =>
+                            resourceUrl === property.resourceUrl &&
+                            (!nameOrShields ||
+                                (typeof nameOrShields === 'string' && nameOrShields === property.name) ||
+                                (Array.isArray(nameOrShields) && !nameOrShields.includes(property.name))) &&
+                            (!value || value === property.value),
+                    ),
             )
             .concat(updatedProperties.flat());
 
@@ -533,17 +514,15 @@ export default class SolidClient {
         resourceUrl: string | null,
         properties: RDFResourceProperty[],
     ): RDFResourceProperty[] {
-        const isReservedProperty =
-            (property: RDFResourceProperty) => RESERVED_CONTAINER_PROPERTIES.includes(property.name);
-        const isReservedType =
-            (property: RDFResourceProperty) =>
-                property.type === RDFResourcePropertyType.Type &&
-                RESERVED_CONTAINER_TYPES.includes(property.value as string);
+        const isReservedProperty = (property: RDFResourceProperty) =>
+            RESERVED_CONTAINER_PROPERTIES.includes(property.name);
+        const isReservedType = (property: RDFResourceProperty) =>
+            property.type === RDFResourcePropertyType.Type &&
+            RESERVED_CONTAINER_TYPES.includes(property.value as string);
 
         return properties.filter(
-            property =>
-                property.resourceUrl !== resourceUrl ||
-                (!isReservedProperty(property) && !isReservedType(property)),
+            (property) =>
+                property.resourceUrl !== resourceUrl || (!isReservedProperty(property) && !isReservedType(property)),
         );
     }
 
@@ -555,33 +534,37 @@ export default class SolidClient {
 
             if (!resource) continue;
 
-            const updatePropertyOperations = decantedOperations[OperationTypes.UpdateProperty]
-                .filter(operation => operation.propertyResourceUrl === changeUrlOperation.resourceUrl);
+            const updatePropertyOperations = decantedOperations[OperationTypes.UpdateProperty].filter(
+                (operation) => operation.propertyResourceUrl === changeUrlOperation.resourceUrl,
+            );
 
-            const removePropertyOperations = decantedOperations[OperationTypes.RemoveProperty]
-                .filter(operation => operation.resourceUrl === changeUrlOperation.resourceUrl);
+            const removePropertyOperations = decantedOperations[OperationTypes.RemoveProperty].filter(
+                (operation) => operation.resourceUrl === changeUrlOperation.resourceUrl,
+            );
 
-            updatePropertyOperations.forEach(operation => {
+            updatePropertyOperations.forEach((operation) => {
+                type RDFResourceProperties = [RDFResourceProperty] & RDFResourceProperty[];
+
                 operation.propertyOrProperties = Array.isArray(operation.propertyOrProperties)
-                    ? operation
-                        .propertyOrProperties
-                        .map(property => property.clone(changeUrlOperation.newResourceUrl)) as
-                            RDFResourceProperty | ([RDFResourceProperty] & RDFResourceProperty[])
+                    ? (operation.propertyOrProperties.map((property) =>
+                        property.clone(changeUrlOperation.newResourceUrl)) as RDFResourceProperties)
                     : operation.propertyOrProperties.clone(changeUrlOperation.newResourceUrl);
             });
-            removePropertyOperations.forEach(operation => operation.resourceUrl = changeUrlOperation.newResourceUrl);
+            removePropertyOperations.forEach(
+                (operation) => (operation.resourceUrl = changeUrlOperation.newResourceUrl),
+            );
 
             operations.push(new RemovePropertyOperation(changeUrlOperation.resourceUrl));
             operations.push(
                 ...resource.properties
                     .filter(
-                        property =>
-                            !updatePropertyOperations.some(operation => operation.propertyName === property.name) &&
+                        (property) =>
+                            !updatePropertyOperations.some((operation) => operation.propertyName === property.name) &&
                             !removePropertyOperations.some(
-                                operation => !operation.property || operation.property === property.name,
+                                (operation) => !operation.property || operation.property === property.name,
                             ),
                     )
-                    .map(property => new UpdatePropertyOperation(property.clone(changeUrlOperation.newResourceUrl))),
+                    .map((property) => new UpdatePropertyOperation(property.clone(changeUrlOperation.newResourceUrl))),
             );
 
             arrayRemove(operations, changeUrlOperation);
@@ -627,66 +610,67 @@ export default class SolidClient {
                 continue;
             }
 
-            const documentValues = document
-                .statements
+            const documentValues = document.statements
                 .filter(
-                    statement =>
+                    (statement) =>
                         statement.subject.value === operation.propertyResourceUrl &&
-                    statement.predicate.value === operation.propertyName,
+                        statement.predicate.value === operation.propertyName,
                 )
-                .map(statement => statement.object);
+                .map((statement) => statement.object);
             const isLiteralProperty = operation.propertyOrProperties[0].type === RDFResourcePropertyType.Literal;
-            const isReference = (property: Quad_Object | RDFResourceProperty) => 'type' in property
-                ? property.type === RDFResourcePropertyType.Reference
-                : property.termType === 'NamedNode';
+            const isReference = (property: Quad_Object | RDFResourceProperty) =>
+                'type' in property
+                    ? property.type === RDFResourcePropertyType.Reference
+                    : property.termType === 'NamedNode';
             const { added, removed } = arrayDiff<Quad_Object | RDFResourceProperty>(
                 documentValues,
                 operation.propertyOrProperties,
                 (a, b) => a.value === b.value && isReference(a) === isReference(b),
             );
 
-            added.forEach(addedProperty => operations.push(
-                new UpdatePropertyOperation(
-                    isLiteralProperty
-                        ? RDFResourceProperty.literal(
-                            operation.propertyResourceUrl,
-                            operation.propertyName,
-                            addedProperty.value as LiteralValue,
-                        )
-                        : RDFResourceProperty.reference(
-                            operation.propertyResourceUrl,
-                            operation.propertyName,
-                            addedProperty.value as string,
-                        ),
-                ),
-            ));
+            added.forEach((addedProperty) =>
+                operations.push(
+                    new UpdatePropertyOperation(
+                        isLiteralProperty
+                            ? RDFResourceProperty.literal(
+                                operation.propertyResourceUrl,
+                                operation.propertyName,
+                                  addedProperty.value as LiteralValue,
+                            )
+                            : RDFResourceProperty.reference(
+                                operation.propertyResourceUrl,
+                                operation.propertyName,
+                                  addedProperty.value as string,
+                            ),
+                    ),
+                ));
 
-            removed.forEach(removedProperty => operations.push(
-                new RemovePropertyOperation(
-                    operation.propertyResourceUrl as string,
-                    operation.propertyName,
-                    removedProperty.value,
-                ),
-            ));
+            removed.forEach((removedProperty) =>
+                operations.push(
+                    new RemovePropertyOperation(
+                        operation.propertyResourceUrl as string,
+                        operation.propertyName,
+                        removedProperty.value,
+                    ),
+                ));
 
             arrayOperations.push(operation);
             arrayProperties.push(`${operation.propertyResourceUrl}-${operation.propertyName}`);
         }
 
-        arrayOperations.forEach(operation => arrayRemove(operations, operation));
-        idempotentOperations.forEach(operation => arrayRemove(operations, operation));
+        arrayOperations.forEach((operation) => arrayRemove(operations, operation));
+        idempotentOperations.forEach((operation) => arrayRemove(operations, operation));
 
         // Properties that are going to be updated have to be deleted or they'll end up duplicated.
         const updateOperations = operations.filter(
-            operation =>
+            (operation) =>
                 operation.type === OperationTypes.UpdateProperty &&
                 operation.propertyType !== RDFResourcePropertyType.Type &&
                 document.hasProperty(operation.propertyResourceUrl as string, operation.propertyName),
         ) as UpdatePropertyOperation[];
 
         for (const operation of updateOperations) {
-            if (arrayProperties.includes(`${operation.propertyResourceUrl}-${operation.propertyName}`))
-                continue;
+            if (arrayProperties.includes(`${operation.propertyResourceUrl}-${operation.propertyName}`)) continue;
 
             operations.push(
                 new RemovePropertyOperation(operation.propertyResourceUrl as string, operation.propertyName),

@@ -1,7 +1,7 @@
-import SolidContainer from '@/models/SolidContainer';
-import { LDP_CONTAINER } from '@/solid/constants';
-import type { SolidContainerConstructor, SolidModelConstructor } from '@/main';
-import type { SolidModel } from '@/models/SolidModel';
+import SolidContainer from 'soukai-solid/models/SolidContainer';
+import { LDP_CONTAINER } from 'soukai-solid/solid/constants';
+import type { SolidContainerConstructor, SolidModelConstructor } from 'soukai-solid/models/inference';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
 
 export function isContainer(model: SolidModel): model is SolidContainer {
     return model instanceof SolidContainer;

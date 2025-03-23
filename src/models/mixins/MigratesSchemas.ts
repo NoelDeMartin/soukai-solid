@@ -1,21 +1,15 @@
-import {
-    arrayDiff,
-    isInstanceOf,
-    objectWithoutEmpty,
-    requireUrlParentDirectory,
-    tap,
-} from '@noeldemartin/utils';
+import { arrayDiff, isInstanceOf, objectWithoutEmpty, requireUrlParentDirectory, tap } from '@noeldemartin/utils';
 import { SoukaiError } from 'soukai';
 import type { EngineAttributeUpdate, EngineAttributeUpdateOperation, EngineAttributeValueMap } from 'soukai';
 import type { Nullable } from '@noeldemartin/utils';
 
-import type Operation from '@/models/history/Operation';
-import { bootSolidSchemaDecoupled } from '@/models/internals/helpers';
-import { operationClass } from '@/models/history/operations';
-import { CRDT_PROPERTY, CRDT_RESOURCE } from '@/solid/constants';
-import type { SolidModel } from '@/models/SolidModel';
-import type { SolidModelConstructor } from '@/models/inference';
-import type { SolidSchemaDefinition } from '@/models/fields';
+import type Operation from 'soukai-solid/models/history/Operation';
+import { bootSolidSchemaDecoupled } from 'soukai-solid/models/internals/helpers';
+import { operationClass } from 'soukai-solid/models/history/operations';
+import { CRDT_PROPERTY, CRDT_RESOURCE } from 'soukai-solid/solid/constants';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
+import type { SolidModelConstructor } from 'soukai-solid/models/inference';
+import type { SolidSchemaDefinition } from 'soukai-solid/models/fields';
 
 export interface MigrateSchemaOptions {
     mintOperationUrl?(operation: Operation): Nullable<string>;
@@ -55,7 +49,7 @@ export default class MigratesSchemas {
         const model = await this.newInstanceForSchema(schema, addedFields, removedFields);
         const dirtyUrl = model.url !== this.url ? model.url : null;
         const updates = [
-            ...await this.getOperationSchemaUpdates(model, removedFields, dirtyUrl, options),
+            ...(await this.getOperationSchemaUpdates(model, removedFields, dirtyUrl, options)),
             ...this.getMetadataSchemaUpdates(dirtyUrl),
             ...this.getUrlSchemaUpdates(dirtyUrl),
             this.getResourceSchemaUpdate(model, dirtyUrl),
@@ -71,25 +65,31 @@ export default class MigratesSchemas {
         removedFields: string[],
     ): Promise<T> {
         const PropertyOperation = operationClass('PropertyOperation');
-        const model = schema.newInstance(tap(this.getAttributes(), (attributes) => {
-            attributes['url'] = `${this.requireDocumentUrl()}#${schema.defaultResourceHash}`;
+        const model = schema.newInstance(
+            tap(this.getAttributes(), (attributes) => {
+                attributes['url'] = `${this.requireDocumentUrl()}#${schema.defaultResourceHash}`;
 
-            for (const removedField of removedFields) {
-                delete attributes[removedField];
-            }
-        }), true);
+                for (const removedField of removedFields) {
+                    delete attributes[removedField];
+                }
+            }),
+            true,
+        );
 
-        model.setRelationModels('operations', this.operations.filter(operation => {
-            if (!isInstanceOf(operation, PropertyOperation)) {
-                return true;
-            }
+        model.setRelationModels(
+            'operations',
+            this.operations.filter((operation) => {
+                if (!isInstanceOf(operation, PropertyOperation)) {
+                    return true;
+                }
 
-            const field = this.static().getRdfPropertyField(operation.property);
+                const field = this.static().getRdfPropertyField(operation.property);
 
-            return !field || !removedFields.includes(field);
-        }));
+                return !field || !removedFields.includes(field);
+            }),
+        );
 
-        addedFields.forEach(field => {
+        addedFields.forEach((field) => {
             if (!model.hasAttribute(field)) {
                 return;
             }

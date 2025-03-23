@@ -17,13 +17,7 @@ export * from './schema-container';
 export * from './SolidModel';
 export * from './SolidContainer.schema';
 
-export {
-    SolidACLAuthorization,
-    SolidContainer,
-    SolidDocument,
-    SolidTypeIndex,
-    SolidTypeRegistration,
-};
+export { SolidACLAuthorization, SolidContainer, SolidDocument, SolidTypeIndex, SolidTypeRegistration };
 
 export { default as SolidACLAuthorizationSchema } from './SolidACLAuthorization.schema';
 export { default as SolidContainerSchema } from './SolidContainer.schema';

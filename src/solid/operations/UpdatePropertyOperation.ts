@@ -1,5 +1,5 @@
-import type { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
-import type RDFResourceProperty from '@/solid/RDFResourceProperty';
+import type { RDFResourcePropertyType } from 'soukai-solid/solid/RDFResourceProperty';
+import type RDFResourceProperty from 'soukai-solid/solid/RDFResourceProperty';
 
 import { OperationTypes } from './Operation';
 import type Operation from './Operation';
@@ -11,23 +11,18 @@ export default class UpdatePropertyOperation implements Operation {
 
     constructor(propertyOrProperties: RDFResourceProperty | RDFResourceProperty[]) {
         this.propertyOrProperties = propertyOrProperties as
-            RDFResourceProperty | ([RDFResourceProperty] & RDFResourceProperty[]);
+            | RDFResourceProperty
+            | ([RDFResourceProperty] & RDFResourceProperty[]);
 
-        if (!Array.isArray(propertyOrProperties))
-            return;
+        if (!Array.isArray(propertyOrProperties)) return;
 
         const [firstProperty, ...otherProperties] = propertyOrProperties;
 
-        if (!firstProperty)
-            throw new Error('Cannot create an UpdatePropertyOperation with an empty array');
+        if (!firstProperty) throw new Error('Cannot create an UpdatePropertyOperation with an empty array');
 
         const { resourceUrl, name, type } = firstProperty;
 
-        if (
-            otherProperties.some(
-                p => p.resourceUrl !== resourceUrl || p.name !== name || p.type !== type,
-            )
-        )
+        if (otherProperties.some((p) => p.resourceUrl !== resourceUrl || p.name !== name || p.type !== type))
             throw new Error(
                 'All properties in an UpdatePropertyOperation must have the same resourceUrl, name and type',
             );

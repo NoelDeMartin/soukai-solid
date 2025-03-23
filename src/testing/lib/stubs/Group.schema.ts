@@ -1,6 +1,6 @@
 import { FieldType } from 'soukai';
 
-import { defineSolidModelSchema } from '@/models/schema';
+import { defineSolidModelSchema } from 'soukai-solid/models/schema';
 
 export default defineSolidModelSchema({
     rdfContexts: { foaf: 'http://xmlns.com/foaf/0.1/' },

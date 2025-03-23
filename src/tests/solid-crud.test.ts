@@ -1,31 +1,28 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import { bootModels, setEngine } from 'soukai';
-import { fakeDocumentUrl } from '@noeldemartin/testing';
-import { tap, urlResolve, urlResolveDirectory, uuid } from '@noeldemartin/utils';
+import { FakeResponse, FakeServer, fakeContainerUrl, fakeDocumentUrl } from '@noeldemartin/testing';
+import { tap, uuid } from '@noeldemartin/utils';
 import { faker } from '@noeldemartin/faker';
 
-import Group from '@/testing/lib/stubs/Group';
-import Movie from '@/testing/lib/stubs/Movie';
-import Person from '@/testing/lib/stubs/Person';
-import StubFetcher from '@/testing/lib/stubs/StubFetcher';
-import WatchAction from '@/testing/lib/stubs/WatchAction';
+import Group from 'soukai-solid/testing/lib/stubs/Group';
+import Movie from 'soukai-solid/testing/lib/stubs/Movie';
+import Person from 'soukai-solid/testing/lib/stubs/Person';
+import WatchAction from 'soukai-solid/testing/lib/stubs/WatchAction';
 
-import { loadFixture } from '@/testing/utils';
-import { SolidEngine } from '@/engines/SolidEngine';
-import IRI from '@/solid/utils/IRI';
-import RDFDocument from '@/solid/RDFDocument';
-import RDFResourceProperty from '@/solid/RDFResourceProperty';
+import { loadFixture } from 'soukai-solid/testing/utils';
+import { SolidEngine } from 'soukai-solid/engines/SolidEngine';
+import IRI from 'soukai-solid/solid/utils/IRI';
+import RDFDocument from 'soukai-solid/solid/RDFDocument';
+import RDFResourceProperty from 'soukai-solid/solid/RDFResourceProperty';
 
 const fixture = (name: string) => loadFixture(`solid-crud/${name}`);
 
 describe('Solid CRUD', () => {
 
-    let fetch: jest.Mock<Promise<Response>, [RequestInfo, RequestInit?]>;
-
     beforeEach(() => {
-        fetch = jest.fn((...args) => StubFetcher.fetch(...args));
         Movie.collection = 'https://my-pod.com/movies/';
 
-        setEngine(new SolidEngine(fetch));
+        setEngine(new SolidEngine(FakeServer.fetch));
         bootModels({ Movie, Person, WatchAction, Group });
     });
 
@@ -35,8 +32,8 @@ describe('Solid CRUD', () => {
         const releaseDate = new Date('1997-07-21T23:42:00Z');
         const watchDate = new Date('2002-09-15T23:42:00Z');
 
-        StubFetcher.addFetchResponse();
-        StubFetcher.addFetchResponse();
+        FakeServer.respondOnce('*', FakeResponse.success());
+        FakeServer.respondOnce('*', FakeResponse.success());
 
         // Act
         const movie = new Movie({ title, releaseDate });
@@ -46,9 +43,9 @@ describe('Solid CRUD', () => {
         await movie.save();
 
         // Assert
-        expect(fetch).toHaveBeenCalledTimes(2);
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(2);
 
-        expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(`
+        expect(FakeServer.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             INSERT DATA {
                 @prefix schema: <https://schema.org/>.
 
@@ -74,21 +71,24 @@ describe('Solid CRUD', () => {
 
         await movie.relatedActions.create({ startTime: watchDate });
 
-        StubFetcher.addFetchResponse(`
-            @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
+        FakeServer.respondOnce(
+            '*',
+            `
+                @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#>.
 
-            <#it> rdfs:label "Movies" .
-        `);
-        StubFetcher.addFetchResponse();
+                <#it> rdfs:label "Movies" .
+            `,
+        );
+        FakeServer.respondOnce('*');
 
         // Act
         await movie.saveInDocument(documentUrl, 'movie');
 
         // Assert
-        expect(fetch).toHaveBeenCalledTimes(2);
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(2);
 
-        expect(fetch.mock.calls[1]?.[0]).toEqual(documentUrl);
-        expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(`
+        expect(FakeServer.fetchSpy.mock.calls[1]?.[0]).toEqual(documentUrl);
+        expect(FakeServer.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             INSERT DATA {
                 @prefix schema: <https://schema.org/>.
 
@@ -109,13 +109,13 @@ describe('Solid CRUD', () => {
         class MovieWithoutUrlMinting extends Movie {
 
             public static mintsUrls = false;
-
+        
         }
 
         const title = faker.lorem.sentence();
         const releaseDate = new Date('1997-07-21T23:42:00Z');
 
-        StubFetcher.addFetchResponse('', { Location: Movie.collection + uuid() });
+        FakeServer.respondOnce('*', FakeResponse.success(undefined, { Location: Movie.collection + uuid() }));
 
         bootModels({ MovieWithoutUrlMinting });
 
@@ -127,8 +127,8 @@ describe('Solid CRUD', () => {
         expect(movie.url.endsWith('#it')).toBe(true);
         expect(movie.url.length).toBeGreaterThan(Movie.collection.length + 3);
 
-        expect(fetch).toHaveBeenCalledTimes(1);
-        expect(fetch.mock.calls[0]?.[1]?.body).toEqualTurtle(`
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(1);
+        expect(FakeServer.fetchSpy.mock.calls[0]?.[1]?.body).toEqualTurtle(`
             @prefix schema: <https://schema.org/>.
 
             <#it>
@@ -144,13 +144,13 @@ describe('Solid CRUD', () => {
 
             public static mintsUrls = false;
             public static defaultResourceHash = null;
-
+        
         }
 
         const title = faker.lorem.sentence();
         const releaseDate = new Date('1997-07-21T23:42:00Z');
 
-        StubFetcher.addFetchResponse('', { Location: Movie.collection + uuid() });
+        FakeServer.respondOnce('*', FakeResponse.success(undefined, { Location: Movie.collection + uuid() }));
 
         bootModels({ MovieWithoutUrlMinting });
 
@@ -162,8 +162,8 @@ describe('Solid CRUD', () => {
         expect(movie.url.length).toBeGreaterThan(Movie.collection.length);
         expect(movie.url.includes('#')).toBe(false);
 
-        expect(fetch).toHaveBeenCalledTimes(1);
-        expect(fetch.mock.calls[0]?.[1]?.body).toEqualTurtle(`
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(1);
+        expect(FakeServer.fetchSpy.mock.calls[0]?.[1]?.body).toEqualTurtle(`
             @prefix schema: <https://schema.org/>.
 
             <>
@@ -179,7 +179,7 @@ describe('Solid CRUD', () => {
         const stub = await createStub();
         const movie = new Movie(stub.getAttributes(), true);
 
-        StubFetcher.addFetchResponse();
+        FakeServer.respondOnce('*');
 
         // Act
         movie.setAttribute('title', title);
@@ -194,9 +194,9 @@ describe('Solid CRUD', () => {
 
         // Assert
         expect(movie.title).toBe(title);
-        expect(fetch).toHaveBeenCalledTimes(2);
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(2);
 
-        expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(`
+        expect(FakeServer.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             DELETE DATA {
                 <#it>
                     <${IRI('schema:name')}> "${stub.title}" ;
@@ -216,30 +216,31 @@ describe('Solid CRUD', () => {
         const movie = await createStub();
         const urls = movie.externalUrls.slice(0);
 
-        StubFetcher.addFetchResponse();
+        FakeServer.respondOnce('*');
 
         // Act
         await movie.update({ externalUrls: [] });
 
         // Assert
         expect(movie.externalUrls).toEqual([]);
-        expect(fetch).toHaveBeenCalledTimes(2);
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(2);
 
-        expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(`
+        expect(FakeServer.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             DELETE DATA {
-                <#it> <${IRI('schema:sameAs')}> ${urls.map(url => `<${url}>`).join(', ')} .
+                <#it> <${IRI('schema:sameAs')}> ${urls.map((url) => `<${url}>`).join(', ')} .
             }
         `);
     });
 
     it('Reads single models', async () => {
         // Arrange
-        StubFetcher.addFetchResponse(fixture('spirited-away.ttl'), {
-            'WAC-Allow': 'public="read"',
-        });
+        FakeServer.respondOnce(
+            '*',
+            FakeResponse.success(fixture('spirited-away.ttl'), { 'WAC-Allow': 'public="read"' }),
+        );
 
         // Act
-        const movie = await Movie.find('solid://movies/spirited-away#it') as Movie;
+        const movie = (await Movie.find('solid://movies/spirited-away#it')) as Movie;
 
         // Assert
         expect(movie).toBeInstanceOf(Movie);
@@ -263,12 +264,12 @@ describe('Solid CRUD', () => {
 
     it('Reads webIds', async () => {
         // Arrange
-        StubFetcher.addFetchResponse(fixture('alice.ttl'));
+        FakeServer.respondOnce('*', fixture('alice.ttl'));
 
         // Act
-        const alice = await Person
-            .from('https://alice.pod-provider.com/profile/')
-            .find('https://alice.pod-provider.com/profile/card#me');
+        const alice = await Person.from('https://alice.pod-provider.com/profile/').find(
+            'https://alice.pod-provider.com/profile/card#me',
+        );
 
         // Assert
         expect(alice).not.toBeNull();
@@ -277,20 +278,20 @@ describe('Solid CRUD', () => {
 
     it('Reads many models from containers', async () => {
         // Arrange
-        StubFetcher.addFetchResponse(fixture('movies-container.ttl'));
-        StubFetcher.addFetchResponse(fixture('the-lord-of-the-rings.ttl'));
-        StubFetcher.addFetchResponse(fixture('spirited-away.ttl'));
-        StubFetcher.addFetchResponse(fixture('the-tale-of-princess-kaguya.ttl'));
-        StubFetcher.addFetchResponse(fixture('ramen.ttl'));
+        FakeServer.respondOnce('*', fixture('movies-container.ttl'));
+        FakeServer.respondOnce('*', fixture('the-lord-of-the-rings.ttl'));
+        FakeServer.respondOnce('*', fixture('spirited-away.ttl'));
+        FakeServer.respondOnce('*', fixture('the-tale-of-princess-kaguya.ttl'));
+        FakeServer.respondOnce('*', fixture('ramen.ttl'));
 
         // Act
         const movies = await Movie.all({ rating: 'PG' });
 
         // Assert
         expect(movies).toHaveLength(2);
-        const theTaleOfPrincessKaguya =
-            movies.find(movie => movie.url.endsWith('the-tale-of-princess-kaguya#it')) as Movie;
-        const spiritedAway = movies.find(movie => movie.url.endsWith('spirited-away#it')) as Movie;
+        const theTaleOfPrincessKaguya = movies.find((movie) =>
+            movie.url.endsWith('the-tale-of-princess-kaguya#it')) as Movie;
+        const spiritedAway = movies.find((movie) => movie.url.endsWith('spirited-away#it')) as Movie;
 
         expect(theTaleOfPrincessKaguya).not.toBeUndefined();
         expect(theTaleOfPrincessKaguya.title).toEqual('The Tale of The Princess Kaguya');
@@ -305,15 +306,15 @@ describe('Solid CRUD', () => {
         // Arrange
         const documentUrl = fakeDocumentUrl();
 
-        StubFetcher.addFetchResponse(fixture('movies-document.ttl'));
+        FakeServer.respondOnce('*', fixture('movies-document.ttl'));
 
         // Act
         const movies = await Movie.all({ $in: [documentUrl] });
 
         // Assert
         expect(movies).toHaveLength(2);
-        const spiritedAway = movies.find(movie => movie.url.endsWith('#spirited-away')) as Movie;
-        const theLordOfTheRings = movies.find(movie => movie.url.endsWith('#the-lord-of-the-rings')) as Movie;
+        const spiritedAway = movies.find((movie) => movie.url.endsWith('#spirited-away')) as Movie;
+        const theLordOfTheRings = movies.find((movie) => movie.url.endsWith('#the-lord-of-the-rings')) as Movie;
 
         expect(spiritedAway).not.toBeUndefined();
         expect(spiritedAway.title).toEqual('Spirited Away');
@@ -323,20 +324,20 @@ describe('Solid CRUD', () => {
         expect(theLordOfTheRings.title).toEqual('The Lord of the Rings: The Fellowship of the Ring');
         expect(theLordOfTheRings.actions).toHaveLength(0);
 
-        expect(fetch).toHaveBeenCalledTimes(1);
-        expect(fetch.mock.calls[0]?.[0]).toEqual(documentUrl);
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(1);
+        expect(FakeServer.fetchSpy.mock.calls[0]?.[0]).toEqual(documentUrl);
     });
 
     it('Deletes models', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(faker.internet.url());
-        const documentUrl = urlResolve(containerUrl, faker.datatype.uuid());
+        const containerUrl = fakeContainerUrl();
+        const documentUrl = fakeDocumentUrl({ containerUrl });
         const url = `${documentUrl}#it`;
         const movie = new Movie({ url }, true);
 
-        StubFetcher.addFetchResponse(); // GET to check if there are other models in document
-        StubFetcher.addFetchResponse(); // GET to see if document exists
-        StubFetcher.addFetchResponse(); // DELETE
+        FakeServer.respondOnce('*'); // GET to check if there are other models in document
+        FakeServer.respondOnce('*'); // GET to see if document exists
+        FakeServer.respondOnce('*'); // DELETE
 
         // Act
         await movie.delete();
@@ -345,9 +346,9 @@ describe('Solid CRUD', () => {
         expect(movie.exists()).toBe(false);
         expect(movie.documentExists()).toBe(false);
 
-        expect(fetch).toHaveBeenCalledTimes(3);
-        expect(fetch.mock.calls[2]?.[0]).toEqual(documentUrl);
-        expect(fetch.mock.calls[2]?.[1]?.method).toEqual('DELETE');
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(3);
+        expect(FakeServer.fetchSpy.mock.calls[2]?.[0]).toEqual(documentUrl);
+        expect(FakeServer.fetchSpy.mock.calls[2]?.[1]?.method).toEqual('DELETE');
     });
 
     it('Deletes models in existing documents', async () => {
@@ -377,19 +378,19 @@ describe('Solid CRUD', () => {
         `;
 
         // TODO this could be improved to fetch only once
-        StubFetcher.addFetchResponse(documentTurtle); // Fetch document to see if it can be deleted entirely
-        StubFetcher.addFetchResponse(documentTurtle); // Fetch document under SolidClient.update to prepare PATCH
-        StubFetcher.addFetchResponse(); // PATCH document
+        FakeServer.respondOnce('*', documentTurtle); // Fetch document to see if it can be deleted entirely
+        FakeServer.respondOnce('*', documentTurtle); // Fetch document under SolidClient.update to prepare PATCH
+        FakeServer.respondOnce('*'); // PATCH document
 
         // Act
         await movie.delete();
 
         // Assert
-        expect(fetch).toHaveBeenCalledTimes(3);
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(3);
 
-        expect(fetch.mock.calls[2]?.[0]).toEqual(documentUrl);
-        expect(fetch.mock.calls[2]?.[1]?.method).toEqual('PATCH');
-        expect(fetch.mock.calls[2]?.[1]?.body).toEqualSparql(`
+        expect(FakeServer.fetchSpy.mock.calls[2]?.[0]).toEqual(documentUrl);
+        expect(FakeServer.fetchSpy.mock.calls[2]?.[1]?.method).toEqual('PATCH');
+        expect(FakeServer.fetchSpy.mock.calls[2]?.[1]?.body).toEqualSparql(`
             DELETE DATA {
                 @prefix schema: <https://schema.org/>.
 
@@ -410,11 +411,14 @@ describe('Solid CRUD', () => {
         const documentUrl = fakeDocumentUrl();
         const groupName = faker.lorem.sentence();
         const memberName = faker.lorem.sentence();
-        const group = new Group({
-            url: `${documentUrl}#group`,
-            name: groupName,
-            memberUrls: [`${documentUrl}#member`],
-        }, true);
+        const group = new Group(
+            {
+                url: `${documentUrl}#group`,
+                name: groupName,
+                memberUrls: [`${documentUrl}#member`],
+            },
+            true,
+        );
         const member = new Person({ url: `${documentUrl}#member`, name: memberName }, true);
 
         group.setRelationModels('members', [member]);
@@ -436,18 +440,18 @@ describe('Solid CRUD', () => {
         `;
 
         // TODO this could be improved to fetch only once
-        StubFetcher.addFetchResponse(documentTurtle); // Fetch document
-        StubFetcher.addFetchResponse(); // PATCH document
+        FakeServer.respondOnce('*', documentTurtle); // Fetch document
+        FakeServer.respondOnce('*'); // PATCH document
 
         // Act
         await group.relatedMembers.remove(member);
 
         // Assert
-        expect(fetch).toHaveBeenCalledTimes(2);
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(2);
 
-        expect(fetch.mock.calls[1]?.[0]).toEqual(documentUrl);
-        expect(fetch.mock.calls[1]?.[1]?.method).toEqual('PATCH');
-        expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(`
+        expect(FakeServer.fetchSpy.mock.calls[1]?.[0]).toEqual(documentUrl);
+        expect(FakeServer.fetchSpy.mock.calls[1]?.[1]?.method).toEqual('PATCH');
+        expect(FakeServer.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             DELETE DATA {
                 @prefix foaf: <http://xmlns.com/foaf/0.1/>.
 
@@ -465,23 +469,17 @@ describe('Solid CRUD', () => {
 async function createStub(title?: string): Promise<Movie> {
     const attributes = {
         title: title ?? faker.lorem.sentence(),
-        externalUrls: [
-            'https://example.org/foo',
-            'https://example.org/bar',
-        ],
+        externalUrls: ['https://example.org/foo', 'https://example.org/bar'],
         releaseDate: new Date(),
     };
 
-    return tap(new Movie(attributes, true), async stub => {
+    return tap(new Movie(attributes, true), async (stub) => {
         stub.mintUrl();
         stub.cleanDirty();
 
         const document = await RDFDocument.fromJsonLD(stub.toJsonLD());
-        const turtle = RDFResourceProperty.toTurtle(
-            document.properties,
-            document.url,
-        );
+        const turtle = RDFResourceProperty.toTurtle(document.properties, document.url);
 
-        StubFetcher.addFetchResponse(turtle);
+        FakeServer.respondOnce('*', turtle);
     });
 }

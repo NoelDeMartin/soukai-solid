@@ -1,4 +1,4 @@
-import { defineSolidModelSchema } from '@/models/schema';
+import { defineSolidModelSchema } from 'soukai-solid/models/schema';
 import { FieldType, TimestampField } from 'soukai';
 
 export default defineSolidModelSchema({

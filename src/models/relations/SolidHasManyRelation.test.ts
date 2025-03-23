@@ -1,53 +1,49 @@
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { faker } from '@noeldemartin/faker';
-import { bootModels, setEngine } from 'soukai';
-import { urlResolve, urlResolveDirectory } from '@noeldemartin/utils';
+import { bootModels } from 'soukai';
 import type { EngineDocument } from 'soukai';
-import type { Tuple } from '@noeldemartin/utils';
+import { type Tuple, uuid } from '@noeldemartin/utils';
 
-import IRI from '@/solid/utils/IRI';
+import IRI from 'soukai-solid/solid/utils/IRI';
 
-import { stubMovieJsonLD, stubWatchActionJsonLD } from '@/testing/lib/stubs/helpers';
-import Movie from '@/testing/lib/stubs/Movie';
-import WatchAction from '@/testing/lib/stubs/WatchAction';
-import StubEngine from '@/testing/lib/stubs/StubEngine';
-
-let engine: StubEngine;
+import { stubMovieJsonLD, stubWatchActionJsonLD } from 'soukai-solid/testing/lib/stubs/helpers';
+import Movie from 'soukai-solid/testing/lib/stubs/Movie';
+import WatchAction from 'soukai-solid/testing/lib/stubs/WatchAction';
+import FakeSolidEngine from 'soukai-solid/testing/fakes/FakeSolidEngine';
+import { fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@noeldemartin/testing';
 
 describe('SolidHasManyRelation', () => {
 
     beforeAll(() => bootModels({ Movie, WatchAction }));
-
-    beforeEach(() => {
-        engine = new StubEngine();
-        setEngine(engine);
-    });
+    beforeEach(() => FakeSolidEngine.use());
 
     it('loads models from different containers', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(faker.internet.url());
-        const movieUrl = urlResolve(containerUrl, faker.datatype.uuid());
-        const firstActionUrl = `${movieUrl}#${faker.datatype.uuid()}`;
-        const secondActionUrl = urlResolve(containerUrl, faker.datatype.uuid());
+        const containerUrl = fakeContainerUrl();
+        const otherContainerUrl = fakeContainerUrl();
+        const movieUrl = fakeDocumentUrl({ containerUrl });
+        const firstActionUrl = fakeResourceUrl({ documentUrl: movieUrl, hash: uuid() });
+        const secondActionUrl = fakeDocumentUrl({ containerUrl: otherContainerUrl });
 
-        engine.setOne({
-            '@graph': [
-                stubMovieJsonLD(movieUrl, faker.lorem.word())['@graph'][0],
-                stubWatchActionJsonLD(firstActionUrl, movieUrl, '1997-07-21T23:42:00.000Z')['@graph'][0],
-                {
-                    '@id': secondActionUrl,
-                    [IRI('schema:object')]: { '@id': movieUrl },
-                },
-            ],
-        } as EngineDocument);
+        FakeSolidEngine.database[containerUrl] = {
+            [movieUrl]: {
+                '@graph': [
+                    stubMovieJsonLD(movieUrl, faker.lorem.word())['@graph'][0],
+                    stubWatchActionJsonLD(firstActionUrl, movieUrl, '1997-07-21T23:42:00.000Z')['@graph'][0],
+                    {
+                        '@id': secondActionUrl,
+                        [IRI('schema:object')]: { '@id': movieUrl },
+                    },
+                ],
+            } as EngineDocument,
+        };
 
-        engine.setMany('solid://watchactions/', {
+        FakeSolidEngine.database[WatchAction.collection] = {
             [secondActionUrl]: stubWatchActionJsonLD(secondActionUrl, movieUrl, '2010-02-15T23:42:00.000Z'),
-        });
-
-        jest.spyOn(engine, 'readMany');
+        };
 
         // Act
-        const movie = await Movie.find<Movie>(movieUrl) as Movie;
+        const movie = (await Movie.find<Movie>(movieUrl)) as Movie;
 
         await movie.loadRelation('actions');
 
@@ -63,26 +59,21 @@ describe('SolidHasManyRelation', () => {
         expect(movieActions[1].object).toEqual(movieUrl);
         expect(movieActions[1].startTime).toEqual(new Date('2010-02-15T23:42:00.000Z'));
 
-        expect(engine.readMany).toHaveBeenCalledWith(
-            expect.anything(),
-            {
-                '$in': [
-                    secondActionUrl,
-                ],
-                '@graph': {
-                    $contains: {
-                        '@type': {
-                            $or: [
-                                { $contains: ['WatchAction'] },
-                                { $contains: [IRI('schema:WatchAction')] },
-                                { $eq: 'WatchAction' },
-                                { $eq: IRI('schema:WatchAction') },
-                            ],
-                        },
+        expect(FakeSolidEngine.readMany).toHaveBeenCalledWith(expect.anything(), {
+            '$in': [secondActionUrl],
+            '@graph': {
+                $contains: {
+                    '@type': {
+                        $or: [
+                            { $contains: ['WatchAction'] },
+                            { $contains: [IRI('schema:WatchAction')] },
+                            { $eq: 'WatchAction' },
+                            { $eq: IRI('schema:WatchAction') },
+                        ],
                     },
                 },
             },
-        );
+        });
     });
 
     it('clones related models', () => {

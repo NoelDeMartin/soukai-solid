@@ -1,9 +1,9 @@
 import { usesMixin } from '@noeldemartin/utils';
 import type { Relation } from 'soukai';
 
-import SolidBelongsToRelation from '@/models/relations/mixins/SolidBelongsToRelation';
-import SolidHasRelation from '@/models/relations/mixins/SolidHasRelation';
-import type { SolidDocumentRelationInstance } from '@/models/relations/mixins/SolidDocumentRelation';
+import SolidBelongsToRelation from 'soukai-solid/models/relations/mixins/SolidBelongsToRelation';
+import SolidHasRelation from 'soukai-solid/models/relations/mixins/SolidHasRelation';
+import type { SolidDocumentRelationInstance } from 'soukai-solid/models/relations/mixins/SolidDocumentRelation';
 
 export interface BeforeParentCreateRelation extends Relation {
     __beforeParentCreate(): void;
@@ -17,9 +17,7 @@ export function hasBeforeParentCreateHook(relation: Relation): relation is Befor
     return '__beforeParentCreate' in relation;
 }
 
-export function isSolidDocumentRelation(
-    relation: Relation,
-): relation is SolidDocumentRelationInstance {
+export function isSolidDocumentRelation(relation: Relation): relation is SolidDocumentRelationInstance {
     return 'useSameDocument' in relation;
 }
 

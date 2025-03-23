@@ -1,9 +1,9 @@
 import { arrayUnique, requireUrlParentDirectory, urlParentDirectory, urlRoot } from '@noeldemartin/utils';
 import { SingleModelRelation } from 'soukai';
 
-import type SolidContainer from '@/models/SolidContainer';
-import type { SolidModel } from '@/models/SolidModel';
-import type { SolidContainerConstructor } from '@/models/inference';
+import type SolidContainer from 'soukai-solid/models/SolidContainer';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
+import type { SolidContainerConstructor } from 'soukai-solid/models/inference';
 
 export default class SolidIsContainedByRelation<
     Parent extends SolidModel = SolidModel,
@@ -22,10 +22,7 @@ export default class SolidIsContainedByRelation<
     public setForeignAttributes(related: Related): void {
         const parentDocumentUrl = this.parent.getDocumentUrl();
 
-        if (
-            !this.parent.url ||
-            (parentDocumentUrl && related.resourceUrls.includes(parentDocumentUrl))
-        ) {
+        if (!this.parent.url || (parentDocumentUrl && related.resourceUrls.includes(parentDocumentUrl))) {
             return;
         }
 

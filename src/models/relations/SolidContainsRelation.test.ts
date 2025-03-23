@@ -1,12 +1,13 @@
+import { beforeAll, describe, expect, it } from 'vitest';
 import { faker } from '@noeldemartin/faker';
 import { fakeContainerUrl } from '@noeldemartin/testing';
 import { InMemoryEngine, bootModels, setEngine } from 'soukai';
 
-import Movie from '@/testing/lib/stubs/Movie';
-import MoviesCollection from '@/testing/lib/stubs/MoviesCollection';
-import Person from '@/testing/lib/stubs/Person';
-import PersonsCollection from '@/testing/lib/stubs/PersonsCollection';
-import StubEngine from '@/testing/lib/stubs/StubEngine';
+import Movie from 'soukai-solid/testing/lib/stubs/Movie';
+import MoviesCollection from 'soukai-solid/testing/lib/stubs/MoviesCollection';
+import Person from 'soukai-solid/testing/lib/stubs/Person';
+import PersonsCollection from 'soukai-solid/testing/lib/stubs/PersonsCollection';
+import FakeSolidEngine from 'soukai-solid/testing/fakes/FakeSolidEngine';
 
 describe('SolidContainsRelation', () => {
 
@@ -14,15 +15,14 @@ describe('SolidContainsRelation', () => {
 
     it('creates related models for solid engines', async () => {
         // Arrange
-        const engine = new StubEngine();
-        const containerUrl = fakeContainerUrl();
+        const parentContainerUrl = fakeContainerUrl();
+        const containerUrl = fakeContainerUrl({ baseUrl: parentContainerUrl });
         const movieTitle = faker.lorem.sentence();
         const collection = new MoviesCollection({ url: containerUrl }, true);
 
-        setEngine(engine);
-        jest.spyOn(engine, 'update');
-
         collection.relatedMovies.related = [];
+
+        FakeSolidEngine.use();
 
         // Act
         const movie = await collection.relatedMovies.create({ title: movieTitle });
@@ -36,7 +36,7 @@ describe('SolidContainsRelation', () => {
         expect(movie.url.startsWith(collection.url)).toBe(true);
         expect(movie.title).toEqual(movieTitle);
         expect(movie.collection).toBe(collection);
-        expect(engine.update).not.toHaveBeenCalled();
+        expect(FakeSolidEngine.update).not.toHaveBeenCalled();
     });
 
     it('creates related models for non-solid engines', async () => {

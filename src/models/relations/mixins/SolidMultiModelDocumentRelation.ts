@@ -3,10 +3,10 @@ import { MultiModelRelation } from 'soukai';
 import type { Attributes, Key } from 'soukai';
 import type { ClosureArgs } from '@noeldemartin/utils';
 
-import { isSolidBelongsToRelation, isSolidHasRelation } from '@/models/relations/guards';
-import { usingExperimentalActivityPods } from '@/experimental';
-import type { SolidModel } from '@/models/SolidModel';
-import type { SolidModelConstructor } from '@/models/inference';
+import { isSolidBelongsToRelation, isSolidHasRelation } from 'soukai-solid/models/relations/guards';
+import { usingExperimentalActivityPods } from 'soukai-solid/experimental';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
+import type { SolidModelConstructor } from 'soukai-solid/models/inference';
 
 import SolidDocumentRelation from './SolidDocumentRelation';
 
@@ -15,9 +15,7 @@ export type This<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
-> =
-    SolidMultiModelDocumentRelation<Parent, Related, RelatedClass> &
-    MultiModelRelation<Parent, Related, RelatedClass>;
+> = SolidMultiModelDocumentRelation<Parent, Related, RelatedClass> & MultiModelRelation<Parent, Related, RelatedClass>;
 
 // Workaround for https://github.com/microsoft/TypeScript/issues/29132
 export interface ProtectedSolidMultiRelation<Related extends SolidModel = SolidModel> {
@@ -54,15 +52,13 @@ export default class SolidMultiModelDocumentRelation<
     }
 
     public isEmpty(this: This): boolean | null {
-        if (!this.documentModelsLoaded && this.parent.exists())
-            return null;
+        if (!this.documentModelsLoaded && this.parent.exists()) return null;
 
-        const modelsCount = (
+        const modelsCount =
             (this.__modelsInSameDocument?.length || 0) +
             (this.__modelsInOtherDocumentIds?.length || 0) +
             this.__newModels.length +
-            (this.related?.length || 0)
-        );
+            (this.related?.length || 0);
 
         return modelsCount === 0;
     }
@@ -112,18 +108,18 @@ export default class SolidMultiModelDocumentRelation<
 
     public detach(this: This<Parent, Related, RelatedClass>, keyOrModel: string | Related): void {
         const localKey = typeof keyOrModel === 'string' ? keyOrModel : keyOrModel.getAttribute(this.localKeyName);
-        const detachedModel = this.related?.find(model => model.getAttribute(this.localKeyName) === localKey);
+        const detachedModel = this.related?.find((model) => model.getAttribute(this.localKeyName) === localKey);
 
         if (!detachedModel) {
             return;
         }
 
-        this.related = this.related?.filter(model => model.getAttribute(this.localKeyName) !== localKey);
-        this.__newModels = this.__newModels.filter(model => model.getAttribute(this.localKeyName) !== localKey);
-        this.__modelsInSameDocument = this.__modelsInSameDocument
-            ?.filter(model => model.getAttribute(this.localKeyName) !== localKey);
-        this.__modelsInOtherDocumentIds =
-            this.__modelsInOtherDocumentIds?.filter(id => id !== localKey);
+        this.related = this.related?.filter((model) => model.getAttribute(this.localKeyName) !== localKey);
+        this.__newModels = this.__newModels.filter((model) => model.getAttribute(this.localKeyName) !== localKey);
+        this.__modelsInSameDocument = this.__modelsInSameDocument?.filter(
+            (model) => model.getAttribute(this.localKeyName) !== localKey,
+        );
+        this.__modelsInOtherDocumentIds = this.__modelsInOtherDocumentIds?.filter((id) => id !== localKey);
 
         if (detachedModel.getDocumentUrl() === this.parent.getDocumentUrl() && !this.parent.tracksHistory()) {
             this.__removedDocumentModels.push(detachedModel);
@@ -136,7 +132,7 @@ export default class SolidMultiModelDocumentRelation<
         if (isSolidBelongsToRelation(this)) {
             this.parent.setAttribute(
                 this.foreignKeyName,
-                this.parent.getAttribute<Key[]>(this.foreignKeyName).filter(key => key !== localKey),
+                this.parent.getAttribute<Key[]>(this.foreignKeyName).filter((key) => key !== localKey),
             );
         }
     }
@@ -150,8 +146,7 @@ export default class SolidMultiModelDocumentRelation<
     }
 
     public isRelated(model: Related): boolean {
-        return this.super.isRelated(model)
-            || this.__newModels.includes(model);
+        return this.super.isRelated(model) || this.__newModels.includes(model);
     }
 
     protected cloneSolidData(clone: This<Parent, Related, RelatedClass>): void {
@@ -164,26 +159,24 @@ export default class SolidMultiModelDocumentRelation<
 
         for (const relatedModel of this.__newModels) {
             clone.__newModels.push(
-                relatedClones.find(relatedClone => relatedClone.is(relatedModel)) ??
-                tap(relatedModel.clone(), relatedClone => relatedClones.push(relatedClone)),
+                relatedClones.find((relatedClone) => relatedClone.is(relatedModel)) ??
+                    tap(relatedModel.clone(), (relatedClone) => relatedClones.push(relatedClone)),
             );
         }
 
         for (const removedModel of this.__removedDocumentModels) {
             clone.__removedDocumentModels.push(
-                relatedClones.find(relatedClone => relatedClone.is(removedModel)) ??
-                tap(removedModel.clone(), relatedClone => relatedClones.push(relatedClone)),
+                relatedClones.find((relatedClone) => relatedClone.is(removedModel)) ??
+                    tap(removedModel.clone(), (relatedClone) => relatedClones.push(relatedClone)),
             );
         }
 
         if (this.__modelsInSameDocument)
-            clone.__modelsInSameDocument = this.__modelsInSameDocument.map(relatedModel => {
-                return relatedClones.find(relatedClone => relatedClone.is(relatedModel))
-                    ?? relatedModel.clone();
+            clone.__modelsInSameDocument = this.__modelsInSameDocument.map((relatedModel) => {
+                return relatedClones.find((relatedClone) => relatedClone.is(relatedModel)) ?? relatedModel.clone();
             });
 
-        if (this.__modelsInOtherDocumentIds)
-            clone.__modelsInOtherDocumentIds = this.__modelsInOtherDocumentIds;
+        if (this.__modelsInOtherDocumentIds) clone.__modelsInOtherDocumentIds = this.__modelsInOtherDocumentIds;
     }
 
     protected loadDocumentModels(
@@ -195,10 +188,7 @@ export default class SolidMultiModelDocumentRelation<
         this.__modelsInOtherDocumentIds = modelsInOtherDocumentIds;
 
         if (this.__modelsInOtherDocumentIds.length === 0)
-            this.related = arrayUnique([
-                ...this.related ?? [],
-                ...this.__modelsInSameDocument,
-            ]);
+            this.related = arrayUnique([...(this.related ?? []), ...this.__modelsInSameDocument]);
 
         this.documentModelsLoaded = true;
     }

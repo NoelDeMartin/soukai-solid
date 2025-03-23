@@ -3,13 +3,13 @@ import { SolidDocumentPermission, createPrivateTypeIndex, createPublicTypeIndex 
 import type { Relation } from 'soukai';
 import type { SolidUserProfile } from '@noeldemartin/solid-utils';
 
-import type { SolidModelConstructor } from '@/models/inference';
+import type { SolidModelConstructor } from 'soukai-solid/models/inference';
 
 import DocumentContainsManyRelation from './relations/DocumentContainsManyRelation';
 import Model from './SolidTypeIndex.schema';
 import SolidContainer from './SolidContainer';
 import SolidTypeRegistration from './SolidTypeRegistration';
-import { usingExperimentalActivityPods } from '@/experimental';
+import { usingExperimentalActivityPods } from 'soukai-solid/experimental';
 
 export default class SolidTypeIndex extends Model {
 
@@ -35,9 +35,11 @@ export default class SolidTypeIndex extends Model {
         return instance;
     }
 
-    public registrations!: SolidTypeRegistration[];
-    public relatedRegistrations!: DocumentContainsManyRelation<
-        this, SolidTypeRegistration, typeof SolidTypeRegistration
+    declare public registrations: SolidTypeRegistration[];
+    declare public relatedRegistrations: DocumentContainsManyRelation<
+        this,
+        SolidTypeRegistration,
+        typeof SolidTypeRegistration
     >;
 
     public registrationsRelationship(): Relation {
@@ -54,16 +56,14 @@ export default class SolidTypeIndex extends Model {
     ): Promise<T | null> {
         await this.loadRelationIfUnloaded('registrations');
 
-        const containerRegistrations = this.registrations.filter(registration => {
+        const containerRegistrations = this.registrations.filter((registration) => {
             return registration.instanceContainer && arrayEquals(registration.forClass, modelClass.rdfsClasses);
         });
 
-        return asyncFirst(
-            containerRegistrations,
-            async registration => registration?.instanceContainer
-                ? (containerClass ?? SolidContainer).find(registration.instanceContainer) as Promise<T>
-                : null,
-        );
+        return asyncFirst(containerRegistrations, async (registration) =>
+            registration?.instanceContainer
+                ? ((containerClass ?? SolidContainer).find(registration.instanceContainer) as Promise<T>)
+                : null);
     }
 
 }

@@ -1,18 +1,19 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import { InMemoryEngine, bootModels, setEngine } from 'soukai';
 import { tap } from '@noeldemartin/utils';
 import { faker } from '@noeldemartin/faker';
 import type { EngineDocument, InMemoryEngineCollection } from 'soukai';
 
-import Movie from '@/testing/lib/stubs/Movie';
-import Task from '@/testing/lib/stubs/Task';
-import WatchAction from '@/testing/lib/stubs/WatchAction';
+import Movie from 'soukai-solid/testing/lib/stubs/Movie';
+import Task from 'soukai-solid/testing/lib/stubs/Task';
+import WatchAction from 'soukai-solid/testing/lib/stubs/WatchAction';
 
 let engine: InMemoryEngine;
 
 describe('Soukai CRUD', () => {
 
     beforeEach(() => {
-        engine = new InMemoryEngine;
+        engine = new InMemoryEngine();
 
         setEngine(engine);
         bootModels({ Movie, Task, WatchAction });
@@ -46,7 +47,7 @@ describe('Soukai CRUD', () => {
         const stub = createStub(title);
 
         // Act
-        const movie = await Movie.find(stub.url) as Movie;
+        const movie = (await Movie.find(stub.url)) as Movie;
 
         // Assert
         expect(movie).not.toBeNull();
@@ -106,7 +107,7 @@ describe('Soukai CRUD', () => {
 });
 
 function createStub(title?: string): Movie {
-    return tap(new Movie({ title: title ?? faker.lorem.sentence() }), stub => {
+    return tap(new Movie({ title: title ?? faker.lorem.sentence() }), (stub) => {
         stub.mintUrl();
 
         engine.database[Movie.collection] = {

@@ -1,17 +1,16 @@
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { faker } from '@noeldemartin/faker';
-import { bootModels, setEngine } from 'soukai';
+import { bootModels } from 'soukai';
 import { expandIRI } from '@noeldemartin/solid-utils';
-import { stringToSlug, urlResolve } from '@noeldemartin/utils';
+import { fakeContainerUrl, fakeDocumentUrl } from '@noeldemartin/testing';
 import type { Relation } from 'soukai';
 import type { Tuple } from '@noeldemartin/utils';
 
-import { SolidModel } from '@/models/SolidModel';
+import { SolidModel } from 'soukai-solid/models/SolidModel';
 
-import Person from '@/testing/lib/stubs/Person';
-import StubEngine from '@/testing/lib/stubs/StubEngine';
-import { stubPersonJsonLD } from '@/testing/lib/stubs/helpers';
-
-let engine: StubEngine;
+import Person from 'soukai-solid/testing/lib/stubs/Person';
+import FakeSolidEngine from 'soukai-solid/testing/fakes/FakeSolidEngine';
+import { stubPersonJsonLD } from 'soukai-solid/testing/lib/stubs/helpers';
 
 class PersonWithHistory extends Person {
 
@@ -19,10 +18,7 @@ class PersonWithHistory extends Person {
     public static history = true;
 
     public friendsRelationship(): Relation {
-        return this
-            .belongsToMany(Person, 'friendUrls')
-            .usingSameDocument(true)
-            .onDelete('cascade');
+        return this.belongsToMany(Person, 'friendUrls').usingSameDocument(true).onDelete('cascade');
     }
 
 }
@@ -30,40 +26,37 @@ class PersonWithHistory extends Person {
 describe('SolidHasManyRelation', () => {
 
     beforeAll(() => bootModels({ Person, PersonWithHistory }));
-    beforeEach(() => setEngine(engine = new StubEngine()));
+    beforeEach(() => FakeSolidEngine.use());
 
     it('uses document models for resolving models', async () => {
         // Arrange
-        const firstContainerUrl = faker.internet.url() + '/';
-        const secondContainerUrl = faker.internet.url() + '/';
-        const firstDocumentUrl = urlResolve(firstContainerUrl, stringToSlug(faker.random.word()));
-        const secondDocumentUrl = urlResolve(secondContainerUrl, stringToSlug(faker.random.word()));
-        const thirdDocumentUrl = urlResolve(secondContainerUrl, stringToSlug(faker.random.word()));
+        const firstContainerUrl = fakeContainerUrl();
+        const secondContainerUrl = fakeContainerUrl();
+        const firstDocumentUrl = fakeDocumentUrl({ containerUrl: firstContainerUrl });
+        const secondDocumentUrl = fakeDocumentUrl({ containerUrl: secondContainerUrl });
+        const thirdDocumentUrl = fakeDocumentUrl({ containerUrl: secondContainerUrl });
         const firstFriendUrl = firstDocumentUrl + '#it';
         const firstFriendName = faker.random.word();
         const secondFriendUrl = secondDocumentUrl + '#it';
         const secondFriendName = faker.random.word();
         const thirdFriendUrl = thirdDocumentUrl + '#it';
         const thirdFriendName = faker.random.word();
-        const person = new Person({
-            name: faker.random.word(),
-            friendUrls: [
-                firstFriendUrl,
-                secondFriendUrl,
-                thirdFriendUrl,
-            ],
-        }, true);
+        const person = new Person(
+            {
+                name: faker.random.word(),
+                friendUrls: [firstFriendUrl, secondFriendUrl, thirdFriendUrl],
+            },
+            true,
+        );
 
-        engine.setMany(firstContainerUrl, {
+        FakeSolidEngine.database[firstContainerUrl] = {
             [firstDocumentUrl]: stubPersonJsonLD(firstFriendUrl, firstFriendName),
-        });
+        };
 
-        engine.setMany(secondContainerUrl, {
+        FakeSolidEngine.database[secondContainerUrl] = {
             [secondDocumentUrl]: stubPersonJsonLD(secondFriendUrl, secondFriendName),
             [thirdDocumentUrl]: stubPersonJsonLD(thirdFriendUrl, thirdFriendName),
-        });
-
-        const readSpy = jest.spyOn(engine, 'readMany');
+        };
 
         // Act
         await person.loadRelation('friends');
@@ -79,7 +72,7 @@ describe('SolidHasManyRelation', () => {
         expect(friends[2].url).toEqual(thirdFriendUrl);
         expect(friends[2].name).toEqual(thirdFriendName);
 
-        expect(engine.readMany).toHaveBeenCalledTimes(2);
+        expect(FakeSolidEngine.readMany).toHaveBeenCalledTimes(2);
 
         const personFilters = {
             '@graph': {
@@ -95,11 +88,11 @@ describe('SolidHasManyRelation', () => {
                 },
             },
         };
-        expect(readSpy.mock.calls[0]?.[1]).toEqual({
+        expect(FakeSolidEngine.readManySpy.mock.calls[0]?.[1]).toEqual({
             $in: [firstDocumentUrl],
             ...personFilters,
         });
-        expect(readSpy.mock.calls[1]?.[1]).toEqual({
+        expect(FakeSolidEngine.readManySpy.mock.calls[1]?.[1]).toEqual({
             $in: [secondDocumentUrl, thirdDocumentUrl],
             ...personFilters,
         });

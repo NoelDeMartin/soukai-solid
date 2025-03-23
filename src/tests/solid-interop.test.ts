@@ -1,16 +1,16 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import { bootModels, setEngine } from 'soukai';
-import { fakeDocumentUrl } from '@noeldemartin/testing';
+import { FakeResponse, FakeServer, fakeDocumentUrl } from '@noeldemartin/testing';
 import { faker } from '@noeldemartin/faker';
 
-import SolidContainer from '@/models/SolidContainer';
-import SolidDocument from '@/models/SolidDocument';
-import SolidTypeIndex from '@/models/SolidTypeIndex';
-import { SolidEngine } from '@/engines/SolidEngine';
+import SolidContainer from 'soukai-solid/models/SolidContainer';
+import SolidDocument from 'soukai-solid/models/SolidDocument';
+import SolidTypeIndex from 'soukai-solid/models/SolidTypeIndex';
+import { SolidEngine } from 'soukai-solid/engines/SolidEngine';
 
-import Movie from '@/testing/lib/stubs/Movie';
-import StubFetcher from '@/testing/lib/stubs/StubFetcher';
-import WatchAction from '@/testing/lib/stubs/WatchAction';
-import { loadFixture } from '@/testing/utils';
+import Movie from 'soukai-solid/testing/lib/stubs/Movie';
+import WatchAction from 'soukai-solid/testing/lib/stubs/WatchAction';
+import { loadFixture } from 'soukai-solid/testing/utils';
 
 class MovieWithTimestamps extends Movie {
 
@@ -22,18 +22,16 @@ const fixture = (name: string) => loadFixture(`solid-interop/${name}`);
 
 describe('Solid Interoperability', () => {
 
-    let fetch: jest.Mock<Promise<Response>, [RequestInfo, RequestInit?]>;
-
     beforeEach(() => {
-        fetch = jest.fn((...args) => StubFetcher.fetch(...args));
         Movie.collection = 'https://my-pod.com/movies/';
 
-        setEngine(new SolidEngine(fetch));
+        setEngine(new SolidEngine(FakeServer.fetch));
         bootModels({ Movie, WatchAction, MovieWithTimestamps });
     });
 
     it('Fixes malformed attributes', async () => {
         // Arrange
+        const url = 'solid://movies/spirited-away#it';
         const turtle = `
             @prefix schema: <https://schema.org/>.
 
@@ -44,12 +42,12 @@ describe('Solid Interoperability', () => {
                 schema:sameAs "https://www.imdb.com/title/tt0245429", "https://www.themoviedb.org/movie/129" .
         `;
 
-        StubFetcher.addFetchResponse(turtle);
-        StubFetcher.addFetchResponse(turtle);
-        StubFetcher.addFetchResponse();
+        FakeServer.respondOnce('*', turtle);
+        FakeServer.respondOnce('*', turtle);
+        FakeServer.respondOnce('*');
 
         // Act
-        const movie = await MovieWithTimestamps.find('solid://movies/spirited-away#it') as MovieWithTimestamps;
+        const movie = (await MovieWithTimestamps.find(url)) as MovieWithTimestamps;
         const malformations = movie.getMalformedDocumentAttributes();
 
         movie.fixMalformedAttributes();
@@ -58,9 +56,9 @@ describe('Solid Interoperability', () => {
 
         // Assert
         expect(malformations);
-        expect(fetch).toHaveBeenCalledTimes(3);
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(3);
 
-        expect(fetch.mock.calls[2]?.[1]?.body).toEqualSparql(`
+        expect(FakeServer.fetchSpy.mock.calls[2]?.[1]?.body).toEqualSparql(`
             DELETE DATA {
                 @prefix schema: <https://schema.org/>.
 
@@ -88,6 +86,7 @@ describe('Solid Interoperability', () => {
 
     it('Reads http and https schemes', async () => {
         // Arrange
+        const url = 'solid://movies/spirited-away#it';
         const turtle = `
             @prefix schema: <http://schema.org/>.
 
@@ -96,12 +95,12 @@ describe('Solid Interoperability', () => {
                 schema:name "Spirited Away".
         `;
 
-        StubFetcher.addFetchResponse(turtle);
+        FakeServer.respondOnce(url, FakeResponse.success(turtle));
 
         // Act
         Movie.aliasRdfPrefixes({ 'https://schema.org': 'http://schema.org' });
 
-        const movies = await Movie.all({ $in: ['solid://movies/spirited-away#it'] });
+        const movies = await Movie.all({ $in: [url] });
 
         // Assert
         expect(movies).toHaveLength(1);
@@ -112,10 +111,10 @@ describe('Solid Interoperability', () => {
     it('Reads instances from the type index', async () => {
         // Arrange
         const podUrl = faker.internet.url();
-        const typeIndexUrl = fakeDocumentUrl({ baseUrl: podUrl });
+        const typeIndexUrl = fakeDocumentUrl({ containerUrl: podUrl + '/' });
         const movieUrl = `${podUrl}/movies/spirited-away`;
 
-        StubFetcher.addFetchResponse(fixture('type-index.ttl'));
+        FakeServer.respondOnce(typeIndexUrl, FakeResponse.success(fixture('type-index.ttl')));
 
         // Act
         const movieDocuments = await SolidDocument.fromTypeIndex(typeIndexUrl, Movie);
@@ -128,10 +127,10 @@ describe('Solid Interoperability', () => {
     it('Reads containers from the type index', async () => {
         // Arrange
         const podUrl = faker.internet.url();
-        const typeIndexUrl = fakeDocumentUrl({ baseUrl: podUrl });
+        const typeIndexUrl = fakeDocumentUrl({ containerUrl: podUrl + '/' });
         const moviesContainerUrl = `${podUrl}/movies`;
 
-        StubFetcher.addFetchResponse(fixture('type-index.ttl'));
+        FakeServer.respondOnce(typeIndexUrl, FakeResponse.success(fixture('type-index.ttl')));
 
         // Act
         const movieContainers = await SolidContainer.fromTypeIndex(typeIndexUrl, Movie);
@@ -144,12 +143,12 @@ describe('Solid Interoperability', () => {
     it('Registers instances in the type index', async () => {
         // Arrange
         const podUrl = faker.internet.url();
-        const typeIndexUrl = fakeDocumentUrl({ baseUrl: podUrl });
+        const typeIndexUrl = fakeDocumentUrl({ containerUrl: podUrl + '/' });
         const movieDocumentUrl = `${podUrl}/movies/midsommar`;
         const movieUrl = `${movieDocumentUrl}#it`;
 
-        StubFetcher.addFetchResponse(fixture('type-index.ttl'));
-        StubFetcher.addFetchResponse();
+        FakeServer.respondOnce(typeIndexUrl, FakeResponse.success(fixture('type-index.ttl')));
+        FakeServer.respondOnce(typeIndexUrl, FakeResponse.success());
 
         // Act
         const movie = new Movie({ url: movieUrl });
@@ -157,9 +156,9 @@ describe('Solid Interoperability', () => {
         await movie.registerInTypeIndex(typeIndexUrl);
 
         // Assert
-        expect(fetch).toHaveBeenCalledTimes(2);
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(2);
 
-        expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(`
+        expect(FakeServer.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             INSERT DATA {
                 @prefix solid: <http://www.w3.org/ns/solid/terms#> .
                 @prefix schema: <https://schema.org/>.
@@ -174,11 +173,11 @@ describe('Solid Interoperability', () => {
     it('Registers containers in the type index', async () => {
         // Arrange
         const podUrl = faker.internet.url();
-        const typeIndexUrl = fakeDocumentUrl({ baseUrl: podUrl });
+        const typeIndexUrl = fakeDocumentUrl({ containerUrl: podUrl + '/' });
         const moviesContainerUrl = `${podUrl}/great-movies`;
 
-        StubFetcher.addFetchResponse(fixture('type-index.ttl'));
-        StubFetcher.addFetchResponse();
+        FakeServer.respondOnce(typeIndexUrl, FakeResponse.success(fixture('type-index.ttl')));
+        FakeServer.respondOnce(typeIndexUrl, FakeResponse.success());
 
         // Act
         const movies = new SolidContainer({ url: moviesContainerUrl });
@@ -186,9 +185,9 @@ describe('Solid Interoperability', () => {
         await movies.register(typeIndexUrl, Movie);
 
         // Assert
-        expect(fetch).toHaveBeenCalledTimes(2);
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(2);
 
-        expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(`
+        expect(FakeServer.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             INSERT DATA {
                 @prefix solid: <http://www.w3.org/ns/solid/terms#> .
                 @prefix schema: <https://schema.org/>.
@@ -203,11 +202,11 @@ describe('Solid Interoperability', () => {
     it('Registers containers with type index instances', async () => {
         // Arrange
         const podUrl = faker.internet.url();
-        const typeIndexUrl = fakeDocumentUrl({ baseUrl: podUrl });
+        const typeIndexUrl = fakeDocumentUrl({ containerUrl: podUrl + '/' });
         const moviesContainerUrl = `${podUrl}/great-movies`;
 
-        StubFetcher.addFetchResponse(fixture('type-index.ttl'));
-        StubFetcher.addFetchResponse();
+        FakeServer.respondOnce(typeIndexUrl, FakeResponse.success(fixture('type-index.ttl')));
+        FakeServer.respondOnce(typeIndexUrl, FakeResponse.success());
 
         // Act
         const movies = new SolidContainer({ url: moviesContainerUrl });
@@ -221,8 +220,8 @@ describe('Solid Interoperability', () => {
         expect(typeIndex.registrations).toHaveLength(1);
         expect(typeIndex.registrations[0]?.instanceContainer).toEqual(moviesContainerUrl);
 
-        expect(fetch).toHaveBeenCalledTimes(2);
-        expect(fetch.mock.calls[1]?.[1]?.body).toEqualSparql(`
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(2);
+        expect(FakeServer.fetchSpy.mock.calls[1]?.[1]?.body).toEqualSparql(`
             INSERT DATA {
                 @prefix solid: <http://www.w3.org/ns/solid/terms#> .
                 @prefix schema: <https://schema.org/>.

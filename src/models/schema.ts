@@ -13,8 +13,13 @@ export function bootSolidSchema<BaseModel extends SolidModel, Schema extends Sol
 }
 
 /* eslint-disable max-len */
-export function defineSolidModelSchema<Schema extends SolidSchemaDefinition>(definition: Schema): Constructor<SolidMagicAttributes<Schema>> & SolidModelConstructor;
-export function defineSolidModelSchema<BaseModel extends SolidModel, Schema extends SolidSchemaDefinition>(baseModel: SolidModelConstructor<BaseModel>, definition: Schema): Constructor<SolidMagicAttributes<Schema>> & SolidModelConstructor<BaseModel>;
+export function defineSolidModelSchema<Schema extends SolidSchemaDefinition>(
+    definition: Schema
+): Constructor<SolidMagicAttributes<Schema>> & SolidModelConstructor;
+export function defineSolidModelSchema<BaseModel extends SolidModel, Schema extends SolidSchemaDefinition>(
+    baseModel: SolidModelConstructor<BaseModel>,
+    definition: Schema
+): Constructor<SolidMagicAttributes<Schema>> & SolidModelConstructor<BaseModel>;
 /* eslint-enable max-len */
 
 export function defineSolidModelSchema<BaseModel extends SolidModel, Schema extends SolidSchemaDefinition>(

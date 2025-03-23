@@ -1,7 +1,7 @@
 import { findInstanceRegistrations } from '@noeldemartin/solid-utils';
 import { requireUrlParentDirectory, uuid } from '@noeldemartin/utils';
 
-import { SolidEngine } from '@/engines/SolidEngine';
+import { SolidEngine } from 'soukai-solid/engines/SolidEngine';
 
 import Model from './SolidDocument.schema';
 import SolidTypeRegistration from './SolidTypeRegistration';
@@ -18,13 +18,9 @@ export default class SolidDocument extends Model {
     ): Promise<T[]> {
         const engine = this.requireFinalEngine();
         const fetch = engine instanceof SolidEngine ? engine.getFetch() : undefined;
-        const urls = await findInstanceRegistrations(
-            typeIndexUrl,
-            modelClass.rdfsClasses,
-            fetch,
-        );
+        const urls = await findInstanceRegistrations(typeIndexUrl, modelClass.rdfsClasses, fetch);
 
-        return urls.map(url => this.newInstance({ url }, true));
+        return urls.map((url) => this.newInstance({ url }, true));
     }
 
     public async register(typeIndex: string | SolidTypeIndex, modelClass: typeof SolidModel): Promise<void> {
@@ -36,10 +32,8 @@ export default class SolidDocument extends Model {
         if (typeof typeIndex === 'string') {
             typeRegistration.mintUrl(typeIndex, true, uuid());
 
-            await typeRegistration.withEngine(
-                this.requireEngine(),
-                () => typeRegistration.save(requireUrlParentDirectory(typeIndex)),
-            );
+            await typeRegistration.withEngine(this.requireEngine(), () =>
+                typeRegistration.save(requireUrlParentDirectory(typeIndex)));
 
             return;
         }

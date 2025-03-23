@@ -1,6 +1,6 @@
 import { FieldType } from 'soukai';
 
-import { defineSolidModelSchema } from '@/models/schema';
+import { defineSolidModelSchema } from 'soukai-solid/models/schema';
 
 import PropertyOperation from './PropertyOperation';
 import { propertyOperationFields } from './PropertyOperation.schema';

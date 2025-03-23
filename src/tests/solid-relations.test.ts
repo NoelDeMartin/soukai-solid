@@ -1,22 +1,19 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import { bootModels, setEngine } from 'soukai';
+import { FakeResponse, FakeServer } from '@noeldemartin/testing';
 
-import { SolidEngine } from '@/engines/SolidEngine';
+import { SolidEngine } from 'soukai-solid/engines/SolidEngine';
 
-import { loadFixture } from '@/testing/utils';
-import Group from '@/testing/lib/stubs/Group';
-import Person from '@/testing/lib/stubs/Person';
-import StubFetcher from '@/testing/lib/stubs/StubFetcher';
+import { loadFixture } from 'soukai-solid/testing/utils';
+import Group from 'soukai-solid/testing/lib/stubs/Group';
+import Person from 'soukai-solid/testing/lib/stubs/Person';
 
 const fixture = (name: string) => loadFixture(`solid-relations/${name}`);
 
 describe('Solid Relations', () => {
 
-    let fetch: jest.Mock<Promise<Response>, [RequestInfo, RequestInit?]>;
-
     beforeEach(() => {
-        fetch = jest.fn((...args) => StubFetcher.fetch(...args));
-
-        setEngine(new SolidEngine(fetch));
+        setEngine(new SolidEngine(FakeServer.fetch));
         bootModels({ Group, Person });
     });
 
@@ -28,7 +25,10 @@ describe('Solid Relations', () => {
             creatorUrl: 'https://onepiece.fandom.com/wiki/Monkey_D._Luffy',
         });
 
-        StubFetcher.addFetchResponse(fixture('luffy.ttl'));
+        FakeServer.respondOnce(
+            'https://onepiece.fandom.com/wiki/Monkey_D._Luffy',
+            FakeResponse.success(fixture('luffy.ttl')),
+        );
 
         // Act
         await group.loadRelation('creator');
@@ -40,8 +40,8 @@ describe('Solid Relations', () => {
         expect(creator.url).toEqual('https://onepiece.fandom.com/wiki/Monkey_D._Luffy');
         expect(creator.name).toEqual('Luffy');
 
-        expect(StubFetcher.fetch).toHaveBeenCalledTimes(1);
-        expect(StubFetcher.fetch).toHaveBeenCalledWith(
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(1);
+        expect(FakeServer.fetch).toHaveBeenCalledWith(
             'https://onepiece.fandom.com/wiki/Monkey_D._Luffy',
             expect.anything(),
         );

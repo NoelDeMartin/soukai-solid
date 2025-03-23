@@ -1,53 +1,75 @@
+import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+
 /* eslint-disable max-len */
-import { after, arrayWithout, range, stringToSlug, tap, toString, tt, urlParentDirectory, urlResolve, urlResolveDirectory, urlRoute, uuid } from '@noeldemartin/utils';
-import { expandIRI as defaultExpandIRI, turtleToQuadsSync } from '@noeldemartin/solid-utils';
-import { fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl } from '@noeldemartin/testing';
-import { FieldType, InMemoryEngine, ModelKey, TimestampField, bootModels, setEngine } from 'soukai';
+import {
+    after,
+    arrayWithout,
+    range,
+    stringToSlug,
+    tap,
+    toString,
+    urlParentDirectory,
+    urlResolve,
+    urlRoute,
+    uuid,
+} from '@noeldemartin/utils';
 import dayjs from 'dayjs';
+import { expandIRI as defaultExpandIRI, turtleToQuadsSync } from '@noeldemartin/solid-utils';
+import { fakeContainerUrl, fakeDocumentUrl, fakeResourceUrl, tt } from '@noeldemartin/testing';
+import { FieldType, InMemoryEngine, ModelKey, TimestampField, bootModels, setEngine } from 'soukai';
 import { faker } from '@noeldemartin/faker';
 import type { EngineDocument, Relation } from 'soukai';
-import type { Constructor, Equals, Expect , Tuple } from '@noeldemartin/utils';
+import type { Constructor, Equals, Tuple } from '@noeldemartin/utils';
+import type { Expect } from '@noeldemartin/testing';
 import type { JsonLDGraph, JsonLDResource } from '@noeldemartin/solid-utils';
 
-import AddPropertyOperation from '@/models/history/AddPropertyOperation';
-import DeleteOperation from '@/models/history/DeleteOperation';
-import IRI from '@/solid/utils/IRI';
-import PropertyOperation from '@/models/history/PropertyOperation';
-import RemovePropertyOperation from '@/models/history/RemovePropertyOperation';
-import SetPropertyOperation from '@/models/history/SetPropertyOperation';
-import UnsetPropertyOperation from '@/models/history/UnsetPropertyOperation';
-import { defineSolidModelSchema } from '@/models/schema';
-import type { SolidMagicAttributes, SolidModelConstructor } from '@/models/inference';
+import AddPropertyOperation from 'soukai-solid/models/history/AddPropertyOperation';
+import DeleteOperation from 'soukai-solid/models/history/DeleteOperation';
+import IRI from 'soukai-solid/solid/utils/IRI';
+import PropertyOperation from 'soukai-solid/models/history/PropertyOperation';
+import RemovePropertyOperation from 'soukai-solid/models/history/RemovePropertyOperation';
+import SetPropertyOperation from 'soukai-solid/models/history/SetPropertyOperation';
+import UnsetPropertyOperation from 'soukai-solid/models/history/UnsetPropertyOperation';
+import { defineSolidModelSchema } from 'soukai-solid/models/schema';
+import type { SolidMagicAttributes, SolidModelConstructor } from 'soukai-solid/models/inference';
 
-import Group from '@/testing/lib/stubs/Group';
-import Movie from '@/testing/lib/stubs/Movie';
-import MoviesCollection from '@/testing/lib/stubs/MoviesCollection';
-import Person from '@/testing/lib/stubs/Person';
-import PersonSchema from '@/testing/lib/stubs/Person.schema';
-import StubEngine from '@/testing/lib/stubs/StubEngine';
-import WatchAction from '@/testing/lib/stubs/WatchAction';
-import { assertInstanceOf } from '@/testing/utils';
-import { stubMovieJsonLD, stubMoviesCollectionJsonLD, stubPersonJsonLD, stubWatchActionJsonLD } from '@/testing/lib/stubs/helpers';
+import Group from 'soukai-solid/testing/lib/stubs/Group';
+import Movie from 'soukai-solid/testing/lib/stubs/Movie';
+import MoviesCollection from 'soukai-solid/testing/lib/stubs/MoviesCollection';
+import Person from 'soukai-solid/testing/lib/stubs/Person';
+import PersonSchema from 'soukai-solid/testing/lib/stubs/Person.schema';
+import WatchAction from 'soukai-solid/testing/lib/stubs/WatchAction';
+import FakeSolidEngine from 'soukai-solid/testing/fakes/FakeSolidEngine';
+import { assertInstanceOf } from 'soukai-solid/testing/utils';
+import {
+    stubMovieJsonLD,
+    stubMoviesCollectionJsonLD,
+    stubPersonJsonLD,
+    stubWatchActionJsonLD,
+} from 'soukai-solid/testing/lib/stubs/helpers';
 
 import { SolidModel } from './SolidModel';
 
-let engine: StubEngine;
-
 describe('SolidModel', () => {
 
-    beforeAll(() => bootModels({
-        Group,
-        GroupWithHistory,
-        GroupWithHistoryAndPersonsInSameDocument,
-        GroupWithPersonsInSameDocument,
-        Movie,
-        MoviesCollection,
-        Person,
-        PersonWithHistory,
-        WatchAction,
-    }));
+    beforeAll(() => {
+        bootModels({
+            Group,
+            GroupWithHistory,
+            GroupWithHistoryAndPersonsInSameDocument,
+            GroupWithPersonsInSameDocument,
+            Movie,
+            MoviesCollection,
+            Person,
+            PersonWithHistory,
+            WatchAction,
+        });
+    });
 
-    beforeEach(() => setEngine(engine = new StubEngine()));
+    beforeEach(() => {
+        FakeSolidEngine.reset();
+        FakeSolidEngine.use();
+    });
 
     it('resolves contexts when booting', () => {
         class StubModel extends SolidModel {
@@ -66,14 +88,12 @@ describe('SolidModel', () => {
                     rdfProperty: 'foaf:givenname',
                 },
             };
-
+        
         }
 
         bootModels({ StubModel });
 
-        expect(StubModel.rdfsClasses).toEqual([
-            'http://xmlns.com/foaf/0.1/Person',
-        ]);
+        expect(StubModel.rdfsClasses).toEqual(['http://xmlns.com/foaf/0.1/Person']);
 
         expect(StubModel.fields).toEqual({
             url: {
@@ -105,7 +125,7 @@ describe('SolidModel', () => {
                     rdfProperty: 'schema:name',
                 },
             };
-
+        
         }
 
         bootModels({ StubModel });
@@ -140,7 +160,7 @@ describe('SolidModel', () => {
                     rdfProperty: 'schema:name',
                 },
             };
-
+        
         }
 
         bootModels({ StubModel });
@@ -175,7 +195,7 @@ describe('SolidModel', () => {
                     rdfProperty: 'schema:name',
                 },
             };
-
+        
         }
 
         bootModels({ StubModel });
@@ -200,13 +220,13 @@ describe('SolidModel', () => {
         class A extends SolidModel {
 
             public static rdfsClass = 'http://xmlns.com/foaf/0.1/A';
-
+        
         }
 
         class B extends SolidModel {
 
             public static rdfsClass = 'foaf:B';
-
+        
         }
 
         bootModels({ A, B });
@@ -227,7 +247,7 @@ describe('SolidModel', () => {
             public static fields = {
                 name: FieldType.String,
             };
-
+        
         }
 
         bootModels({ StubModel });
@@ -248,8 +268,8 @@ describe('SolidModel', () => {
 
     it('merges rdfs classes properly', () => {
         // Arrange.
-        class A extends defineSolidModelSchema({ rdfsClass: 'A' }) { }
-        class B extends defineSolidModelSchema(A, { rdfsClass: 'B' }) { }
+        class A extends defineSolidModelSchema({ rdfsClass: 'A' }) {}
+        class B extends defineSolidModelSchema(A, { rdfsClass: 'B' }) {}
 
         // Act
         bootModels({ A, B });
@@ -262,14 +282,13 @@ describe('SolidModel', () => {
     it('allows adding undefined fields', async () => {
         class StubModel extends SolidModel {}
 
-        const containerUrl = urlResolveDirectory(faker.internet.url());
-        const createSpy = jest.spyOn(engine, 'create');
+        const containerUrl = fakeContainerUrl();
 
         bootModels({ StubModel });
 
         await StubModel.at(containerUrl).create({ nickname: 'Johnny' });
 
-        const document = createSpy.mock.calls[0]?.[1] as { '@graph': [{ nickname: string }] };
+        const document = FakeSolidEngine.createSpy.mock.calls[0]?.[1] as { '@graph': [{ nickname: string }] };
 
         expect(document['@graph'][0].nickname).toEqual('Johnny');
     });
@@ -279,7 +298,7 @@ describe('SolidModel', () => {
         class StubModel extends SolidModel {
 
             public static classFields = ['stubField'];
-
+        
         }
 
         bootModels({ StubModel });
@@ -299,13 +318,11 @@ describe('SolidModel', () => {
     it('sends types on create', async () => {
         class StubModel extends SolidModel {}
 
-        const createSpy = jest.spyOn(engine, 'create');
-
         bootModels({ StubModel });
 
         await StubModel.create({});
 
-        const document = createSpy.mock.calls[0]?.[1] as { '@graph': [{ '@type': string }] };
+        const document = FakeSolidEngine.createSpy.mock.calls[0]?.[1] as { '@graph': [{ '@type': string }] };
 
         expect(document['@graph'][0]['@type']).not.toBeUndefined();
     });
@@ -314,14 +331,17 @@ describe('SolidModel', () => {
         // Arrange
         const url = fakeResourceUrl();
         const name = faker.random.word();
-        const movie = new Movie({ url, name, externalUrls: ['https://example.com', 'https://example.org', 'https://example.com'] });
-        const createSpy = jest.spyOn(engine, 'create');
+        const movie = new Movie({
+            url,
+            name,
+            externalUrls: ['https://example.com', 'https://example.org', 'https://example.com'],
+        });
 
         // Act
         await movie.save();
 
         // Assert
-        const document = createSpy.mock.calls[0]?.[1] as JsonLDGraph;
+        const document = FakeSolidEngine.createSpy.mock.calls[0]?.[1] as JsonLDGraph;
 
         expect(movie.externalUrls).toEqual(['https://example.com', 'https://example.org']);
         expect(document['@graph'][0]?.sameAs).toHaveLength(2);
@@ -350,7 +370,7 @@ describe('SolidModel', () => {
 
     it('sends JSON-LD with related models in the same document', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const containerUrl = fakeContainerUrl();
         const movieName = faker.lorem.sentence();
         const directorName = faker.name.firstName();
         const movieUrl = urlResolve(containerUrl, stringToSlug(movieName));
@@ -363,19 +383,13 @@ describe('SolidModel', () => {
 
         action.setRelationModel('movie', movie);
 
-        const createSpy = jest.spyOn(engine, 'create');
-
         // Act
         await movie.save(containerUrl);
 
         // Assert
-        expect(engine.create).toHaveBeenCalledWith(
-            containerUrl,
-            expect.anything(),
-            movieUrl,
-        );
+        expect(FakeSolidEngine.create).toHaveBeenCalledWith(containerUrl, expect.anything(), movieUrl);
 
-        const document = createSpy.mock.calls[0]?.[1];
+        const document = FakeSolidEngine.createSpy.mock.calls[0]?.[1];
         await expect(document).toEqualJsonLD({
             '@graph': [
                 ...stubMovieJsonLD(movieUrl, movieName)['@graph'],
@@ -405,12 +419,10 @@ describe('SolidModel', () => {
 
     it('sends JSON-LD with related models in the same document without minted url', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const containerUrl = fakeContainerUrl();
         const movieName = faker.lorem.sentence();
         const movie = new Movie({ name: movieName });
         const action = await movie.relatedActions.create({ startTime: new Date('1997-07-21T23:42:00Z') });
-
-        const createSpy = jest.spyOn(engine, 'create');
 
         // Act
         await movie.save(containerUrl);
@@ -418,12 +430,8 @@ describe('SolidModel', () => {
         // Assert
         const movieUrl = movie.url as string;
 
-        expect(engine.create).toHaveBeenCalledWith(
-            containerUrl,
-            expect.anything(),
-            movie.getDocumentUrl(),
-        );
-        expect(createSpy.mock.calls[0]?.[1]).toEqualJsonLD({
+        expect(FakeSolidEngine.create).toHaveBeenCalledWith(containerUrl, expect.anything(), movie.getDocumentUrl());
+        expect(FakeSolidEngine.createSpy.mock.calls[0]?.[1]).toEqualJsonLD({
             '@graph': [
                 ...stubMovieJsonLD(movieUrl, movieName)['@graph'],
                 ...stubWatchActionJsonLD(action.url as string, movieUrl, '1997-07-21T23:42:00.000Z')['@graph'],
@@ -448,7 +456,7 @@ describe('SolidModel', () => {
         class StubModel extends SolidModel {
 
             public static rdfsClasses = ['https://schema.org/Action', 'http://www.w3.org/2002/12/cal/ical#Vtodo'];
-
+        
         }
         const documentUrl = fakeDocumentUrl();
         const quads = turtleToQuadsSync('<#it> a <https://schema.org/Action> .', {
@@ -466,8 +474,8 @@ describe('SolidModel', () => {
 
     it('sends JSON-LD with related model updates using parent engine', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(faker.internet.url());
-        const documentUrl = urlResolve(containerUrl, faker.datatype.uuid());
+        const containerUrl = fakeContainerUrl();
+        const documentUrl = fakeDocumentUrl({ containerUrl });
         const movieUrl = `${documentUrl}#it`;
         const actionUrl = `${documentUrl}#action`;
         const document = {
@@ -478,10 +486,8 @@ describe('SolidModel', () => {
         } as EngineDocument;
         const movie = await Movie.createFromEngineDocument(movieUrl, document, movieUrl);
         const action = movie.actions?.[0] as WatchAction;
-        const updateSpy = jest.spyOn(engine, 'update');
 
-        engine.setOne(document);
-        action.setEngine(new InMemoryEngine);
+        FakeSolidEngine.database[containerUrl] = { [documentUrl]: document };
 
         // Act
         movie.title = faker.lorem.sentence();
@@ -490,13 +496,9 @@ describe('SolidModel', () => {
         await movie.save();
 
         // Assert
-        expect(engine.update).toHaveBeenCalledWith(
-            containerUrl,
-            documentUrl,
-            expect.anything(),
-        );
+        expect(FakeSolidEngine.update).toHaveBeenCalledWith(containerUrl, documentUrl, expect.anything());
 
-        expect(updateSpy.mock.calls[0]?.[2]).toEqual({
+        expect(FakeSolidEngine.updateSpy.mock.calls[0]?.[2]).toEqual({
             '@graph': {
                 $apply: [
                     {
@@ -526,38 +528,41 @@ describe('SolidModel', () => {
         const peopleUrl = 'https://example.com/people/';
         const aliceUrl = `${peopleUrl}alice`;
 
-        engine.setMany(peopleUrl, {
-            [aliceUrl]: stubPersonJsonLD(aliceUrl, 'Alice'),
-        });
-
-        jest.spyOn(engine, 'readMany');
+        FakeSolidEngine.database[peopleUrl] = {
+            [aliceUrl]: {
+                '@graph': [
+                    {
+                        '@id': aliceUrl,
+                        '@type': 'http://xmlns.com/foaf/0.1/Person',
+                        'http://xmlns.com/foaf/0.1/name': 'Alice',
+                    },
+                ],
+            },
+        };
 
         // Act
-        const people = await Person.from(peopleUrl).all({ name: 'Alice' }) as Tuple<Person, 1>;
+        const people = (await Person.from(peopleUrl).all({ name: 'Alice' })) as Tuple<Person, 1>;
 
         // Assert
         expect(people).toHaveLength(1);
         expect(people[0].url).toEqual(aliceUrl);
         expect(people[0].name).toEqual('Alice');
 
-        expect(engine.readMany).toHaveBeenCalledWith(
-            peopleUrl,
-            {
-                '@graph': {
-                    $contains: {
-                        '@type': {
-                            $or: [
-                                { $contains: ['Person'] },
-                                { $contains: ['http://xmlns.com/foaf/0.1/Person'] },
-                                { $eq: 'Person' },
-                                { $eq: 'http://xmlns.com/foaf/0.1/Person' },
-                            ],
-                        },
-                        [IRI('foaf:name')]: 'Alice',
+        expect(FakeSolidEngine.readMany).toHaveBeenCalledWith(peopleUrl, {
+            '@graph': {
+                $contains: {
+                    '@type': {
+                        $or: [
+                            { $contains: ['Person'] },
+                            { $contains: ['http://xmlns.com/foaf/0.1/Person'] },
+                            { $eq: 'Person' },
+                            { $eq: 'http://xmlns.com/foaf/0.1/Person' },
+                        ],
                     },
+                    [IRI('foaf:name')]: 'Alice',
                 },
             },
-        );
+        });
     });
 
     it('converts updates to JSON-LD', async () => {
@@ -566,23 +571,24 @@ describe('SolidModel', () => {
 
             public static timestamps = false;
 
-            public name?: string;
-            public surname?: string;
-
+            declare public name: string | undefined;
+            declare public surname: string | undefined;
+        
         }
-
-        jest.spyOn(engine, 'update');
 
         bootModels({ StubModel });
 
-        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const containerUrl = fakeContainerUrl();
+        const documentUrl = fakeDocumentUrl({ containerUrl });
         const model = new StubModel(
             {
-                url: urlResolve(containerUrl, faker.datatype.uuid()),
+                url: documentUrl,
                 surname: faker.name.lastName(),
             },
             true,
         );
+
+        FakeSolidEngine.database[containerUrl] = { [documentUrl]: { '@graph': [model.toJsonLD()] } as EngineDocument };
 
         // Act.
         model.name = 'John';
@@ -591,42 +597,41 @@ describe('SolidModel', () => {
         await model.save();
 
         // Assert.
-        expect(engine.update).toHaveBeenCalledWith(
-            containerUrl,
-            model.getDocumentUrl(),
-            {
-                '@graph': {
-                    $updateItems: {
-                        $where: { '@id': model.url },
-                        $update: {
-                            [IRI('solid:name')]: 'John',
-                            [IRI('solid:surname')]: { $unset: true },
-                        },
+        expect(FakeSolidEngine.update).toHaveBeenCalledWith(containerUrl, model.getDocumentUrl(), {
+            '@graph': {
+                $updateItems: {
+                    $where: { '@id': model.url },
+                    $update: {
+                        [IRI('solid:name')]: 'John',
+                        [IRI('solid:surname')]: { $unset: true },
                     },
                 },
             },
-        );
+        });
     });
 
     it('reads many from multiple documents with related models', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(faker.internet.url());
-        const firstDocumentUrl = urlResolve(containerUrl, faker.datatype.uuid());
-        const secondDocumentUrl = urlResolve(containerUrl, faker.datatype.uuid());
+        const containerUrl = fakeContainerUrl();
+        const firstDocumentUrl = fakeDocumentUrl({ containerUrl });
+        const secondDocumentUrl = fakeDocumentUrl({ containerUrl });
         const firstMovieUrl = `${firstDocumentUrl}#it`;
         const secondMovieUrl = `${secondDocumentUrl}#it`;
-        const thirdMovieUrl = `${secondDocumentUrl}#${faker.datatype.uuid()}`;
-        const firstWatchActionUrl = `${secondDocumentUrl}#${faker.datatype.uuid()}`;
-        const secondWatchActionUrl = `${secondDocumentUrl}#${faker.datatype.uuid()}`;
+        const thirdMovieUrl = fakeResourceUrl({ documentUrl: secondDocumentUrl, hash: uuid() });
+        const firstWatchActionUrl = fakeResourceUrl({ documentUrl: secondDocumentUrl, hash: uuid() });
+        const secondWatchActionUrl = fakeResourceUrl({ documentUrl: secondDocumentUrl, hash: uuid() });
         const firstMovieName = faker.lorem.sentence();
         const secondMovieName = faker.lorem.sentence();
         const thirdMovieName = faker.lorem.sentence();
-        const collection = new MoviesCollection({
-            url: containerUrl,
-            resourceUrls: [firstDocumentUrl, secondDocumentUrl],
-        }, true);
+        const collection = new MoviesCollection(
+            {
+                url: containerUrl,
+                resourceUrls: [firstDocumentUrl, secondDocumentUrl],
+            },
+            true,
+        );
 
-        engine.setMany(containerUrl, {
+        FakeSolidEngine.database[containerUrl] = {
             [firstDocumentUrl]: stubMovieJsonLD(firstMovieUrl, firstMovieName),
             [secondDocumentUrl]: {
                 '@graph': [
@@ -636,7 +641,7 @@ describe('SolidModel', () => {
                     stubWatchActionJsonLD(secondWatchActionUrl, thirdMovieUrl)['@graph'][0],
                 ],
             } as EngineDocument,
-        });
+        };
 
         // Act
         await collection.loadRelation('movies');
@@ -645,12 +650,12 @@ describe('SolidModel', () => {
         const movies = collection.movies as Movie[];
         expect(movies).toHaveLength(3);
 
-        const firstMovie = movies.find(movie => movie.url === firstMovieUrl) as Movie;
+        const firstMovie = movies.find((movie) => movie.url === firstMovieUrl) as Movie;
         expect(firstMovie).not.toBeNull();
         expect(firstMovie.title).toEqual(firstMovieName);
         expect(firstMovie.actions).toHaveLength(0);
 
-        const secondMovie = movies.find(movie => movie.url === secondMovieUrl) as Movie;
+        const secondMovie = movies.find((movie) => movie.url === secondMovieUrl) as Movie;
         expect(secondMovie).not.toBeNull();
         expect(secondMovie.title).toEqual(secondMovieName);
         expect(secondMovie.actions).toHaveLength(1);
@@ -659,7 +664,7 @@ describe('SolidModel', () => {
         expect(secondMovieActions[0].url).toEqual(firstWatchActionUrl);
         expect(secondMovieActions[0].getSourceDocumentUrl()).toEqual(secondDocumentUrl);
 
-        const thirdMovie = movies.find(movie => movie.url === thirdMovieUrl) as Movie;
+        const thirdMovie = movies.find((movie) => movie.url === thirdMovieUrl) as Movie;
         expect(thirdMovie).not.toBeNull();
         expect(thirdMovie.title).toEqual(thirdMovieName);
         expect(thirdMovie.actions).toHaveLength(1);
@@ -672,9 +677,7 @@ describe('SolidModel', () => {
     it('mints url for new models', async () => {
         class StubModel extends SolidModel {}
 
-        const containerUrl = urlResolveDirectory(faker.internet.url());
-
-        jest.spyOn(engine, 'create');
+        const containerUrl = fakeContainerUrl();
 
         bootModels({ StubModel });
 
@@ -683,11 +686,7 @@ describe('SolidModel', () => {
         expect(typeof model.url).toEqual('string');
         expect(model.url.startsWith(containerUrl)).toBe(true);
 
-        expect(engine.create).toHaveBeenCalledWith(
-            containerUrl,
-            expect.anything(),
-            model.getDocumentUrl(),
-        );
+        expect(FakeSolidEngine.create).toHaveBeenCalledWith(containerUrl, expect.anything(), model.getDocumentUrl());
     });
 
     it('uses default hash to mint urls for new models', async () => {
@@ -695,12 +694,10 @@ describe('SolidModel', () => {
         class StubModel extends SolidModel {
 
             public static defaultResourceHash = 'foobar';
-
+        
         }
 
-        const containerUrl = urlResolveDirectory(faker.internet.url());
-
-        jest.spyOn(engine, 'create');
+        const containerUrl = fakeContainerUrl();
 
         bootModels({ StubModel });
 
@@ -712,11 +709,7 @@ describe('SolidModel', () => {
         expect(model.url.startsWith(containerUrl)).toBe(true);
         expect(model.url.endsWith('#foobar')).toBe(true);
 
-        expect(engine.create).toHaveBeenCalledWith(
-            containerUrl,
-            expect.anything(),
-            model.getDocumentUrl(),
-        );
+        expect(FakeSolidEngine.create).toHaveBeenCalledWith(containerUrl, expect.anything(), model.getDocumentUrl());
     });
 
     it('updates schema definitions', async () => {
@@ -846,11 +839,10 @@ describe('SolidModel', () => {
         class StubModel extends SolidModel {
 
             public static mintsUrls = false;
-
+        
         }
 
-        const containerUrl = urlResolveDirectory(faker.internet.url());
-        const createSpy = jest.spyOn(engine, 'create');
+        const containerUrl = fakeContainerUrl();
 
         bootModels({ StubModel });
 
@@ -858,7 +850,7 @@ describe('SolidModel', () => {
         const model = await StubModel.at(containerUrl).create();
 
         // Assert
-        expect(engine.create).toHaveBeenCalledWith(
+        expect(FakeSolidEngine.create).toHaveBeenCalledWith(
             containerUrl,
             {
                 '@graph': [
@@ -886,7 +878,7 @@ describe('SolidModel', () => {
             undefined,
         );
 
-        const documentUrl = await createSpy.mock.results[0]?.value;
+        const documentUrl = await FakeSolidEngine.createSpy.mock.results[0]?.value;
         expect(model.url).toEqual(`${documentUrl}#it`);
         expect(model.metadata.url).toEqual(`${documentUrl}#it-metadata`);
         expect(model.metadata.resourceUrl).toEqual(`${documentUrl}#it`);
@@ -899,11 +891,10 @@ describe('SolidModel', () => {
             public static timestamps = false;
             public static mintsUrls = false;
             public static defaultResourceHash = null;
-
+        
         }
 
-        const containerUrl = urlResolveDirectory(faker.internet.url());
-        const createSpy = jest.spyOn(engine, 'create');
+        const containerUrl = fakeContainerUrl();
 
         bootModels({ StubModel });
 
@@ -911,7 +902,7 @@ describe('SolidModel', () => {
         const model = await StubModel.at(containerUrl).create();
 
         // Assert
-        expect(engine.create).toHaveBeenCalledWith(
+        expect(FakeSolidEngine.create).toHaveBeenCalledWith(
             containerUrl,
             {
                 '@graph': [
@@ -924,7 +915,7 @@ describe('SolidModel', () => {
             undefined,
         );
 
-        const documentUrl = await createSpy.mock.results[0]?.value;
+        const documentUrl = await FakeSolidEngine.createSpy.mock.results[0]?.value;
         expect(model.url).toEqual(documentUrl);
     });
 
@@ -934,12 +925,10 @@ describe('SolidModel', () => {
 
         const containerUrl = fakeContainerUrl();
         const escapedContainerUrl = containerUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const resourceUrl = fakeResourceUrl({ containerUrl });
+        const documentUrl = fakeDocumentUrl({ containerUrl });
+        const resourceUrl = fakeResourceUrl({ documentUrl });
 
-        urlResolve(containerUrl, stringToSlug(faker.random.word()));
-
-        engine.setOne({ url: resourceUrl });
-        jest.spyOn(engine, 'create');
+        FakeSolidEngine.database[containerUrl] = { [documentUrl]: stubMovieJsonLD(resourceUrl, faker.random.word()) };
 
         bootModels({ StubModel });
 
@@ -954,26 +943,18 @@ describe('SolidModel', () => {
         expect(model.url).toMatch(new RegExp(`^${escapedContainerUrl}[\\d\\w-]+#it$`));
         expect(model.url.startsWith(containerUrl)).toBe(true);
 
-        expect(engine.create).toHaveBeenCalledWith(
-            containerUrl,
-            expect.anything(),
-            urlRoute(resourceUrl),
-        );
-        expect(engine.create).toHaveBeenCalledWith(
-            containerUrl,
-            expect.anything(),
-            urlRoute(model.url),
-        );
+        expect(FakeSolidEngine.create).toHaveBeenCalledWith(containerUrl, expect.anything(), urlRoute(resourceUrl));
+        expect(FakeSolidEngine.create).toHaveBeenCalledWith(containerUrl, expect.anything(), urlRoute(model.url));
     });
 
     it('minted unique urls update relations', async () => {
         // Arrange
         const containerUrl = fakeContainerUrl();
         const escapedContainerUrl = containerUrl.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-        const resourceUrl = fakeResourceUrl({ containerUrl });
-        const createSpy = jest.spyOn(engine, 'create');
+        const documentUrl = fakeDocumentUrl({ containerUrl });
+        const resourceUrl = fakeResourceUrl({ documentUrl });
 
-        engine.setOne({ url: resourceUrl });
+        FakeSolidEngine.database[containerUrl] = { [documentUrl]: { url: resourceUrl } };
 
         // Act
         const movie = new Movie({ url: resourceUrl });
@@ -1000,28 +981,24 @@ describe('SolidModel', () => {
         expect(actors[1].starred).toHaveLength(1);
         expect(actors[1].starred[0]).toEqual(movie.url);
 
-        expect(engine.create).toHaveBeenCalledWith(
-            containerUrl,
-            expect.anything(),
-            urlRoute(resourceUrl),
-        );
-        expect(engine.create).toHaveBeenCalledWith(
-            containerUrl,
-            expect.anything(),
-            urlRoute(movie.url),
-        );
+        expect(FakeSolidEngine.create).toHaveBeenCalledWith(containerUrl, expect.anything(), urlRoute(resourceUrl));
+        expect(FakeSolidEngine.create).toHaveBeenCalledWith(containerUrl, expect.anything(), urlRoute(movie.url));
 
-        const graph = createSpy.mock.calls[1]?.[1] as JsonLDGraph;
+        const graph = FakeSolidEngine.createSpy.mock.calls[1]?.[1] as JsonLDGraph;
 
-        const actionJsonLD = graph['@graph'].find(resource => resource['@id'] === actions[0].url) as JsonLDResource;
+        const actionJsonLD = graph['@graph'].find((resource) => resource['@id'] === actions[0].url) as JsonLDResource;
         const actionMovieJsonLD = actionJsonLD['object'] as JsonLDResource;
         expect(actionMovieJsonLD['@id']).toEqual(movie.url);
 
-        const firstActorJsonLD = graph['@graph'].find(resource => resource['@id'] === actors[0].url) as JsonLDResource;
+        const firstActorJsonLD = graph['@graph'].find(
+            (resource) => resource['@id'] === actors[0].url,
+        ) as JsonLDResource;
         const firstActorMovieJsonLd = firstActorJsonLD['pastProject'] as JsonLDResource;
         expect(firstActorMovieJsonLd['@id']).toEqual(movie.url);
 
-        const secondActorJsonLD = graph['@graph'].find(resource => resource['@id'] === actors[1].url) as JsonLDResource;
+        const secondActorJsonLD = graph['@graph'].find(
+            (resource) => resource['@id'] === actors[1].url,
+        ) as JsonLDResource;
         const secondActorMovieJsonLd = secondActorJsonLD['pastProject'] as JsonLDResource;
         expect(secondActorMovieJsonLd['@id']).toEqual(movie.url);
     });
@@ -1029,9 +1006,7 @@ describe('SolidModel', () => {
     it('uses explicit containerUrl for minting url on save', async () => {
         class StubModel extends SolidModel {}
 
-        const containerUrl = urlResolveDirectory(faker.internet.url());
-
-        jest.spyOn(engine, 'create');
+        const containerUrl = fakeContainerUrl();
 
         bootModels({ StubModel });
 
@@ -1042,21 +1017,18 @@ describe('SolidModel', () => {
         expect(typeof model.url).toEqual('string');
         expect(model.url.startsWith(containerUrl)).toBe(true);
 
-        expect(engine.create).toHaveBeenCalledWith(
-            containerUrl,
-            expect.anything(),
-            model.getDocumentUrl(),
-        );
+        expect(FakeSolidEngine.create).toHaveBeenCalledWith(containerUrl, expect.anything(), model.getDocumentUrl());
     });
 
     it('uses hash fragment for minting model urls in the same document', async () => {
         // Arrange
-        const movieUrl = urlResolve(faker.internet.url(), faker.datatype.uuid());
+        const containerUrl = fakeContainerUrl();
+        const movieUrl = fakeDocumentUrl({ containerUrl });
         const movie = new Movie({ url: movieUrl }, true);
 
         movie.setRelationModels('actions', []);
 
-        jest.spyOn(engine, 'update');
+        FakeSolidEngine.database[containerUrl] = { [movieUrl]: { '@graph': [movie.toJsonLD()] } as EngineDocument };
 
         // Act
         const action = await movie.relatedActions.create({});
@@ -1066,184 +1038,163 @@ describe('SolidModel', () => {
         expect(action.url.startsWith(movieUrl + '#')).toBe(true);
         expect(action.exists()).toBe(true);
 
-        expect(engine.update).toHaveBeenCalledWith(
-            expect.anything(),
-            movieUrl,
-            {
-                '@graph': {
-                    $push: {
-                        '@context': { '@vocab': 'https://schema.org/' },
-                        '@id': action.url,
-                        '@type': 'WatchAction',
-                        'object': { '@id': movie.url },
-                    },
+        expect(FakeSolidEngine.update).toHaveBeenCalledWith(expect.anything(), movieUrl, {
+            '@graph': {
+                $push: {
+                    '@context': { '@vocab': 'https://schema.org/' },
+                    '@id': action.url,
+                    '@type': 'WatchAction',
+                    'object': { '@id': movie.url },
                 },
             },
-        );
+        });
     });
 
     it('creates models in existing documents', async () => {
         // Arrange
-        const documentUrl = urlResolve(faker.internet.url(), faker.datatype.uuid());
-        const movieUrl = documentUrl + '#' + faker.datatype.uuid();
+        const containerUrl = fakeContainerUrl();
+        const documentUrl = fakeDocumentUrl({ containerUrl });
+        const movieUrl = fakeResourceUrl({ documentUrl });
         const movie = new Movie({ url: movieUrl });
 
         movie.setDocumentExists(true);
-        jest.spyOn(engine, 'update');
+
+        FakeSolidEngine.database[containerUrl] = { [documentUrl]: { '@graph': [] } as EngineDocument };
 
         // Act
         await movie.save();
 
         // Assert
-        expect(engine.update).toHaveBeenCalledWith(
-            expect.anything(),
-            documentUrl,
-            {
-                '@graph': {
-                    $push: movie.toJsonLD(),
-                },
+        expect(FakeSolidEngine.update).toHaveBeenCalledWith(expect.anything(), documentUrl, {
+            '@graph': {
+                $push: movie.toJsonLD(),
             },
-        );
+        });
     });
 
     it('updates models', async () => {
         // Arrange
-        const documentUrl = urlResolve(faker.internet.url(), faker.datatype.uuid());
+        const containerUrl = fakeContainerUrl();
+        const documentUrl = fakeDocumentUrl({ containerUrl });
         const movieName = faker.lorem.sentence();
-        const movieUrl = documentUrl + '#' + faker.datatype.uuid();
+        const movieUrl = fakeResourceUrl({ documentUrl });
         const movie = new Movie({ url: movieUrl }, true);
 
         movie.title = movieName;
 
-        jest.spyOn(engine, 'update');
+        FakeSolidEngine.database[containerUrl] = { [documentUrl]: { '@graph': [movie.toJsonLD()] } as EngineDocument };
 
         // Act
         await movie.save();
 
         // Assert
-        expect(engine.update).toHaveBeenCalledWith(
-            expect.anything(),
-            documentUrl,
-            {
-                '@graph': {
-                    $updateItems: {
-                        $where: { '@id': movieUrl },
-                        $update: { [IRI('schema:name')]: movieName },
-                    },
+        expect(FakeSolidEngine.update).toHaveBeenCalledWith(expect.anything(), documentUrl, {
+            '@graph': {
+                $updateItems: {
+                    $where: { '@id': movieUrl },
+                    $update: { [IRI('schema:name')]: movieName },
                 },
             },
-        );
+        });
     });
 
     it('uses model url container on find', async () => {
+        // Arrange
         class StubModel extends SolidModel {}
 
-        const containerUrl = urlResolveDirectory(faker.internet.url());
-        const readOneSpy = jest.spyOn(engine, 'readOne');
+        const containerUrl = fakeContainerUrl();
 
         bootModels({ StubModel });
 
-        await StubModel.find(urlResolve(containerUrl, faker.datatype.uuid()));
+        // Act
+        await StubModel.find(fakeDocumentUrl({ containerUrl }));
 
-        const collection = readOneSpy.mock.calls[0]?.[0];
+        // Assert
+        const collection = FakeSolidEngine.readOneSpy.mock.calls[0]?.[0];
 
         expect(collection).toEqual(containerUrl);
     });
 
     it('uses model url container on save', async () => {
+        // Arrange
         class StubModel extends SolidModel {}
-
-        const containerUrl = urlResolveDirectory(faker.internet.url());
-        const updateSpy = jest.spyOn(engine, 'update');
 
         bootModels({ StubModel });
 
-        const model = new StubModel(
-            { url: urlResolve(containerUrl, faker.datatype.uuid()) },
-            true,
-        );
+        const containerUrl = fakeContainerUrl();
+        const model = new StubModel({ url: fakeDocumentUrl({ containerUrl }) }, true);
 
+        FakeSolidEngine.database[containerUrl] = {
+            [model.url]: { '@graph': [model.toJsonLD()] } as EngineDocument,
+        };
+
+        // Act
         await model.update({ name: 'John' });
 
-        const collection = updateSpy.mock.calls[0]?.[0];
+        // Assert
+        const collection = FakeSolidEngine.updateSpy.mock.calls[0]?.[0];
 
         expect(collection).toEqual(containerUrl);
     });
 
     it('deletes the entire document if all stored resources are deleted', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(faker.internet.url());
-        const documentUrl = urlResolve(containerUrl, faker.datatype.uuid());
+        const containerUrl = fakeContainerUrl();
+        const documentUrl = fakeDocumentUrl({ containerUrl });
         const movieUrl = `${documentUrl}#it`;
         const actionUrl = `${documentUrl}#action`;
         const movie = new Movie({ url: movieUrl }, true);
 
         movie.setRelationModels('actions', [new WatchAction({ url: actionUrl }, true)]);
 
-        engine.setMany(containerUrl, {
-            [documentUrl]: {
-                '@graph': [
-                    { '@id': movieUrl },
-                    { '@id': actionUrl },
-                ],
-            },
-        });
-
-        jest.spyOn(engine, 'delete');
+        FakeSolidEngine.database[containerUrl] = {
+            [documentUrl]: { '@graph': [{ '@id': movieUrl }, { '@id': actionUrl }] },
+        };
 
         // Act
         await movie.delete();
 
         // Assert
-        expect(engine.delete).toHaveBeenCalledTimes(1);
-        expect(engine.delete).toHaveBeenCalledWith(containerUrl, documentUrl);
+        expect(FakeSolidEngine.delete).toHaveBeenCalledTimes(1);
+        expect(FakeSolidEngine.delete).toHaveBeenCalledWith(containerUrl, documentUrl);
     });
 
     it('deletes only model properties if the document has other resources', async () => {
         // Arrange
         class StubModel extends SolidModel {}
         bootModels({ StubModel });
-        jest.spyOn(engine, 'update');
 
-        const containerUrl = urlResolveDirectory(faker.internet.url());
-        const documentUrl = urlResolve(containerUrl, faker.datatype.uuid());
+        const containerUrl = fakeContainerUrl();
+        const documentUrl = fakeDocumentUrl({ containerUrl });
         const url = `${documentUrl}#it`;
         const model = new StubModel({ url, name: faker.name.firstName() }, true);
 
-        engine.setMany(containerUrl, {
-            [documentUrl]: {
-                '@graph': [
-                    { '@id': `${documentUrl}#something-else` },
-                ],
-            },
-        });
+        FakeSolidEngine.database[containerUrl] = {
+            [documentUrl]: { '@graph': [{ '@id': `${documentUrl}#something-else` }] },
+        };
 
         // Act
         await model.delete();
 
         // Assert
-        expect(engine.update).toHaveBeenCalledTimes(1);
-        expect(engine.update).toHaveBeenCalledWith(
-            containerUrl,
-            documentUrl,
-            {
-                '@graph': {
-                    $updateItems: {
-                        $where: { '@id': { $in: [url] } },
-                        $unset: true,
-                    },
+        expect(FakeSolidEngine.update).toHaveBeenCalledTimes(1);
+        expect(FakeSolidEngine.update).toHaveBeenCalledWith(containerUrl, documentUrl, {
+            '@graph': {
+                $updateItems: {
+                    $where: { '@id': { $in: [url] } },
+                    $unset: true,
                 },
             },
-        );
+        });
     });
 
     it('deletes complex document structures properly', async () => {
         // Arrange - create models & urls
-        const firstContainerUrl = urlResolveDirectory(faker.internet.url());
-        const secondContainerUrl = urlResolveDirectory(faker.internet.url());
-        const firstDocumentUrl = urlResolve(firstContainerUrl, faker.datatype.uuid());
-        const secondDocumentUrl = urlResolve(firstContainerUrl, faker.datatype.uuid());
-        const thirdDocumentUrl = urlResolve(secondContainerUrl, faker.datatype.uuid());
+        const firstContainerUrl = fakeContainerUrl();
+        const secondContainerUrl = fakeContainerUrl();
+        const firstDocumentUrl = fakeDocumentUrl({ containerUrl: firstContainerUrl });
+        const secondDocumentUrl = fakeDocumentUrl({ containerUrl: firstContainerUrl });
+        const thirdDocumentUrl = fakeDocumentUrl({ containerUrl: secondContainerUrl });
         const movieUrl = `${firstDocumentUrl}#it`;
         const firstActionUrl = `${firstDocumentUrl}#action`;
         const secondActionUrl = `${secondDocumentUrl}#it`;
@@ -1259,21 +1210,16 @@ describe('SolidModel', () => {
         ]);
 
         // Arrange - set up engine
-        engine.setMany(firstContainerUrl, {
+        FakeSolidEngine.database[firstContainerUrl] = {
             [firstDocumentUrl]: {
-                '@graph': [
-                    { '@id': movieUrl },
-                    { '@id': firstActionUrl },
-                ],
+                '@graph': [{ '@id': movieUrl }, { '@id': firstActionUrl }],
             },
             [secondDocumentUrl]: {
-                '@graph': [
-                    { '@id': secondActionUrl },
-                ],
+                '@graph': [{ '@id': secondActionUrl }],
             },
-        });
+        };
 
-        engine.setMany(secondContainerUrl, {
+        FakeSolidEngine.database[secondContainerUrl] = {
             [thirdDocumentUrl]: {
                 '@graph': [
                     { '@id': thirdActionUrl },
@@ -1281,21 +1227,18 @@ describe('SolidModel', () => {
                     { '@id': `${thirdDocumentUrl}#somethingelse` },
                 ],
             },
-        });
-
-        jest.spyOn(engine, 'update');
-        jest.spyOn(engine, 'delete');
+        };
 
         // Act
         await movie.delete();
 
         // Assert
-        expect(engine.delete).toHaveBeenCalledTimes(2);
-        expect(engine.delete).toHaveBeenCalledWith(firstContainerUrl, firstDocumentUrl);
-        expect(engine.delete).toHaveBeenCalledWith(firstContainerUrl, secondDocumentUrl);
+        expect(FakeSolidEngine.delete).toHaveBeenCalledTimes(2);
+        expect(FakeSolidEngine.delete).toHaveBeenCalledWith(firstContainerUrl, firstDocumentUrl);
+        expect(FakeSolidEngine.delete).toHaveBeenCalledWith(firstContainerUrl, secondDocumentUrl);
 
-        expect(engine.update).toHaveBeenCalledTimes(1);
-        expect(engine.update).toHaveBeenCalledWith(secondContainerUrl, thirdDocumentUrl, {
+        expect(FakeSolidEngine.update).toHaveBeenCalledTimes(1);
+        expect(FakeSolidEngine.update).toHaveBeenCalledWith(secondContainerUrl, thirdDocumentUrl, {
             '@graph': {
                 $updateItems: {
                     $where: { '@id': { $in: [thirdActionUrl, fourthActionUrl] } },
@@ -1307,7 +1250,7 @@ describe('SolidModel', () => {
 
     it('soft deletes', async () => {
         // Arrange
-        class TrackedPerson extends solidModelWithHistory(Person) { }
+        class TrackedPerson extends solidModelWithHistory(Person) {}
 
         const name = faker.random.word();
         const person = await TrackedPerson.create({ name });
@@ -1320,13 +1263,13 @@ describe('SolidModel', () => {
         expect(person.isSoftDeleted()).toBe(true);
         expect(person.operations).toHaveLength(2);
 
-        assertInstanceOf(person.operations[0], SetPropertyOperation, operation => {
+        assertInstanceOf(person.operations[0], SetPropertyOperation, (operation) => {
             expect(operation.property).toEqual(IRI('foaf:name'));
             expect(operation.value).toEqual(name);
             expect(operation.date).toEqual(person.createdAt);
         });
 
-        assertInstanceOf(person.operations[1], DeleteOperation, operation => {
+        assertInstanceOf(person.operations[1], DeleteOperation, (operation) => {
             expect(person.createdAt).not.toEqual(person.updatedAt);
             expect(operation.date).toEqual(person.updatedAt);
             expect(operation.date).toEqual(person.deletedAt);
@@ -1348,22 +1291,18 @@ describe('SolidModel', () => {
 
     it('implements belongs to many relationship', async () => {
         // Arrange
-        jest.spyOn(engine, 'readMany');
 
-        engine.setMany('https://example.com/', {
+        FakeSolidEngine.database['https://example.com/'] = {
             'https://example.com/alice': stubPersonJsonLD('https://example.com/alice', 'Alice'),
-        });
+        };
 
-        engine.setMany('https://example.org/', {
+        FakeSolidEngine.database['https://example.org/'] = {
             'https://example.org/bob': stubPersonJsonLD('https://example.org/bob', 'Bob'),
-        });
+        };
 
         const john = new Person({
             name: 'John',
-            friendUrls: [
-                'https://example.com/alice',
-                'https://example.org/bob',
-            ],
+            friendUrls: ['https://example.com/alice', 'https://example.org/bob'],
         });
 
         // Act
@@ -1380,63 +1319,56 @@ describe('SolidModel', () => {
         expect(friends[1].url).toBe('https://example.org/bob');
         expect(friends[1].name).toBe('Bob');
 
-        expect(engine.readMany).toHaveBeenCalledTimes(2);
-        expect(engine.readMany).toHaveBeenCalledWith(
-            'https://example.com/',
-            {
-                '$in': [
-                    'https://example.com/alice',
-                ],
-                '@graph': {
-                    $contains: {
-                        '@type': {
-                            $or: [
-                                { $contains: ['Person'] },
-                                { $contains: ['http://xmlns.com/foaf/0.1/Person'] },
-                                { $eq: 'Person' },
-                                { $eq: 'http://xmlns.com/foaf/0.1/Person' },
-                            ],
-                        },
+        expect(FakeSolidEngine.readMany).toHaveBeenCalledTimes(2);
+        expect(FakeSolidEngine.readMany).toHaveBeenCalledWith('https://example.com/', {
+            '$in': ['https://example.com/alice'],
+            '@graph': {
+                $contains: {
+                    '@type': {
+                        $or: [
+                            { $contains: ['Person'] },
+                            { $contains: ['http://xmlns.com/foaf/0.1/Person'] },
+                            { $eq: 'Person' },
+                            { $eq: 'http://xmlns.com/foaf/0.1/Person' },
+                        ],
                     },
                 },
             },
-        );
-        expect(engine.readMany).toHaveBeenCalledWith(
-            'https://example.org/',
-            {
-                '$in': [
-                    'https://example.org/bob',
-                ],
-                '@graph': {
-                    $contains: {
-                        '@type': {
-                            $or: [
-                                { $contains: ['Person'] },
-                                { $contains: ['http://xmlns.com/foaf/0.1/Person'] },
-                                { $eq: 'Person' },
-                                { $eq: 'http://xmlns.com/foaf/0.1/Person' },
-                            ],
-                        },
+        });
+        expect(FakeSolidEngine.readMany).toHaveBeenCalledWith('https://example.org/', {
+            '$in': ['https://example.org/bob'],
+            '@graph': {
+                $contains: {
+                    '@type': {
+                        $or: [
+                            { $contains: ['Person'] },
+                            { $contains: ['http://xmlns.com/foaf/0.1/Person'] },
+                            { $eq: 'Person' },
+                            { $eq: 'http://xmlns.com/foaf/0.1/Person' },
+                        ],
                     },
                 },
             },
-        );
+        });
     });
 
     it('loads related models in the same document', async () => {
         // Arrange
-        const movieUrl = urlResolve(faker.internet.url(), stringToSlug(faker.random.word()));
-        const watchActionUrl = `${movieUrl}#${faker.datatype.uuid()}`;
+        const containerUrl = fakeContainerUrl();
+        const movieUrl = fakeDocumentUrl({ containerUrl });
+        const watchActionUrl = fakeResourceUrl({ documentUrl: movieUrl, hash: uuid() });
 
-        engine.setOne({
-            '@graph': [
-                ...stubMovieJsonLD(movieUrl, faker.lorem.sentence())['@graph'],
-                ...stubWatchActionJsonLD(watchActionUrl, movieUrl)['@graph'],
-            ],
-        } as EngineDocument);
+        FakeSolidEngine.database[containerUrl] = {
+            [movieUrl]: {
+                '@graph': [
+                    ...stubMovieJsonLD(movieUrl, faker.lorem.sentence())['@graph'],
+                    ...stubWatchActionJsonLD(watchActionUrl, movieUrl)['@graph'],
+                ],
+            } as EngineDocument,
+        };
 
         // Act
-        const movie = await Movie.find(movieUrl) as Movie;
+        const movie = (await Movie.find(movieUrl)) as Movie;
 
         // Assert
         expect(movie.actions).toHaveLength(1);
@@ -1450,15 +1382,14 @@ describe('SolidModel', () => {
     it('implements is contained by relationship', async () => {
         // Arrange
         const name = faker.random.word();
-        const containerUrl = urlResolveDirectory(faker.internet.url(), stringToSlug(name));
-        const movie = new Movie({
-            url: urlResolve(containerUrl, faker.datatype.uuid()),
-        });
+        const parentContainerUrl = fakeContainerUrl();
+        const containerUrl = fakeContainerUrl({ baseUrl: parentContainerUrl });
+        const documentUrl = fakeDocumentUrl({ containerUrl });
+        const movie = new Movie({ url: documentUrl, name });
 
-        jest.spyOn(engine, 'readOne');
-        jest.spyOn(engine, 'readMany');
-
-        engine.setOne(stubMoviesCollectionJsonLD(containerUrl, name));
+        FakeSolidEngine.database[parentContainerUrl] = {
+            [containerUrl]: stubMoviesCollectionJsonLD(containerUrl, name),
+        };
 
         expect(movie.collection).toBeUndefined();
 
@@ -1471,7 +1402,7 @@ describe('SolidModel', () => {
         const collection = movie.collection as MoviesCollection;
         expect(collection.name).toBe(name);
 
-        expect(engine.readOne).toHaveBeenCalledWith(urlParentDirectory(containerUrl), containerUrl);
+        expect(FakeSolidEngine.readOne).toHaveBeenCalledWith(urlParentDirectory(containerUrl), containerUrl);
     });
 
     it('serializes to JSON-LD', () => {
@@ -1482,11 +1413,11 @@ describe('SolidModel', () => {
         const person = new Person({
             name,
             nickName,
-            url: urlResolve(containerUrl, faker.datatype.uuid()),
+            url: fakeDocumentUrl({ containerUrl }),
             friendUrls: [
-                urlResolve(containerUrl, faker.datatype.uuid()),
-                urlResolve(containerUrl, faker.datatype.uuid()),
-                urlResolve(containerUrl, faker.datatype.uuid()),
+                fakeDocumentUrl({ containerUrl }),
+                fakeDocumentUrl({ containerUrl }),
+                fakeDocumentUrl({ containerUrl }),
             ],
             createdAt: new Date('1997-07-21T23:42:00Z'),
         });
@@ -1507,7 +1438,7 @@ describe('SolidModel', () => {
             '@type': 'Person',
             'name': name,
             'vcard:nickname': nickName,
-            'knows': friendUrls.map(url => ({ '@id': url })),
+            'knows': friendUrls.map((url) => ({ '@id': url })),
             'metadata': {
                 '@id': person.url + '#metadata',
                 '@type': 'crdt:Metadata',
@@ -1522,8 +1453,8 @@ describe('SolidModel', () => {
     it('serializes to JSON-LD with relations', () => {
         // Arrange
         const movieName = faker.lorem.sentence();
-        const movieUrl = urlResolve(faker.internet.url(), stringToSlug(movieName));
-        const watchActionUrl = `${movieUrl}#${faker.datatype.uuid()}`;
+        const movieUrl = urlResolve(fakeContainerUrl(), stringToSlug(movieName));
+        const watchActionUrl = fakeResourceUrl({ documentUrl: movieUrl, hash: uuid() });
         const movie = new Movie({ url: movieUrl, name: movieName });
 
         movie.setRelationModels('actions', [
@@ -1534,7 +1465,7 @@ describe('SolidModel', () => {
             }),
         ]);
 
-        movie.actions?.forEach(action => action.setRelationModel('movie', movie));
+        movie.actions?.forEach((action) => action.setRelationModel('movie', movie));
 
         // Act
         const jsonld = movie.toJsonLD();
@@ -1668,23 +1599,21 @@ describe('SolidModel', () => {
 
     it('parses JSON-LD', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const containerUrl = fakeContainerUrl();
         const name = faker.random.word();
         const friendUrls = [
-            urlResolve(containerUrl, faker.datatype.uuid()),
-            urlResolve(containerUrl, faker.datatype.uuid()),
-            urlResolve(containerUrl, faker.datatype.uuid()),
+            fakeDocumentUrl({ containerUrl }),
+            fakeDocumentUrl({ containerUrl }),
+            fakeDocumentUrl({ containerUrl }),
         ];
 
         // Act
         const person = await Person.newFromJsonLD({
             '@context': { '@vocab': 'http://xmlns.com/foaf/0.1/' },
-            '@id': urlResolve(containerUrl, faker.datatype.uuid()),
-            '@type': [
-                'http://xmlns.com/foaf/0.1/Person',
-            ],
+            '@id': fakeDocumentUrl({ containerUrl }),
+            '@type': ['http://xmlns.com/foaf/0.1/Person'],
             name,
-            'knows': friendUrls.map(url => ({ '@id': url })),
+            'knows': friendUrls.map((url) => ({ '@id': url })),
             'http://purl.org/dc/terms/created': {
                 '@type': 'http://www.w3.org/2001/XMLSchema#dateTime',
                 '@value': '1997-07-21T23:42:00.000Z',
@@ -1702,17 +1631,14 @@ describe('SolidModel', () => {
 
     it('parses JSON-LD with related models', async () => {
         // Arrange
-        const containerUrl = urlResolveDirectory(faker.internet.url());
+        const containerUrl = fakeContainerUrl();
         const movieName = faker.random.word();
         const directorName = faker.random.word();
         const groupName = faker.random.word();
         const creatorName = faker.random.word();
         const actions = range(2);
-        const memberNames = [
-            faker.random.word(),
-            faker.random.word(),
-        ];
-        const documentUrl = urlResolve(containerUrl, faker.datatype.uuid());
+        const memberNames = [faker.random.word(), faker.random.word()];
+        const documentUrl = fakeDocumentUrl({ containerUrl });
         const movieUrl = `${documentUrl}#it`;
         const groupUrl = `${documentUrl}#it`;
 
@@ -1732,7 +1658,7 @@ describe('SolidModel', () => {
                 '@type': 'foaf:Person',
                 'foaf:name': directorName,
             },
-            'actions': actions.map(index => ({
+            'actions': actions.map((index) => ({
                 '@id': `${documentUrl}#action-${index}`,
                 '@type': 'WatchAction',
             })),
@@ -1785,7 +1711,7 @@ describe('SolidModel', () => {
         expect(movie.actions).toHaveLength(actions.length);
         expect(movie.relatedActions.__newModels).toHaveLength(actions.length);
 
-        actions.forEach(index => {
+        actions.forEach((index) => {
             const action = movie.actions?.[index] as WatchAction;
 
             expect(action).toBeInstanceOf(WatchAction);
@@ -1880,7 +1806,7 @@ describe('SolidModel', () => {
 
             public static timestamps = true;
             public static history = true;
-
+        
         }
 
         // Act
@@ -1910,43 +1836,43 @@ describe('SolidModel', () => {
 
         expect(operations).toHaveLength(6);
 
-        operations.forEach(operation => expect(operation.url.startsWith(person.url)).toBe(true));
-        operations.forEach(operation => expect(operation.resourceUrl).toEqual(person.url));
+        operations.forEach((operation) => expect(operation.url.startsWith(person.url)).toBe(true));
+        operations.forEach((operation) => expect(operation.resourceUrl).toEqual(person.url));
 
-        assertInstanceOf(operations[0], SetPropertyOperation, operation => {
+        assertInstanceOf(operations[0], SetPropertyOperation, (operation) => {
             expect(operation.property).toEqual(IRI('foaf:name'));
             expect(operation.value).toEqual(firstName);
             expect(operation.date).toEqual(person.createdAt);
         });
 
-        assertInstanceOf(operations[1], SetPropertyOperation, operation => {
+        assertInstanceOf(operations[1], SetPropertyOperation, (operation) => {
             expect(operation.property).toEqual(IRI('foaf:name'));
             expect(operation.value).toEqual(secondName);
             expect(operation.date.getTime()).toBeGreaterThan(person.createdAt.getTime());
             expect(operation.date.getTime()).toBeLessThan(person.updatedAt.getTime());
         });
 
-        assertInstanceOf(operations[2], SetPropertyOperation, operation => {
+        assertInstanceOf(operations[2], SetPropertyOperation, (operation) => {
             expect(operation.property).toEqual(IRI('foaf:lastName'));
             expect(operation.value).toEqual(firstLastName);
             expect(operation.date.getTime()).toBeGreaterThan(person.createdAt.getTime());
             expect(operation.date.getTime()).toBeLessThan(person.updatedAt.getTime());
         });
 
-        assertInstanceOf(operations[3], SetPropertyOperation, operation => {
+        assertInstanceOf(operations[3], SetPropertyOperation, (operation) => {
             expect(operation.property).toEqual(IRI('foaf:age'));
             expect(operation.value).toEqual(42);
             expect(operation.date.getTime()).toBeGreaterThan(person.createdAt.getTime());
             expect(operation.date.getTime()).toBeLessThan(person.updatedAt.getTime());
         });
 
-        assertInstanceOf(operations[4], SetPropertyOperation, operation => {
+        assertInstanceOf(operations[4], SetPropertyOperation, (operation) => {
             expect(operation.property).toEqual(IRI('foaf:lastName'));
             expect(operation.value).toEqual(secondLastName);
             expect(operation.date).toEqual(person.updatedAt);
         });
 
-        assertInstanceOf(operations[5], UnsetPropertyOperation, operation => {
+        assertInstanceOf(operations[5], UnsetPropertyOperation, (operation) => {
             expect(operation.property).toEqual(IRI('foaf:age'));
             expect(operation.date).toEqual(person.updatedAt);
         });
@@ -1970,21 +1896,12 @@ describe('SolidModel', () => {
         await after({ ms: 100 });
         await group.update({
             name: secondName,
-            memberUrls: [
-                ...group.memberUrls,
-                ...firstAddedMembers,
-            ],
+            memberUrls: [...group.memberUrls, ...firstAddedMembers],
         });
 
         await after({ ms: 100 });
         await group.update({
-            memberUrls: arrayWithout(
-                [
-                    ...group.memberUrls,
-                    secondAddedMember,
-                ],
-                removedMembers,
-            ),
+            memberUrls: arrayWithout([...group.memberUrls, secondAddedMember], removedMembers),
         });
 
         // Assert
@@ -1992,16 +1909,16 @@ describe('SolidModel', () => {
 
         expect(operations).toHaveLength(6);
 
-        operations.forEach(operation => expect(operation.url.startsWith(group.url)).toBe(true));
-        operations.forEach(operation => expect(operation.resourceUrl).toEqual(group.url));
+        operations.forEach((operation) => expect(operation.url.startsWith(group.url)).toBe(true));
+        operations.forEach((operation) => expect(operation.resourceUrl).toEqual(group.url));
 
-        assertInstanceOf(operations[0], SetPropertyOperation, operation => {
+        assertInstanceOf(operations[0], SetPropertyOperation, (operation) => {
             expect(operation.property).toEqual(expandIRI('foaf:name'));
             expect(operation.value).toEqual(firstName);
             expect(operation.date).toEqual(group.createdAt);
         });
 
-        assertInstanceOf(operations[1], SetPropertyOperation, operation => {
+        assertInstanceOf(operations[1], SetPropertyOperation, (operation) => {
             expect(operation.property).toEqual(expandIRI('foaf:member'));
             expect(operation.value).toHaveLength(initialMembers.length - 1);
             initialMembers.forEach((memberUrl, index) => {
@@ -2017,14 +1934,14 @@ describe('SolidModel', () => {
             expect(operation.date).toEqual(group.createdAt);
         });
 
-        assertInstanceOf(operations[2], SetPropertyOperation, operation => {
+        assertInstanceOf(operations[2], SetPropertyOperation, (operation) => {
             expect(operation.property).toEqual(expandIRI('foaf:name'));
             expect(operation.value).toEqual(secondName);
             expect(operation.date.getTime()).toBeGreaterThan(group.createdAt.getTime());
             expect(operation.date.getTime()).toBeLessThan(group.updatedAt.getTime());
         });
 
-        assertInstanceOf(operations[3], AddPropertyOperation, operation => {
+        assertInstanceOf(operations[3], AddPropertyOperation, (operation) => {
             expect(operation.property).toEqual(expandIRI('foaf:member'));
             expect(operation.value).toHaveLength(firstAddedMembers.length);
             firstAddedMembers.forEach((memberUrl, index) => {
@@ -2034,14 +1951,14 @@ describe('SolidModel', () => {
             expect(operation.date.getTime()).toEqual(operation.date.getTime());
         });
 
-        assertInstanceOf(operations[4], AddPropertyOperation, operation => {
+        assertInstanceOf(operations[4], AddPropertyOperation, (operation) => {
             expect(operation.property).toEqual(expandIRI('foaf:member'));
             expect(operation.value).toBeInstanceOf(ModelKey);
             expect(toString(operation.value)).toEqual(secondAddedMember);
             expect(operation.date.getTime()).toEqual(group.updatedAt.getTime());
         });
 
-        assertInstanceOf(operations[5], RemovePropertyOperation, operation => {
+        assertInstanceOf(operations[5], RemovePropertyOperation, (operation) => {
             expect(operation.property).toEqual(expandIRI('foaf:member'));
             expect(operation.value).toHaveLength(removedMembers.length);
             removedMembers.forEach((memberUrl, index) => {
@@ -2061,7 +1978,7 @@ describe('SolidModel', () => {
                 'purl': 'http://purl.org/dc/terms/',
                 'xls': 'http://www.w3.org/2001/XMLSchema#',
             },
-            '@id': urlResolve(urlResolveDirectory(faker.internet.url()), faker.datatype.uuid()) + '#it',
+            '@id': fakeResourceUrl(),
             '@type': 'Person',
             'name': faker.random.word(),
             'purl:created': {
@@ -2080,16 +1997,20 @@ describe('SolidModel', () => {
 
     it('Tracks history properly for equivalent attributes', async () => {
         // Arrange
-        const initialPersonUrl = fakeResourceUrl();
-        const newPersonUrl = fakeResourceUrl();
-        const person = new PersonWithHistory({
-            url: fakeResourceUrl(),
-            friendUrls: [new ModelKey(initialPersonUrl)],
-        }, true);
+        const containerUrl = fakeContainerUrl();
+        const initialPersonUrl = fakeResourceUrl({ containerUrl, hash: uuid() });
+        const newPersonUrl = fakeResourceUrl({ containerUrl, hash: uuid() });
+        const person = new PersonWithHistory(
+            {
+                url: fakeResourceUrl({ containerUrl, hash: uuid() }),
+                friendUrls: [new ModelKey(initialPersonUrl)],
+            },
+            true,
+        );
 
-        const updateSpy = jest.spyOn(engine, 'update');
-        const readManySpy = jest.spyOn(engine, 'readMany');
-        const readOneSpy = jest.spyOn(engine, 'readOne');
+        FakeSolidEngine.database[containerUrl] = {
+            [person.requireDocumentUrl()]: { '@graph': [person.toJsonLD()] } as EngineDocument,
+        };
 
         // Act
         person.friendUrls = [initialPersonUrl, newPersonUrl];
@@ -2101,28 +2022,28 @@ describe('SolidModel', () => {
 
         expect(operations).toHaveLength(2);
 
-        assertInstanceOf(operations[0], SetPropertyOperation, operation => {
+        assertInstanceOf(operations[0], SetPropertyOperation, (operation) => {
             expect(operation.property).toEqual(IRI('foaf:knows'));
             expect(operation.value).toEqual(new ModelKey(initialPersonUrl));
         });
 
-        assertInstanceOf(operations[1], AddPropertyOperation, operation => {
+        assertInstanceOf(operations[1], AddPropertyOperation, (operation) => {
             expect(operation.property).toEqual(IRI('foaf:knows'));
             expect(operation.value).toEqual(new ModelKey(newPersonUrl));
         });
 
-        expect(readOneSpy).not.toHaveBeenCalled();
-        expect(readManySpy).not.toHaveBeenCalled();
-        expect(updateSpy).toHaveBeenCalledTimes(1);
+        expect(FakeSolidEngine.readOneSpy).not.toHaveBeenCalled();
+        expect(FakeSolidEngine.readManySpy).not.toHaveBeenCalled();
+        expect(FakeSolidEngine.updateSpy).toHaveBeenCalledTimes(1);
     });
 
     it('Rebuilds attributes from history', () => {
         // Arrange
         const name = faker.random.word();
         const lastName = faker.random.word();
-        const initialFriends = [faker.internet.url(), faker.internet.url()];
-        const firstAddedFriends = [faker.internet.url(), faker.internet.url()];
-        const secondAddedFriend = faker.internet.url();
+        const initialFriends = [fakeDocumentUrl(), fakeDocumentUrl()];
+        const firstAddedFriends = [fakeDocumentUrl(), fakeDocumentUrl()];
+        const secondAddedFriend = fakeDocumentUrl();
         const removedFriends = [initialFriends[1], firstAddedFriends[0]];
         const createdAt = faker.date.between(
             dayjs().subtract(3, 'months').toDate(),
@@ -2132,23 +2053,14 @@ describe('SolidModel', () => {
             dayjs().subtract(1, 'month').toDate(),
             dayjs().add(1, 'month').toDate(),
         );
-        const deletedAt = faker.date.between(
-            dayjs().add(1, 'month').toDate(),
-            dayjs().add(3, 'months').toDate(),
-        );
-        const updatedAt = faker.date.between(
-            dayjs().add(3, 'month').toDate(),
-            dayjs().add(4, 'months').toDate(),
-        );
+        const deletedAt = faker.date.between(dayjs().add(1, 'month').toDate(), dayjs().add(3, 'months').toDate());
+        const updatedAt = faker.date.between(dayjs().add(3, 'month').toDate(), dayjs().add(4, 'months').toDate());
         const person = new Person({
             name: faker.random.word(),
             lastName: faker.random.word(),
             givenName: faker.random.word(),
             nickName: faker.random.word(),
-            friendUrls: [
-                faker.internet.url(),
-                faker.internet.url(),
-            ],
+            friendUrls: [fakeDocumentUrl(), fakeDocumentUrl()],
         });
 
         // Arrange - initial operations
@@ -2172,7 +2084,7 @@ describe('SolidModel', () => {
 
         person.relatedOperations.attachSetOperation({
             property: Person.getFieldRdfProperty('friendUrls'),
-            value: initialFriends.map(url => new ModelKey(url)),
+            value: initialFriends.map((url) => new ModelKey(url)),
             date: createdAt,
         });
 
@@ -2196,7 +2108,7 @@ describe('SolidModel', () => {
 
         person.relatedOperations.attachRemoveOperation({
             property: Person.getFieldRdfProperty('friendUrls'),
-            value: removedFriends.map(url => new ModelKey(url)),
+            value: removedFriends.map((url) => new ModelKey(url)),
             date: updatedAt,
         });
 
@@ -2209,7 +2121,7 @@ describe('SolidModel', () => {
 
         person.relatedOperations.attachAddOperation({
             property: Person.getFieldRdfProperty('friendUrls'),
-            value: firstAddedFriends.map(url => new ModelKey(url)),
+            value: firstAddedFriends.map((url) => new ModelKey(url)),
             date: firstUpdatedAt,
         });
 
@@ -2228,14 +2140,7 @@ describe('SolidModel', () => {
         expect(person.nickName).toBeUndefined();
         expect(person.givenName).toBeUndefined();
         expect(person.friendUrls).toEqual(
-            arrayWithout(
-                [
-                    ...initialFriends,
-                    ...firstAddedFriends,
-                    secondAddedFriend,
-                ],
-                removedFriends,
-            ),
+            arrayWithout([...initialFriends, ...firstAddedFriends, secondAddedFriend], removedFriends),
         );
         expect(person.createdAt).toEqual(createdAt);
         expect(person.deletedAt).toEqual(deletedAt);
@@ -2280,7 +2185,7 @@ describe('SolidModel', () => {
         expect(versionA.operations[2]?.exists()).toBe(true);
         expect(versionA.operations[3]?.exists()).toBe(true);
         expect(versionA.operations[4]?.exists()).toBe(false);
-        assertInstanceOf(versionA.operations[4], SetPropertyOperation, operation => {
+        assertInstanceOf(versionA.operations[4], SetPropertyOperation, (operation) => {
             expect(operation.property).toBe(IRI('foaf:lastName'));
             expect(operation.value).toBe('Last name B');
         });
@@ -2289,13 +2194,13 @@ describe('SolidModel', () => {
         expect(versionB.operations[1]?.exists()).toBe(true);
         expect(versionB.operations[2]?.exists()).toBe(true);
         expect(versionB.operations[3]?.exists()).toBe(false);
-        assertInstanceOf(versionB.operations[3], SetPropertyOperation, operation => {
+        assertInstanceOf(versionB.operations[3], SetPropertyOperation, (operation) => {
             expect(operation.property).toBe(IRI('foaf:name'));
             expect(operation.value).toBe('Name A');
         });
         expect(versionB.operations[4]?.exists()).toBe(true);
 
-        range(5).forEach(index => {
+        range(5).forEach((index) => {
             const operationA = versionA.operations[index] as SetPropertyOperation;
             const operationB = versionB.operations[index] as SetPropertyOperation;
             expect(operationA).toBeInstanceOf(SetPropertyOperation);
@@ -2322,23 +2227,23 @@ describe('SolidModel', () => {
         await SolidModel.synchronize(versionA, versionB);
         await after({ ms: 100 });
 
-        const updateSpy = jest.spyOn(engine, 'update');
+        FakeSolidEngine.resetSpies();
 
         // Act
         await versionA.save();
         await versionB.save();
 
         // Assert
-        [versionA, versionB].forEach(model => {
+        [versionA, versionB].forEach((model) => {
             expect(model.isDirty()).toBe(false);
             expect(model.updatedAt).toEqual(model.operations[4]?.date);
             expect(model.operations).toHaveLength(5);
 
-            model.operations.forEach(operation => expect(operation.exists()).toBe(true));
+            model.operations.forEach((operation) => expect(operation.exists()).toBe(true));
         });
 
-        expect(updateSpy).toHaveBeenCalledTimes(2);
-        expect(updateSpy.mock.calls[0]?.[2]).toEqual({
+        expect(FakeSolidEngine.updateSpy).toHaveBeenCalledTimes(2);
+        expect(FakeSolidEngine.updateSpy.mock.calls[0]?.[2]).toEqual({
             '@graph': {
                 $apply: [
                     {
@@ -2362,7 +2267,7 @@ describe('SolidModel', () => {
                 ],
             },
         });
-        expect(updateSpy.mock.calls[1]?.[2]).toEqual({
+        expect(FakeSolidEngine.updateSpy.mock.calls[1]?.[2]).toEqual({
             '@graph': {
                 $apply: [
                     { $push: versionB.operations[3]?.toJsonLD() },
@@ -2411,19 +2316,19 @@ describe('SolidModel', () => {
 
         expect(versionA.operations[2]?.exists()).toBe(true);
         expect(versionA.operations[3]?.exists()).toBe(false);
-        assertInstanceOf(versionA.operations[3], SetPropertyOperation, operation => {
+        assertInstanceOf(versionA.operations[3], SetPropertyOperation, (operation) => {
             expect(operation.property).toBe(IRI('foaf:lastName'));
             expect(operation.value).toBe('Last name B');
         });
 
         expect(versionB.operations[2]?.exists()).toBe(false);
-        assertInstanceOf(versionB.operations[2], SetPropertyOperation, operation => {
+        assertInstanceOf(versionB.operations[2], SetPropertyOperation, (operation) => {
             expect(operation.property).toBe(IRI('foaf:name'));
             expect(operation.value).toBe('Name A');
         });
         expect(versionB.operations[3]?.exists()).toBe(true);
 
-        range(4).forEach(index => {
+        range(4).forEach((index) => {
             const operationA = versionA.operations[index] as SetPropertyOperation;
             const operationB = versionB.operations[index] as SetPropertyOperation;
             expect(operationA).toBeInstanceOf(SetPropertyOperation);
@@ -2448,35 +2353,45 @@ describe('SolidModel', () => {
 
         const originalInceptionOperationUrls = new WeakMap<PersonWithHistory, Record<string, string>>();
 
-        [versionA, versionB].forEach(model => originalInceptionOperationUrls.set(
-            model,
-            model.operations
-                .filter((operation): operation is PropertyOperation => operation.date.getTime() === model.createdAt.getTime())
-                .reduce((map, operation) => ({ ...map, [operation.property]: operation.url }), {}),
-        ));
+        [versionA, versionB].forEach((model) =>
+            originalInceptionOperationUrls.set(
+                model,
+                model.operations
+                    .filter(
+                        (operation): operation is PropertyOperation =>
+                            operation.date.getTime() === model.createdAt.getTime(),
+                    )
+                    .reduce((map, operation) => ({ ...map, [operation.property]: operation.url }), {}),
+            ));
 
         await SolidModel.synchronize(versionA, versionB);
 
-        const reconciliatedOperationModels = [IRI('foaf:name'), IRI('foaf:lastName')].reduce((map, property) => {
-            map[property] = versionA.operations.find(operation => operation instanceof PropertyOperation && operation.property === property)?.exists()
-                ? versionB
-                : versionA;
+        const reconciliatedOperationModels = [IRI('foaf:name'), IRI('foaf:lastName')].reduce(
+            (map, property) => {
+                map[property] = versionA.operations
+                    .find((operation) => operation instanceof PropertyOperation && operation.property === property)
+                    ?.exists()
+                    ? versionB
+                    : versionA;
 
-            return map;
-        }, {} as Record<string, PersonWithHistory>);
-        const updateSpy = jest.spyOn(engine, 'update');
+                return map;
+            },
+            {} as Record<string, PersonWithHistory>,
+        );
+
+        FakeSolidEngine.resetSpies();
 
         // Act
         await versionA.save();
         await versionB.save();
 
         // Assert
-        [versionA, versionB].forEach(model => {
+        [versionA, versionB].forEach((model) => {
             expect(model.isDirty()).toBe(false);
             expect(model.updatedAt).toEqual(model.operations[3]?.date);
             expect(model.operations).toHaveLength(4);
 
-            model.operations.forEach(operation => expect(operation.exists()).toBe(true));
+            model.operations.forEach((operation) => expect(operation.exists()).toBe(true));
         });
 
         const getNewInceptionUpdates = (model: PersonWithHistory) => {
@@ -2486,21 +2401,23 @@ describe('SolidModel', () => {
                 Object.entries(reconciliatedOperationModels).reduce((updated, [property, reconciliatedModel]) => {
                     if (reconciliatedModel === model)
                         updated.push({
-                            $push: model
-                                .operations
-                                .find(operation => operation instanceof PropertyOperation && operation.property === property)
+                            $push: model.operations
+                                .find(
+                                    (operation) =>
+                                        operation instanceof PropertyOperation && operation.property === property,
+                                )
                                 ?.toJsonLD(),
                         } as Update);
 
                     return updated;
                 }, [] as Update[]),
-                updates => updates.sort((a, b) => a.$push['@id'] > b.$push['@id'] ? 1 : -1),
+                (updates) => updates.sort((a, b) => (a.$push['@id'] > b.$push['@id'] ? 1 : -1)),
             );
         };
         const getDeletedInceptionUpdates = (model: PersonWithHistory) => {
             type Update = {
                 $updateItems: {
-                    $where: { '@id': string};
+                    $where: { '@id': string };
                     $unset: true;
                 };
             };
@@ -2516,15 +2433,16 @@ describe('SolidModel', () => {
                         } as Update);
 
                     return updated;
-                }, [] as Update[])
-                , updates => updates.sort((a, b) => a.$updateItems.$where['@id'] > b.$updateItems.$where['@id'] ? 1 : -1),
+                }, [] as Update[]),
+                (updates) =>
+                    updates.sort((a, b) => (a.$updateItems.$where['@id'] > b.$updateItems.$where['@id'] ? 1 : -1)),
             );
         };
 
-        expect(updateSpy).toHaveBeenCalledTimes(2);
+        expect(FakeSolidEngine.updateSpy).toHaveBeenCalledTimes(2);
 
-        const updatesA = updateSpy.mock.calls[0]?.[2];
-        const updatesB = updateSpy.mock.calls[1]?.[2];
+        const updatesA = FakeSolidEngine.updateSpy.mock.calls[0]?.[2];
+        const updatesB = FakeSolidEngine.updateSpy.mock.calls[1]?.[2];
 
         expect(updatesA).toEqual({
             '@graph': {
@@ -2586,7 +2504,7 @@ describe('SolidModel', () => {
         await SolidModel.synchronize(versionA, versionB);
 
         // Assert
-        [versionA, versionB].forEach(model => {
+        [versionA, versionB].forEach((model) => {
             expect(model.memberUrls).toHaveLength(2);
             expect(model.members).toHaveLength(2);
             expect(model.members?.[0]?.name).toEqual('John');
@@ -2602,7 +2520,7 @@ describe('SolidModel', () => {
 
     it('History tracking for new arrays uses add operation', async () => {
         // Arrange
-        setEngine(new InMemoryEngine);
+        setEngine(new InMemoryEngine());
 
         const { url } = await PersonWithHistory.create();
         const person = await PersonWithHistory.findOrFail(url);
@@ -2620,9 +2538,9 @@ describe('SolidModel', () => {
         expect(operation.property).toEqual(IRI('foaf:knows'));
         expect(operation.value).toHaveLength(friendUrls.length);
 
-        (operation.value as ModelKey[]).forEach((url, index) => {
-            expect(url).toBeInstanceOf(ModelKey);
-            expect(new ModelKey(friendUrls[index]).equals(url));
+        (operation.value as ModelKey[]).forEach((_url, index) => {
+            expect(_url).toBeInstanceOf(ModelKey);
+            expect(new ModelKey(friendUrls[index]).equals(_url));
         });
     });
 
@@ -2649,15 +2567,13 @@ describe('SolidModel', () => {
             fields: { name: FieldType.String },
         }) {}
 
-        const createSpy = jest.spyOn(engine, 'create');
-
         bootModels({ Recipe });
 
         // Act
         await Recipe.create({ name: 'Chickpeas Stew' });
 
         // Assert
-        const document = createSpy.mock.calls[0]?.[1] as { '@graph': [{ nickname: string }] };
+        const document = FakeSolidEngine.createSpy.mock.calls[0]?.[1] as { '@graph': [{ nickname: string }] };
 
         expect(document['@graph'][0]).toEqualJsonLD({
             '@context': { '@vocab': 'https://schema.org/' },
@@ -2684,7 +2600,7 @@ describe('SolidModel types', () => {
             },
         }) {}
 
-        setEngine(new StubEngine);
+        FakeSolidEngine.use();
 
         // Act
         const instance = StubModel.newInstance();
@@ -2697,12 +2613,12 @@ describe('SolidModel types', () => {
 
         // Assert
         tt<
-            Expect<Equals<typeof instance, StubModel>> |
-            Expect<Equals<typeof jsonldInstance, StubModel>> |
-            Expect<Equals<typeof instance['foo'], string | undefined>> |
-            Expect<Equals<typeof instance['bar'], number | undefined>> |
-            Expect<Equals<typeof instance['baz'], Date[]>> |
-            true
+            | Expect<Equals<typeof instance, StubModel>>
+            | Expect<Equals<typeof jsonldInstance, StubModel>>
+            | Expect<Equals<(typeof instance)['foo'], string | undefined>>
+            | Expect<Equals<(typeof instance)['bar'], number | undefined>>
+            | Expect<Equals<(typeof instance)['baz'], Date[]>>
+            | true
         >();
     });
 
@@ -2717,11 +2633,15 @@ function expandIRI(iri: string) {
     });
 }
 
-function solidModelWithTimestamps<T extends SolidModel>(model: SolidModelConstructor<T>): Constructor<SolidMagicAttributes<{ timestamps: true }>> & SolidModelConstructor<T> {
+function solidModelWithTimestamps<T extends SolidModel>(
+    model: SolidModelConstructor<T>,
+): Constructor<SolidMagicAttributes<{ timestamps: true }>> & SolidModelConstructor<T> {
     return defineSolidModelSchema(model, { timestamps: true });
 }
 
-function solidModelWithHistory<T extends SolidModel>(model: SolidModelConstructor<T>): Constructor<SolidMagicAttributes<{ timestamps: true; history: true }>> & SolidModelConstructor<T> {
+function solidModelWithHistory<T extends SolidModel>(
+    model: SolidModelConstructor<T>,
+): Constructor<SolidMagicAttributes<{ timestamps: true; history: true }>> & SolidModelConstructor<T> {
     return defineSolidModelSchema(model, { timestamps: true, history: true });
 }
 
@@ -2732,10 +2652,7 @@ class GroupWithHistory extends solidModelWithHistory(Group) {}
 class GroupWithPersonsInSameDocument extends solidModelWithTimestamps(Group) {
 
     public membersRelationship(): Relation {
-        return this
-            .belongsToMany(Person, 'memberUrls')
-            .usingSameDocument(true)
-            .onDelete('cascade');
+        return this.belongsToMany(Person, 'memberUrls').usingSameDocument(true).onDelete('cascade');
     }
 
 }
@@ -2743,10 +2660,7 @@ class GroupWithPersonsInSameDocument extends solidModelWithTimestamps(Group) {
 class GroupWithHistoryAndPersonsInSameDocument extends solidModelWithHistory(Group) {
 
     public membersRelationship(): Relation {
-        return this
-            .belongsToMany(Person, 'memberUrls')
-            .usingSameDocument(true)
-            .onDelete('cascade');
+        return this.belongsToMany(Person, 'memberUrls').usingSameDocument(true).onDelete('cascade');
     }
 
 }

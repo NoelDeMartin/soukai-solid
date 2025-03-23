@@ -1,8 +1,8 @@
-import type { Quad } from 'rdf-js';
+import type { Quad } from '@rdfjs/types';
 
-import IRI from '@/solid/utils/IRI';
-import RDFResourceProperty, { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
-import type { LiteralValue } from '@/solid/RDFResourceProperty';
+import IRI from 'soukai-solid/solid/utils/IRI';
+import RDFResourceProperty, { RDFResourcePropertyType } from 'soukai-solid/solid/RDFResourceProperty';
+import type { LiteralValue } from 'soukai-solid/solid/RDFResourceProperty';
 
 export default class RDFResource {
 
@@ -32,36 +32,28 @@ export default class RDFResource {
         return this.types.indexOf(IRI(type)) !== -1;
     }
 
-    public getPropertyValue(
-        property: string,
-        defaultValue: LiteralValue | null = null,
-    ): LiteralValue | null {
+    public getPropertyValue(property: string, defaultValue: LiteralValue | null = null): LiteralValue | null {
         const [resourceProperty] = this.propertiesIndex[IRI(property)] || [];
 
-        return resourceProperty ? resourceProperty.value as LiteralValue : defaultValue;
+        return resourceProperty ? (resourceProperty.value as LiteralValue) : defaultValue;
     }
 
     public getPropertyValues(property: string): LiteralValue[] {
         const resourceProperties = this.propertiesIndex[IRI(property)] || [];
 
-        return resourceProperties.map(property => property.value as LiteralValue);
+        return resourceProperties.map((prop) => prop.value as LiteralValue);
     }
 
     public addStatement(statement: Quad): void {
-        if (statement.subject.value !== this.url)
-            return;
+        if (statement.subject.value !== this.url) return;
 
         const property = RDFResourceProperty.fromStatement(statement);
 
-        if (property.type === RDFResourcePropertyType.Type)
-            this.types.push(property.value as string);
+        if (property.type === RDFResourcePropertyType.Type) this.types.push(property.value as string);
 
         this.statements.push(statement);
         this.properties.push(property);
-        this.propertiesIndex[property.name] = [
-            ...(this.propertiesIndex[property.name] || []),
-            property,
-        ];
+        this.propertiesIndex[property.name] = [...(this.propertiesIndex[property.name] || []), property];
     }
 
 }

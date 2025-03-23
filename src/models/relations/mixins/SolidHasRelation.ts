@@ -3,11 +3,11 @@ import { urlRoute } from '@noeldemartin/utils';
 import type { EngineDocument, EngineDocumentsCollection, Relation } from 'soukai';
 import type { JsonLDGraph } from '@noeldemartin/solid-utils';
 
-import RDF from '@/solid/utils/RDF';
-import RDFDocument from '@/solid/RDFDocument';
-import type { SolidBootedFieldsDefinition } from '@/models/fields';
-import type { SolidModel } from '@/models/SolidModel';
-import type { SolidModelConstructor } from '@/models/inference';
+import RDF from 'soukai-solid/solid/utils/RDF';
+import RDFDocument from 'soukai-solid/solid/RDFDocument';
+import type { SolidBootedFieldsDefinition } from 'soukai-solid/models/fields';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
+import type { SolidModelConstructor } from 'soukai-solid/models/inference';
 
 import type SolidDocumentRelation from './SolidDocumentRelation';
 
@@ -16,9 +16,7 @@ export type This<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
-> =
-    SolidHasRelation &
-    Relation<Parent, Related, RelatedClass>;
+> = SolidHasRelation & Relation<Parent, Related, RelatedClass>;
 
 // Workaround for https://github.com/microsoft/TypeScript/issues/29132
 export interface ProtectedSolidHasRelation<Related extends SolidModel = SolidModel> {
@@ -38,30 +36,30 @@ export default class SolidHasRelation {
         const filters = this.relatedClass.prepareEngineFilters();
         const reducedDocument = RDFDocument.reduceJsonLDGraph(document, this.parent.url) as EngineDocument;
         const resourceDocuments = document['@graph']
-            .filter(resource => {
+            .filter((resource) => {
                 const property = RDF.getJsonLDProperty(resource, foreignProperty);
 
-                return typeof property === 'object'
-                    && property !== null
-                    && '@id' in property
-                    && (property as { '@id': string })['@id'] === this.parent.url;
+                return (
+                    typeof property === 'object' &&
+                    property !== null &&
+                    '@id' in property &&
+                    (property as { '@id': string })['@id'] === this.parent.url
+                );
             })
-            .reduce((resourceDocuments, resource) => {
-                resourceDocuments[resource['@id']] = { '@graph': [resource as EngineDocument] };
+            .reduce((documents, resource) => {
+                documents[resource['@id']] = { '@graph': [resource as EngineDocument] };
 
-                return resourceDocuments;
+                return documents;
             }, {} as EngineDocumentsCollection);
 
         const modelsInSameDocument = await Promise.all(
-            Object
-                .keys(helper.filterDocuments(resourceDocuments, filters))
-                .map(id => this.relatedClass.createFromEngineDocument(documentUrl, reducedDocument, id)),
+            Object.keys(helper.filterDocuments(resourceDocuments, filters)).map((id) =>
+                this.relatedClass.createFromEngineDocument(documentUrl, reducedDocument, id)),
         );
 
         const modelsInOtherDocumentIds = Object.keys(resourceDocuments).filter(
-            resourceId =>
-                !modelsInSameDocument.some(model => model.url === resourceId) &&
-                urlRoute(resourceId) !== documentUrl,
+            (resourceId) =>
+                !modelsInSameDocument.some((model) => model.url === resourceId) && urlRoute(resourceId) !== documentUrl,
         );
 
         this.protectedSolidHas.loadDocumentModels(modelsInSameDocument, modelsInOtherDocumentIds);

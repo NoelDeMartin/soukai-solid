@@ -15,9 +15,7 @@ export default class Metadata extends Model {
             return super.newUrl(documentUrl, resourceHash);
         }
 
-        return this.resourceUrl.includes('#')
-            ? `${this.resourceUrl}-metadata`
-            : `${this.resourceUrl}#metadata`;
+        return this.resourceUrl.includes('#') ? `${this.resourceUrl}-metadata` : `${this.resourceUrl}#metadata`;
     }
 
 }

@@ -1,4 +1,4 @@
-import { defineSolidModelSchema } from '@/main';
+import { defineSolidModelSchema } from 'soukai-solid/models/schema';
 import { FieldType } from 'soukai';
 
 export default defineSolidModelSchema({

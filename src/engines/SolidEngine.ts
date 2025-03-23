@@ -2,17 +2,13 @@ import {
     ListenersManager,
     arrayFrom,
     arrayUnique,
+    fail,
     isObject,
     toString,
     urlParentDirectory,
     urlRoot,
 } from '@noeldemartin/utils';
-import {
-    DocumentAlreadyExists,
-    DocumentNotFound,
-    EngineHelper,
-    SoukaiError,
-} from 'soukai';
+import { DocumentAlreadyExists, DocumentNotFound, EngineHelper, SoukaiError } from 'soukai';
 import type {
     Engine,
     EngineAttributeLeafValue,
@@ -27,21 +23,23 @@ import { compactJsonLDGraph, quadsToJsonLD } from '@noeldemartin/solid-utils';
 import type { JsonLD } from '@noeldemartin/solid-utils';
 import type { Listeners } from '@noeldemartin/utils';
 
-import ChangeUrlOperation from '@/solid/operations/ChangeUrlOperation';
-import RDFDocument from '@/solid/RDFDocument';
-import RDFResourceProperty from '@/solid/RDFResourceProperty';
-import RemovePropertyOperation from '@/solid/operations/RemovePropertyOperation';
-import SolidClient from '@/solid/SolidClient';
-import UpdatePropertyOperation from '@/solid/operations/UpdatePropertyOperation';
-import { LDP_CONTAINER } from '@/solid/constants';
-import { usingExperimentalActivityPods } from '@/experimental';
-import type { Fetch, ResponseMetadata } from '@/solid/SolidClient';
-import type { LiteralValue } from '@/solid/RDFResourceProperty';
-import type { RDFDocumentMetadata } from '@/solid/RDFDocument';
-import type { UpdateOperation } from '@/solid/operations/Operation';
+import ChangeUrlOperation from 'soukai-solid/solid/operations/ChangeUrlOperation';
+import RDFDocument from 'soukai-solid/solid/RDFDocument';
+import RDFResourceProperty from 'soukai-solid/solid/RDFResourceProperty';
+import RemovePropertyOperation from 'soukai-solid/solid/operations/RemovePropertyOperation';
+import SolidClient from 'soukai-solid/solid/SolidClient';
+import UpdatePropertyOperation from 'soukai-solid/solid/operations/UpdatePropertyOperation';
+import { LDP_CONTAINER } from 'soukai-solid/solid/constants';
+import { usingExperimentalActivityPods } from 'soukai-solid/experimental';
+import type { Fetch, ResponseMetadata } from 'soukai-solid/solid/SolidClient';
+import type { LiteralValue } from 'soukai-solid/solid/RDFResourceProperty';
+import type { RDFDocumentMetadata } from 'soukai-solid/solid/RDFDocument';
+import type { UpdateOperation } from 'soukai-solid/solid/operations/Operation';
 
 export interface SolidEngineConfig {
+    /** @deprecated */
     useGlobbing: boolean;
+    /** @deprecated */
     globbingBatchSize: number | null;
     concurrentFetchBatchSize: number | null;
     cachesDocuments: boolean;
@@ -58,6 +56,8 @@ export interface SolidEngineListener {
 }
 
 export class SolidEngine implements Engine {
+
+    public __isSolidEngine = true;
 
     private config: SolidEngineConfig;
     private helper: EngineHelper;
@@ -97,7 +97,7 @@ export class SolidEngine implements Engine {
     public async create(collection: string, document: EngineDocument, id?: string): Promise<string> {
         this.validateJsonLDGraph(document);
 
-        if (id && await this.client.documentExists(id)) {
+        if (id && (await this.client.documentExists(id))) {
             throw new DocumentAlreadyExists(id);
         }
 
@@ -139,7 +139,7 @@ export class SolidEngine implements Engine {
         const documents: EngineDocumentsCollection = {};
 
         await Promise.all(
-            documentsArray.map(async document => {
+            documentsArray.map(async (document) => {
                 documents[document.url as string] = await this.convertToEngineDocument(document);
 
                 await this._listeners.emit('onRDFDocumentLoaded', document.url as string, document.metadata);
@@ -164,9 +164,7 @@ export class SolidEngine implements Engine {
         const metadata = await this.client.updateDocument(
             id,
             operations,
-            usingExperimentalActivityPods()
-                ? { format: 'application/ld+json' }
-                : {},
+            usingExperimentalActivityPods() ? { format: 'application/ld+json' } : {},
         );
 
         if (metadata) {
@@ -223,21 +221,20 @@ export class SolidEngine implements Engine {
     }
 
     private async getDocumentsFromUrls(urls: string[], rdfsClasses: string[]): Promise<RDFDocument[]> {
-        const containerDocumentUrlsMap = urls
-            .reduce((containerDocumentUrlsMap, documentUrl) => {
+        const containerDocumentUrlsMap = urls.reduce(
+            (map, documentUrl) => {
                 const containerUrl = urlParentDirectory(documentUrl) ?? urlRoot(documentUrl);
 
                 return {
-                    ...containerDocumentUrlsMap,
-                    [containerUrl]: [
-                        ...(containerDocumentUrlsMap[containerUrl] || []),
-                        documentUrl,
-                    ],
+                    ...map,
+                    [containerUrl]: [...(map[containerUrl] || []), documentUrl],
                 };
-            }, {} as Record<string, string[]>);
+            },
+            {} as Record<string, string[]>,
+        );
 
-        const containerDocumentPromises = Object.entries(containerDocumentUrlsMap)
-            .map(async ([containerUrl, documentUrls]) => {
+        const containerDocumentPromises = Object.entries(containerDocumentUrlsMap).map(
+            async ([containerUrl, documentUrls]) => {
                 if (
                     this.config.useGlobbing &&
                     this.config.globbingBatchSize !== null &&
@@ -245,11 +242,12 @@ export class SolidEngine implements Engine {
                 )
                     return this.client.getDocuments(containerUrl, rdfsClasses.includes(LDP_CONTAINER));
 
-                const documentPromises = documentUrls.map(url => this.getDocument(url));
+                const documentPromises = documentUrls.map((url) => this.getDocument(url));
                 const documents = await Promise.all(documentPromises);
 
-                return documents.filter(document => document != null) as RDFDocument[];
-            });
+                return documents.filter((document) => document != null) as RDFDocument[];
+            },
+        );
 
         const containerDocuments = await Promise.all(containerDocumentPromises);
 
@@ -266,8 +264,7 @@ export class SolidEngine implements Engine {
     private validateJsonLDGraph(document: EngineDocument): void {
         if (!Array.isArray(document['@graph']))
             throw new SoukaiError(
-                'Invalid JSON-LD graph provided for SolidEngine. ' +
-                'Are you using a model that isn\'t a SolidModel?',
+                'Invalid JSON-LD graph provided for SolidEngine. ' + 'Are you using a model that isn\'t a SolidModel?',
             );
     }
 
@@ -275,11 +272,11 @@ export class SolidEngine implements Engine {
         if (!this.isJsonLDGraphUpdate(updates))
             throw new SoukaiError(
                 'Invalid JSON-LD graph updates provided for SolidEngine. ' +
-                'Are you using a model that isn\'t a SolidModel?',
+                    'Are you using a model that isn\'t a SolidModel?',
             );
 
         const changedUrls = new Map<string, string>();
-        const operations: UpdateOperation[] = [];
+        const updateOperations: UpdateOperation[] = [];
         const graphUpdates = '$apply' in updates['@graph'] ? updates['@graph'].$apply : [updates['@graph']];
 
         for (const graphUpdate of graphUpdates) {
@@ -292,17 +289,17 @@ export class SolidEngine implements Engine {
                     updatesOperations.push(...operations);
                 }
 
-                operations.push(...updatesOperations.flat());
+                updateOperations.push(...updatesOperations.flat());
             }
 
             if (graphUpdate.$push) {
-                const updateOperations = await this.extractJsonLDGraphItemPush(graphUpdate.$push);
+                const operations = await this.extractJsonLDGraphItemPush(graphUpdate.$push);
 
-                operations.push(...updateOperations);
+                updateOperations.push(...operations);
             }
         }
 
-        return operations;
+        return updateOperations;
     }
 
     private async extractJsonLDGraphItemsUpdate(
@@ -313,35 +310,33 @@ export class SolidEngine implements Engine {
         if (!$where || !('@id' in $where)) {
             throw new SoukaiError(
                 'Invalid JSON-LD graph updates provided for SolidEngine. ' +
-                'Are you using a model that isn\'t a SolidModel?',
+                    'Are you using a model that isn\'t a SolidModel?',
             );
         }
 
         if ($unset) {
             const filters = $where['@id'] as EngineRootFilter;
-            const ids = typeof filters === 'string'
-                ? [filters]
-                : filters.$in as string[];
+            const ids = typeof filters === 'string' ? [filters] : (filters.$in as string[]);
 
-            return ids.map(url => new RemovePropertyOperation(url));
+            return ids.map((url) => new RemovePropertyOperation(url));
         }
 
         if ($override) {
             const filters = $where['@id'] as EngineRootFilter;
-            const ids = typeof filters === 'string'
-                ? [filters]
-                : filters.$in as string[];
-            const updatesOperations = await Promise.all(ids.map(async (url) => {
-                const resourceUrl = changedUrls.get(url) ?? url;
-                const operations: UpdateOperation[] = [new RemovePropertyOperation(resourceUrl)];
-                const properties = await this.getJsonLDGraphProperties($override);
+            const ids = typeof filters === 'string' ? [filters] : (filters.$in as string[]);
+            const updatesOperations = await Promise.all(
+                ids.map(async (url) => {
+                    const resourceUrl = changedUrls.get(url) ?? url;
+                    const operations: UpdateOperation[] = [new RemovePropertyOperation(resourceUrl)];
+                    const properties = await this.getJsonLDGraphProperties($override);
 
-                for (const property of properties) {
-                    operations.push(new UpdatePropertyOperation(property));
-                }
+                    for (const property of properties) {
+                        operations.push(new UpdatePropertyOperation(property));
+                    }
 
-                return operations;
-            }));
+                    return operations;
+                }),
+            );
 
             return updatesOperations.flat();
         }
@@ -349,7 +344,7 @@ export class SolidEngine implements Engine {
         if (typeof $where['@id'] !== 'string') {
             throw new SoukaiError(
                 'Invalid JSON-LD graph updates provided for SolidEngine. ' +
-                'Are you using a model that isn\'t a SolidModel?',
+                    'Are you using a model that isn\'t a SolidModel?',
             );
         }
 
@@ -383,9 +378,25 @@ export class SolidEngine implements Engine {
     }
 
     /* eslint-disable max-len */
-    private getUpdatePropertyOperationProperty(resourceUrl: string, attribute: string, value: unknown): RDFResourceProperty | RDFResourceProperty[];
-    private getUpdatePropertyOperationProperty(resourceUrl: string, attribute: string, value: unknown, allowArrays: true): RDFResourceProperty | RDFResourceProperty[];
-    private getUpdatePropertyOperationProperty(resourceUrl: string, attribute: string, value: unknown, allowArrays: false): RDFResourceProperty;
+    private getUpdatePropertyOperationProperty(
+        resourceUrl: string,
+        attribute: string,
+        value: unknown
+    ): RDFResourceProperty | RDFResourceProperty[];
+
+    private getUpdatePropertyOperationProperty(
+        resourceUrl: string,
+        attribute: string,
+        value: unknown,
+        allowArrays: true
+    ): RDFResourceProperty | RDFResourceProperty[];
+
+    private getUpdatePropertyOperationProperty(
+        resourceUrl: string,
+        attribute: string,
+        value: unknown,
+        allowArrays: false
+    ): RDFResourceProperty;
     /* eslint-enable max-len */
 
     private getUpdatePropertyOperationProperty(
@@ -394,12 +405,11 @@ export class SolidEngine implements Engine {
         value: unknown,
         allowArrays: boolean = true,
     ): RDFResourceProperty | RDFResourceProperty[] {
-        if (attribute === '@type')
-            return RDFResourceProperty.type(resourceUrl, value as string);
+        if (attribute === '@type') return RDFResourceProperty.type(resourceUrl, value as string);
 
         if (Array.isArray(value))
             return allowArrays
-                ? value.map(v => this.getUpdatePropertyOperationProperty(resourceUrl, attribute, v, false))
+                ? value.map((v) => this.getUpdatePropertyOperationProperty(resourceUrl, attribute, v, false))
                 : fail('Cannot have nested array values');
 
         if (isObject(value) && '@id' in value)
@@ -414,25 +424,22 @@ export class SolidEngine implements Engine {
     private async extractJsonLDGraphItemPush(item: EngineDocument): Promise<UpdateOperation[]> {
         const itemProperties = await this.getJsonLDGraphProperties(item);
 
-        return itemProperties.map(property => new UpdatePropertyOperation(property));
+        return itemProperties.map((property) => new UpdatePropertyOperation(property));
     }
 
     private extractJsonLDGraphTypes(filters: EngineFilters): string[] {
-        if (!this.isJsonLDGraphTypesFilter(filters))
-            return [];
+        if (!this.isJsonLDGraphTypesFilter(filters)) return [];
 
         const typeFilters = filters['@graph'].$contains['@type'].$or;
-        const types = typeFilters.reduce((types, typeFilter) => {
-            if ('$contains' in typeFilter)
-                types.push(...typeFilter.$contains);
+        const types = typeFilters.reduce((_types, typeFilter) => {
+            if ('$contains' in typeFilter) _types.push(...typeFilter.$contains);
 
-            if ('$eq' in typeFilter)
-                types.push(typeFilter.$eq);
+            if ('$eq' in typeFilter) _types.push(typeFilter.$eq);
 
-            return types;
+            return _types;
         }, [] as string[]);
 
-        return arrayUnique(types.filter(type => type.startsWith('http')));
+        return arrayUnique(types.filter((type) => type.startsWith('http')));
     }
 
     private async getJsonLDGraphProperties(jsonld: JsonLD): Promise<RDFResourceProperty[]> {
@@ -442,24 +449,25 @@ export class SolidEngine implements Engine {
     }
 
     private isJsonLDGraphUpdate(updates: Record<string, unknown>): updates is {
-        '@graph': {
-            $updateItems?: EngineUpdateItemsOperatorData;
-            $push?: EngineDocument;
-        } | {
-            $apply: {
-                $updateItems?: EngineUpdateItemsOperatorData;
-                $push?: EngineDocument;
-            }[];
-        };
+        '@graph':
+            | {
+                  $updateItems?: EngineUpdateItemsOperatorData;
+                  $push?: EngineDocument;
+              }
+            | {
+                  $apply: {
+                      $updateItems?: EngineUpdateItemsOperatorData;
+                      $push?: EngineDocument;
+                  }[];
+              };
     } {
         const graphUpdate = updates['@graph'];
 
-        if (!isObject(graphUpdate))
-            return false;
+        if (!isObject(graphUpdate)) return false;
 
         const operations = (graphUpdate.$apply ?? [graphUpdate]) as Record<string, unknown>[];
 
-        return !operations.some(update => {
+        return !operations.some((update) => {
             const keys = Object.keys(update);
 
             return keys.length !== 1 || !['$updateItems', '$push'].includes(keys[0] ?? '');
@@ -470,20 +478,19 @@ export class SolidEngine implements Engine {
         '@graph': {
             $contains: {
                 '@type': {
-                    $or: (
-                        { $contains: string[] } |
-                        { $eq: string }
-                    )[];
+                    $or: ({ $contains: string[] } | { $eq: string })[];
                 };
             };
         };
     } {
         const graphFilter = filters['@graph'];
 
-        return isObject(graphFilter)
-            && isObject(graphFilter.$contains)
-            && isObject(graphFilter.$contains['@type'])
-            && Array.isArray(graphFilter.$contains['@type'].$or);
+        return (
+            isObject(graphFilter) &&
+            isObject(graphFilter.$contains) &&
+            isObject(graphFilter.$contains['@type']) &&
+            Array.isArray(graphFilter.$contains['@type'].$or)
+        );
     }
 
 }

@@ -1,7 +1,7 @@
 # Soukai Solid ![CI](https://github.com/NoelDeMartin/soukai-solid/actions/workflows/ci.yml/badge.svg)
 
 <p align="center">
-    <img width="180" src="./logo.svg" alt="Soukai Solid logo">
+    <img width="180" src="./docs/logo.svg" alt="">
 </p>
 
 This library allows you to store and read data from a [Solid POD](https://solidproject.org/) using [Soukai](https://soukai.js.org). Before going into Solid specifics, you should be familiar with Soukai basics so make sure to read the [Soukai documentation](https://soukai.js.org/guide/) first.
@@ -63,11 +63,11 @@ One solution to this problem is to create another model that points to a list of
 
 ```js
 const horrorMovies = await MoviesList.find('https://example.org/movies/lists/horror#it');
-const movies = horrorMovies.items.map(async item => {
+const movies = horrorMovies.items.map(async (item) => {
     item.loadRelationIfUnloaded('movie');
 
     return item.movie;
-})
+});
 ```
 
 These two techniques should be enough to model most common use-cases in your apps. However, you won't always read data that has been created by your app (or Soukai, for that matter). Because of that, there is a final tool you can use to read models from a single document rather than from containers, and that is using the `$in` filter:
@@ -136,7 +136,6 @@ Here's an example illustrating both:
 
 ```js
 class Person extends SolidModel {
-
     static rdfsClasses = ['http://xmlns.com/foaf/0.1/Person'];
 
     static fields = {
@@ -145,7 +144,6 @@ class Person extends SolidModel {
             rdfProperty: 'http://xmlns.com/foaf/0.1/name',
         },
     };
-
 }
 ```
 
@@ -155,9 +153,8 @@ Here's a definition equivalent to the previous snippet:
 
 ```js
 class Person extends SolidModel {
-
     static rdfContexts = {
-        'foaf': 'http://xmlns.com/foaf/0.1/',
+        foaf: 'http://xmlns.com/foaf/0.1/',
     };
 
     static rdfsClasses = ['foaf:Person'];
@@ -168,7 +165,6 @@ class Person extends SolidModel {
             rdfProperty: 'foaf:name',
         },
     };
-
 }
 ```
 
@@ -176,13 +172,13 @@ As we've seen in the first example, those properties are optional. Here's their 
 
 - `rdfContexts` has the following prefixes included out of the box. If you define your own, these will be merged and not overridden:
 
-  | Prefix | Url |
-  |--------|-----------------------------------------------|
-  | solid  | `http://www.w3.org/ns/solid/terms#`           |
-  | rdfs   | `http://www.w3.org/2000/01/rdf-schema#`       |
-  | rdf    | `http://www.w3.org/1999/02/22-rdf-syntax-ns#` |
-  | ldp    | `http://www.w3.org/ns/ldp#`                   |
-  | purl   | `http://purl.org/dc/terms/`                   |
+    | Prefix | Url                                           |
+    | ------ | --------------------------------------------- |
+    | solid  | `http://www.w3.org/ns/solid/terms#`           |
+    | rdfs   | `http://www.w3.org/2000/01/rdf-schema#`       |
+    | rdf    | `http://www.w3.org/1999/02/22-rdf-syntax-ns#` |
+    | ldp    | `http://www.w3.org/ns/ldp#`                   |
+    | purl   | `http://purl.org/dc/terms/`                   |
 
 - `rdfsClasses` is an empty array by default, but this should rarely be left empty for proper RDF modeling. Values that are not urls or short-hand definitions using contexts will use the default context (the first one defined in `rdfContexts`).
 
@@ -192,10 +188,9 @@ The `Person` class we defined before can be defined more concisely like this:
 
 ```js
 class Person extends SolidModel {
-
     static rdfContexts = {
         // This will be the default context, because it is defined first.
-        'foaf': 'http://xmlns.com/foaf/0.1/',
+        foaf: 'http://xmlns.com/foaf/0.1/',
     };
 
     // Because "Person" is not a url or short-hand definition using contexts,
@@ -207,7 +202,6 @@ class Person extends SolidModel {
         // the rdfProperty will be interpreted as "foaf:name".
         name: FieldType.String,
     };
-
 }
 ```
 
@@ -277,7 +271,7 @@ In addition to the [relations included with the core library](https://soukai.js.
 
 This relation comes with some helper methods.
 
-`create`, `save` and `attach` can be used to associate models, setting foreign keys. Models that are stored in the same document of a related model will be saved automatically when the parent model  (the one who defines the relationship) is created if it didn't exist before. This can be configured with the `usingSameDocument` method.
+`create`, `save` and `attach` can be used to associate models, setting foreign keys. Models that are stored in the same document of a related model will be saved automatically when the parent model (the one who defines the relationship) is created if it didn't exist before. This can be configured with the `usingSameDocument` method.
 
 When related models are stored in the same document, the hash of those models will be a UUID instead of the one defined in their `defaultResourceHash` static property.
 
@@ -285,9 +279,8 @@ For example, let's say that we want to model a Music Band with all their members
 
 ```js
 class Band extends SolidModel {
-
     static rdfContexts = {
-        'schema': 'https://schema.org/',
+        schema: 'https://schema.org/',
     };
 
     static rdfsClasses = ['MusicGroup'];
@@ -299,15 +292,13 @@ class Band extends SolidModel {
     membersRelationship() {
         return this.hasMany(Person, 'bandUrl').usingSameDocument(true);
     }
-
 }
 ```
 
 ```js
 class Person extends SolidModel {
-
     static rdfContexts = {
-        'schema': 'https://schema.org/',
+        schema: 'https://schema.org/',
     };
 
     static rdfsClasses = ['Person'];
@@ -319,7 +310,6 @@ class Person extends SolidModel {
             rdfProperty: 'schema:memberOf',
         },
     };
-
 }
 ```
 
@@ -349,7 +339,6 @@ Here's an example:
 
 ```js
 class MoviesContainer extends SolidModel {
-
     static fields = {
         name: {
             type: FieldType.String,
@@ -360,15 +349,13 @@ class MoviesContainer extends SolidModel {
     moviesRelationship() {
         return this.contains(Movie);
     }
-
 }
 ```
 
 ```js
 class Movie extends SolidModel {
-
     static rdfContexts = {
-        'schema': 'https://schema.org/',
+        schema: 'https://schema.org/',
     };
 
     static rdfsClasses = ['Movie'];
@@ -383,7 +370,6 @@ class Movie extends SolidModel {
     moviesContainerRelationship() {
         return this.isContainedBy(MoviesContainer);
     }
-
 }
 ```
 
@@ -435,9 +421,7 @@ In some situations, it is desirable to keep track of changes made to a model ove
 
 ```js
 class Person extends SolidModel {
-
     static history = true;
-
 }
 ```
 

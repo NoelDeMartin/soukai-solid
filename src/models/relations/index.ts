@@ -9,7 +9,7 @@ import SolidHasManyRelation from './SolidHasManyRelation';
 import SolidHasOneRelation from './SolidHasOneRelation';
 import SolidIsContainedByRelation from './SolidIsContainedByRelation';
 import TombstoneRelation from './TombstoneRelation';
-import { DocumentContainsRelation } from './DocumentContainsRelation';
+import type { DocumentContainsRelation } from './DocumentContainsRelation';
 
 SolidContainsRelation.inverseRelationClasses = [SolidIsContainedByRelation];
 SolidIsContainedByRelation.inverseRelationClasses = [SolidContainsRelation];

@@ -1,47 +1,53 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import { faker } from '@noeldemartin/faker';
 import { bootModels, setEngine } from 'soukai';
-import { fakeDocumentUrl } from '@noeldemartin/testing';
+import { FakeResponse, FakeServer, fakeDocumentUrl } from '@noeldemartin/testing';
 import { SolidDocumentPermission } from '@noeldemartin/solid-utils';
 
-import { SolidEngine } from '@/engines/SolidEngine';
-import { SolidACLAuthorization } from '@/models';
+import { SolidEngine } from 'soukai-solid/engines/SolidEngine';
+import { SolidACLAuthorization } from 'soukai-solid/models';
 
-import Movie from '@/testing/lib/stubs/Movie';
-import StubFetcher from '@/testing/lib/stubs/StubFetcher';
+import Movie from 'soukai-solid/testing/lib/stubs/Movie';
 
 describe('WAC', () => {
 
-    let fetch: jest.Mock<Promise<Response>, [RequestInfo, RequestInit?]>;
-
     beforeEach(() => {
-        fetch = jest.fn((...args) => StubFetcher.fetch(...args));
         Movie.collection = 'https://my-pod.com/movies/';
 
-        setEngine(new SolidEngine(fetch));
+        setEngine(new SolidEngine(FakeServer.fetch));
         bootModels({ Movie, SolidACLAuthorization });
     });
 
     it('Makes private documents public', async () => {
         // Arrange
         const documentUrl = fakeDocumentUrl();
-        const movie = new Movie({
-            url: `${documentUrl}#it`,
-            name: faker.random.word(),
-        }, true);
+        const movie = new Movie(
+            {
+                url: `${documentUrl}#it`,
+                name: faker.random.word(),
+            },
+            true,
+        );
 
-        StubFetcher.addFetchResponse('', { 'WAC-Allow': 'user="append control read write"' });
-        StubFetcher.addFetchResponse('', { Link: `<${documentUrl}.acl>; rel="acl"` });
-        StubFetcher.addFetchResponse(`
-            @prefix acl: <http://www.w3.org/ns/auth/acl#> .
+        FakeServer.respondOnce(
+            '*',
+            FakeResponse.success(undefined, { 'WAC-Allow': 'user="append control read write"' }),
+        );
+        FakeServer.respondOnce('*', FakeResponse.success(undefined, { Link: `<${documentUrl}.acl>; rel="acl"` }));
+        FakeServer.respondOnce(
+            '*',
+            `
+                @prefix acl: <http://www.w3.org/ns/auth/acl#> .
 
-            <#owner>
-                a acl:Authorization ;
-                acl:agent <owner> ;
-                acl:accessTo <${documentUrl}> ;
-                acl:mode acl:Read, acl:Write, acl:Control .
-        `);
-        StubFetcher.addFetchResponse(); // GET documentExists
-        StubFetcher.addFetchResponse(); // PATCH update
+                <#owner>
+                    a acl:Authorization ;
+                    acl:agent <owner> ;
+                    acl:accessTo <${documentUrl}> ;
+                    acl:mode acl:Read, acl:Write, acl:Control .
+            `,
+        );
+        FakeServer.respondOnce('*'); // GET documentExists
+        FakeServer.respondOnce('*'); // PATCH update
 
         // Act
         await movie.fetchPublicPermissionsIfMissing();
@@ -49,9 +55,9 @@ describe('WAC', () => {
 
         // Assert
         expect(movie.isPublic).toBe(true);
-        expect(fetch).toHaveBeenCalledTimes(5);
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(5);
 
-        expect(fetch.mock.calls[4]?.[1]?.body).toEqualSparql(`
+        expect(FakeServer.fetchSpy.mock.calls[4]?.[1]?.body).toEqualSparql(`
             INSERT DATA {
                 @prefix acl: <http://www.w3.org/ns/auth/acl#> .
                 @prefix foaf: <http://xmlns.com/foaf/0.1/> .

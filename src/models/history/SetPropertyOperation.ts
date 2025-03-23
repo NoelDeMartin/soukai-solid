@@ -1,4 +1,4 @@
-import type { SolidModel } from '@/models/SolidModel';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
 
 import Model from './SetPropertyOperation.schema';
 

@@ -5,6 +5,9 @@ export default class ChangeUrlOperation implements Operation {
 
     public type: typeof OperationTypes.ChangeUrl = OperationTypes.ChangeUrl;
 
-    constructor(public resourceUrl: string, public newResourceUrl: string) {}
+    constructor(
+        public resourceUrl: string,
+        public newResourceUrl: string,
+    ) {}
 
 }

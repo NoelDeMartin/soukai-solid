@@ -2,11 +2,11 @@ import { fail, objectMap, tap, urlResolve, urlRoute } from '@noeldemartin/utils'
 import { jsonldToQuads, parseTurtle, quadsToJsonLD } from '@noeldemartin/solid-utils';
 import { SoukaiError } from 'soukai';
 import type { JsonLD, JsonLDGraph, JsonLDResource } from '@noeldemartin/solid-utils';
-import type { Quad } from 'rdf-js';
+import type { Quad } from '@rdfjs/types';
 
-import RDFResource from '@/solid/RDFResource';
-import ResourceNotFound from '@/errors/ResourceNotFound';
-import type RDFResourceProperty from '@/solid/RDFResourceProperty';
+import RDFResource from 'soukai-solid/solid/RDFResource';
+import ResourceNotFound from 'soukai-solid/errors/ResourceNotFound';
+import type RDFResourceProperty from 'soukai-solid/solid/RDFResourceProperty';
 
 export interface TurtleParsingOptions {
     baseIRI: string;
@@ -46,23 +46,24 @@ export default class RDFDocument {
         resourceJson?: JsonLDResource,
     ): Promise<RDFResource> {
         const requireResourceJson = () => {
-            return resourceJson
-                ?? documentJson['@graph'].find(entity => entity['@id'] === resourceId)
-                ?? fail<JsonLDResource>(ResourceNotFound, resourceId);
+            return (
+                resourceJson ??
+                documentJson['@graph'].find((entity) => entity['@id'] === resourceId) ??
+                fail<JsonLDResource>(ResourceNotFound, resourceId)
+            );
         };
 
-        const document = this.documentsCache.get(documentJson) ?? await this.fromJsonLD(requireResourceJson());
+        const document = this.documentsCache.get(documentJson) ?? (await this.fromJsonLD(requireResourceJson()));
 
         return document.requireResource(resourceId);
     }
 
     public static async fromJsonLD(json: JsonLD, baseUrl?: string): Promise<RDFDocument> {
-        return this.documentsCache.get(json)
-            ?? await this.getFromJsonLD(json, baseUrl);
+        return this.documentsCache.get(json) ?? (await this.getFromJsonLD(json, baseUrl));
     }
 
     public static reduceJsonLDGraph(json: JsonLDGraph, resourceId: string): JsonLDGraph {
-        return tap({ '@graph': json['@graph'].filter(resource => resource['@id'] !== resourceId) }, reducedJson => {
+        return tap({ '@graph': json['@graph'].filter((resource) => resource['@id'] !== resourceId) }, (reducedJson) => {
             const document = this.documentsCache.get(json);
 
             if (!document) {
@@ -80,7 +81,7 @@ export default class RDFDocument {
     private static async getFromJsonLD(json: JsonLD, baseUrl?: string): Promise<RDFDocument> {
         const quads = await jsonldToQuads(json, baseUrl);
 
-        return tap(new RDFDocument(json['@id'] ? urlRoute(json['@id']) : null, quads), document => {
+        return tap(new RDFDocument(json['@id'] ? urlRoute(json['@id']) : null, quads), (document) => {
             this.documentsCache.set(json, document);
         });
     }
@@ -97,14 +98,18 @@ export default class RDFDocument {
         this.statements = statements;
         this.metadata = metadata;
 
-        this.resourcesIndex = this.statements.reduce((resourcesIndex, statement) => {
-            const resourceUrl = statement.subject.value;
-            const resource = resourcesIndex[resourceUrl] = resourcesIndex[resourceUrl] ?? new RDFResource(resourceUrl);
+        this.resourcesIndex = this.statements.reduce(
+            (resourcesIndex, statement) => {
+                const resourceUrl = statement.subject.value;
+                const resource = (resourcesIndex[resourceUrl] =
+                    resourcesIndex[resourceUrl] ?? new RDFResource(resourceUrl));
 
-            resource.addStatement(statement);
+                resource.addStatement(statement);
 
-            return resourcesIndex;
-        }, {} as Record<string, RDFResource>);
+                return resourcesIndex;
+            },
+            {} as Record<string, RDFResource>,
+        );
 
         this.resources = Object.values(this.resourcesIndex);
 
@@ -135,14 +140,15 @@ export default class RDFDocument {
     public requireResource(url: string): RDFResource {
         const resource = this.resource(url);
 
-        if (!resource)
+        if (!resource) {
             throw new SoukaiError(`Resource '${url}' not found`);
+        }
 
         return resource;
     }
 
     public clone(options: Partial<CloneOptions> = {}): RDFDocument {
-        return tap(new RDFDocument(options.changeUrl ?? this.url, [], this.metadata), document => {
+        return tap(new RDFDocument(options.changeUrl ?? this.url, [], this.metadata), (document) => {
             const removeResourceUrls = options.removeResourceUrls;
 
             if (!removeResourceUrls) {
@@ -155,14 +161,12 @@ export default class RDFDocument {
             }
 
             document.statements = this.statements.filter(
-                statement => !removeResourceUrls.includes(statement.subject.value),
+                (statement) => !removeResourceUrls.includes(statement.subject.value),
             );
             document.properties = this.properties.filter(
-                property => !property.resourceUrl || !removeResourceUrls.includes(property.resourceUrl),
+                (property) => !property.resourceUrl || !removeResourceUrls.includes(property.resourceUrl),
             );
-            document.resources = this.resources.filter(
-                resource => !removeResourceUrls.includes(resource.url),
-            );
+            document.resources = this.resources.filter((resource) => !removeResourceUrls.includes(resource.url));
             document.resourcesIndex = objectMap(document.resources, 'url');
         });
     }
@@ -170,13 +174,11 @@ export default class RDFDocument {
 }
 
 function getDescribedBy(options: Partial<TurtleParsingOptions> = {}): string | undefined {
-    if (!options.headers?.has('Link'))
-        return undefined;
+    if (!options.headers?.has('Link')) return undefined;
 
     const matches = options.headers.get('Link')?.match(/<([^>]+)>;\s*rel="describedBy"/i);
 
-    if (!matches)
-        return undefined;
+    if (!matches) return undefined;
 
     return urlResolve(options.baseIRI || '', matches[1] as string);
 }

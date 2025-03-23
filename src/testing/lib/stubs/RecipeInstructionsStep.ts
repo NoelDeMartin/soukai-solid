@@ -1,5 +1,3 @@
 import Model from './RecipeInstructionsStep.schema';
 
-export default class RecipeInstructionsStep extends Model {
-
-}
+export default class RecipeInstructionsStep extends Model {}

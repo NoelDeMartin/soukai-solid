@@ -1,12 +1,13 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import { fakeContainerUrl, fakeDocumentUrl } from '@noeldemartin/testing';
 import { FieldType, InMemoryEngine, bootModels, setEngine } from 'soukai';
 import { toString } from '@noeldemartin/utils';
 import type { JsonLDGraph } from '@noeldemartin/solid-utils';
 
-import { defineSolidModelSchema } from '@/models/schema';
+import { defineSolidModelSchema } from 'soukai-solid/models/schema';
 
-import SchemaTaskSchema from '@/testing/lib/stubs/SchemaTask.schema';
-import ICalTaskSchema, { ICAL_TASK_FIELDS } from '@/testing/lib/stubs/ICalTask.schema';
+import SchemaTaskSchema from 'soukai-solid/testing/lib/stubs/SchemaTask.schema';
+import ICalTaskSchema, { ICAL_TASK_FIELDS } from 'soukai-solid/testing/lib/stubs/ICalTask.schema';
 
 class Task extends SchemaTaskSchema {}
 
@@ -35,20 +36,22 @@ describe('Solid Schema Migrations', () => {
         await task.update({ name: 'Updated name' });
 
         // Act
-        const migrated = await task.migrateSchema(defineSolidModelSchema(ICalTaskSchema, {
-            fields: {
-                ...ICAL_TASK_FIELDS,
-                description: {
-                    type: FieldType.String,
-                    alias: 'name',
+        const migrated = await task.migrateSchema(
+            defineSolidModelSchema(ICalTaskSchema, {
+                fields: {
+                    ...ICAL_TASK_FIELDS,
+                    description: {
+                        type: FieldType.String,
+                        alias: 'name',
+                    },
                 },
-            },
-            hooks: {
-                beforeSave() {
-                    this.setAttribute('priority', 1);
+                hooks: {
+                    beforeSave() {
+                        this.setAttribute('priority', 1);
+                    },
                 },
-            },
-        }));
+            }),
+        );
 
         // Assert
         expect(migrated.url).toEqual(`${documentUrl}#it`);
@@ -58,15 +61,19 @@ describe('Solid Schema Migrations', () => {
         expect(migrated.operations).toHaveLength(5);
 
         const document = (await engine.readOne(containerUrl, documentUrl)) as JsonLDGraph;
-        const taskResource = document['@graph'].find(resource => resource['@id'] === `${documentUrl}#it`);
-        const metadataResource = document['@graph'].find(resource => resource['@id'] === `${documentUrl}#metadata`);
-        const existingOperationResources = document['@graph'].filter(resource => {
-            return resource['@id'].startsWith(`${documentUrl}#operation`)
-                && toString(resource['@type']).endsWith('Operation');
+        const taskResource = document['@graph'].find((resource) => resource['@id'] === `${documentUrl}#it`);
+        const metadataResource = document['@graph'].find((resource) => resource['@id'] === `${documentUrl}#metadata`);
+        const existingOperationResources = document['@graph'].filter((resource) => {
+            return (
+                resource['@id'].startsWith(`${documentUrl}#operation`) &&
+                toString(resource['@type']).endsWith('Operation')
+            );
         });
-        const newOperationResources = document['@graph'].filter(resource => {
-            return resource['@id'].startsWith(`${documentUrl}#it-operation`)
-                && toString(resource['@type']).endsWith('Operation');
+        const newOperationResources = document['@graph'].filter((resource) => {
+            return (
+                resource['@id'].startsWith(`${documentUrl}#it-operation`) &&
+                toString(resource['@type']).endsWith('Operation')
+            );
         });
 
         expect(document['@graph']).toHaveLength(7);

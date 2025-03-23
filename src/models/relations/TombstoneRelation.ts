@@ -1,10 +1,13 @@
 import { SingleModelRelation, requireBootedModel } from 'soukai';
 
-import type Tombstone from '@/models/history/Tombstone';
-import type { SolidModel } from '@/models/SolidModel';
+import type Tombstone from 'soukai-solid/models/history/Tombstone';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
 
-export default class TombstoneRelation<Parent extends SolidModel = SolidModel>
-    extends SingleModelRelation<Parent, Tombstone, typeof Tombstone> {
+export default class TombstoneRelation<Parent extends SolidModel = SolidModel> extends SingleModelRelation<
+    Parent,
+    Tombstone,
+    typeof Tombstone
+> {
 
     constructor(parent: Parent) {
         super(parent, requireBootedModel('Tombstone'));

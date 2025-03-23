@@ -72,7 +72,7 @@ export function stubMoviesCollectionJsonLD(
     if (contains.length === 1) {
         jsonld['ldp:contains'] = { '@id': contains[0] };
     } else if (contains.length > 0) {
-        jsonld['ldp:contains'] = contains.map(url => ({ '@id': url }));
+        jsonld['ldp:contains'] = contains.map((_url) => ({ '@id': _url }));
     }
 
     return jsonLDGraph(jsonld);

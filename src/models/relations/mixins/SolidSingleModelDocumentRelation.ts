@@ -3,9 +3,9 @@ import { tap } from '@noeldemartin/utils';
 import type { Attributes } from 'soukai';
 import type { ClosureArgs } from '@noeldemartin/utils';
 
-import { usingExperimentalActivityPods } from '@/experimental';
-import type { SolidModel } from '@/models/SolidModel';
-import type { SolidModelConstructor } from '@/models/inference';
+import { usingExperimentalActivityPods } from 'soukai-solid/experimental';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
+import type { SolidModelConstructor } from 'soukai-solid/models/inference';
 
 import SolidDocumentRelation from './SolidDocumentRelation';
 
@@ -14,8 +14,7 @@ export type This<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
-> =
-    SolidSingleModelDocumentRelation<Parent, Related, RelatedClass> &
+> = SolidSingleModelDocumentRelation<Parent, Related, RelatedClass> &
     SingleModelRelation<Parent, Related, RelatedClass>;
 
 export type SolidSingleModelDocumentRelationInstance<
@@ -43,15 +42,9 @@ export default class SolidSingleModelDocumentRelation<
     }
 
     public isEmpty(this: This): boolean | null {
-        if (!this.documentModelsLoaded && this.parent.exists())
-            return null;
+        if (!this.documentModelsLoaded && this.parent.exists()) return null;
 
-        return !(
-            this.__modelInSameDocument ||
-            this.__modelInOtherDocumentId ||
-            this.__newModel ||
-            this.related
-        );
+        return !(this.__modelInSameDocument || this.__modelInOtherDocumentId || this.__newModel || this.related);
     }
 
     /**
@@ -98,25 +91,22 @@ export default class SolidSingleModelDocumentRelation<
     }
 
     public isRelated(related: Related): boolean {
-        return this.super.isRelated(related)
-            || this.__newModel === related;
+        return this.super.isRelated(related) || this.__newModel === related;
     }
 
     protected cloneSolidData(clone: This<Parent, Related, RelatedClass>): void {
-        let relatedClone = clone.related ?? null as Related | null;
+        let relatedClone = clone.related ?? (null as Related | null);
 
         clone.useSameDocument = this.useSameDocument;
         clone.documentModelsLoaded = this.documentModelsLoaded;
 
         if (this.__newModel)
-            this.__newModel = relatedClone ??
-                tap(this.__newModel.clone(), rClone => relatedClone = rClone);
+            this.__newModel = relatedClone ?? tap(this.__newModel.clone(), (rClone) => (relatedClone = rClone));
 
         if (this.__modelInSameDocument)
             clone.__modelInSameDocument = relatedClone ?? this.__modelInSameDocument.clone();
 
-        if (this.__modelInOtherDocumentId)
-            clone.__modelInOtherDocumentId = this.__modelInOtherDocumentId;
+        if (this.__modelInOtherDocumentId) clone.__modelInOtherDocumentId = this.__modelInOtherDocumentId;
     }
 
     protected loadDocumentModels(
@@ -128,7 +118,7 @@ export default class SolidSingleModelDocumentRelation<
             // eslint-disable-next-line no-console
             console.warn(
                 `The ${this.name} relationship in ${this.parent.static('modelName')} has been declared as hasOne, ` +
-                'but more than one related model were found.',
+                    'but more than one related model were found.',
             );
 
         if (modelsInSameDocument.length > 0) {
@@ -161,7 +151,7 @@ export default class SolidSingleModelDocumentRelation<
         if (this.loaded)
             throw new SoukaiError(
                 `The "${method}" method can't be called because a related model already exists, ` +
-                'use a hasMany relationship if you want to support multiple related models.',
+                    'use a hasMany relationship if you want to support multiple related models.',
             );
     }
 

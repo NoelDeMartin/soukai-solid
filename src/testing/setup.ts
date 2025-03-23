@@ -1,11 +1,16 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
-import { installJestPlugin } from '@noeldemartin/solid-utils';
+import { installVitestSolidMatchers } from '@noeldemartin/solid-utils/testing';
+import { FakeServer } from '@noeldemartin/testing';
+import FakeSolidEngine from 'soukai-solid/testing/fakes/FakeSolidEngine';
+import { beforeEach } from 'vitest';
 
-import { bootSolidModels } from '@/models';
+import { bootSolidModels } from 'soukai-solid/models';
 
-installJestPlugin();
-beforeEach(() => jest.clearAllMocks());
-beforeEach(() => bootSolidModels());
+installVitestSolidMatchers();
+beforeEach(() => {
+    FakeServer.reset();
+    FakeSolidEngine.reset();
 
-process.on('unhandledRejection', (err) => fail(err));
+    bootSolidModels();
+});

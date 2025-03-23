@@ -2,17 +2,20 @@ import { arrayFilter, tap } from '@noeldemartin/utils';
 import { MultiModelRelation } from 'soukai';
 import type { Attributes, EngineDocument } from 'soukai';
 
-import RDFDocument from '@/solid/RDFDocument';
-import type { SolidModel } from '@/models/SolidModel';
-import type { SolidModelConstructor } from '@/models/inference';
+import RDFDocument from 'soukai-solid/solid/RDFDocument';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
+import type { SolidModelConstructor } from 'soukai-solid/models/inference';
 import type { JsonLDGraph } from '@noeldemartin/solid-utils';
-import type { DocumentContainsRelation } from '@/models/relations/DocumentContainsRelation';
+import type { DocumentContainsRelation } from 'soukai-solid/models/relations/DocumentContainsRelation';
 
 export default class DocumentContainsManyRelation<
-    Parent extends SolidModel = SolidModel,
-    Related extends SolidModel = SolidModel,
-    RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>
-> extends MultiModelRelation<Parent, Related, RelatedClass> implements DocumentContainsRelation {
+        Parent extends SolidModel = SolidModel,
+        Related extends SolidModel = SolidModel,
+        RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
+    >
+    extends MultiModelRelation<Parent, Related, RelatedClass>
+    implements DocumentContainsRelation
+{
 
     constructor(parent: Parent, relatedClass: RelatedClass) {
         super(parent, relatedClass);
@@ -38,17 +41,18 @@ export default class DocumentContainsManyRelation<
 
         this.related = arrayFilter(
             await Promise.all(
-                this.relatedClass
-                    .findMatchingResourceIds(rdfDocument.statements)
-                    .map(resourceId => {
-                        const resource = reducedDocument['@graph'].find(resource => resource['@id'] === resourceId);
+                this.relatedClass.findMatchingResourceIds(rdfDocument.statements).map((resourceId) => {
+                    const resource = reducedDocument['@graph'].find((_resource) => _resource['@id'] === resourceId);
 
-                        return resource && this.relatedClass.createFromEngineDocument(
+                    return (
+                        resource &&
+                        this.relatedClass.createFromEngineDocument(
                             documentUrl,
                             reducedDocument as EngineDocument,
                             resource['@id'],
-                        );
-                    }),
+                        )
+                    );
+                }),
             ),
         );
     }

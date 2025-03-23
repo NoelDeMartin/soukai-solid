@@ -15,12 +15,10 @@ const KNOWN_NAMESPACES: IRINamespacesMap = {
 };
 
 export default function IRI(value: string, namespaces: IRINamespacesMap = {}, defaultNamespace: string = ''): string {
-    if (/^https?:\/\//.test(value))
-        return value;
+    if (/^https?:\/\//.test(value)) return value;
 
     const colonIndex = value.indexOf(':');
-    if (colonIndex === -1)
-        return defaultNamespace + value;
+    if (colonIndex === -1) return defaultNamespace + value;
 
     namespaces = {
         ...KNOWN_NAMESPACES,

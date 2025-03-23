@@ -1,23 +1,19 @@
+import { beforeEach, describe, expect, it } from 'vitest';
 import { FieldType, bootModels, setEngine } from 'soukai';
-import { fakeDocumentUrl } from '@noeldemartin/testing';
-import { SolidEngine } from '@/engines/SolidEngine';
-import { FakeResponse, FakeServer } from '@noeldemartin/utils';
+import { SolidEngine } from 'soukai-solid/engines/SolidEngine';
+import { FakeResponse, FakeServer, fakeDocumentUrl } from '@noeldemartin/testing';
 
-import { defineSolidModelSchema } from '@/models/schema';
+import { defineSolidModelSchema } from 'soukai-solid/models/schema';
 
-import SchemaTaskSchema from '@/testing/lib/stubs/SchemaTask.schema';
-import ICalTaskSchema, { ICAL_TASK_FIELDS } from '@/testing/lib/stubs/ICalTask.schema';
+import SchemaTaskSchema from 'soukai-solid/testing/lib/stubs/SchemaTask.schema';
+import ICalTaskSchema, { ICAL_TASK_FIELDS } from 'soukai-solid/testing/lib/stubs/ICalTask.schema';
 
 class Task extends SchemaTaskSchema {}
 
 describe('Solid Schema Migrations', () => {
 
-    let server: FakeServer;
-
     beforeEach(() => {
-        server = new FakeServer();
-
-        setEngine(new SolidEngine(server.fetch));
+        setEngine(new SolidEngine(FakeServer.fetch));
         bootModels({ Task });
     });
 
@@ -25,16 +21,16 @@ describe('Solid Schema Migrations', () => {
         // Arrange
         const documentUrl = fakeDocumentUrl();
 
-        server.respondOnce(documentUrl, FakeResponse.notFound());
-        server.respondOnce(documentUrl, FakeResponse.success());
+        FakeServer.respondOnce(documentUrl, FakeResponse.notFound());
+        FakeServer.respondOnce(documentUrl, FakeResponse.success());
 
         const task = await Task.create({
             url: `${documentUrl}#it`,
             name: 'Migrate schemas',
         });
 
-        server.respondOnce(documentUrl, FakeResponse.success(await task.toTurtle()));
-        server.respondOnce(documentUrl, FakeResponse.success());
+        FakeServer.respondOnce(documentUrl, FakeResponse.success(await task.toTurtle()));
+        FakeServer.respondOnce(documentUrl, FakeResponse.success());
 
         // Act
         const migrated = await task.migrateSchema(ICalTaskSchema);
@@ -44,9 +40,9 @@ describe('Solid Schema Migrations', () => {
         expect(migrated.name).toEqual('Migrate schemas');
         expect(migrated.operations).toHaveLength(0);
 
-        expect(server.getRequests()).toHaveLength(4);
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(4);
 
-        expect(server.getRequests()[3]?.body).toEqualSparql(`
+        expect(FakeServer.getRequests()[3]?.body).toEqualSparql(`
             DELETE DATA {
                 @prefix schema: <https://schema.org/>.
 
@@ -69,10 +65,10 @@ describe('Solid Schema Migrations', () => {
         // Arrange
         const documentUrl = fakeDocumentUrl();
 
-        server.respondOnce(documentUrl, FakeResponse.notFound());
-        server.respondOnce(documentUrl, FakeResponse.success());
-        server.respondOnce(documentUrl, FakeResponse.success());
-        server.respondOnce(documentUrl, FakeResponse.success());
+        FakeServer.respondOnce(documentUrl, FakeResponse.notFound());
+        FakeServer.respondOnce(documentUrl, FakeResponse.success());
+        FakeServer.respondOnce(documentUrl, FakeResponse.success());
+        FakeServer.respondOnce(documentUrl, FakeResponse.success());
 
         const task = await Task.create({
             url: `${documentUrl}#it`,
@@ -83,8 +79,8 @@ describe('Solid Schema Migrations', () => {
 
         await task.update({ name: 'Updated name' });
 
-        server.respondOnce(documentUrl, FakeResponse.success(await task.toTurtle({ history: true })));
-        server.respondOnce(documentUrl, FakeResponse.success());
+        FakeServer.respondOnce(documentUrl, FakeResponse.success(await task.toTurtle({ history: true })));
+        FakeServer.respondOnce(documentUrl, FakeResponse.success());
 
         // Act
         const migrated = await task.migrateSchema(ICalTaskSchema);
@@ -94,9 +90,9 @@ describe('Solid Schema Migrations', () => {
         expect(migrated.name).toEqual('Updated name');
         expect(migrated.operations).toHaveLength(3);
 
-        expect(server.getRequests()).toHaveLength(6);
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(6);
 
-        expect(server.getRequests()[5]?.body).toEqualSparql(`
+        expect(FakeServer.getRequests()[5]?.body).toEqualSparql(`
             DELETE DATA {
                 @prefix schema: <https://schema.org/>.
                 @prefix crdt: <https://vocab.noeldemartin.com/crdt/>.
@@ -137,10 +133,10 @@ describe('Solid Schema Migrations', () => {
         // Arrange
         const url = fakeDocumentUrl();
 
-        server.respondOnce(url, FakeResponse.notFound());
-        server.respondOnce(url, FakeResponse.success());
-        server.respondOnce(url, FakeResponse.success());
-        server.respondOnce(url, FakeResponse.success());
+        FakeServer.respondOnce(url, FakeResponse.notFound());
+        FakeServer.respondOnce(url, FakeResponse.success());
+        FakeServer.respondOnce(url, FakeResponse.success());
+        FakeServer.respondOnce(url, FakeResponse.success());
 
         const task = await Task.create({
             url,
@@ -151,24 +147,26 @@ describe('Solid Schema Migrations', () => {
 
         await task.update({ name: 'Updated name' });
 
-        server.respondOnce(url, FakeResponse.success(await task.toTurtle({ history: true })));
-        server.respondOnce(url, FakeResponse.success());
+        FakeServer.respondOnce(url, FakeResponse.success(await task.toTurtle({ history: true })));
+        FakeServer.respondOnce(url, FakeResponse.success());
 
         // Act
-        const migrated = await task.migrateSchema(defineSolidModelSchema(ICalTaskSchema, {
-            fields: {
-                ...ICAL_TASK_FIELDS,
-                description: {
-                    type: FieldType.String,
-                    alias: 'name',
+        const migrated = await task.migrateSchema(
+            defineSolidModelSchema(ICalTaskSchema, {
+                fields: {
+                    ...ICAL_TASK_FIELDS,
+                    description: {
+                        type: FieldType.String,
+                        alias: 'name',
+                    },
                 },
-            },
-            hooks: {
-                beforeSave() {
-                    this.setAttribute('priority', 1);
+                hooks: {
+                    beforeSave() {
+                        this.setAttribute('priority', 1);
+                    },
                 },
-            },
-        }));
+            }),
+        );
 
         // Assert
         expect(migrated.url).toEqual(`${url}#it`);
@@ -177,9 +175,9 @@ describe('Solid Schema Migrations', () => {
         expect(migrated.priority).toEqual(1);
         expect(migrated.operations).toHaveLength(5);
 
-        expect(server.getRequests()).toHaveLength(6);
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(6);
 
-        expect(server.getRequests()[5]?.body).toEqualSparql(`
+        expect(FakeServer.getRequests()[5]?.body).toEqualSparql(`
             DELETE DATA {
                 @prefix schema: <https://schema.org/>.
                 @prefix crdt: <https://vocab.noeldemartin.com/crdt/>.

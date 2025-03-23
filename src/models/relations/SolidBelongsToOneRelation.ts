@@ -2,45 +2,44 @@ import { BelongsToOneRelation } from 'soukai';
 import { mixedWithoutTypes, tap } from '@noeldemartin/utils';
 import type { Model, RelationCloneOptions } from 'soukai';
 
-import type { SolidModel } from '@/models/SolidModel';
-import type { SolidModelConstructor } from '@/models/inference';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
+import type { SolidModelConstructor } from 'soukai-solid/models/inference';
 
 import SolidBelongsToRelation from './mixins/SolidBelongsToRelation';
 import SolidSingleModelDocumentRelation from './mixins/SolidSingleModelDocumentRelation';
 import type { BeforeParentCreateRelation, SynchronizesRelatedModels } from './guards';
 import type { ISolidDocumentRelation } from './mixins/SolidDocumentRelation';
 
-export const SolidBelongsToOneRelationBase = mixedWithoutTypes(
-    BelongsToOneRelation,
-    [SolidSingleModelDocumentRelation, SolidBelongsToRelation],
-);
+export const SolidBelongsToOneRelationBase = mixedWithoutTypes(BelongsToOneRelation, [
+    SolidSingleModelDocumentRelation,
+    SolidBelongsToRelation,
+]);
 
 export default interface SolidBelongsToOneRelation<
     Parent extends SolidModel = SolidModel,
     Related extends SolidModel = SolidModel,
     RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
-> extends SolidSingleModelDocumentRelation<Parent, Related, RelatedClass>, SolidBelongsToRelation {}
+> extends SolidSingleModelDocumentRelation<Parent, Related, RelatedClass>,
+        SolidBelongsToRelation {}
 export default class SolidBelongsToOneRelation<
-    Parent extends SolidModel = SolidModel,
-    Related extends SolidModel = SolidModel,
-    RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
->
+        Parent extends SolidModel = SolidModel,
+        Related extends SolidModel = SolidModel,
+        RelatedClass extends SolidModelConstructor<Related> = SolidModelConstructor<Related>,
+    >
     extends SolidBelongsToOneRelationBase<Parent, Related, RelatedClass>
     implements ISolidDocumentRelation<Related>, BeforeParentCreateRelation, SynchronizesRelatedModels
 {
 
     public async load(): Promise<Related | null> {
-        if (this.__modelInSameDocument)
-            return this.related = this.__modelInSameDocument;
+        if (this.__modelInSameDocument) return (this.related = this.__modelInSameDocument);
 
         const foreignKey = this.__modelInOtherDocumentId ?? this.parent.getAttribute(this.foreignKeyName);
 
-        if (!foreignKey)
-            return this.related = null;
+        if (!foreignKey) return (this.related = null);
 
         const related = await this.relatedClass.find(foreignKey);
 
-        return this.related = related;
+        return (this.related = related);
     }
 
     public reset(related: Related[] = []): void {
@@ -61,14 +60,13 @@ export default class SolidBelongsToOneRelation<
     }
 
     public clone(options: RelationCloneOptions = {}): this {
-        return tap(super.clone(options), clone => {
+        return tap(super.clone(options), (clone) => {
             this.cloneSolidData(clone);
         });
     }
 
     public __beforeParentCreate(): void {
-        if (this.documentModelsLoaded)
-            return;
+        if (this.documentModelsLoaded) return;
 
         const foreignValue = this.parent.getAttribute<string>(this.foreignKeyName);
 
@@ -92,7 +90,7 @@ export default class SolidBelongsToOneRelation<
 
         if (other.related.url === foreignKey) {
             this.related = other.related.clone({
-                clones: tap(new WeakMap<Model, Model>(), clones => clones.set(other.parent, this.parent)),
+                clones: tap(new WeakMap<Model, Model>(), (clones) => clones.set(other.parent, this.parent)),
             });
         }
     }

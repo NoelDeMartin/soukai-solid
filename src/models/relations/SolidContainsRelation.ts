@@ -2,10 +2,10 @@ import { arrayUnique, tap } from '@noeldemartin/utils';
 import { BelongsToManyRelation, SoukaiError } from 'soukai';
 import type { Attributes } from 'soukai';
 
-import { usingExperimentalActivityPods } from '@/experimental';
-import type SolidContainer from '@/models/SolidContainer';
-import type { SolidModel } from '@/models/SolidModel';
-import type { SolidModelConstructor } from '@/models/inference';
+import { usingExperimentalActivityPods } from 'soukai-solid/experimental';
+import type SolidContainer from 'soukai-solid/models/SolidContainer';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
+import type { SolidModelConstructor } from 'soukai-solid/models/inference';
 
 export default class SolidContainsRelation<
     Parent extends SolidContainer = SolidContainer,
@@ -20,10 +20,7 @@ export default class SolidContainsRelation<
     public setForeignAttributes(related: Related): void {
         const relatedDocumentUrl = related.getDocumentUrl();
 
-        if (
-            !related.url ||
-            (relatedDocumentUrl && this.parent.resourceUrls.includes(relatedDocumentUrl))
-        ) {
+        if (!related.url || (relatedDocumentUrl && this.parent.resourceUrls.includes(relatedDocumentUrl))) {
             return;
         }
 
@@ -55,7 +52,7 @@ export default class SolidContainsRelation<
             this.relatedClass.withCollection(this.parent.url, () => related.mintUrl());
         }
 
-        return tap(this.attach(related), model => this.save(model));
+        return tap(this.attach(related), (model) => this.save(model));
     }
 
     public async save(model: Related): Promise<Related> {

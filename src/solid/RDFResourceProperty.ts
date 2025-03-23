@@ -1,7 +1,7 @@
-import type { Literal, Quad } from 'rdf-js';
+import type { Literal, Quad } from '@rdfjs/types';
 
-import IRI from '@/solid/utils/IRI';
-import { RDF_TYPE } from '@/solid/constants';
+import IRI from 'soukai-solid/solid/utils/IRI';
+import { RDF_TYPE } from 'soukai-solid/solid/constants';
 
 export type LiteralValue = string | number | boolean | Date;
 
@@ -38,9 +38,7 @@ abstract class RDFResourceProperty {
     public abstract readonly type: RDFResourcePropertyType;
 
     public static fromStatement(statement: Quad): RDFResourceProperty {
-        const resourceUrl = statement.subject.termType === 'NamedNode'
-            ? statement.subject.value
-            : null;
+        const resourceUrl = statement.subject.termType === 'NamedNode' ? statement.subject.value : null;
 
         if (statement.predicate.value === RDF_TYPE) {
             return this.type(resourceUrl, statement.object.value);
@@ -93,13 +91,8 @@ abstract class RDFResourceProperty {
         return new RDFResourceTypeProperty(resourceUrl, type);
     }
 
-    public static toTurtle(
-        properties: RDFResourceProperty[],
-        documentUrl: string | null = null,
-    ): string {
-        return properties
-            .map(property => property.toTurtle(documentUrl) + ' .')
-            .join('\n');
+    public static toTurtle(properties: RDFResourceProperty[], documentUrl: string | null = null): string {
+        return properties.map((property) => property.toTurtle(documentUrl) + ' .').join('\n');
     }
 
     private static castLiteralValue(value: string, datatype: string): LiteralValue {
@@ -156,10 +149,7 @@ abstract class RDFResourceProperty {
         return value === otherValue;
     }
 
-    protected getTurtleReference(
-        value: string | null,
-        documentUrl: string | null,
-    ): string {
+    protected getTurtleReference(value: string | null, documentUrl: string | null): string {
         const hashIndex = value?.indexOf('#') ?? -1;
 
         if (!value || value === documentUrl) {
@@ -203,17 +193,15 @@ class RDFResourceLiteralProperty extends RDFResourceProperty {
         }
 
         if (this.value instanceof Date) {
-            const digits = (...numbers: number[]) => numbers.map(number => number.toString().padStart(2, '0'));
+            const digits = (...numbers: number[]) => numbers.map((number) => number.toString().padStart(2, '0'));
             const date = digits(
                 this.value.getUTCFullYear(),
                 this.value.getUTCMonth() + 1,
                 this.value.getUTCDate(),
             ).join('-');
-            const time = digits(
-                this.value.getUTCHours(),
-                this.value.getUTCMinutes(),
-                this.value.getUTCSeconds(),
-            ).join(':');
+            const time = digits(this.value.getUTCHours(), this.value.getUTCMinutes(), this.value.getUTCSeconds()).join(
+                ':',
+            );
             const milliseconds = this.value.getUTCMilliseconds().toString().padStart(3, '0');
 
             return `"${date}T${time}.${milliseconds}Z"^^<${IRI('xsd:dateTime')}>`;
@@ -229,17 +217,12 @@ class RDFResourceReferenceProperty extends RDFResourceProperty {
     declare public readonly value: string | RDFResourcePropertyVariable | null;
     public readonly type = RDFResourcePropertyType.Reference;
 
-    constructor(
-        resourceUrl: string | null,
-        name: string,
-        value: string | RDFResourcePropertyVariable | null,
-    ) {
+    constructor(resourceUrl: string | null, name: string, value: string | RDFResourcePropertyVariable | null) {
         super(resourceUrl, name, value);
     }
 
     protected getTurtleObject(documentUrl: string | null): string {
-        if (this.value instanceof RDFResourcePropertyVariable)
-            return this.value.name;
+        if (this.value instanceof RDFResourcePropertyVariable) return this.value.name;
 
         return this.getTurtleReference(this.value, documentUrl);
     }

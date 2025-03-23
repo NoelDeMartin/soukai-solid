@@ -1,6 +1,6 @@
 import { arrayFilter } from '@noeldemartin/utils';
 
-import type RDFResourceProperty from '@/solid/RDFResourceProperty';
+import type RDFResourceProperty from 'soukai-solid/solid/RDFResourceProperty';
 
 import { OperationTypes } from './Operation';
 import type ChangeUrlOperation from './ChangeUrlOperation';
@@ -18,7 +18,7 @@ interface DecantedUpdateOperations {
 
 type DecantedUpdateOperationsData = [
     (RDFResourceProperty | RDFResourceProperty[])[],
-    [string, string | string[] | undefined, unknown?][]
+    [string, string | string[] | undefined, unknown?][],
 ];
 
 export function decantUpdateOperations(operations: UpdateOperation[]): DecantedUpdateOperations {
@@ -39,15 +39,18 @@ export function decantUpdateOperations(operations: UpdateOperation[]): DecantedU
 
 export function decantUpdateOperationsData(operations: UpdateOperation[]): DecantedUpdateOperationsData {
     const shielded = operations
-        .filter(operation => operation.type === OperationTypes.ShieldProperty)
-        .reduce((shields, operation) => {
-            const shieldOperation = operation as ShieldPropertyOperation;
+        .filter((operation) => operation.type === OperationTypes.ShieldProperty)
+        .reduce(
+            (shields, operation) => {
+                const shieldOperation = operation as ShieldPropertyOperation;
 
-            shields[shieldOperation.resourceUrl] ??= [];
-            shields[shieldOperation.resourceUrl]?.push(shieldOperation.property);
+                shields[shieldOperation.resourceUrl] ??= [];
+                shields[shieldOperation.resourceUrl]?.push(shieldOperation.property);
 
-            return shields;
-        }, {} as Record<string, string[]>);
+                return shields;
+            },
+            {} as Record<string, string[]>,
+        );
 
     return operations.reduce(
         (data, operation) => {
@@ -58,11 +61,11 @@ export function decantUpdateOperationsData(operations: UpdateOperation[]): Decan
                 case OperationTypes.RemoveProperty:
                     if (!shielded[operation.resourceUrl]) {
                         data[1].push(
-                            arrayFilter([
-                                operation.resourceUrl,
-                                operation.property,
-                                operation.value,
-                            ]) as [string, string | string[] | undefined, unknown?],
+                            arrayFilter([operation.resourceUrl, operation.property, operation.value]) as [
+                                string,
+                                string | string[] | undefined,
+                                unknown?,
+                            ],
                         );
 
                         break;
@@ -70,10 +73,11 @@ export function decantUpdateOperationsData(operations: UpdateOperation[]): Decan
 
                     if (!operation.property) {
                         data[1].push(
-                            arrayFilter([
-                                operation.resourceUrl,
-                                shielded[operation.resourceUrl],
-                            ]) as [string, string | string[] | undefined, unknown?],
+                            arrayFilter([operation.resourceUrl, shielded[operation.resourceUrl]]) as [
+                                string,
+                                string | string[] | undefined,
+                                unknown?,
+                            ],
                         );
 
                         break;
@@ -84,11 +88,11 @@ export function decantUpdateOperationsData(operations: UpdateOperation[]): Decan
                     }
 
                     data[1].push(
-                        arrayFilter([
-                            operation.resourceUrl,
-                            operation.property,
-                            operation.value,
-                        ]) as [string, string | string[] | undefined, unknown?],
+                        arrayFilter([operation.resourceUrl, operation.property, operation.value]) as [
+                            string,
+                            string | string[] | undefined,
+                            unknown?,
+                        ],
                     );
 
                     break;

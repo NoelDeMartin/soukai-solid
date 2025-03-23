@@ -2,9 +2,9 @@ import { arrayWithout, tap, urlParse, uuid } from '@noeldemartin/utils';
 import { SolidDocument, SolidDocumentPermission, expandIRI } from '@noeldemartin/solid-utils';
 import { requireBootedModel } from 'soukai';
 
-import { SolidEngine } from '@/engines/SolidEngine';
-import type SolidACLAuthorization from '@/models/SolidACLAuthorization';
-import type { SolidModel } from '@/models/SolidModel';
+import type { SolidEngine } from 'soukai-solid/engines/SolidEngine';
+import type SolidACLAuthorization from 'soukai-solid/models/SolidACLAuthorization';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
 
 export interface PermissionsTracker {
     documentPermissions: Record<string, SolidDocumentPermission[]>;
@@ -15,21 +15,18 @@ export type This = SolidModel;
 
 export default class ManagesPermissions {
 
-    protected _publicPermissions?: SolidDocumentPermission[];
+    declare protected _publicPermissions: SolidDocumentPermission[] | undefined;
 
     public get isPublic(): boolean | null {
         return this._publicPermissions?.includes(SolidDocumentPermission.Read) ?? null;
     }
 
     public get isPrivate(): boolean | null {
-        return this._publicPermissions
-            ? !this._publicPermissions.includes(SolidDocumentPermission.Read)
-            : null;
+        return this._publicPermissions ? !this._publicPermissions.includes(SolidDocumentPermission.Read) : null;
     }
 
     public async fetchPublicPermissionsIfMissing(this: This): Promise<void> {
-        if (this._publicPermissions)
-            return;
+        if (this._publicPermissions) return;
 
         await this.fetchPublicPermissions();
     }
@@ -47,18 +44,13 @@ export default class ManagesPermissions {
     public async updatePublicPermissions(this: This, permissions: SolidDocumentPermission[]): Promise<void> {
         const aclAuthorizationClass = requireBootedModel<typeof SolidACLAuthorization>('SolidACLAuthorization');
 
-        await this.withEngine(
-            aclAuthorizationClass.requireEngine(),
-            () => this.updateAuthorizations(permissions),
-        );
+        await this.withEngine(aclAuthorizationClass.requireEngine(), () => this.updateAuthorizations(permissions));
 
         this._publicPermissions = permissions;
     }
 
     protected trackPublicPermissions(this: This): PermissionsTracker {
-        const engine = this.static().requireFinalEngine();
-
-        if (!(engine instanceof SolidEngine)) {
+        if (!this.static().usingSolidEngine()) {
             return {
                 documentPermissions: {},
                 stopTracking() {
@@ -68,17 +60,19 @@ export default class ManagesPermissions {
         }
 
         const documentPermissions: Record<string, SolidDocumentPermission[]> = {};
-        const stopTracking = engine.listeners.add({
-            onDocumentRead(url, metadata) {
-                if (!metadata.headers) {
-                    return;
-                }
+        const stopTracking = this.static()
+            .requireFinalEngine<SolidEngine>()
+            .listeners.add({
+                onDocumentRead(url, metadata) {
+                    if (!metadata.headers) {
+                        return;
+                    }
 
-                const document = new SolidDocument(url, [], metadata.headers);
+                    const document = new SolidDocument(url, [], metadata.headers);
 
-                documentPermissions[url] = document.getPublicPermissions();
-            },
-        });
+                    documentPermissions[url] = document.getPublicPermissions();
+                },
+            });
 
         return { documentPermissions, stopTracking };
     }
@@ -88,13 +82,13 @@ export default class ManagesPermissions {
 
         const authorizations = await this.loadRelationIfUnloaded<SolidACLAuthorization[]>('authorizations');
         const aclAuthorizationClass = requireBootedModel<typeof SolidACLAuthorization>('SolidACLAuthorization');
-        const modes = permissions.map(permission => aclAuthorizationClass.modeFromSolidDocumentPermission(permission));
-        const publicAuthorizations = authorizations
-            .filter(authorization => authorization.agentClasses.includes(expandIRI('foaf:Agent')));
-        const publicModes = publicAuthorizations.map(authorization => authorization.modes).flat();
+        const modes = permissions.map((permission) =>
+            aclAuthorizationClass.modeFromSolidDocumentPermission(permission));
+        const publicAuthorizations = authorizations.filter((authorization) =>
+            authorization.agentClasses.includes(expandIRI('foaf:Agent')));
+        const publicModes = publicAuthorizations.map((authorization) => authorization.modes).flat();
 
-        if (modes.length === publicModes.length && !modes.some(mode => publicModes.includes(mode)))
-            return;
+        if (modes.length === publicModes.length && !modes.some((mode) => publicModes.includes(mode))) return;
 
         if (!this.relatedAuthorizations.isDocumentACL()) {
             await this.createDocumentACLResource(modes);
@@ -129,10 +123,9 @@ export default class ManagesPermissions {
         const aclAuthorizationClass = requireBootedModel<typeof SolidACLAuthorization>('SolidACLAuthorization');
         const authorizations = this.authorizations as SolidACLAuthorization[];
         const ownerAuthorizations = authorizations
-            .filter(authorization => authorization.modes.includes(aclAuthorizationClass.rdfTerm('acl:Control')))
-            .map(authorization => tap(
-                new aclAuthorizationClass(authorization.getAttributes()),
-                newAuthorization => {
+            .filter((authorization) => authorization.modes.includes(aclAuthorizationClass.rdfTerm('acl:Control')))
+            .map((authorization) =>
+                tap(new aclAuthorizationClass(authorization.getAttributes()), (newAuthorization) => {
                     newAuthorization.accessTo = [this.requireDocumentUrl()];
                     newAuthorization.accessToClasses = [];
                     newAuthorization.default = [];
@@ -141,8 +134,7 @@ export default class ManagesPermissions {
                         false,
                         urlParse(authorization.url)?.fragment ?? uuid(),
                     );
-                },
-            ));
+                }));
 
         for (const authorization of ownerAuthorizations) {
             await authorization.save();
@@ -158,11 +150,15 @@ export default class ManagesPermissions {
         this.relatedAuthorizations.enable();
 
         const aclAuthorizationClass = requireBootedModel<typeof SolidACLAuthorization>('SolidACLAuthorization');
-        const publicAuthorization = await aclAuthorizationClass.createInDocument({
-            agentClasses: [aclAuthorizationClass.rdfTerm('foaf:Agent')],
-            accessTo: [this.requireDocumentUrl()],
-            modes,
-        }, this.relatedAuthorizations.requireACLUrl(), 'public');
+        const publicAuthorization = await aclAuthorizationClass.createInDocument(
+            {
+                agentClasses: [aclAuthorizationClass.rdfTerm('foaf:Agent')],
+                accessTo: [this.requireDocumentUrl()],
+                modes,
+            },
+            this.relatedAuthorizations.requireACLUrl(),
+            'public',
+        );
 
         this.relatedAuthorizations.related?.push(publicAuthorization);
     }

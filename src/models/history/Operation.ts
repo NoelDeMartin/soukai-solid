@@ -1,6 +1,6 @@
 import { uuid } from '@noeldemartin/utils';
 
-import type { SolidModel } from '@/models/SolidModel';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
 
 import Model from './Operation.schema';
 

@@ -1,65 +1,61 @@
-import { fakeDocumentUrl } from '@noeldemartin/testing';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { FakeServer, fakeDocumentUrl } from '@noeldemartin/testing';
 import { faker } from '@noeldemartin/faker';
 import { setEngine } from 'soukai';
 
-import SolidTypeIndex from '@/models/SolidTypeIndex';
-import { SolidEngine } from '@/engines/SolidEngine';
-
-import StubFetcher from '@/testing/lib/stubs/StubFetcher';
+import SolidTypeIndex from 'soukai-solid/models/SolidTypeIndex';
+import { SolidEngine } from 'soukai-solid/engines/SolidEngine';
 
 describe('DocumentContainsManyRelation', () => {
 
-    let fetch: jest.Mock<Promise<Response>, [RequestInfo, RequestInit?]>;
-
-    beforeEach(() => {
-        fetch = jest.fn((...args) => StubFetcher.fetch(...args));
-
-        setEngine(new SolidEngine(fetch));
-    });
+    beforeEach(() => setEngine(new SolidEngine(FakeServer.fetch)));
 
     it('loads related documents', async () => {
         // Arrange
         const podUrl = faker.internet.url();
-        const typeIndexUrl = fakeDocumentUrl({ baseUrl: podUrl });
+        const typeIndexUrl = fakeDocumentUrl({ containerUrl: podUrl + '/' });
 
-        StubFetcher.addFetchResponse(`
-            @prefix solid: <http://www.w3.org/ns/solid/terms#> .
-            @prefix schema: <https://schema.org/> .
-            @prefix foaf: <http://xmlns.com/foaf/0.1/> .
+        FakeServer.respondOnce(
+            typeIndexUrl,
+            `
+                @prefix solid: <http://www.w3.org/ns/solid/terms#> .
+                @prefix schema: <https://schema.org/> .
+                @prefix foaf: <http://xmlns.com/foaf/0.1/> .
 
-            <>
-                a solid:TypeIndex ;
-                a solid:ListedDocument.
+                <>
+                    a solid:TypeIndex ;
+                    a solid:ListedDocument.
 
-            <#movies> a solid:TypeRegistration;
-                solid:forClass schema:Movie;
-                solid:instanceContainer </movies>.
+                <#movies> a solid:TypeRegistration;
+                    solid:forClass schema:Movie;
+                    solid:instanceContainer </movies>.
 
-            <#recipes> a solid:TypeRegistration;
-                solid:forClass schema:Recipe;
-                solid:instanceContainer </recipes>.
+                <#recipes> a solid:TypeRegistration;
+                    solid:forClass schema:Recipe;
+                    solid:instanceContainer </recipes>.
 
-            <#spirited-away> a solid:TypeRegistration;
-                solid:forClass schema:Movie;
-                solid:instance </movies/spirited-away>.
+                <#spirited-away> a solid:TypeRegistration;
+                    solid:forClass schema:Movie;
+                    solid:instance </movies/spirited-away>.
 
-            <#ramen> a solid:TypeRegistration;
-                solid:forClass schema:Recipe;
-                solid:instance </recipes/ramen>.
+                <#ramen> a solid:TypeRegistration;
+                    solid:forClass schema:Recipe;
+                    solid:instance </recipes/ramen>.
 
-            <#something-else>
-                a foaf:Person ;
-                foaf:name "Alice" .
-        `);
+                <#something-else>
+                    a foaf:Person ;
+                    foaf:name "Alice" .
+            `,
+        );
 
         // Act
         const typeIndex = await SolidTypeIndex.find(typeIndexUrl);
 
         // Assert
-        expect(fetch).toHaveBeenCalledTimes(1);
+        expect(FakeServer.fetch).toHaveBeenCalledTimes(1);
 
         const registration = (idSuffix: string) => {
-            return typeIndex?.registrations.find(registration => registration.url.endsWith(idSuffix));
+            return typeIndex?.registrations.find((_registration) => _registration.url.endsWith(idSuffix));
         };
 
         expect(typeIndex).not.toBeNull();

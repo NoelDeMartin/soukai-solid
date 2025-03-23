@@ -1,6 +1,6 @@
 import type { Relation } from 'soukai';
 
-import type { SolidBelongsToManyRelation } from '@/models';
+import type { SolidBelongsToManyRelation } from 'soukai-solid/models';
 
 import Model from './Recipe.schema';
 import RecipeInstructionsStep from './RecipeInstructionsStep';
@@ -15,8 +15,7 @@ export default class Recipe extends Model {
     >;
 
     public instructionsStepsRelationship(): Relation {
-        return this
-            .belongsToMany(RecipeInstructionsStep, 'instructionsStepUrls')
+        return this.belongsToMany(RecipeInstructionsStep, 'instructionsStepUrls')
             .usingSameDocument(true)
             .onDelete('cascade');
     }

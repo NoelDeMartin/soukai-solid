@@ -1,8 +1,8 @@
 import { urlParentDirectory, urlRoot } from '@noeldemartin/utils';
 import type { EngineDocument } from 'soukai';
 
-import type Tombstone from '@/models/history/Tombstone';
-import type { SolidModel } from '@/models/SolidModel';
+import type Tombstone from 'soukai-solid/models/history/Tombstone';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
 
 type ResourcesGraph = { '@graph': { '@id': string }[] };
 type DocumentModels = { documentUrl: string; models: SolidModel[] };
@@ -17,25 +17,19 @@ export default class DeletesModels {
         const containersDocuments = this.decantDocumentModelsByContainer(models);
 
         await Promise.all(
-            Object
-                .entries(containersDocuments)
-                .map(
-                    ([containerUrl, containerDocuments]) => this.deleteContainerDocumentsModels(
-                        containerUrl,
-                        containerDocuments,
-                    ),
-                ),
+            Object.entries(containersDocuments).map(([containerUrl, containerDocuments]) =>
+                this.deleteContainerDocumentsModels(containerUrl, containerDocuments)),
         );
     }
 
     private decantDocumentModelsByContainer(models: SolidModel[]): DecantedContainerDocuments {
         const documentModels = this.decantModelsByDocument(models);
 
-        return Object.entries(documentModels).reduce((containerModels, [documentUrl, models]) => {
+        return Object.entries(documentModels).reduce((containerModels, [documentUrl, _models]) => {
             const containerUrl = urlParentDirectory(documentUrl) ?? urlRoot(documentUrl);
-            const urlModels = containerModels[containerUrl] = containerModels[containerUrl] ?? [];
+            const urlModels = (containerModels[containerUrl] = containerModels[containerUrl] ?? []);
 
-            urlModels.push({ documentUrl, models });
+            urlModels.push({ documentUrl, models: _models });
 
             return containerModels;
         }, {} as DecantedContainerDocuments);
@@ -44,7 +38,7 @@ export default class DeletesModels {
     private decantModelsByDocument(models: SolidModel[]): DecantedDocumentModels {
         return models.reduce((documentModels, model) => {
             const documentUrl = model.requireDocumentUrl();
-            const sameDocumentModels = documentModels[documentUrl] = documentModels[documentUrl] ?? [];
+            const sameDocumentModels = (documentModels[documentUrl] = documentModels[documentUrl] ?? []);
 
             sameDocumentModels.push(model);
 
@@ -57,20 +51,13 @@ export default class DeletesModels {
         containerUrl: string,
         documentsModels: DocumentModels[],
     ): Promise<void> {
-        const engineDocuments = await this.requireEngine().readMany(
-            containerUrl,
-            { $in: documentsModels.map(({ documentUrl }) => documentUrl) },
-        ) as Record<string, ResourcesGraph>;
+        const engineDocuments = (await this.requireEngine().readMany(containerUrl, {
+            $in: documentsModels.map(({ documentUrl }) => documentUrl),
+        })) as Record<string, ResourcesGraph>;
 
         await Promise.all(
-            documentsModels.map(
-                ({ documentUrl, models }) => this.deleteDocumentModels(
-                    engineDocuments,
-                    containerUrl,
-                    documentUrl,
-                    models,
-                ),
-            ),
+            documentsModels.map(({ documentUrl, models }) =>
+                this.deleteDocumentModels(engineDocuments, containerUrl, documentUrl, models)),
         );
     }
 
@@ -83,26 +70,26 @@ export default class DeletesModels {
     ): Promise<void> {
         const document = engineDocuments[documentUrl];
 
-        if (!document)
-            return;
+        if (!document) return;
 
         const engine = this.requireEngine();
-        const modelUrls = models.filter(model => model.exists()).map(model => model.url);
+        const modelUrls = models.filter((model) => model.exists()).map((model) => model.url);
 
-        if (!document['@graph'].some(resource => !modelUrls.some(url => url === resource['@id']))) {
+        if (!document['@graph'].some((resource) => !modelUrls.some((url) => url === resource['@id']))) {
             const tombstones = models
                 .filter((model): model is SolidModel & { tombstone: Tombstone } => model.isRelationLoaded('tombstone'))
-                .map(model => model.tombstone);
+                .map((model) => model.tombstone);
 
             tombstones.length === 0
                 ? await engine.delete(containerUrl, documentUrl)
                 : await engine.update(containerUrl, documentUrl, {
                     $overwrite: {
-                        '@graph': tombstones.map(tombstone => tombstone.serializeToJsonLD({ includeRelations: false })),
+                        '@graph': tombstones.map((tombstone) =>
+                            tombstone.serializeToJsonLD({ includeRelations: false })),
                     } as EngineDocument,
                 });
 
-            models.forEach(model => model.setDocumentExists(false));
+            models.forEach((model) => model.setDocumentExists(false));
 
             return;
         }

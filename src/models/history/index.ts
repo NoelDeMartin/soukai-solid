@@ -7,7 +7,7 @@ import RemovePropertyOperation from './RemovePropertyOperation';
 import SetPropertyOperation from './SetPropertyOperation';
 import Tombstone from './Tombstone';
 import UnsetPropertyOperation from './UnsetPropertyOperation';
-import { Operations } from './operations';
+import type { Operations } from './operations';
 
 export const historyModels = {
     AddPropertyOperation,

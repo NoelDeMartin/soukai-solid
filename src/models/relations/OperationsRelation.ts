@@ -1,20 +1,20 @@
 import { arrayFilter, arrayFrom, urlRoute } from '@noeldemartin/utils';
 import type { Attributes, EngineDocument } from 'soukai';
 
-import JsonLDModelSerializer from '@/models/internals/JsonLDModelSerializer';
-import RDF from '@/solid/utils/RDF';
-import RDFDocument from '@/solid/RDFDocument';
-import { operationClass, operationClasses } from '@/models/history/operations';
-import type AddPropertyOperation from '@/models/history/AddPropertyOperation';
-import type DeleteOperation from '@/models/history/DeleteOperation';
-import type Operation from '@/models/history/Operation';
-import type RemovePropertyOperation from '@/models/history/RemovePropertyOperation';
-import type SetPropertyOperation from '@/models/history/SetPropertyOperation';
-import type UnsetPropertyOperation from '@/models/history/UnsetPropertyOperation';
+import JsonLDModelSerializer from 'soukai-solid/models/internals/JsonLDModelSerializer';
+import RDF from 'soukai-solid/solid/utils/RDF';
+import RDFDocument from 'soukai-solid/solid/RDFDocument';
+import { operationClass, operationClasses } from 'soukai-solid/models/history/operations';
+import type AddPropertyOperation from 'soukai-solid/models/history/AddPropertyOperation';
+import type DeleteOperation from 'soukai-solid/models/history/DeleteOperation';
+import type Operation from 'soukai-solid/models/history/Operation';
+import type RemovePropertyOperation from 'soukai-solid/models/history/RemovePropertyOperation';
+import type SetPropertyOperation from 'soukai-solid/models/history/SetPropertyOperation';
+import type UnsetPropertyOperation from 'soukai-solid/models/history/UnsetPropertyOperation';
 import type { JsonLD, JsonLDGraph } from '@noeldemartin/solid-utils';
-import type { Operations } from '@/models/history/operations';
-import type { SolidBootedFieldsDefinition } from '@/models/fields';
-import type { SolidModel } from '@/models/SolidModel';
+import type { Operations } from 'soukai-solid/models/history/operations';
+import type { SolidBootedFieldsDefinition } from 'soukai-solid/models/fields';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
 
 import SolidHasManyRelation from './SolidHasManyRelation';
 
@@ -24,8 +24,11 @@ interface OperationRdfsMatcher {
     match(resourceRdfsClasses: string[]): boolean;
 }
 
-export default class OperationsRelation<Parent extends SolidModel = SolidModel>
-    extends SolidHasManyRelation<Parent, Operation, typeof Operation> {
+export default class OperationsRelation<Parent extends SolidModel = SolidModel> extends SolidHasManyRelation<
+    Parent,
+    Operation,
+    typeof Operation
+> {
 
     private static operationMatchers: OperationRdfsMatcher[];
 
@@ -37,14 +40,15 @@ export default class OperationsRelation<Parent extends SolidModel = SolidModel>
     public attach<T extends keyof Operations>(attributes: Attributes, type: T): InstanceType<Operations[T]>;
     public attach(modelOrAttributes: Operation | Attributes = {}, type?: keyof Operations): Operation {
         const Operation = operationClass('Operation');
-        const model = modelOrAttributes instanceof Operation
-            ? modelOrAttributes
-            : operationClass(type ?? 'SetPropertyOperation').newInstance(modelOrAttributes);
+        const model =
+            modelOrAttributes instanceof Operation
+                ? modelOrAttributes
+                : operationClass(type ?? 'SetPropertyOperation').newInstance(modelOrAttributes);
 
         if (model.constructor === Operation) {
             throw new Error(
                 'Creating base operations is meaningless, you should create a specific operation instead ' +
-                '(add property, remove property, etc.)',
+                    '(add property, remove property, etc.)',
             );
         }
 
@@ -75,32 +79,31 @@ export default class OperationsRelation<Parent extends SolidModel = SolidModel>
         const foreignFields = this.relatedClass.fields as unknown as SolidBootedFieldsDefinition;
         const foreignProperty = foreignFields[this.foreignKeyName]?.rdfProperty as string;
         const reducedDocument = RDFDocument.reduceJsonLDGraph(document, this.parent.url) as EngineDocument;
-        const resources = document['@graph'].filter(resource => {
+        const resources = document['@graph'].filter((resource) => {
             const property = RDF.getJsonLDProperty(resource, foreignProperty);
 
-            return typeof property === 'object'
-                && property !== null
-                && '@id' in property
-                && (property as { '@id': string })['@id'] === this.parent.url;
+            return (
+                typeof property === 'object' &&
+                property !== null &&
+                '@id' in property &&
+                (property as { '@id': string })['@id'] === this.parent.url
+            );
         });
         const modelsInSameDocument = arrayFilter(
             await Promise.all(
-                resources
-                    .map(
-                        async resource =>
-                            this.getOperationClass(resource)?.createFromEngineDocument(
-                                documentUrl,
-                                reducedDocument,
-                                resource['@id'],
-                            ),
-                    ),
+                resources.map(async (resource) =>
+                    this.getOperationClass(resource)?.createFromEngineDocument(
+                        documentUrl,
+                        reducedDocument,
+                        resource['@id'],
+                    )),
             ),
         );
         const modelsInOtherDocumentIds = resources
-            .map(resource => resource['@id'])
+            .map((resource) => resource['@id'])
             .filter(
-                resourceId =>
-                    !modelsInSameDocument.some(model => model.url === resourceId) &&
+                (resourceId) =>
+                    !modelsInSameDocument.some((model) => model.url === resourceId) &&
                     urlRoute(resourceId) !== documentUrl,
             );
 
@@ -114,29 +117,24 @@ export default class OperationsRelation<Parent extends SolidModel = SolidModel>
     protected getOperationClass(resource: JsonLD): typeof Operation | undefined {
         const matchers = this.getOperationMatchers();
         const resourceRdfsClasses = arrayFrom(resource['@type'] ?? []);
-        const matcher = matchers.find(matcher => matcher.match(resourceRdfsClasses));
+        const matcher = matchers.find((_matcher) => _matcher.match(resourceRdfsClasses));
 
         return matcher?.operation;
     }
 
     private getOperationMatchers(): OperationRdfsMatcher[] {
-        return OperationsRelation.operationMatchers ??= Object
-            .values(operationClasses())
-            .map(
-                (operation) => {
-                    const serializer = JsonLDModelSerializer.forModel(operation);
-                    const expandedTypes = operation.rdfsClasses;
-                    const compactedTypes = expandedTypes.map(rdfClass => serializer.processExpandedIRI(rdfClass));
-                    const rdfsClasses = [...expandedTypes, ...compactedTypes];
+        return (OperationsRelation.operationMatchers ??= Object.values(operationClasses()).map((operation) => {
+            const serializer = JsonLDModelSerializer.forModel(operation);
+            const expandedTypes = operation.rdfsClasses;
+            const compactedTypes = expandedTypes.map((rdfClass) => serializer.processExpandedIRI(rdfClass));
+            const rdfsClasses = [...expandedTypes, ...compactedTypes];
 
-                    return {
-                        operation,
-                        match: resourceRdfsClasses => rdfsClasses.some(
-                            operationRdfsClass => resourceRdfsClasses.includes(operationRdfsClass),
-                        ),
-                    };
-                },
-            );
+            return {
+                operation,
+                match: (resourceRdfsClasses) =>
+                    rdfsClasses.some((operationRdfsClass) => resourceRdfsClasses.includes(operationRdfsClass)),
+            };
+        }));
     }
 
 }

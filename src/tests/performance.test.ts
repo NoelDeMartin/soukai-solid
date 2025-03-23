@@ -1,12 +1,13 @@
+import { beforeAll, describe, expect, it } from 'vitest';
 import { InMemoryEngine, bootModels, setEngine } from 'soukai';
 import type { JsonLD } from '@noeldemartin/solid-utils';
 import type { Relation } from 'soukai';
 
-import { bootSolidModels } from '@/models';
+import { bootSolidModels } from 'soukai-solid/models';
 
-import Recipe from '@/testing/lib/stubs/Recipe';
-import RecipeInstructionsStep from '@/testing/lib/stubs/RecipeInstructionsStep';
-import { loadFixture } from '@/testing/utils';
+import Recipe from 'soukai-solid/testing/lib/stubs/Recipe';
+import RecipeInstructionsStep from 'soukai-solid/testing/lib/stubs/RecipeInstructionsStep';
+import { loadFixture } from 'soukai-solid/testing/utils';
 
 class RecipeInstructionsStepWithHistory extends RecipeInstructionsStep {
 
@@ -21,8 +22,7 @@ class RecipeWithHistory extends Recipe {
     public static history = true;
 
     public instructionsStepsRelationship(): Relation {
-        return this
-            .belongsToMany(RecipeInstructionsStepWithHistory, 'instructionsStepUrls')
+        return this.belongsToMany(RecipeInstructionsStepWithHistory, 'instructionsStepUrls')
             .usingSameDocument(true)
             .onDelete('cascade');
     }
@@ -34,7 +34,7 @@ describe('Performance', () => {
     beforeAll(() => {
         bootSolidModels();
         bootModels({ RecipeWithHistory, RecipeInstructionsStepWithHistory });
-        setEngine(new InMemoryEngine);
+        setEngine(new InMemoryEngine());
     });
 
     testPerformance('Parses large documents quickly', { runs: 3, maxDuration: 5000 }, async () => {

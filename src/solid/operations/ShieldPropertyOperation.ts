@@ -5,6 +5,9 @@ export default class ShieldPropertyOperation implements Operation {
 
     public type: typeof OperationTypes.ShieldProperty = OperationTypes.ShieldProperty;
 
-    constructor(public resourceUrl: string, public property: string) {}
+    constructor(
+        public resourceUrl: string,
+        public property: string,
+    ) {}
 
 }

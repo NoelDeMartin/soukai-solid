@@ -1,4 +1,4 @@
-import IRI from '@/solid/utils/IRI';
+import IRI from 'soukai-solid/solid/utils/IRI';
 
 export const CRDT_PROPERTY = IRI('crdt:property');
 export const CRDT_RESOURCE = IRI('crdt:resource');

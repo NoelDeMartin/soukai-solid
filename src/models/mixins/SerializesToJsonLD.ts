@@ -10,13 +10,13 @@ import type {
 } from 'soukai';
 import type { JsonLD, JsonLDGraph } from '@noeldemartin/solid-utils';
 
-import ResourceNotFound from '@/errors/ResourceNotFound';
-import RDFDocument from '@/solid/RDFDocument';
-import { RDFResourcePropertyType } from '@/solid/RDFResourceProperty';
-import type RDFResourceProperty from '@/solid/RDFResourceProperty';
+import ResourceNotFound from 'soukai-solid/errors/ResourceNotFound';
+import RDFDocument from 'soukai-solid/solid/RDFDocument';
+import { RDFResourcePropertyType } from 'soukai-solid/solid/RDFResourceProperty';
+import type RDFResourceProperty from 'soukai-solid/solid/RDFResourceProperty';
 
-import JsonLDModelSerializer from '@/models/internals/JsonLDModelSerializer';
-import type { SolidModel } from '@/models/SolidModel';
+import JsonLDModelSerializer from 'soukai-solid/models/internals/JsonLDModelSerializer';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
 
 export type This = SolidModel;
 
@@ -39,8 +39,9 @@ export default class SerializesToJsonLD {
         resourceId: string,
     ): Promise<Attributes> {
         const jsonGraph = document as JsonLDGraph;
-        const resourceJson = jsonGraph['@graph'].find(entity => entity['@id'] === resourceId)
-            ?? fail(ResourceNotFound, resourceId, document.url);
+        const resourceJson =
+            jsonGraph['@graph'].find((entity) => entity['@id'] === resourceId) ??
+            fail(ResourceNotFound, resourceId, document.url);
         const resource = await RDFDocument.resourceFromJsonLDGraph(jsonGraph, resourceId, resourceJson);
         const fieldsDefinition = this.static('fields');
         const attributes: Attributes = {};
@@ -48,26 +49,19 @@ export default class SerializesToJsonLD {
         attributes[this.static('primaryKey')] = resourceId;
 
         for (const [fieldName, fieldDefinition] of Object.entries(fieldsDefinition)) {
-            if (!fieldDefinition.rdfProperty)
-                continue;
+            if (!fieldDefinition.rdfProperty) continue;
 
-            const properties = resource.propertiesIndex[fieldDefinition.rdfProperty]
-                ?? fieldDefinition.rdfPropertyAliases.reduce(
-                    (properties, rdfPropertyAlias) => properties.concat(
-                        resource.propertiesIndex[rdfPropertyAlias] ?? [],
-                    ),
+            const properties =
+                resource.propertiesIndex[fieldDefinition.rdfProperty] ??
+                fieldDefinition.rdfPropertyAliases.reduce(
+                    (props, rdfPropertyAlias) => props.concat(resource.propertiesIndex[rdfPropertyAlias] ?? []),
                     [] as RDFResourceProperty[],
                 );
-            const propertyValues = properties.map(
-                property =>
-                    property.type === RDFResourcePropertyType.Reference
-                        ? new ModelKey(property.value)
-                        : property.value,
-            );
+            const propertyValues = properties.map((property) =>
+                property.type === RDFResourcePropertyType.Reference ? new ModelKey(property.value) : property.value);
             const [firstValue, ...otherValues] = propertyValues;
 
-            if (typeof firstValue === 'undefined')
-                continue;
+            if (typeof firstValue === 'undefined') continue;
 
             attributes[fieldName] = otherValues.length > 0 ? [firstValue, ...otherValues] : firstValue;
         }
@@ -75,15 +69,11 @@ export default class SerializesToJsonLD {
         return attributes;
     }
 
-    protected convertEngineFiltersToJsonLD(
-        this: This,
-        filters: EngineFilters,
-        compactIRIs: boolean,
-    ): EngineFilters {
+    protected convertEngineFiltersToJsonLD(this: This, filters: EngineFilters, compactIRIs: boolean): EngineFilters {
         const jsonldFilters: EngineFilters = {};
         const serializer = JsonLDModelSerializer.forModel(this.static());
         const expandedTypes = this.static('rdfsClasses');
-        const compactedTypes = expandedTypes.map(rdfClass => serializer.processExpandedIRI(rdfClass));
+        const compactedTypes = expandedTypes.map((rdfClass) => serializer.processExpandedIRI(rdfClass));
         const typeFilters: EngineAttributeFilter[] = [];
 
         // TODO this should probably be refactored, because it doesn't make sense that
@@ -98,7 +88,7 @@ export default class SerializesToJsonLD {
             typeFilters.push({ $eq: expandedTypes[0] as string });
         }
 
-        this.static('rdfsClassesAliases').forEach(rdfsClassAliases => {
+        this.static('rdfsClassesAliases').forEach((rdfsClassAliases) => {
             rdfsClassAliases.length > 0 && typeFilters.push({ $contains: rdfsClassAliases });
             rdfsClassAliases.length === 1 && typeFilters.push({ $eq: rdfsClassAliases[0] as string });
         });
@@ -108,29 +98,23 @@ export default class SerializesToJsonLD {
             delete filters.$in;
         }
 
-        const graphContainsFilters = this.convertAttributeValuesToJsonLD(
-            filters,
-            { compactIRIs, keepEmptyValues: false },
-        ) as EngineFilters;
+        const graphContainsFilters = this.convertAttributeValuesToJsonLD(filters, {
+            compactIRIs,
+            keepEmptyValues: false,
+        }) as EngineFilters;
 
-        if (typeFilters.length > 0)
-            graphContainsFilters['@type'] = { $or: typeFilters };
+        if (typeFilters.length > 0) graphContainsFilters['@type'] = { $or: typeFilters };
 
-        if (Object.keys(graphContainsFilters).length > 0)
-            jsonldFilters['@graph'] = { $contains: graphContainsFilters };
+        if (Object.keys(graphContainsFilters).length > 0) jsonldFilters['@graph'] = { $contains: graphContainsFilters };
 
         return jsonldFilters;
     }
 
-    protected convertEngineUpdatesToJsonLD(
-        this: This,
-        updates: EngineUpdates,
-        compactIRIs: boolean,
-    ): EngineUpdates {
-        const jsonLDUpdates = this.convertAttributeValuesToJsonLD(
-            updates,
-            { compactIRIs, keepEmptyValues: true },
-        ) as Record<string, EngineAttributeUpdate>;
+    protected convertEngineUpdatesToJsonLD(this: This, updates: EngineUpdates, compactIRIs: boolean): EngineUpdates {
+        const jsonLDUpdates = this.convertAttributeValuesToJsonLD(updates, {
+            compactIRIs,
+            keepEmptyValues: true,
+        }) as Record<string, EngineAttributeUpdate>;
 
         for (const [field, value] of Object.entries(jsonLDUpdates)) {
             if (value !== null) {

@@ -1,4 +1,4 @@
-import { defineSolidModelSchema } from '@/models/schema';
+import { defineSolidModelSchema } from 'soukai-solid/models/schema';
 
 import PropertyOperation from './PropertyOperation';
 

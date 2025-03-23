@@ -7,10 +7,10 @@ import {
     uuid,
 } from '@noeldemartin/utils';
 import { findContainerRegistrations } from '@noeldemartin/solid-utils';
-import type { ModelConstructor, Relation } from 'soukai';
+import type { Relation, TimestampFieldValue } from 'soukai';
 
-import { LDP_CONTAINS } from '@/solid/constants';
-import { SolidEngine } from '@/engines/SolidEngine';
+import { LDP_CONTAINS } from 'soukai-solid/solid/constants';
+import { SolidEngine } from 'soukai-solid/engines/SolidEngine';
 
 import SolidContainerDocumentsRelation from './relations/SolidContainerDocumentsRelation';
 import SolidContainsRelation from './relations/SolidContainsRelation';
@@ -20,7 +20,8 @@ import SolidTypeRegistration from './SolidTypeRegistration';
 import type SolidDocument from './SolidDocument';
 import type SolidTypeIndex from './SolidTypeIndex';
 import type { SolidModel } from './SolidModel';
-import type { SolidContainerConstructor, SolidModelConstructor } from './inference';
+import type { SolidModelConstructor } from './inference';
+import type { SolidBootedFieldsDefinition } from 'soukai-solid/models/fields';
 
 export default class SolidContainer extends Model {
 
@@ -39,17 +40,13 @@ export default class SolidContainer extends Model {
     ): Promise<T[]> {
         const engine = this.requireFinalEngine();
         const fetch = engine instanceof SolidEngine ? engine.getFetch() : undefined;
-        const urls = await findContainerRegistrations(
-            typeIndexUrl,
-            childrenModelClass.rdfsClasses,
-            fetch,
-        );
+        const urls = await findContainerRegistrations(typeIndexUrl, childrenModelClass.rdfsClasses, fetch);
 
-        return urls.map(url => this.newInstance({ url }, true));
+        return urls.map((url) => this.newInstance({ url }, true));
     }
 
-    public documents!: SolidDocument[];
-    public relatedDocuments!: SolidContainerDocumentsRelation;
+    declare public documents: SolidDocument[];
+    declare public relatedDocuments: SolidContainerDocumentsRelation;
 
     public documentsRelationship(): Relation {
         return new SolidContainerDocumentsRelation(this);
@@ -68,17 +65,17 @@ export default class SolidContainer extends Model {
         childrenModelClasses: typeof SolidModel | Array<typeof SolidModel>,
     ): Promise<void> {
         const typeRegistration = new SolidTypeRegistration({
-            forClass: arrayFrom(childrenModelClasses).map(modelClass => modelClass.rdfsClasses).flat(),
+            forClass: arrayFrom(childrenModelClasses)
+                .map((modelClass) => modelClass.rdfsClasses)
+                .flat(),
             instanceContainer: this.url,
         });
 
         if (typeof typeIndex === 'string') {
             typeRegistration.mintUrl(typeIndex, true, uuid());
 
-            await typeRegistration.withEngine(
-                this.requireEngine(),
-                () => typeRegistration.save(requireUrlParentDirectory(typeIndex)),
-            );
+            await typeRegistration.withEngine(this.requireEngine(), () =>
+                typeRegistration.save(requireUrlParentDirectory(typeIndex)));
 
             return;
         }
@@ -86,9 +83,11 @@ export default class SolidContainer extends Model {
         await typeIndex.withEngine(this.requireEngine(), async () => {
             await typeIndex.loadRelationIfUnloaded('registrations');
 
-            const alreadyRegistered = typeIndex.registrations.some(registration => {
-                return typeRegistration.instanceContainer === registration.instanceContainer
-                    && !typeRegistration.forClass.some(type => !registration.forClass.includes(type));
+            const alreadyRegistered = typeIndex.registrations.some((registration) => {
+                return (
+                    typeRegistration.instanceContainer === registration.instanceContainer &&
+                    !typeRegistration.forClass.some((type) => !registration.forClass.includes(type))
+                );
             });
 
             if (alreadyRegistered) {
@@ -99,10 +98,12 @@ export default class SolidContainer extends Model {
         });
     }
 
-    public static(): SolidContainerConstructor<this>;
-    public static<T extends keyof SolidContainerConstructor<this>>(property: T): SolidContainerConstructor<this>[T];
-    public static<T extends keyof SolidContainerConstructor<this>>(property?: T): SolidContainerConstructor<this>[T] {
-        return super.static(property as keyof ModelConstructor<this>);
+    public static(property: 'fields'): SolidBootedFieldsDefinition;
+    public static(property: 'timestamps'): TimestampFieldValue[];
+    public static<T extends typeof SolidContainer>(): T;
+    public static<T extends typeof SolidContainer, K extends keyof T>(property: K): T[K];
+    public static<T extends typeof SolidContainer, K extends keyof T>(property?: K): T | T[K] {
+        return super.static<T, K>(property as K);
     }
 
     public ignoreRdfPropertyHistory(rdfProperty: string, withSolidEngine?: boolean): boolean {

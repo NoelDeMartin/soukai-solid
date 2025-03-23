@@ -28,17 +28,26 @@ export type SolidBootedFieldsDefinition = BootedFieldsDefinition<{
     rdfProperty: string;
     rdfPropertyAliases: string[];
 }>;
-export type SolidBootedArrayFieldDefinition = Pretty<Omit<SolidBootedFieldDefinition, 'items'> & {
-    type: typeof FieldType.Array;
-    items: Omit<BootedFieldDefinition, 'required' | 'type'> & { type: FieldLiteralTypeValue };
-}>;
+export type SolidBootedArrayFieldDefinition = Pretty<
+    Omit<SolidBootedFieldDefinition, 'items'> & {
+        type: typeof FieldType.Array;
+        items: Omit<BootedFieldDefinition, 'required' | 'type'> & { type: FieldLiteralTypeValue };
+    }
+>;
 export type RDFContexts = {
     default?: string | null;
 } & Record<string, string>;
 
 /* eslint-disable max-len */
-export function inferFieldDefinition(value: unknown): Omit<SolidBootedFieldDefinition, 'required' | 'rdfProperty' | 'rdfPropertyAliases'>;
-export function inferFieldDefinition(value: unknown, rdfProperty: string, rdfPropertyAliases: string[], required: boolean): SolidBootedFieldDefinition;
+export function inferFieldDefinition(
+    value: unknown
+): Omit<SolidBootedFieldDefinition, 'required' | 'rdfProperty' | 'rdfPropertyAliases'>;
+export function inferFieldDefinition(
+    value: unknown,
+    rdfProperty: string,
+    rdfPropertyAliases: string[],
+    required: boolean
+): SolidBootedFieldDefinition;
 /* eslint-enable max-len */
 
 export function inferFieldDefinition(
@@ -47,12 +56,13 @@ export function inferFieldDefinition(
     rdfPropertyAliases?: string[],
     required?: boolean,
 ): SolidBootedFieldDefinition | Omit<SolidBootedFieldDefinition, 'required' | 'rdfProperty' | 'rdfPropertyAliases'> {
-    const fieldDefinition = (type: FieldTypeValue) => objectWithoutEmpty({
-        type,
-        rdfProperty,
-        rdfPropertyAliases,
-        required,
-    });
+    const fieldDefinition = (type: FieldTypeValue) =>
+        objectWithoutEmpty({
+            type,
+            rdfProperty,
+            rdfPropertyAliases,
+            required,
+        });
 
     switch (typeof value) {
         case 'string':
@@ -63,14 +73,11 @@ export function inferFieldDefinition(
         case 'boolean':
             return fieldDefinition(FieldType.Boolean);
         case 'object':
-            if (value === null)
-                return fieldDefinition(FieldType.Any);
+            if (value === null) return fieldDefinition(FieldType.Any);
 
-            if (value instanceof ModelKey)
-                return fieldDefinition(FieldType.Key);
+            if (value instanceof ModelKey) return fieldDefinition(FieldType.Key);
 
-            if (value instanceof Date)
-                return fieldDefinition(FieldType.Date);
+            if (value instanceof Date) return fieldDefinition(FieldType.Date);
 
             if (Array.isArray(value))
                 return objectWithoutEmpty({
@@ -84,14 +91,17 @@ export function inferFieldDefinition(
                 required,
                 rdfProperty,
                 type: FieldType.Object,
-                fields: Object.entries(value).reduce((fields, [field, value]) => {
-                    fields[field] = inferFieldDefinition(value);
+                fields: Object.entries(value).reduce(
+                    (fields, [field, _value]) => {
+                        fields[field] = inferFieldDefinition(_value);
 
-                    return fields;
-                }, {} as Record<
-                    string,
-                    Omit<SolidBootedFieldDefinition, 'required' | 'rdfProperty' | 'rdfPropertyAliases'>
-                 >),
+                        return fields;
+                    },
+                    {} as Record<
+                        string,
+                        Omit<SolidBootedFieldDefinition, 'required' | 'rdfProperty' | 'rdfPropertyAliases'>
+                    >,
+                ),
             });
         default:
             return fieldDefinition(FieldType.Any);
@@ -107,14 +117,15 @@ export function isSolidArrayFieldDefinition(
 export type SolidSchemaDefinition = SchemaDefinition<{
     rdfProperty?: string;
     rdfPropertyAliases?: string[];
-}> & Partial<{
-    rdfContext: string;
-    rdfContexts: Record<string, string>;
-    rdfsClass: string;
-    rdfsClasses: string[];
-    rdfsClassesAliases: string[][];
-    defaultResourceHash: string;
-    slugField: string;
-    history: boolean;
-    tombstone: boolean;
-}>;
+}> &
+    Partial<{
+        rdfContext: string;
+        rdfContexts: Record<string, string>;
+        rdfsClass: string;
+        rdfsClasses: string[];
+        rdfsClassesAliases: string[][];
+        defaultResourceHash: string;
+        slugField: string;
+        history: boolean;
+        tombstone: boolean;
+    }>;

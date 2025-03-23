@@ -1,12 +1,13 @@
-import { FakeResponse, FakeServer } from '@noeldemartin/utils';
+import { beforeEach, describe, expect, it } from 'vitest';
+import { FakeResponse, FakeServer } from '@noeldemartin/testing';
 import type { JsonLD } from '@noeldemartin/solid-utils';
 
 import { InMemoryEngine, bootModels, setEngine } from 'soukai';
-import { SolidEngine } from '@/engines/SolidEngine';
+import { SolidEngine } from 'soukai-solid/engines/SolidEngine';
 
-import Recipe from '@/testing/lib/stubs/Recipe';
-import RecipeInstructionsStep from '@/testing/lib/stubs/RecipeInstructionsStep';
-import { loadFixture } from '@/testing/utils';
+import Recipe from 'soukai-solid/testing/lib/stubs/Recipe';
+import RecipeInstructionsStep from 'soukai-solid/testing/lib/stubs/RecipeInstructionsStep';
+import { loadFixture } from 'soukai-solid/testing/utils';
 
 function expectRamen(ramen: Recipe) {
     expect(ramen.name).toEqual('Ramen');
@@ -16,7 +17,7 @@ function expectRamen(ramen: Recipe) {
 describe('Serialization', () => {
 
     beforeEach(() => {
-        setEngine(new InMemoryEngine);
+        setEngine(new InMemoryEngine());
         bootModels({ Recipe, RecipeInstructionsStep });
     });
 
@@ -44,12 +45,10 @@ describe('Serialization', () => {
 
     it('Maintains encoding', async () => {
         // Arrange - Prepare server
-        const server = new FakeServer();
+        setEngine(new SolidEngine(FakeServer.fetch));
 
-        server.respondOnce('https://pod.com/cookbook/ラーメン', FakeResponse.notFound());
-        server.respondOnce('https://pod.com/cookbook/ラーメン', FakeResponse.success());
-
-        setEngine(new SolidEngine(server.fetch));
+        FakeServer.respondOnce('https://pod.com/cookbook/ラーメン', FakeResponse.notFound());
+        FakeServer.respondOnce('https://pod.com/cookbook/ラーメン', FakeResponse.success());
 
         // Arrange - Create recipe and fake server url encoding
         const ramen = await Recipe.at('https://pod.com/cookbook/').create({
@@ -59,10 +58,10 @@ describe('Serialization', () => {
         });
         const turtle = await ramen.toTurtle();
 
-        server.respondOnce(
+        FakeServer.respondOnce(
             'https://pod.com/cookbook/ラーメン',
             FakeResponse.success(
-                turtle.replaceAll(
+                turtle.replace(
                     'https://pod.com/cookbook/垂れ',
                     `https://pod.com/cookbook/${encodeURIComponent('垂れ')}`,
                 ),

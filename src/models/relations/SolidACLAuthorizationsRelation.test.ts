@@ -1,6 +1,7 @@
+import { beforeAll, describe, expect, it } from 'vitest';
 import { bootModels } from 'soukai';
 
-import Person from '@/testing/lib/stubs/Person';
+import Person from 'soukai-solid/testing/lib/stubs/Person';
 
 describe('SolidACLAuthorizationsRelation', () => {
 

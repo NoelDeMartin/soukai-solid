@@ -25,7 +25,7 @@ export function operationClass<T extends keyof Operations>(operation: T): Operat
 }
 
 export function operationClasses(): Operations {
-    return operations ??= {
+    return (operations ??= {
         Operation: requireBootedModel('Operation'),
         PropertyOperation: requireBootedModel('PropertyOperation'),
         AddPropertyOperation: requireBootedModel('AddPropertyOperation'),
@@ -33,5 +33,5 @@ export function operationClasses(): Operations {
         SetPropertyOperation: requireBootedModel('SetPropertyOperation'),
         UnsetPropertyOperation: requireBootedModel('UnsetPropertyOperation'),
         DeleteOperation: requireBootedModel('DeleteOperation'),
-    };
+    });
 }

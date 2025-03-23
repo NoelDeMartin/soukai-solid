@@ -1,4 +1,6 @@
-import '';
+export {};
+
+import '@noeldemartin/solid-utils/src/types/vitest';
 
 declare global {
     interface Window {

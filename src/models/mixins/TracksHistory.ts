@@ -13,10 +13,10 @@ import {
 import { FieldType, ModelKey, SoukaiError, TimestampField, isArrayFieldDefinition } from 'soukai';
 import type { Attributes } from 'soukai';
 
-import { operationClass } from '@/models/history/operations';
-import { synchronizesRelatedModels } from '@/models/relations/guards';
-import type Operation from '@/models/history/Operation';
-import type { SolidModel } from '@/models/SolidModel';
+import { operationClass } from 'soukai-solid/models/history/operations';
+import { synchronizesRelatedModels } from 'soukai-solid/models/relations/guards';
+import type Operation from 'soukai-solid/models/history/Operation';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
 
 const historyDisabled = new WeakMap<SolidModel, void>();
 
@@ -72,9 +72,7 @@ export default class TracksHistory {
     declare private _tombstone?: boolean;
 
     public tracksHistory(this: This): boolean {
-        return historyDisabled.has(this)
-            ? false
-            : this._history ?? this.static('history');
+        return historyDisabled.has(this) ? false : (this._history ?? this.static('history'));
     }
 
     public withoutTrackingHistory<T>(this: This, operation: () => T): T;
@@ -95,7 +93,7 @@ export default class TracksHistory {
         const result = operation();
 
         return isPromise(result)
-            ? result.then(result => restoreHistoryTracking() && result)
+            ? result.then((value) => restoreHistoryTracking() && value)
             : restoreHistoryTracking() && result;
     }
 
@@ -120,7 +118,9 @@ export default class TracksHistory {
     }
 
     public getHistoryHash(this: This): string | null {
-        const relatedOperations = this.getRelatedModels().map(model => model.operations ?? []).flat();
+        const relatedOperations = this.getRelatedModels()
+            .map((model) => model.operations ?? [])
+            .flat();
 
         return relatedOperations.length === 0
             ? null
@@ -139,8 +139,7 @@ export default class TracksHistory {
         const PropertyOperation = operationClass('PropertyOperation');
         const operations = arraySorted(this.operations, 'date');
         const unfilledAttributes = new Set(Object.keys(get(this, '_attributes')));
-        const arrayFields = Object
-            .entries(this.static('fields'))
+        const arrayFields = Object.entries(this.static('fields'))
             .filter(([_, definition]) => definition.type === FieldType.Array)
             .map(([field]) => field);
 
@@ -148,8 +147,8 @@ export default class TracksHistory {
         unfilledAttributes.delete(TimestampField.CreatedAt);
         unfilledAttributes.delete(TimestampField.UpdatedAt);
 
-        arrayFields.forEach(field => this.setAttribute(field, []));
-        operations.forEach(operation => {
+        arrayFields.forEach((field) => this.setAttribute(field, []));
+        operations.forEach((operation) => {
             if (operation instanceof PropertyOperation) {
                 const field = this.static().getRdfPropertyField(operation.property);
 
@@ -158,7 +157,7 @@ export default class TracksHistory {
 
             operation.apply(this);
         });
-        unfilledAttributes.forEach(attribute => this.unsetAttribute(attribute));
+        unfilledAttributes.forEach((attribute) => this.unsetAttribute(attribute));
 
         this.setAttribute('createdAt', operations[0]?.date);
         this.setAttribute('updatedAt', operations[operations.length - 1]?.date);
@@ -166,12 +165,11 @@ export default class TracksHistory {
 
     public addHistoryOperations(this: This, operations: Operation[]): void {
         const PropertyOperation = operationClass('PropertyOperation');
-        const knownOperationUrls = new Set(this.operations.map(operation => operation.url));
+        const knownOperationUrls = new Set(this.operations.map((operation) => operation.url));
         const newOperations: Operation[] = [];
         const trackedDirtyProperties: Set<string> = new Set();
-        const fieldPropertiesMap = Object
-            .keys(this.static('fields'))
-            .reduce((fieldProperties, field) => {
+        const fieldPropertiesMap = Object.keys(this.static('fields')).reduce(
+            (fieldProperties, field) => {
                 const rdfProperty = this.static().getFieldRdfProperty(field);
 
                 if (rdfProperty) {
@@ -179,7 +177,9 @@ export default class TracksHistory {
                 }
 
                 return fieldProperties;
-            }, {} as Record<string, string>);
+            },
+            {} as Record<string, string>,
+        );
 
         for (const operation of operations) {
             if (knownOperationUrls.has(operation.url)) {
@@ -197,12 +197,12 @@ export default class TracksHistory {
 
             newOperations.push(newOperation);
 
-            if ((operation instanceof PropertyOperation) && operation.property in fieldPropertiesMap) {
+            if (operation instanceof PropertyOperation && operation.property in fieldPropertiesMap) {
                 trackedDirtyProperties.add(operation.property);
             }
         }
 
-        if (!newOperations.some(operation => !operation.isInception(this))) {
+        if (!newOperations.some((operation) => !operation.isInception(this))) {
             return;
         }
 
@@ -235,7 +235,7 @@ export default class TracksHistory {
             );
 
             for (const [field, value] of Object.entries(originalAttributes)) {
-                if (value === null || Array.isArray(value) && value.length === 0) {
+                if (value === null || (Array.isArray(value) && value.length === 0)) {
                     continue;
                 }
 
@@ -299,7 +299,7 @@ export default class TracksHistory {
         const PropertyOperation = operationClass('PropertyOperation');
         const inceptionProperties: string[] = [];
         const duplicatedOperationUrls: string[] = [];
-        const inceptionOperations = this.operations.filter(operation => operation.isInception(this));
+        const inceptionOperations = this.operations.filter((operation) => operation.isInception(this));
         const isNotDuplicated = (operation: Operation): boolean => !duplicatedOperationUrls.includes(operation.url);
 
         for (const inceptionOperation of inceptionOperations) {
@@ -328,7 +328,7 @@ export default class TracksHistory {
 
         if (isArrayFieldDefinition(definition)) {
             return arrayFilter(
-                arrayFrom(value, true).map(itemValue => this.getOperationValue(`${field}.*`, itemValue)),
+                arrayFrom(value, true).map((itemValue) => this.getOperationValue(`${field}.*`, itemValue)),
             );
         }
 
@@ -342,17 +342,13 @@ export default class TracksHistory {
     protected addArrayHistoryOperations(this: This, field: string, dirtyValue: unknown, originalValue: unknown): void {
         const originalValues = arrayFrom(this.getOperationValue(field, originalValue), true);
         const dirtyValues = arrayFrom(this.getOperationValue(field, dirtyValue), true);
-        const { added, removed } = arrayDiff(
-            originalValues,
-            dirtyValues,
-            (a, b) => {
-                if (a instanceof ModelKey && b instanceof ModelKey) {
-                    return a.equals(b);
-                }
+        const { added, removed } = arrayDiff(originalValues, dirtyValues, (a, b) => {
+            if (a instanceof ModelKey && b instanceof ModelKey) {
+                return a.equals(b);
+            }
 
-                return a === b;
-            },
-        );
+            return a === b;
+        });
 
         if (added.length > 0) {
             this.relatedOperations.attachAddOperation({
@@ -378,7 +374,7 @@ export default class TracksHistory {
             this.setAttribute(
                 TimestampField.UpdatedAt,
                 otherOperations.reduce(
-                    (updatedAt, operation) => updatedAt > operation.date ? updatedAt : operation.date,
+                    (updatedAt, operation) => (updatedAt > operation.date ? updatedAt : operation.date),
                     firstOperation.date,
                 ),
             );
@@ -391,8 +387,8 @@ export default class TracksHistory {
         }
 
         const originalUpdatedAt =
-            get(this, '_originalAttributes')[TimestampField.UpdatedAt]
-            ?? this.metadata?.getOriginalAttribute(TimestampField.UpdatedAt);
+            get(this, '_originalAttributes')[TimestampField.UpdatedAt] ??
+            this.metadata?.getOriginalAttribute(TimestampField.UpdatedAt);
 
         if (!originalUpdatedAt) {
             return;

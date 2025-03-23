@@ -3,9 +3,9 @@ import { SoukaiError, defineModelSchema } from 'soukai';
 import type { Constructor } from '@noeldemartin/utils';
 import type { SchemaDefinition } from 'soukai';
 
-import type { RDFContexts, SolidSchemaDefinition } from '@/models/fields';
-import type { SolidMagicAttributes, SolidModelConstructor } from '@/models/inference';
-import type { SolidModel } from '@/models/SolidModel';
+import type { RDFContexts, SolidSchemaDefinition } from 'soukai-solid/models/fields';
+import type { SolidMagicAttributes, SolidModelConstructor } from 'soukai-solid/models/inference';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
 
 const ongoingUpdates = new WeakMap<SolidModelConstructor, RDFContexts>();
 const bootedSchemas = new WeakMap<SolidSchemaDefinition, SolidModelConstructor>();
@@ -36,7 +36,7 @@ export function bootSolidSchemaDecoupled<BaseModel extends SolidModel, Schema ex
     baseModelOrDefinition: SolidModelConstructor<BaseModel> | Schema,
     defaultModel: SolidModelConstructor,
     definition?: Schema,
-): SolidModelConstructor{
+): SolidModelConstructor {
     const schema = definition ?? baseModelOrDefinition;
 
     if (isModelClass(schema)) {
@@ -62,10 +62,10 @@ export function defineSolidModelSchemaDecoupled<BaseModel extends SolidModel, Sc
     defaultModel: SolidModelConstructor,
     definition?: Schema,
 ): Constructor<SolidMagicAttributes<Schema>> & SolidModelConstructor<BaseModel> {
-    const baseModel = definition ? baseModelOrDefinition as SolidModelConstructor : defaultModel;
+    const baseModel = definition ? (baseModelOrDefinition as SolidModelConstructor) : defaultModel;
     const schema = defineModelSchema(
         baseModel,
-        definition ?? baseModelOrDefinition as Schema,
+        definition ?? (baseModelOrDefinition as Schema),
     ) as unknown as Constructor<SolidMagicAttributes<Schema>> & SolidModelConstructor<BaseModel>;
 
     schema.__isSchema = true;

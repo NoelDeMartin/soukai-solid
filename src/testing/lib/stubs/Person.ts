@@ -1,19 +1,19 @@
 import { stringToSlug } from '@noeldemartin/utils';
 import type { Relation } from 'soukai';
 
-import type SolidBelongsToManyRelation from '@/models/relations/SolidBelongsToManyRelation';
+import type SolidBelongsToManyRelation from 'soukai-solid/models/relations/SolidBelongsToManyRelation';
 
-import Group from '@/testing/lib/stubs/Group';
-import Movie from '@/testing/lib/stubs/Movie';
+import Group from 'soukai-solid/testing/lib/stubs/Group';
+import Movie from 'soukai-solid/testing/lib/stubs/Movie';
 
 import Model from './Person.schema';
 
 export default class Person extends Model {
 
-    public friends?: Person[];
-    public relatedFriends!: SolidBelongsToManyRelation<Person, Person, typeof Person>;
-    public relatedStarredMovies!: SolidBelongsToManyRelation<Person, Movie, typeof Movie>;
-    public group?: Group;
+    declare public friends: Person[] | undefined;
+    declare public relatedFriends: SolidBelongsToManyRelation<Person, Person, typeof Person>;
+    declare public relatedStarredMovies: SolidBelongsToManyRelation<Person, Movie, typeof Movie>;
+    declare public group: Group | undefined;
 
     public friendsRelationship(): Relation {
         return this.belongsToMany(Person, 'friendUrls');

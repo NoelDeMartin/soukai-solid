@@ -1,7 +1,7 @@
 import { arrayFrom } from '@noeldemartin/utils';
 import { SoukaiError } from 'soukai';
 
-import type { SolidModel } from '@/models/SolidModel';
+import type { SolidModel } from 'soukai-solid/models/SolidModel';
 
 import Model from './AddPropertyOperation.schema';
 
