@@ -15,10 +15,11 @@
     "author": "Noel De Martin",
     "repository": "github:NoelDeMartin/soukai-solid",
     "scripts": {
-        "build": "vite build",
+        "build": "vite build && ./scripts/fix-types.sh",
         "lint": "noeldemartin-lint src",
         "test": "vitest --run",
-        "test:ci": "vitest --run --reporter verbose"
+        "test:ci": "vitest --run --reporter verbose",
+        "verify": "noeldemartin-verify"
     },
     "peerDependencies": {
         "soukai": "*"
@@ -29,14 +30,11 @@
     },
     "devDependencies": {
         "@noeldemartin/eslint-config-typescript": "^0.1.2",
-        "@noeldemartin/scripts": "0.3.0-next.f891bcbf278e01c7429bb641d0df38556b4ac151",
+        "@noeldemartin/scripts": "0.3.0-next.07d9b709894cf99f2804349fb22249ae0647578b",
         "@noeldemartin/testing": "0.0.0-next.929cc81d4446dd50513c71e52ee13c3ef3b18b07",
         "@tsconfig/node22": "^22.0.0",
         "@types/node": "^22.13.10",
         "dayjs": "^1.11.13",
-        "eslint": "^8.57.1",
-        "prettier": "^3.5.3",
-        "prettier-eslint-cli": "^8.0.1",
         "soukai": "0.6.0-next.99b8d2509c34fc253150d47a9deed61332bc3065",
         "typescript": "^5.8.2",
         "vite": "^6.2.2",
