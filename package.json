@@ -25,7 +25,7 @@
         "soukai": "*"
     },
     "dependencies": {
-        "@noeldemartin/solid-utils": "0.6.0-next.93662083f605ab1c82251296bba0307c629df50a",
+        "@noeldemartin/solid-utils": "0.6.0-next.851da2f1bc379a62ccbf7fcdef05b34e6e9ea4ae",
         "@noeldemartin/utils": "0.7.0-next.5c206fa7d2c7aa3aa156d38935403ee1e4866f59"
     },
     "devDependencies": {
