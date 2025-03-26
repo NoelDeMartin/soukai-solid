@@ -25,8 +25,8 @@
         "soukai": "*"
     },
     "dependencies": {
-        "@noeldemartin/solid-utils": "0.6.0-next.851da2f1bc379a62ccbf7fcdef05b34e6e9ea4ae",
-        "@noeldemartin/utils": "0.7.0-next.5c206fa7d2c7aa3aa156d38935403ee1e4866f59"
+        "@noeldemartin/solid-utils": "0.6.0-next.508449b33de64b0bcade86b642c9793381434231",
+        "@noeldemartin/utils": "0.7.0-next.2f9c60ae176fbfb7f6e8f2ec1015fdfa0ad16461"
     },
     "devDependencies": {
         "@noeldemartin/eslint-config-typescript": "^0.1.2",

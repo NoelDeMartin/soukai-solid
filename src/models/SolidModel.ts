@@ -1,5 +1,6 @@
 import {
     Semaphore,
+    applyStrictChecks,
     arrayFilter,
     arrayFrom,
     arrayReplace,
@@ -67,7 +68,6 @@ import IncompleteDocument from 'soukai-solid/errors/IncompleteDocument';
 import IRI from 'soukai-solid/solid/utils/IRI';
 import RDFDocument from 'soukai-solid/solid/RDFDocument';
 import ResourceNotFound from 'soukai-solid/errors/ResourceNotFound';
-import { applyStrictChecks } from 'soukai-solid/utils/env';
 import type { SolidEngine } from 'soukai-solid/engines/SolidEngine';
 import { usingExperimentalActivityPods } from 'soukai-solid/experimental';
 import type RDFResource from 'soukai-solid/solid/RDFResource';
